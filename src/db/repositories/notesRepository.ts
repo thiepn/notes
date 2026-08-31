@@ -15,6 +15,7 @@ interface NotesRepositoryOptions {
   idFactory?: () => string;
 }
 
+type EditableNoteFields = Pick<NoteRecord, 'type' | 'title' | 'content' | 'color' | 'position'>;
 type NoteMutation = (current: NoteRecord, timestamp: number) => Partial<NoteRecord> | null;
 
 export class NotesRepository {
@@ -85,7 +86,7 @@ export class NotesRepository {
   }
 
   async update(id: string, patch: UpdateNoteInput, expectedRevision?: number): Promise<NoteRecord> {
-    const parsedPatch = updateNoteInputSchema.parse(patch);
+    const parsedPatch = normalizeUpdatePatch(updateNoteInputSchema.parse(patch));
     if (Object.keys(parsedPatch).length === 0) {
       return this.require(id);
     }
@@ -302,6 +303,20 @@ export class NotesRepository {
     }
     return timestamp;
   }
+}
+
+function normalizeUpdatePatch(
+  parsed: ReturnType<typeof updateNoteInputSchema.parse>,
+): Partial<EditableNoteFields> {
+  const normalized: Partial<EditableNoteFields> = {};
+
+  if (parsed.type !== undefined) normalized.type = parsed.type;
+  if (parsed.title !== undefined) normalized.title = parsed.title;
+  if (parsed.content !== undefined) normalized.content = parsed.content;
+  if (parsed.color !== undefined) normalized.color = parsed.color;
+  if (parsed.position !== undefined) normalized.position = parsed.position;
+
+  return normalized;
 }
 
 function compareActiveNotes(a: NoteRecord, b: NoteRecord): number {
