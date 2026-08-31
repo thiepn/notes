@@ -1,0 +1,44 @@
+name: Format P11
+
+on:
+  push:
+    paths:
+      - '.github/workflows/format-p11.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - run: npm install --no-audit --no-fund
+      - name: Format P11 files
+        run: >-
+          npx prettier --write
+          e2e/history.spec.ts
+          src/db/index.ts
+          src/db/repositories/revisionsRepository.ts
+          src/db/repositories/revisionsRepository.test.ts
+          src/features/notes/RevisionHistoryDialog.tsx
+          src/features/notes/NoteEditorDialog.tsx
+          src/features/notes/ChecklistEditorDialog.tsx
+          src/features/notes/useExistingNoteEditor.ts
+          src/styles/history.css
+          src/styles.css
+      - name: Commit canonical formatting
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name thiepn
+          git config user.email junsosmart@gmail.com
+          git add e2e/history.spec.ts src/db/index.ts src/db/repositories/revisionsRepository.ts src/db/repositories/revisionsRepository.test.ts src/features/notes/RevisionHistoryDialog.tsx src/features/notes/NoteEditorDialog.tsx src/features/notes/ChecklistEditorDialog.tsx src/features/notes/useExistingNoteEditor.ts src/styles/history.css src/styles.css
+          git commit -m "style: format P11 revision history"
+          git push origin HEAD:main
