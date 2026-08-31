@@ -1,0 +1,99 @@
+import {
+  attachmentRecordSchema,
+  checklistItemRecordSchema,
+  labelRecordSchema,
+  noteLabelRecordSchema,
+  noteRecordSchema,
+  type NotesDatabase,
+} from '../../db';
+import { normalizeSearchText, type SearchDocument } from './searchEngine';
+
+const LINK_PATTERN = /(?:https?:\/\/|www\.)\S+/iu;
+
+export class SearchRepository {
+  constructor(private readonly database: NotesDatabase) {}
+
+  async loadIndex(): Promise<SearchDocument[]> {
+    const [rawNotes, rawItems, rawLabels, rawLinks, rawAttachments] = await Promise.all([
+      this.database.notes.toArray(),
+      this.database.checklistItems.toArray(),
+      this.database.labels.toArray(),
+      this.database.noteLabels.toArray(),
+      this.database.attachments.toArray(),
+    ]);
+
+    const notes = rawNotes
+      .map((note) => noteRecordSchema.parse(note))
+      .filter((note) => note.trashedAt === null);
+    const noteIds = new Set(notes.map((note) => note.id));
+    const itemsByNote = new Map<string, ReturnType<typeof checklistItemRecordSchema.parse>[]>();
+    for (const rawItem of rawItems) {
+      const item = checklistItemRecordSchema.parse(rawItem);
+      if (!noteIds.has(item.noteId)) continue;
+      const items = itemsByNote.get(item.noteId) ?? [];
+      items.push(item);
+      itemsByNote.set(item.noteId, items);
+    }
+    for (const items of itemsByNote.values()) {
+      items.sort((a, b) => a.position - b.position || a.createdAt - b.createdAt);
+    }
+
+    const labelsById = new Map(
+      rawLabels.map((rawLabel) => {
+        const label = labelRecordSchema.parse(rawLabel);
+        return [label.id, label] as const;
+      }),
+    );
+    const labelIdsByNote = new Map<string, string[]>();
+    for (const rawLink of rawLinks) {
+      const link = noteLabelRecordSchema.parse(rawLink);
+      if (!noteIds.has(link.noteId)) continue;
+      const labelIds = labelIdsByNote.get(link.noteId) ?? [];
+      labelIds.push(link.labelId);
+      labelIdsByNote.set(link.noteId, labelIds);
+    }
+
+    const imageNoteIds = new Set<string>();
+    for (const rawAttachment of rawAttachments) {
+      const attachment = attachmentRecordSchema.parse(rawAttachment);
+      if (noteIds.has(attachment.noteId) && attachment.mimeType.startsWith('image/')) {
+        imageNoteIds.add(attachment.noteId);
+      }
+    }
+
+    return notes.map((note) => {
+      const checklistItems = itemsByNote.get(note.id) ?? [];
+      const labelIds = labelIdsByNote.get(note.id) ?? [];
+      const labelNames = labelIds
+        .map((labelId) => labelsById.get(labelId)?.name)
+        .filter((name): name is string => Boolean(name));
+      const checklistText = checklistItems.map((item) => item.text).join('\n');
+      const combinedLinkText = [note.title, note.content, checklistText].join('\n');
+      const normalizedTitle = normalizeSearchText(note.title);
+      const normalizedBody = normalizeSearchText(note.content);
+      const normalizedChecklist = normalizeSearchText(checklistText);
+      const normalizedLabels = normalizeSearchText(labelNames.join(' '));
+
+      return {
+        note,
+        checklistItems,
+        labelIds,
+        labelNames,
+        hasImage: imageNoteIds.has(note.id),
+        hasLink: LINK_PATTERN.test(combinedLinkText),
+        normalizedTitle,
+        normalizedBody,
+        normalizedChecklist,
+        normalizedLabels,
+        normalizedAll: [
+          normalizedTitle,
+          normalizedBody,
+          normalizedChecklist,
+          normalizedLabels,
+        ]
+          .filter(Boolean)
+          .join(' '),
+      };
+    });
+  }
+}
