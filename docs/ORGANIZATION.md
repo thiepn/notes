@@ -75,6 +75,8 @@ Playwright covers:
 - multi-label assignment,
 - all previous P1-P5 regressions.
 
+The implementation is certified through the same format, lint, strict TypeScript, production-build, and real-browser gates used by earlier phases before P6 is closed.
+
 ## Phase boundary
 
 P6 owns shallow visual organization: colors, labels, label management, label assignment, and label-filtered browsing. P7 owns checklist capture and editing behavior.
