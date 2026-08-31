@@ -34,7 +34,9 @@ export function ConfirmDeleteDialog({ title, onCancel, onConfirm }: ConfirmDelet
       >
         <h2 id="confirm-delete-title">Delete note permanently?</h2>
         <p id="confirm-delete-description">
-          {title ? `“${title}” will be permanently deleted.` : 'This note will be permanently deleted.'}{' '}
+          {title
+            ? `“${title}” will be permanently deleted.`
+            : 'This note will be permanently deleted.'}{' '}
           This cannot be undone.
         </p>
         <div className="confirm-dialog-actions">
