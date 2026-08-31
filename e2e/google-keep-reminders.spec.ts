@@ -58,7 +58,7 @@ test('recognized Keep reminder timestamps import while unknown reminder shapes o
     return {
       reminderCount: reminders.length,
       importedReminder: imported
-        ? reminders.find((reminder) => reminder.noteId === imported.id) ?? null
+        ? (reminders.find((reminder) => reminder.noteId === imported.id) ?? null)
         : null,
       unknownHasReminder: unknown
         ? reminders.some((reminder) => reminder.noteId === unknown.id)
