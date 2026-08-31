@@ -64,6 +64,7 @@ test('Enter, Backspace, Tab nesting, and drag reorder persist correctly', async 
   await expect(dialog.locator('.checklist-item-input').first()).toHaveValue('Child');
 
   await dialog.getByRole('button', { name: 'Close' }).click();
+  await expect(dialog).toBeHidden();
   await page.reload();
   await page.getByRole('button', { name: 'Open note: Structure' }).click();
   const reopened = page.getByRole('dialog', { name: 'Edit checklist' });
