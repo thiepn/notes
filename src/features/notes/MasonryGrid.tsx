@@ -43,9 +43,7 @@ export function MasonryGrid({
   return (
     <div className="note-grid" data-view={viewMode} role="list" aria-label={ariaLabel}>
       {notes.map((note) => {
-        const reminderProps = remindersByNote
-          ? { reminder: remindersByNote[note.id] ?? null }
-          : {};
+        const reminderProps = remindersByNote ? { reminder: remindersByNote[note.id] ?? null } : {};
         return (
           <MasonryItem key={note.id} viewMode={viewMode}>
             <NoteCard
