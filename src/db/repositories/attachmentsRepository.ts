@@ -321,7 +321,6 @@ function stripGifPrivacyMetadata(bytes: Uint8Array): Uint8Array {
     const marker = bytes[position];
     if (marker === 0x3b) {
       chunks.push(bytes.subarray(position, position + 1));
-      position += 1;
       break;
     }
 
