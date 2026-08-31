@@ -8,6 +8,15 @@ export {
 export { InvalidNoteStateError, NoteConflictError, NoteNotFoundError } from './errors';
 export { DATABASE_SCHEMA_V1, DATABASE_VERSION } from './migrations/v1';
 export {
+  AttachmentsRepository,
+  isPreviewableImageMimeType,
+  MAX_ATTACHMENTS_PER_NOTE,
+  MAX_NATIVE_IMAGE_BYTES,
+  MAX_TOTAL_ATTACHMENT_BYTES_PER_NOTE,
+  NATIVE_IMAGE_ACCEPT,
+  type AddImagesResult,
+} from './repositories/attachmentsRepository';
+export {
   BulkActionsRepository,
   type BulkColorState,
   type BulkLabelState,
