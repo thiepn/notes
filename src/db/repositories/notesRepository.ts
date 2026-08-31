@@ -3,7 +3,10 @@ import { nextTimestamp } from '../clock';
 import { InvalidNoteStateError, NoteConflictError, NoteNotFoundError } from '../errors';
 import type { NoteRecord } from '../types';
 import {
+  attachmentRecordSchema,
+  checklistItemRecordSchema,
   createNoteInputSchema,
+  noteLabelRecordSchema,
   noteRecordSchema,
   updateNoteInputSchema,
   type CreateNoteInput,
@@ -189,45 +192,73 @@ export class NotesRepository {
           revision: 1,
         });
 
-        const [items, labels, attachments] = await Promise.all([
+        const [rawItems, rawLabels, rawAttachments] = await Promise.all([
           this.database.checklistItems.where('noteId').equals(id).toArray(),
           this.database.noteLabels.where('noteId').equals(id).toArray(),
           this.database.attachments.where('noteId').equals(id).toArray(),
         ]);
+        const items = rawItems.map((item) => checklistItemRecordSchema.parse(item));
+        const labels = rawLabels.map((label) => noteLabelRecordSchema.parse(label));
+        const attachments = rawAttachments.map((attachment) =>
+          attachmentRecordSchema.parse(attachment),
+        );
 
         await this.database.notes.add(duplicate);
 
         if (items.length > 0) {
-          await this.database.checklistItems.bulkAdd(
-            items.map((item) => ({
+          const itemIdMap = new Map(items.map((item) => [item.id, this.idFactory()]));
+          const duplicatedItems = items.map((item) => {
+            const duplicatedId = itemIdMap.get(item.id);
+            if (!duplicatedId) {
+              throw new Error(`Failed to allocate a duplicate ID for checklist item ${item.id}.`);
+            }
+
+            let duplicatedParentId: string | null = null;
+            if (item.parentId !== null) {
+              const mappedParentId = itemIdMap.get(item.parentId);
+              if (!mappedParentId) {
+                throw new Error(
+                  `Checklist item ${item.id} references missing parent ${item.parentId}.`,
+                );
+              }
+              duplicatedParentId = mappedParentId;
+            }
+
+            return checklistItemRecordSchema.parse({
               ...item,
-              id: this.idFactory(),
+              id: duplicatedId,
               noteId: duplicate.id,
-              parentId: null,
+              parentId: duplicatedParentId,
               createdAt: timestamp,
               updatedAt: timestamp,
-            })),
-          );
+            });
+          });
+
+          await this.database.checklistItems.bulkAdd(duplicatedItems);
         }
 
         if (labels.length > 0) {
           await this.database.noteLabels.bulkAdd(
-            labels.map((label) => ({
-              ...label,
-              noteId: duplicate.id,
-              assignedAt: timestamp,
-            })),
+            labels.map((label) =>
+              noteLabelRecordSchema.parse({
+                ...label,
+                noteId: duplicate.id,
+                assignedAt: timestamp,
+              }),
+            ),
           );
         }
 
         if (attachments.length > 0) {
           await this.database.attachments.bulkAdd(
-            attachments.map((attachment) => ({
-              ...attachment,
-              id: this.idFactory(),
-              noteId: duplicate.id,
-              createdAt: timestamp,
-            })),
+            attachments.map((attachment) =>
+              attachmentRecordSchema.parse({
+                ...attachment,
+                id: this.idFactory(),
+                noteId: duplicate.id,
+                createdAt: timestamp,
+              }),
+            ),
           );
         }
 

@@ -229,6 +229,8 @@ test('duplicates dependent note data without copying lifecycle state', async ({ 
         title: 'Source',
       });
       const labelId = crypto.randomUUID();
+      const sourceParentId = crypto.randomUUID();
+      const sourceChildId = crypto.randomUUID();
       await database.labels.add({
         id: labelId,
         name: 'Copied',
@@ -236,16 +238,28 @@ test('duplicates dependent note data without copying lifecycle state', async ({ 
         createdAt: 20,
         updatedAt: 20,
       });
-      await database.checklistItems.add({
-        id: crypto.randomUUID(),
-        noteId: source.id,
-        text: 'Copy me',
-        checked: false,
-        parentId: null,
-        position: 0,
-        createdAt: 20,
-        updatedAt: 20,
-      });
+      await database.checklistItems.bulkAdd([
+        {
+          id: sourceParentId,
+          noteId: source.id,
+          text: 'Parent',
+          checked: false,
+          parentId: null,
+          position: 0,
+          createdAt: 20,
+          updatedAt: 20,
+        },
+        {
+          id: sourceChildId,
+          noteId: source.id,
+          text: 'Child',
+          checked: false,
+          parentId: sourceParentId,
+          position: 1,
+          createdAt: 20,
+          updatedAt: 20,
+        },
+      ]);
       await database.noteLabels.add({
         noteId: source.id,
         labelId,
@@ -264,11 +278,21 @@ test('duplicates dependent note data without copying lifecycle state', async ({ 
       await repository.setPinned(source.id, true);
 
       const duplicate = await repository.duplicate(source.id);
+      const duplicatedItems = await database.checklistItems
+        .where('noteId')
+        .equals(duplicate.id)
+        .sortBy('position');
+      const [duplicatedParent, duplicatedChild] = duplicatedItems;
 
       return {
         sourceId: source.id,
+        sourceParentId,
+        sourceChildId,
         duplicate,
-        items: await database.checklistItems.where('noteId').equals(duplicate.id).count(),
+        duplicatedParentId: duplicatedParent?.id ?? null,
+        duplicatedChildId: duplicatedChild?.id ?? null,
+        duplicatedChildParentId: duplicatedChild?.parentId ?? null,
+        items: duplicatedItems.length,
         labels: await database.noteLabels.where('noteId').equals(duplicate.id).count(),
         attachments: await database.attachments.where('noteId').equals(duplicate.id).count(),
       };
@@ -283,7 +307,10 @@ test('duplicates dependent note data without copying lifecycle state', async ({ 
   expect(result.duplicate.pinnedAt).toBeNull();
   expect(result.duplicate.archivedAt).toBeNull();
   expect(result.duplicate.trashedAt).toBeNull();
-  expect(result.items).toBe(1);
+  expect(result.items).toBe(2);
+  expect(result.duplicatedParentId).not.toBe(result.sourceParentId);
+  expect(result.duplicatedChildId).not.toBe(result.sourceChildId);
+  expect(result.duplicatedChildParentId).toBe(result.duplicatedParentId);
   expect(result.labels).toBe(1);
   expect(result.attachments).toBe(1);
 });
