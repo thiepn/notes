@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  bytesToBase64,
-  prepareBackup,
-  sha256Hex,
-  type BackupDocument,
-} from './backupFormat';
+import { bytesToBase64, prepareBackup, sha256Hex, type BackupDocument } from './backupFormat';
 
 const NOTE_ID = '10000000-0000-4000-8000-000000000001';
 const CHECKLIST_ID = '10000000-0000-4000-8000-000000000002';
