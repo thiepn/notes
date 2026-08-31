@@ -37,11 +37,7 @@ export function parseLocalReminderInput(input: LocalReminderInput): number {
   if (hour > 23 || minute > 59) throw new Error('Choose a valid reminder time.');
 
   const date = new Date(year, month - 1, day, hour, minute, 0, 0);
-  if (
-    date.getFullYear() !== year ||
-    date.getMonth() !== month - 1 ||
-    date.getDate() !== day
-  ) {
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
     throw new Error('Choose a valid reminder date.');
   }
   if (date.getHours() !== hour || date.getMinutes() !== minute) {
@@ -92,9 +88,10 @@ export function formatReminderDateTime(timestamp: number): string {
 
 export function formatReminderShort(timestamp: number, now = Date.now()): string {
   if (isSameLocalDay(timestamp, now)) {
-    return `Today, ${new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(
-      new Date(timestamp),
-    )}`;
+    return `Today, ${new Intl.DateTimeFormat(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(new Date(timestamp))}`;
   }
   const tomorrow = new Date(now);
   tomorrow.setDate(tomorrow.getDate() + 1);
