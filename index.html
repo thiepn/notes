@@ -4,7 +4,21 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Notes — a private, local-first, zero-friction notes app." />
-    <meta name="theme-color" content="#ffffff" />
+    <meta name="theme-color" content="#f6f7f9" />
+    <script>
+      (() => {
+        try {
+          const stored = window.localStorage.getItem('notes.theme');
+          const preference = ['system', 'light', 'dark'].includes(stored) ? stored : 'system';
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          const resolved = preference === 'system' ? (prefersDark ? 'dark' : 'light') : preference;
+          document.documentElement.dataset.theme = resolved;
+          document.documentElement.style.colorScheme = resolved;
+        } catch {
+          document.documentElement.dataset.theme = 'light';
+        }
+      })();
+    </script>
     <title>Notes</title>
   </head>
   <body>

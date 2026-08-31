@@ -1,0 +1,93 @@
+:root {
+  --font-sans:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  --header-height: 64px;
+  --sidebar-width: 272px;
+  --sidebar-compact-width: 80px;
+  --content-max-width: 1600px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-pill: 999px;
+
+  --shadow-sm: 0 1px 2px rgb(24 28 36 / 7%);
+  --shadow-md: 0 8px 30px rgb(24 28 36 / 10%);
+
+  --motion-fast: 120ms;
+  --motion-standard: 180ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-subtle: #f0f2f5;
+  --surface-hover: #e9edf2;
+  --surface-active: #e3e8f7;
+  --text: #20242b;
+  --text-muted: #69707d;
+  --text-subtle: #8a919d;
+  --border: #dfe3e8;
+  --border-strong: #cdd3da;
+  --accent: #5367d8;
+  --accent-strong: #4054c8;
+  --accent-soft: #e8ecff;
+  --focus: #4359da;
+  --scrim: rgb(21 25 32 / 38%);
+
+  --note-default: #ffffff;
+  --note-red: #f9dddd;
+  --note-orange: #fbe3cc;
+  --note-yellow: #f8edbd;
+  --note-green: #dcefdc;
+  --note-teal: #d7efec;
+  --note-blue: #dce8f8;
+  --note-purple: #e9def4;
+  --note-pink: #f6dfea;
+  --note-brown: #eadfd6;
+  --note-gray: #e5e7ea;
+}
+
+html[data-theme='dark'] {
+  --bg: #111318;
+  --surface: #191c22;
+  --surface-subtle: #22262e;
+  --surface-hover: #2a2f38;
+  --surface-active: #30374a;
+  --text: #eef0f3;
+  --text-muted: #aab0ba;
+  --text-subtle: #858c98;
+  --border: #30353e;
+  --border-strong: #414750;
+  --accent: #9aa8ff;
+  --accent-strong: #b2bcff;
+  --accent-soft: #293054;
+  --focus: #aab5ff;
+  --scrim: rgb(0 0 0 / 54%);
+
+  --note-default: #1d2026;
+  --note-red: #412a2b;
+  --note-orange: #443226;
+  --note-yellow: #403923;
+  --note-green: #293a2c;
+  --note-teal: #263b3a;
+  --note-blue: #283649;
+  --note-purple: #372d45;
+  --note-pink: #422e39;
+  --note-brown: #3b322c;
+  --note-gray: #30343a;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 24%);
+  --shadow-md: 0 12px 36px rgb(0 0 0 / 28%);
+}
