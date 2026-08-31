@@ -6,7 +6,9 @@ A local-first, zero-friction notes PWA designed to match Google Keep's capture s
 
 ## Status
 
-Development is following the frozen phase plan. **P0 — Product Freeze + Repository Bootstrap** is in progress.
+**P1 — Database Architecture is complete.** The app now has a tested IndexedDB/Dexie schema v1, validated note models, transactional repository APIs, optimistic revision checks, lifecycle operations, cascade deletion, and real-browser persistence tests.
+
+**Next phase:** P2 — App Shell + Design System.
 
 ## V1 scope
 
@@ -33,11 +35,16 @@ V1 explicitly excludes cloud sync, accounts, collaboration, AI, OCR, voice notes
 - IndexedDB through Dexie
 - Local-first data model
 - Zod validation at data boundaries
+- Repository-only write access for application features
+- Optimistic per-note revision checks
+- Transaction-safe multi-table operations
 - Vite PWA / service-worker layer
 - Vitest for unit tests
-- Playwright for end-to-end tests
+- Playwright for real-browser IndexedDB and end-to-end tests
 - GitHub Actions for CI and deployment
 - GitHub Pages-compatible build rooted at `/notes/`
+
+See [`docs/DATABASE.md`](docs/DATABASE.md) for the database schema and invariants.
 
 ## Principles
 
