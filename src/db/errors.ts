@@ -14,9 +14,7 @@ export class NoteConflictError extends Error {
   readonly actualRevision: number;
 
   constructor(noteId: string, expectedRevision: number, actualRevision: number) {
-    super(
-      `Note ${noteId} changed from revision ${expectedRevision} to ${actualRevision}.`,
-    );
+    super(`Note ${noteId} changed from revision ${expectedRevision} to ${actualRevision}.`);
     this.name = 'NoteConflictError';
     this.noteId = noteId;
     this.expectedRevision = expectedRevision;

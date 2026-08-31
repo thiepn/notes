@@ -40,8 +40,6 @@ describe('database validation', () => {
 
   it('rejects invalid clock values', () => {
     expect(() => nextTimestamp(10, -1)).toThrow(RangeError);
-    expect(() => nextTimestamp(10, Number.POSITIVE_INFINITY)).toThrow(
-      RangeError,
-    );
+    expect(() => nextTimestamp(10, Number.POSITIVE_INFINITY)).toThrow(RangeError);
   });
 });

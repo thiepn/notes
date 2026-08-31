@@ -1,10 +1,6 @@
 import type { NotesDatabase } from '../database';
 import { nextTimestamp } from '../clock';
-import {
-  InvalidNoteStateError,
-  NoteConflictError,
-  NoteNotFoundError,
-} from '../errors';
+import { InvalidNoteStateError, NoteConflictError, NoteNotFoundError } from '../errors';
 import type { NoteRecord } from '../types';
 import {
   createNoteInputSchema,
@@ -19,10 +15,7 @@ interface NotesRepositoryOptions {
   idFactory?: () => string;
 }
 
-type NoteMutation = (
-  current: NoteRecord,
-  timestamp: number,
-) => Partial<NoteRecord> | null;
+type NoteMutation = (current: NoteRecord, timestamp: number) => Partial<NoteRecord> | null;
 
 export class NotesRepository {
   private readonly clock: () => number;
@@ -91,28 +84,16 @@ export class NotesRepository {
       .sort((a, b) => (b.trashedAt ?? 0) - (a.trashedAt ?? 0));
   }
 
-  async update(
-    id: string,
-    patch: UpdateNoteInput,
-    expectedRevision?: number,
-  ): Promise<NoteRecord> {
+  async update(id: string, patch: UpdateNoteInput, expectedRevision?: number): Promise<NoteRecord> {
     const parsedPatch = updateNoteInputSchema.parse(patch);
     if (Object.keys(parsedPatch).length === 0) {
       return this.require(id);
     }
 
-    return this.mutate(
-      id,
-      () => parsedPatch,
-      expectedRevision,
-    );
+    return this.mutate(id, () => parsedPatch, expectedRevision);
   }
 
-  async setPinned(
-    id: string,
-    pinned: boolean,
-    expectedRevision?: number,
-  ): Promise<NoteRecord> {
+  async setPinned(id: string, pinned: boolean, expectedRevision?: number): Promise<NoteRecord> {
     return this.mutate(
       id,
       (current, timestamp) => {
@@ -176,8 +157,7 @@ export class NotesRepository {
   async restore(id: string, expectedRevision?: number): Promise<NoteRecord> {
     return this.mutate(
       id,
-      (current) =>
-        current.trashedAt === null ? null : { trashedAt: null, archivedAt: null },
+      (current) => (current.trashedAt === null ? null : { trashedAt: null, archivedAt: null }),
       expectedRevision,
     );
   }
@@ -293,10 +273,7 @@ export class NotesRepository {
       }
 
       const current = noteRecordSchema.parse(rawCurrent);
-      if (
-        expectedRevision !== undefined &&
-        current.revision !== expectedRevision
-      ) {
+      if (expectedRevision !== undefined && current.revision !== expectedRevision) {
         throw new NoteConflictError(id, expectedRevision, current.revision);
       }
 

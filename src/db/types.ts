@@ -16,13 +16,7 @@ export const NOTE_COLORS = [
 ] as const;
 export type NoteColor = (typeof NOTE_COLORS)[number];
 
-export const REVISION_REASONS = [
-  'edit',
-  'close',
-  'import',
-  'restore',
-  'conversion',
-] as const;
+export const REVISION_REASONS = ['edit', 'close', 'import', 'restore', 'conversion'] as const;
 export type RevisionReason = (typeof REVISION_REASONS)[number];
 
 export interface NoteRecord {

@@ -4,9 +4,7 @@ function testDatabaseName(prefix: string): string {
   return `notes-e2e-${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-test('persists notes across database reopen and protects revisions', async ({
-  page,
-}) => {
+test('persists notes across database reopen and protects revisions', async ({ page }) => {
   await page.goto('./');
   const databaseName = testDatabaseName('persist');
 
@@ -30,11 +28,7 @@ test('persists notes across database reopen and protects revisions', async ({
 
       let conflictName = '';
       try {
-        await reopenedRepository.update(
-          created.id,
-          { title: 'Stale edit' },
-          created.revision,
-        );
+        await reopenedRepository.update(created.id, { title: 'Stale edit' }, created.revision);
       } catch (error) {
         conflictName = error instanceof Error ? error.name : 'unknown';
       }
@@ -109,9 +103,7 @@ test('enforces lifecycle transitions and active-note ordering', async ({ page })
   expect(result.restoredAt).toBeNull();
 });
 
-test('rolls back failed transactions and cascades permanent deletion', async ({
-  page,
-}) => {
+test('rolls back failed transactions and cascades permanent deletion', async ({ page }) => {
   await page.goto('./');
   const databaseName = testDatabaseName('atomic');
 
@@ -222,9 +214,7 @@ test('rolls back failed transactions and cascades permanent deletion', async ({
   });
 });
 
-test('duplicates dependent note data without copying lifecycle state', async ({
-  page,
-}) => {
+test('duplicates dependent note data without copying lifecycle state', async ({ page }) => {
   await page.goto('./');
   const databaseName = testDatabaseName('duplicate');
 
@@ -278,15 +268,9 @@ test('duplicates dependent note data without copying lifecycle state', async ({
       return {
         sourceId: source.id,
         duplicate,
-        items: await database.checklistItems
-          .where('noteId')
-          .equals(duplicate.id)
-          .count(),
+        items: await database.checklistItems.where('noteId').equals(duplicate.id).count(),
         labels: await database.noteLabels.where('noteId').equals(duplicate.id).count(),
-        attachments: await database.attachments
-          .where('noteId')
-          .equals(duplicate.id)
-          .count(),
+        attachments: await database.attachments.where('noteId').equals(duplicate.id).count(),
       };
     } finally {
       database.close();

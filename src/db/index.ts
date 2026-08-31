@@ -5,11 +5,7 @@ export {
   deleteNotesDatabase,
   notesDatabase,
 } from './database';
-export {
-  InvalidNoteStateError,
-  NoteConflictError,
-  NoteNotFoundError,
-} from './errors';
+export { InvalidNoteStateError, NoteConflictError, NoteNotFoundError } from './errors';
 export { DATABASE_SCHEMA_V1, DATABASE_VERSION } from './migrations/v1';
 export { NotesRepository } from './repositories/notesRepository';
 export type {
