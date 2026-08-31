@@ -6,9 +6,9 @@ A local-first, zero-friction notes PWA designed to match Google Keep's capture s
 
 ## Status
 
-**P6 — Colors + Labels is complete.** Notes now support persistent Keep-style colors, normalized case-insensitive labels, multi-label assignment, card label chips, sidebar label navigation, label-filtered active-note views, label CRUD, and automatic label inheritance for notes created inside a label view.
+**P7 — Checklist Engine is complete.** Notes now support first-class checklist capture and editing, transactional checklist snapshot saves, keyboard item creation/removal, one-level subtasks, drag and button-based reordering, completed-item controls, text/checklist conversion, checklist card previews, and independent crash/reload recovery.
 
-**Next phase:** P7 — Checklist Engine.
+**Next phase:** P8 — Selection + Bulk Actions.
 
 ## V1 scope
 
@@ -39,6 +39,8 @@ V1 explicitly excludes cloud sync, accounts, collaboration, AI, OCR, voice notes
 - Optimistic per-note revision checks
 - Transaction-safe multi-table operations
 - Serialized text autosave with synchronous recovery journals
+- Transactional checklist snapshot persistence with independent capture/editor recovery journals
+- Normalized checklist item rows with stable IDs, ordering, check state, and parent relationships
 - Accessible measured CSS Grid masonry with persistent list mode
 - Existing-note editor with separate crash/reload recovery
 - State-aware lifecycle actions with reversible Undo toasts
@@ -48,11 +50,11 @@ V1 explicitly excludes cloud sync, accounts, collaboration, AI, OCR, voice notes
 - Tokenized responsive design system with light/dark/system appearance
 - Vite PWA / service-worker layer
 - Vitest for unit tests
-- Playwright for real-browser IndexedDB, capture recovery, card/grid, lifecycle, organization, responsive-shell, and end-to-end tests
+- Playwright for real-browser IndexedDB, capture recovery, card/grid, lifecycle, organization, checklist, responsive-shell, and end-to-end tests
 - GitHub Actions for CI and deployment
 - GitHub Pages-compatible build rooted at `/notes/`
 
-See [`docs/DATABASE.md`](docs/DATABASE.md) for database invariants, [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for the shell and styling contract, [`docs/CAPTURE.md`](docs/CAPTURE.md) for new-note capture and recovery, [`docs/CARDS_AND_GRID.md`](docs/CARDS_AND_GRID.md) for the P4 card and editor architecture, [`docs/LIFECYCLE.md`](docs/LIFECYCLE.md) for lifecycle state, Undo, Archive, Trash, duplication, and permanent deletion behavior, and [`docs/ORGANIZATION.md`](docs/ORGANIZATION.md) for P6 color, label, label-view, and organization behavior.
+See [`docs/DATABASE.md`](docs/DATABASE.md) for database invariants, [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for the shell and styling contract, [`docs/CAPTURE.md`](docs/CAPTURE.md) for new-note capture and recovery, [`docs/CARDS_AND_GRID.md`](docs/CARDS_AND_GRID.md) for the P4 card and editor architecture, [`docs/LIFECYCLE.md`](docs/LIFECYCLE.md) for lifecycle state, Undo, Archive, Trash, duplication, and permanent deletion behavior, [`docs/ORGANIZATION.md`](docs/ORGANIZATION.md) for P6 color, label, label-view, and organization behavior, and [`docs/CHECKLISTS.md`](docs/CHECKLISTS.md) for P7 checklist storage, interaction, conversion, and recovery behavior.
 
 ## Principles
 
