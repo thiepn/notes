@@ -47,7 +47,7 @@ export function AttachmentPanel({
 }: AttachmentPanelProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
-  const [resolvedNoteId, setResolvedNoteId] = useState<string | null>(noteId);
+  const [createdNoteId, setCreatedNoteId] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<AttachmentRecord[]>([]);
   const [busy, setBusy] = useState(false);
   const [dragActive, setDragActive] = useState(false);
@@ -55,24 +55,24 @@ export function AttachmentPanel({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
   const [lightboxId, setLightboxId] = useState<string | null>(null);
-
-  const load = useCallback(
-    async (targetNoteId: string | null) => {
-      if (!targetNoteId) {
-        setAttachments([]);
-        return;
-      }
-      setAttachments(await repository.list(targetNoteId));
-    },
-    [repository],
-  );
+  const targetNoteId = noteId ?? createdNoteId;
 
   useEffect(() => {
-    setResolvedNoteId(noteId);
-    setPendingRemoveId(null);
-    setLightboxId(null);
-    void load(noteId).catch(() => setErrorMessage('Attachments could not be loaded.'));
-  }, [load, noteId, refreshKey]);
+    if (!targetNoteId) return;
+    let cancelled = false;
+    void repository
+      .list(targetNoteId)
+      .then((storedAttachments) => {
+        if (cancelled) return;
+        setAttachments(storedAttachments);
+      })
+      .catch(() => {
+        if (!cancelled) setErrorMessage('Attachments could not be loaded.');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshKey, repository, targetNoteId]);
 
   const addFiles = useCallback(
     async (files: File[], source: AddSource = 'picker') => {
@@ -81,21 +81,21 @@ export function AttachmentPanel({
       setStatusMessage(null);
       setErrorMessage(null);
       try {
-        const targetNoteId = resolvedNoteId ?? (await ensureNoteId?.()) ?? null;
-        if (!targetNoteId) throw new Error('Save the note before adding an image.');
-        setResolvedNoteId(targetNoteId);
+        const target = targetNoteId ?? (await ensureNoteId?.()) ?? null;
+        if (!target) throw new Error('Save the note before adding an image.');
+        if (!noteId) setCreatedNoteId(target);
         await assertStorageLooksSufficient(files);
-        const result = await repository.addImages(targetNoteId, files);
+        const result = await repository.addImages(target, files);
         setAttachments(result.attachments);
         setStatusMessage(formatAddResult(result.added, result.skippedDuplicates, source));
-        onChanged?.(targetNoteId);
+        onChanged?.(target);
       } catch (error) {
         setErrorMessage(toErrorMessage(error));
       } finally {
         setBusy(false);
       }
     },
-    [busy, editable, ensureNoteId, onChanged, repository, resolvedNoteId],
+    [busy, editable, ensureNoteId, noteId, onChanged, repository, targetNoteId],
   );
 
   useEffect(() => {
@@ -113,7 +113,6 @@ export function AttachmentPanel({
   }, [addFiles, editable]);
 
   const removeAttachment = async (attachmentId: string) => {
-    const targetNoteId = resolvedNoteId;
     if (!editable || !targetNoteId || busy) return;
     setBusy(true);
     setStatusMessage(null);
@@ -530,18 +529,25 @@ function AttachmentLightbox({
   );
 }
 
+interface BlobUrlState {
+  blob: Blob | null;
+  url: string | null;
+}
+
 function useBlobUrl(blob: Blob | null): string | null {
-  const [url, setUrl] = useState<string | null>(null);
+  const [state, setState] = useState<BlobUrlState>({ blob: null, url: null });
+
   useEffect(() => {
-    if (!blob) {
-      setUrl(null);
-      return;
-    }
+    if (!blob) return;
     const next = URL.createObjectURL(blob);
-    setUrl(next);
-    return () => URL.revokeObjectURL(next);
+    const frame = window.requestAnimationFrame(() => setState({ blob, url: next }));
+    return () => {
+      window.cancelAnimationFrame(frame);
+      URL.revokeObjectURL(next);
+    };
   }, [blob]);
-  return url;
+
+  return blob !== null && state.blob === blob ? state.url : null;
 }
 
 function downloadAttachment(attachment: AttachmentRecord): void {
