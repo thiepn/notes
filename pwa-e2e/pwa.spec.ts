@@ -97,7 +97,9 @@ test('cold reload, reading, and writing remain functional with the network disab
   await context.setOffline(false);
 });
 
-test('offline browser events surface the local-only status without disabling the app', async ({ page }) => {
+test('offline browser events surface the local-only status without disabling the app', async ({
+  page,
+}) => {
   await page.goto('./');
 
   await page.evaluate(() => window.dispatchEvent(new Event('offline')));
