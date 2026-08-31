@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
   type DragEvent as ReactDragEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import {
@@ -450,28 +451,32 @@ function AttachmentLightbox({
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-      if (event.key === 'ArrowLeft' && attachments.length > 1) {
-        event.preventDefault();
-        onIndexChange((index - 1 + attachments.length) % attachments.length);
-      }
-      if (event.key === 'ArrowRight' && attachments.length > 1) {
-        event.preventDefault();
-        onIndexChange((index + 1) % attachments.length);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
     return () => {
       document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [attachments.length, index, onClose, onIndexChange]);
+  }, []);
 
   if (!attachment) return null;
   const name = attachment.name ?? 'Attached image';
   const move = (direction: 1 | -1) =>
     onIndexChange((index + direction + attachments.length) % attachments.length);
+  const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    event.stopPropagation();
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      onClose();
+      return;
+    }
+    if (event.key === 'ArrowLeft' && attachments.length > 1) {
+      event.preventDefault();
+      move(-1);
+      return;
+    }
+    if (event.key === 'ArrowRight' && attachments.length > 1) {
+      event.preventDefault();
+      move(1);
+    }
+  };
 
   return (
     <div
@@ -479,6 +484,7 @@ function AttachmentLightbox({
       role="dialog"
       aria-modal="true"
       aria-label={`Image viewer: ${name}`}
+      onKeyDown={handleKeyDown}
       onPointerDown={(event: ReactPointerEvent<HTMLDivElement>) => {
         if (event.target === event.currentTarget) onClose();
       }}
