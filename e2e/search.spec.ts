@@ -98,8 +98,8 @@ test('search includes archive, excludes trash, and supports operators', async ({
 
 test('filter panel intersects type, status, color, and labels with the query', async ({ page }) => {
   const ids = await seedSearchLibrary(page);
-  await search(page, '');
   await page.getByRole('button', { name: 'Search filters' }).click();
+  await expect(page.getByRole('heading', { name: 'Search', level: 1 })).toBeVisible();
 
   const filters = page.getByRole('region', { name: 'Search filters' });
   await filters.getByLabel('Type').selectOption('checklist');
@@ -144,7 +144,11 @@ test('10k-note local index keeps the in-memory matcher below 100 ms', async ({ p
     const index = await repository.loadIndex();
     const loadMs = performance.now() - loadStart;
     const searchStart = performance.now();
-    const results = engine.searchDocuments(index, 'unique performance needle', types.DEFAULT_SEARCH_FILTERS);
+    const results = engine.searchDocuments(
+      index,
+      'unique performance needle',
+      types.DEFAULT_SEARCH_FILTERS,
+    );
     const searchMs = performance.now() - searchStart;
     return { count: index.length, resultCount: results.length, loadMs, searchMs };
   });
