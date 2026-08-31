@@ -19,17 +19,21 @@ import {
 } from 'lucide-react';
 
 import { IconButton } from '../../components/ui/IconButton';
-import type {
-  ChecklistItemRecord,
-  LabelRecord,
-  NoteColor,
-  NoteRecord,
-  ReminderRecord,
+import {
+  RemindersRepository,
+  notesDatabase,
+  type ChecklistItemRecord,
+  type LabelRecord,
+  type NoteColor,
+  type NoteRecord,
+  type ReminderRecord,
 } from '../../db';
 import { formatReminderShort } from '../reminders/reminderTime';
 import { NoteCardAttachmentPreview } from './NoteCardAttachmentPreview';
 import { NoteColorPicker } from './NoteColorPicker';
 import { NoteLabelPicker } from './NoteLabelPicker';
+
+const remindersRepository = new RemindersRepository(notesDatabase);
 
 export type NoteCollectionMode = 'notes' | 'reminders' | 'archive' | 'trash';
 export type NoteSelectionIntent = 'toggle' | 'range' | 'select';
@@ -76,7 +80,7 @@ export function NoteCard({
   labels,
   selectedLabelIds,
   checklistItems,
-  reminder = null,
+  reminder,
   attachmentRefreshKey = 0,
   selection,
 }: NoteCardProps) {
@@ -84,12 +88,31 @@ export function NoteCard({
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggeredRef = useRef(false);
   const [openPanel, setOpenPanel] = useState<OrganizationPanel>(null);
+  const [loadedReminder, setLoadedReminder] = useState<ReminderRecord | null>(reminder ?? null);
+  const effectiveReminder = reminder === undefined ? loadedReminder : reminder;
   const label = noteLabel(note, checklistItems);
   const canOpen = mode !== 'trash';
   const selectedLabels = labels.filter((item) => selectedLabelIds.includes(item.id));
   const selectionActive = selection?.active ?? false;
   const selectionSelected = selection?.selected ?? false;
   const visiblePanel = selectionActive ? null : openPanel;
+
+  useEffect(() => {
+    if (reminder !== undefined) return;
+    let cancelled = false;
+    const load = () => {
+      void remindersRepository.getForNote(note.id).then((stored) => {
+        if (!cancelled) setLoadedReminder(stored ?? null);
+      });
+    };
+    const handleChanged = () => load();
+    window.addEventListener('notes-reminders-changed', handleChanged);
+    load();
+    return () => {
+      cancelled = true;
+      window.removeEventListener('notes-reminders-changed', handleChanged);
+    };
+  }, [note.id, reminder]);
 
   useEffect(() => {
     if (!visiblePanel) return;
@@ -163,7 +186,7 @@ export function NoteCard({
       data-pinned={note.pinnedAt !== null}
       data-selected={selectionSelected}
       data-selection-active={selectionActive}
-      data-has-reminder={reminder !== null}
+      data-has-reminder={effectiveReminder !== null}
       onPointerDown={handlePointerDown}
       onPointerUp={clearLongPress}
       onPointerCancel={clearLongPress}
@@ -194,7 +217,7 @@ export function NoteCard({
           <NoteCardContent
             note={note}
             mode={mode}
-            reminder={reminder}
+            reminder={effectiveReminder}
             labels={selectedLabels}
             checklistItems={checklistItems}
             attachmentRefreshKey={attachmentRefreshKey}
@@ -205,7 +228,7 @@ export function NoteCard({
           <NoteCardContent
             note={note}
             mode={mode}
-            reminder={reminder}
+            reminder={effectiveReminder}
             labels={selectedLabels}
             checklistItems={checklistItems}
             attachmentRefreshKey={attachmentRefreshKey}
