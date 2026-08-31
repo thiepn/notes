@@ -58,7 +58,11 @@ export function ReminderNotificationCoordinator() {
   return null;
 }
 
-async function showLocalNotification(title: string, body: string, noteId: string): Promise<boolean> {
+async function showLocalNotification(
+  title: string,
+  body: string,
+  noteId: string,
+): Promise<boolean> {
   try {
     if ('serviceWorker' in navigator) {
       const registration = await navigator.serviceWorker.getRegistration('/notes/');
