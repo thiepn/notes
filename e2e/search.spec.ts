@@ -107,6 +107,7 @@ test('search includes archive, excludes trash, and supports operators', async ({
 
 test('filter panel intersects type, status, color, and labels with the query', async ({ page }) => {
   const ids = await seedSearchLibrary(page);
+  await page.reload();
   await page.getByRole('button', { name: 'Search filters' }).click();
   await expect(page.getByRole('heading', { name: 'Search', level: 1 })).toBeVisible();
 
