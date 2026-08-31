@@ -243,9 +243,7 @@ test('revision pruning preserves recent detail and long-term reach while corrupt
   });
 
   expect(result.count).toBe(50);
-  expect(result.recentContents).toEqual(
-    Array.from({ length: 30 }, (_, index) => `v${80 - index}`),
-  );
+  expect(result.recentContents).toEqual(Array.from({ length: 30 }, (_, index) => `v${80 - index}`));
   expect(result.newest).toBe('v80');
   expect(result.oldest).toBe('v0');
   expect(result.corruptionRejected).toBe(true);
