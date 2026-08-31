@@ -18,9 +18,9 @@ interface MasonryGridProps {
   labels: LabelRecord[];
   labelIdsByNote: Record<string, string[]>;
   checklistItemsByNote: Record<string, ChecklistItemRecord[]>;
-  selectedNoteIds: Set<string>;
-  selectionActive: boolean;
-  onSelectionIntent(note: NoteRecord, intent: NoteSelectionIntent): void;
+  selectedNoteIds?: Set<string>;
+  selectionActive?: boolean;
+  onSelectionIntent?: ((note: NoteRecord, intent: NoteSelectionIntent) => void) | undefined;
 }
 
 export function MasonryGrid({
@@ -33,7 +33,7 @@ export function MasonryGrid({
   labelIdsByNote,
   checklistItemsByNote,
   selectedNoteIds,
-  selectionActive,
+  selectionActive = false,
   onSelectionIntent,
 }: MasonryGridProps) {
   return (
@@ -47,11 +47,15 @@ export function MasonryGrid({
             labels={labels}
             selectedLabelIds={labelIdsByNote[note.id] ?? []}
             checklistItems={checklistItemsByNote[note.id] ?? []}
-            selection={{
-              active: selectionActive,
-              selected: selectedNoteIds.has(note.id),
-              onIntent: onSelectionIntent,
-            }}
+            selection={
+              onSelectionIntent
+                ? {
+                    active: selectionActive,
+                    selected: selectedNoteIds?.has(note.id) ?? false,
+                    onIntent: onSelectionIntent,
+                  }
+                : undefined
+            }
           />
         </MasonryItem>
       ))}
