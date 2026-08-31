@@ -15,7 +15,10 @@ function json(value: unknown): Uint8Array {
 function extractedFile(path: string, contents: string | Uint8Array, type = ''): File {
   const name = path.slice(path.lastIndexOf('/') + 1);
   const bytes = typeof contents === 'string' ? strToU8(contents) : contents;
-  const file = new File([Uint8Array.from(bytes).buffer], name, { type, lastModified: 1_780_000_000_000 });
+  const file = new File([Uint8Array.from(bytes).buffer], name, {
+    type,
+    lastModified: 1_780_000_000_000,
+  });
   Object.defineProperty(file, 'webkitRelativePath', { value: path, configurable: true });
   return file;
 }
@@ -223,7 +226,9 @@ describe('P13 Google Keep Takeout parser', () => {
     expect(prepared.notes[0]?.title).toBe('HTML only');
     expect(prepared.notes[0]?.content).toBe('Fallback & safe');
     expect(prepared.notes[0]?.color).toBe('default');
-    expect(prepared.warnings.some((warning) => warning.message.includes('HTML fallback'))).toBe(true);
+    expect(prepared.warnings.some((warning) => warning.message.includes('HTML fallback'))).toBe(
+      true,
+    );
   });
 
   it('falls back from corrupt timestamps instead of discarding the note', async () => {
@@ -240,7 +245,9 @@ describe('P13 Google Keep Takeout parser', () => {
     const prepared = await prepareGoogleKeepImport([file]);
     expect(prepared.notes).toHaveLength(1);
     expect(Number.isSafeInteger(prepared.notes[0]?.createdAt)).toBe(true);
-    expect(prepared.warnings.filter((warning) => warning.message.includes('timestamp')).length).toBe(2);
+    expect(
+      prepared.warnings.filter((warning) => warning.message.includes('timestamp')).length,
+    ).toBe(2);
   });
 
   it('keeps valid notes importable when another JSON file or attachment is damaged', async () => {
