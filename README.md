@@ -6,9 +6,9 @@ A local-first, zero-friction notes PWA designed to match Google Keep's capture s
 
 ## Status
 
-**P5 — Note Lifecycle is complete.** Notes now support pin/unpin, archive/unarchive, trash/restore, duplication, state-aware Undo, real database-backed Archive and Trash views, read-only Trash behavior, and confirmed permanent deletion.
+**P6 — Colors + Labels is complete.** Notes now support persistent Keep-style colors, normalized case-insensitive labels, multi-label assignment, card label chips, sidebar label navigation, label-filtered active-note views, label CRUD, and automatic label inheritance for notes created inside a label view.
 
-**Next phase:** P6 — Colors + Labels.
+**Next phase:** P7 — Checklist Engine.
 
 ## V1 scope
 
@@ -43,14 +43,16 @@ V1 explicitly excludes cloud sync, accounts, collaboration, AI, OCR, voice notes
 - Existing-note editor with separate crash/reload recovery
 - State-aware lifecycle actions with reversible Undo toasts
 - Database-backed Notes, Archive, and Trash collections with persisted primary navigation
+- Case-insensitive normalized labels backed by a many-to-many `noteLabels` relationship table
+- Persistent color and label organization with label-filtered views and automatic label inheritance during capture
 - Tokenized responsive design system with light/dark/system appearance
 - Vite PWA / service-worker layer
 - Vitest for unit tests
-- Playwright for real-browser IndexedDB, capture recovery, card/grid, lifecycle, responsive-shell, and end-to-end tests
+- Playwright for real-browser IndexedDB, capture recovery, card/grid, lifecycle, organization, responsive-shell, and end-to-end tests
 - GitHub Actions for CI and deployment
 - GitHub Pages-compatible build rooted at `/notes/`
 
-See [`docs/DATABASE.md`](docs/DATABASE.md) for database invariants, [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for the shell and styling contract, [`docs/CAPTURE.md`](docs/CAPTURE.md) for new-note capture and recovery, [`docs/CARDS_AND_GRID.md`](docs/CARDS_AND_GRID.md) for the P4 card and editor architecture, and [`docs/LIFECYCLE.md`](docs/LIFECYCLE.md) for lifecycle state, Undo, Archive, Trash, duplication, and permanent deletion behavior.
+See [`docs/DATABASE.md`](docs/DATABASE.md) for database invariants, [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for the shell and styling contract, [`docs/CAPTURE.md`](docs/CAPTURE.md) for new-note capture and recovery, [`docs/CARDS_AND_GRID.md`](docs/CARDS_AND_GRID.md) for the P4 card and editor architecture, [`docs/LIFECYCLE.md`](docs/LIFECYCLE.md) for lifecycle state, Undo, Archive, Trash, duplication, and permanent deletion behavior, and [`docs/ORGANIZATION.md`](docs/ORGANIZATION.md) for P6 color, label, label-view, and organization behavior.
 
 ## Principles
 
