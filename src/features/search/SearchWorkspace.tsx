@@ -387,6 +387,7 @@ export function SearchWorkspace({
             note={editing.note}
             repository={notesRepository}
             onSaved={handleSaved}
+            onHistoryChecklistSaved={handleChecklistSaved}
             onConvertToChecklist={async () => {
               try {
                 const converted = await checklistsRepository.convertTextToChecklist(

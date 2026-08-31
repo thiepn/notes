@@ -113,10 +113,7 @@ export function NoteEditorDialog({
     if (historyChanged) onClose();
   };
 
-  const surfaceHistoricalResult = (result: {
-    note: NoteRecord;
-    items: ChecklistItemRecord[];
-  }) => {
+  const surfaceHistoricalResult = (result: { note: NoteRecord; items: ChecklistItemRecord[] }) => {
     if (result.note.type === 'checklist') {
       onHistoryChecklistSaved(result.note, result.items);
     } else {

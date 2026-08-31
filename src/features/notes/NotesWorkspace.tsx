@@ -834,6 +834,7 @@ export function NotesWorkspace({
             note={editingNote}
             repository={notesRepository}
             onSaved={handleSaved}
+            onHistoryChecklistSaved={handleChecklistSaved}
             onConvertToChecklist={async () => {
               try {
                 const converted = await checklistsRepository.convertTextToChecklist(editingNote.id);
