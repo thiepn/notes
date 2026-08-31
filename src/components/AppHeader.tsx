@@ -1,4 +1,5 @@
-import { Menu, Monitor, Moon, Search, StickyNote, Sun } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import { Menu, Monitor, Moon, Search, SlidersHorizontal, StickyNote, Sun, X } from 'lucide-react';
 
 import { IconButton } from './ui/IconButton';
 import { useTheme } from '../theme/ThemeContext';
@@ -10,10 +11,48 @@ const THEME_LABELS: Record<ThemePreference, string> = {
   dark: 'Dark',
 };
 
-export function AppHeader({ onMenu }: { onMenu: () => void }) {
+interface AppHeaderProps {
+  onMenu(): void;
+  searchQuery: string;
+  filtersOpen: boolean;
+  filtersActive: boolean;
+  onSearchQueryChange(query: string): void;
+  onToggleFilters(): void;
+  onClearSearch(): void;
+}
+
+export function AppHeader({
+  onMenu,
+  searchQuery,
+  filtersOpen,
+  filtersActive,
+  onSearchQueryChange,
+  onToggleFilters,
+  onClearSearch,
+}: AppHeaderProps) {
   const { preference, cyclePreference } = useTheme();
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const nextPreference = nextThemePreference(preference);
   const ThemeIcon = preference === 'system' ? Monitor : preference === 'light' ? Sun : Moon;
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== '/' || event.metaKey || event.ctrlKey || event.altKey) return;
+      const target = event.target;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        (target instanceof HTMLElement && target.isContentEditable)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      searchInputRef.current?.focus();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   return (
     <header className="app-header">
@@ -36,10 +75,49 @@ export function AppHeader({ onMenu }: { onMenu: () => void }) {
         </div>
       </div>
 
-      <label className="search-shell">
+      <div className="search-shell" role="search">
         <Search aria-hidden="true" />
-        <input type="search" placeholder="Search notes" aria-label="Search notes" disabled />
-      </label>
+        <input
+          ref={searchInputRef}
+          type="search"
+          placeholder="Search notes"
+          aria-label="Search notes"
+          value={searchQuery}
+          onChange={(event) => onSearchQueryChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape' && searchQuery) {
+              event.preventDefault();
+              onSearchQueryChange('');
+            }
+          }}
+        />
+        {searchQuery ? (
+          <button
+            className="search-inline-action"
+            type="button"
+            aria-label="Clear search query"
+            onClick={() => onSearchQueryChange('')}
+          >
+            <X />
+          </button>
+        ) : null}
+        <button
+          className="search-inline-action"
+          type="button"
+          aria-label="Search filters"
+          aria-expanded={filtersOpen}
+          aria-pressed={filtersOpen || filtersActive}
+          data-active={filtersOpen || filtersActive}
+          onClick={onToggleFilters}
+        >
+          <SlidersHorizontal />
+        </button>
+        {searchQuery || filtersActive ? (
+          <button className="search-reset" type="button" onClick={onClearSearch}>
+            Reset
+          </button>
+        ) : null}
+      </div>
 
       <div className="header-actions">
         <IconButton
