@@ -11,6 +11,7 @@ import { History } from 'lucide-react';
 import {
   RevisionsRepository,
   notesDatabase,
+  type ChecklistItemRecord,
   type NoteRecord,
   type NotesRepository,
 } from '../../db';
@@ -23,6 +24,7 @@ interface NoteEditorDialogProps {
   note: NoteRecord;
   repository: NotesRepository;
   onSaved(note: NoteRecord): void;
+  onHistoryChecklistSaved(note: NoteRecord, items: ChecklistItemRecord[]): void;
   onConvertToChecklist(): Promise<void>;
   onClose(): void;
 }
@@ -31,6 +33,7 @@ export function NoteEditorDialog({
   note,
   repository,
   onSaved,
+  onHistoryChecklistSaved,
   onConvertToChecklist,
   onClose,
 }: NoteEditorDialogProps) {
@@ -110,6 +113,17 @@ export function NoteEditorDialog({
     if (historyChanged) onClose();
   };
 
+  const surfaceHistoricalResult = (result: {
+    note: NoteRecord;
+    items: ChecklistItemRecord[];
+  }) => {
+    if (result.note.type === 'checklist') {
+      onHistoryChecklistSaved(result.note, result.items);
+    } else {
+      onSaved(result.note);
+    }
+  };
+
   return (
     <>
       <div className="note-editor-layer" onPointerDown={handleLayerPointerDown}>
@@ -185,12 +199,14 @@ export function NoteEditorDialog({
           repository={revisionsRepository}
           onClose={closeHistory}
           onRestored={(result) => {
-            onSaved(result.note);
+            surfaceHistoricalResult(result);
             setHistoryNote(result.note);
             setHistoryChanged(true);
           }}
           onCopied={(result) => {
-            if (note.archivedAt === null && note.trashedAt === null) onSaved(result.note);
+            if (note.archivedAt === null && note.trashedAt === null) {
+              surfaceHistoricalResult(result);
+            }
           }}
         />
       ) : null}
