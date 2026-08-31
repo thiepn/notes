@@ -32,9 +32,11 @@ async function selectAllVisible(page: Page) {
   const firstCard = page.locator('[data-note-card]').first();
   await firstCard.hover();
   await firstCard.getByRole('button', { name: /^Select note:/ }).click();
-  const selectAll = page.getByRole('toolbar', { name: 'Selected notes actions' }).getByRole('button', {
-    name: /^Select all /,
-  });
+  const selectAll = page
+    .getByRole('toolbar', { name: 'Selected notes actions' })
+    .getByRole('button', {
+      name: /^Select all /,
+    });
   if (await selectAll.isVisible()) await selectAll.click();
 }
 
@@ -123,7 +125,9 @@ test('bulk pin, color, labels, archive, and Undo preserve the prior state', asyn
     const labels = new dbModule.LabelsRepository(dbModule.notesDatabase);
     const work = (await labels.list()).find((label) => label.name === 'Work');
     if (!work) return [];
-    return Promise.all(notes.map(async (note) => (await labels.labelIdsForNote(note.id)).includes(work.id)));
+    return Promise.all(
+      notes.map(async (note) => (await labels.labelIdsForNote(note.id)).includes(work.id)),
+    );
   });
   expect(labelCounts).toEqual([true, true, true]);
 
@@ -221,7 +225,8 @@ test('select all and a bulk mutation remain usable with 500 notes', async ({ pag
   await expect(page.locator('[data-note-card][data-color="gray"]')).toHaveCount(500);
   const grayCount = await page.evaluate(async () => {
     const dbModule = await import('/notes/src/db/index.ts');
-    return dbModule.notesDatabase.notes.where('color').equals('gray').count();
+    return (await dbModule.notesDatabase.notes.toArray()).filter((note) => note.color === 'gray')
+      .length;
   });
   expect(grayCount).toBe(500);
 

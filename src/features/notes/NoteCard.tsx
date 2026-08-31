@@ -212,7 +212,9 @@ export function NoteCard({
                   className="note-card-action"
                   label={`Change labels: ${label}`}
                   aria-expanded={visiblePanel === 'labels'}
-                  onClick={() => setOpenPanel((current) => (current === 'labels' ? null : 'labels'))}
+                  onClick={() =>
+                    setOpenPanel((current) => (current === 'labels' ? null : 'labels'))
+                  }
                 >
                   <Tag />
                 </IconButton>

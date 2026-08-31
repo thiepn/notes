@@ -518,8 +518,8 @@ export function NotesWorkspace({
       noteIds: new Set(visibleNotes.map((note) => note.id)),
       anchorId:
         current.mode === mode && current.filterLabelId === filterLabelId
-          ? current.anchorId ?? visibleNotes[0]?.id ?? null
-          : visibleNotes[0]?.id ?? null,
+          ? (current.anchorId ?? visibleNotes[0]?.id ?? null)
+          : (visibleNotes[0]?.id ?? null),
     }));
   }, [filterLabelId, mode, visibleNotes]);
 
@@ -633,7 +633,10 @@ export function NotesWorkspace({
     async (color: NoteColor) => {
       if (selectedNotes.length === 0 || selectedNotes.every((note) => note.color === color)) return;
       const targets = toBulkTargets(selectedNotes);
-      const previous: BulkColorState[] = selectedNotes.map((note) => ({ id: note.id, color: note.color }));
+      const previous: BulkColorState[] = selectedNotes.map((note) => ({
+        id: note.id,
+        color: note.color,
+      }));
       const count = selectedNotes.length;
       try {
         await bulkActionsRepository.setColor(targets, color);

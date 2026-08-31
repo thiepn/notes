@@ -7,7 +7,12 @@ interface ConfirmDeleteDialogProps {
   onConfirm(): void;
 }
 
-export function ConfirmDeleteDialog({ title = '', count, onCancel, onConfirm }: ConfirmDeleteDialogProps) {
+export function ConfirmDeleteDialog({
+  title = '',
+  count,
+  onCancel,
+  onConfirm,
+}: ConfirmDeleteDialogProps) {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -43,9 +48,7 @@ export function ConfirmDeleteDialog({ title = '', count, onCancel, onConfirm }: 
         <h2 id="confirm-delete-title">
           {isBulk ? `Delete ${count} notes permanently?` : 'Delete note permanently?'}
         </h2>
-        <p id="confirm-delete-description">
-          {description} This cannot be undone.
-        </p>
+        <p id="confirm-delete-description">{description} This cannot be undone.</p>
         <div className="confirm-dialog-actions">
           <button type="button" autoFocus onClick={onCancel}>
             Cancel

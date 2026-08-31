@@ -89,7 +89,7 @@ export class BulkActionsRepository {
   }
 
   async restoreLifecycle(states: BulkLifecycleState[]): Promise<NoteRecord[]> {
-    return this.restoreFields(states, (note, state) => ({
+    return this.restoreFields(states, (_note, state) => ({
       pinnedAt: state.pinnedAt,
       archivedAt: state.archivedAt,
       trashedAt: state.trashedAt,

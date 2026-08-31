@@ -163,7 +163,11 @@ export function BulkSelectionToolbar({
         ) : null}
 
         {mode === 'notes' ? (
-          <IconButton className="bulk-selection-icon" label="Archive selected notes" onClick={onArchive}>
+          <IconButton
+            className="bulk-selection-icon"
+            label="Archive selected notes"
+            onClick={onArchive}
+          >
             <Archive />
           </IconButton>
         ) : null}
@@ -213,7 +217,11 @@ export function BulkSelectionToolbar({
 
 function BulkColorPanel({ onChange }: { onChange(color: NoteColor): void }) {
   return (
-    <div className="bulk-selection-popover bulk-color-panel" role="dialog" aria-label="Bulk note color">
+    <div
+      className="bulk-selection-popover bulk-color-panel"
+      role="dialog"
+      aria-label="Bulk note color"
+    >
       <span className="note-organization-title">Color</span>
       <div className="bulk-color-grid">
         {NOTE_COLORS.map((color) => (
@@ -243,7 +251,11 @@ function BulkLabelPanel({
   onChange(labelId: string, assigned: boolean): void;
 }) {
   return (
-    <div className="bulk-selection-popover bulk-label-panel" role="dialog" aria-label="Bulk note labels">
+    <div
+      className="bulk-selection-popover bulk-label-panel"
+      role="dialog"
+      aria-label="Bulk note labels"
+    >
       <span className="note-organization-title">Labels</span>
       {labels.length === 0 ? (
         <p className="note-organization-empty">Create a label from the sidebar first.</p>
