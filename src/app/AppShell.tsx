@@ -42,7 +42,6 @@ export function AppShell() {
       }
     };
 
-    setIsMobile(mediaQuery.matches);
     mediaQuery.addEventListener('change', handleChange);
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);

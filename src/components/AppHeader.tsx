@@ -1,7 +1,7 @@
 import { Menu, Monitor, Moon, Search, StickyNote, Sun } from 'lucide-react';
 
 import { IconButton } from './ui/IconButton';
-import { useTheme } from '../theme/ThemeProvider';
+import { useTheme } from '../theme/ThemeContext';
 import { nextThemePreference, type ThemePreference } from '../theme/theme';
 
 const THEME_LABELS: Record<ThemePreference, string> = {

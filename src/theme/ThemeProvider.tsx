@@ -1,7 +1,5 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -9,23 +7,15 @@ import {
   type PropsWithChildren,
 } from 'react';
 
+import { ThemeContext, type ThemeContextValue } from './ThemeContext';
 import {
   nextThemePreference,
   readThemePreference,
   resolveTheme,
   THEME_STORAGE_KEY,
-  type ResolvedTheme,
   type ThemePreference,
 } from './theme';
 
-interface ThemeContextValue {
-  preference: ThemePreference;
-  resolvedTheme: ResolvedTheme;
-  setPreference: (preference: ThemePreference) => void;
-  cyclePreference: () => void;
-}
-
-const ThemeContext = createContext<ThemeContextValue | null>(null);
 const DARK_MEDIA_QUERY = '(prefers-color-scheme: dark)';
 
 export function ThemeProvider({ children }: PropsWithChildren) {
@@ -41,7 +31,6 @@ export function ThemeProvider({ children }: PropsWithChildren) {
     const mediaQuery = window.matchMedia(DARK_MEDIA_QUERY);
     const handleChange = (event: MediaQueryListEvent) => setSystemPrefersDark(event.matches);
 
-    setSystemPrefersDark(mediaQuery.matches);
     mediaQuery.addEventListener('change', handleChange);
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
@@ -73,12 +62,4 @@ export function ThemeProvider({ children }: PropsWithChildren) {
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
-}
-
-export function useTheme(): ThemeContextValue {
-  const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error('useTheme must be used inside ThemeProvider.');
-  }
-  return context;
 }
