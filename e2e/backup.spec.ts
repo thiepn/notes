@@ -183,7 +183,8 @@ test('full backup round-trips every v1 table and downloads a pre-restore safety 
       attachmentText: attachment ? await attachment.data.text() : null,
       attachmentChecksum: attachment?.checksum ?? null,
       revisionNoteIds: revisions.map((revision) => revision.noteId),
-      settingValue: settings.find((setting) => setting.key === 'backup-test-setting')?.value ?? null,
+      settingValue:
+        settings.find((setting) => setting.key === 'backup-test-setting')?.value ?? null,
     };
   }, ids);
 
@@ -202,7 +203,9 @@ test('full backup round-trips every v1 table and downloads a pre-restore safety 
   expect(restored.settingValue).toBe('preserve-me');
 });
 
-test('corrupt backups are rejected during preview without changing the library', async ({ page }) => {
+test('corrupt backups are rejected during preview without changing the library', async ({
+  page,
+}) => {
   await page.goto('./');
   await waitForNotes(page);
   await page.evaluate(async () => {
@@ -262,7 +265,8 @@ test('a write failure after table clearing rolls the entire replacement transact
       bulkAdd: typeof dbModule.notesDatabase.notes.bulkAdd;
     };
     const originalBulkAdd = table.bulkAdd.bind(table);
-    table.bulkAdd = (() => Promise.reject(new Error('forced restore write failure'))) as typeof table.bulkAdd;
+    table.bulkAdd = (() =>
+      Promise.reject(new Error('forced restore write failure'))) as typeof table.bulkAdd;
     let rejected = false;
     try {
       await repository.restorePrepared(prepared);
