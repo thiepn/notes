@@ -32,7 +32,10 @@ export class RemindersRepository {
 
   async byNoteIds(noteIds: string[]): Promise<Record<string, ReminderRecord>> {
     if (noteIds.length === 0) return {};
-    const rows = await this.database.reminders.where('noteId').anyOf([...new Set(noteIds)]).toArray();
+    const rows = await this.database.reminders
+      .where('noteId')
+      .anyOf([...new Set(noteIds)])
+      .toArray();
     return Object.fromEntries(
       rows.map((row) => {
         const reminder = reminderRecordSchema.parse(row);
@@ -58,7 +61,9 @@ export class RemindersRepository {
     const reminders = (await this.database.reminders.toArray()).map((row) =>
       reminderRecordSchema.parse(row),
     );
-    const noteRows = await this.database.notes.bulkGet(reminders.map((reminder) => reminder.noteId));
+    const noteRows = await this.database.notes.bulkGet(
+      reminders.map((reminder) => reminder.noteId),
+    );
     const result: Array<{ reminder: ReminderRecord; noteId: string }> = [];
     for (let index = 0; index < reminders.length; index += 1) {
       const reminder = reminders[index];
@@ -76,32 +81,37 @@ export class RemindersRepository {
     const timeZone = input.timeZone.trim();
     if (!timeZone || timeZone.length > 100) throw new Error('Choose a valid time zone.');
 
-    return this.database.transaction('rw', this.database.notes, this.database.reminders, async () => {
-      const rawNote = await this.database.notes.get(noteId);
-      if (!rawNote) throw new NoteNotFoundError(noteId);
-      const note = noteRecordSchema.parse(rawNote);
-      if (note.trashedAt !== null) {
-        throw new InvalidNoteStateError(noteId, 'A trashed note cannot receive a reminder.');
-      }
+    return this.database.transaction(
+      'rw',
+      this.database.notes,
+      this.database.reminders,
+      async () => {
+        const rawNote = await this.database.notes.get(noteId);
+        if (!rawNote) throw new NoteNotFoundError(noteId);
+        const note = noteRecordSchema.parse(rawNote);
+        if (note.trashedAt !== null) {
+          throw new InvalidNoteStateError(noteId, 'A trashed note cannot receive a reminder.');
+        }
 
-      const timestamp = this.readClock();
-      const existingRaw = await this.database.reminders.where('noteId').equals(noteId).first();
-      const existing = existingRaw ? reminderRecordSchema.parse(existingRaw) : undefined;
-      const next = reminderRecordSchema.parse({
-        id: existing?.id ?? this.idFactory(),
-        noteId,
-        dueAt,
-        timeZone,
-        status: 'active',
-        createdAt: existing?.createdAt ?? timestamp,
-        updatedAt: timestamp,
-        completedAt: null,
-        dismissedAt: null,
-        lastNotifiedAt: null,
-      });
-      await this.database.reminders.put(next);
-      return next;
-    });
+        const timestamp = this.readClock();
+        const existingRaw = await this.database.reminders.where('noteId').equals(noteId).first();
+        const existing = existingRaw ? reminderRecordSchema.parse(existingRaw) : undefined;
+        const next = reminderRecordSchema.parse({
+          id: existing?.id ?? this.idFactory(),
+          noteId,
+          dueAt,
+          timeZone,
+          status: 'active',
+          createdAt: existing?.createdAt ?? timestamp,
+          updatedAt: timestamp,
+          completedAt: null,
+          dismissedAt: null,
+          lastNotifiedAt: null,
+        });
+        await this.database.reminders.put(next);
+        return next;
+      },
+    );
   }
 
   async remove(noteId: string): Promise<boolean> {
