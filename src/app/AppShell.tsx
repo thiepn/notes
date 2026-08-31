@@ -6,6 +6,12 @@ import { AppSidebar, type AppSection } from '../components/AppSidebar';
 import { LabelsRepository, notesDatabase, type LabelRecord } from '../db';
 import { LabelManagerDialog } from '../features/notes/LabelManagerDialog';
 import { NotesWorkspace } from '../features/notes/NotesWorkspace';
+import { SearchWorkspace } from '../features/search/SearchWorkspace';
+import {
+  DEFAULT_SEARCH_FILTERS,
+  hasSearchFilters,
+  type SearchFilters,
+} from '../features/search/searchTypes';
 
 const MOBILE_QUERY = '(max-width: 767px)';
 const ACTIVE_SECTION_KEY = 'notes.active-section';
@@ -49,12 +55,24 @@ export function AppShell() {
   const [labelManagerOpen, setLabelManagerOpen] = useState(false);
   const [sidebarCompact, setSidebarCompact] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchFilters, setSearchFilters] = useState<SearchFilters>({ ...DEFAULT_SEARCH_FILTERS });
+  const [searchFiltersOpen, setSearchFiltersOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(() =>
     typeof window === 'undefined' ? false : window.matchMedia(MOBILE_QUERY).matches,
   );
 
+  const searchFiltersActive = hasSearchFilters(searchFilters);
+  const searchActive = Boolean(searchQuery.trim()) || searchFiltersActive || searchFiltersOpen;
+
   const refreshLabels = useCallback(async () => {
     setLabels(await labelsRepository.list());
+  }, []);
+
+  const clearSearch = useCallback(() => {
+    setSearchQuery('');
+    setSearchFilters({ ...DEFAULT_SEARCH_FILTERS });
+    setSearchFiltersOpen(false);
   }, []);
 
   useEffect(() => {
@@ -109,6 +127,7 @@ export function AppShell() {
   };
 
   const handleNavigate = (section: AppSection) => {
+    clearSearch();
     setActiveSection(section);
     setActiveLabelId(null);
     persistActiveSection(section);
@@ -118,6 +137,7 @@ export function AppShell() {
   };
 
   const handleLabelNavigate = (labelId: string) => {
+    clearSearch();
     setActiveSection('notes');
     setActiveLabelId(labelId);
     persistActiveSection('notes');
@@ -138,6 +158,10 @@ export function AppShell() {
 
   const handleDeleteLabel = async (labelId: string) => {
     await labelsRepository.delete(labelId);
+    setSearchFilters((current) => ({
+      ...current,
+      labelIds: current.labelIds.filter((id) => id !== labelId),
+    }));
     if (activeLabelId === labelId) {
       setActiveLabelId(null);
       setActiveSection('notes');
@@ -150,7 +174,7 @@ export function AppShell() {
   const activeLabel = activeLabelId
     ? (labels.find((label) => label.id === activeLabelId) ?? null)
     : null;
-  const section = activeLabel
+  const normalSection = activeLabel
     ? {
         title: activeLabel.name,
         description: `Active notes labeled “${activeLabel.name}”.`,
@@ -158,6 +182,14 @@ export function AppShell() {
         emptyDescription: 'Create a note here or add this label to an existing note.',
       }
     : SECTION_COPY[activeSection];
+  const section = searchActive
+    ? {
+        title: 'Search',
+        description: 'Search active and archived notes without leaving your local workspace.',
+        emptyTitle: 'No matching notes',
+        emptyDescription: 'Try a broader query or remove a filter.',
+      }
+    : normalSection;
   const lifecycleSection =
     activeLabel !== null ||
     activeSection === 'notes' ||
@@ -166,7 +198,15 @@ export function AppShell() {
 
   return (
     <div className="app-shell">
-      <AppHeader onMenu={handleMenu} />
+      <AppHeader
+        onMenu={handleMenu}
+        searchQuery={searchQuery}
+        filtersOpen={searchFiltersOpen}
+        filtersActive={searchFiltersActive}
+        onSearchQueryChange={setSearchQuery}
+        onToggleFilters={() => setSearchFiltersOpen((open) => !open)}
+        onClearSearch={clearSearch}
+      />
 
       <div className="app-body">
         <AppSidebar
@@ -201,7 +241,15 @@ export function AppShell() {
               <span className="local-badge">Local only</span>
             </header>
 
-            {lifecycleSection ? (
+            {searchActive ? (
+              <SearchWorkspace
+                query={searchQuery}
+                filters={searchFilters}
+                filtersOpen={searchFiltersOpen}
+                labels={labels}
+                onFiltersChange={setSearchFilters}
+              />
+            ) : lifecycleSection ? (
               <NotesWorkspace
                 mode={
                   activeLabel ? 'notes' : activeSection === 'reminders' ? 'notes' : activeSection
