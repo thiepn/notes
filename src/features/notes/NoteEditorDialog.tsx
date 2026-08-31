@@ -16,12 +16,7 @@ interface NoteEditorDialogProps {
   onClose(): void;
 }
 
-export function NoteEditorDialog({
-  note,
-  repository,
-  onSaved,
-  onClose,
-}: NoteEditorDialogProps) {
+export function NoteEditorDialog({ note, repository, onSaved, onClose }: NoteEditorDialogProps) {
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const { draft, errorMessage, status, setTitle, setContent, finishEditing, retrySave } =
     useExistingNoteEditor({ note, repository, onSaved, onClose });
