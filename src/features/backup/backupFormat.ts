@@ -222,6 +222,7 @@ function validateBackupGraph(document: BackupDocument): void {
   const noteById = new Map(notes.map((note) => [note.id, note]));
   const itemById = new Map(checklistItems.map((item) => [item.id, item]));
   const labelIds = new Set(labels.map((label) => label.id));
+  const positionsByNote = new Map<string, Set<number>>();
 
   for (const item of checklistItems) {
     const note = noteById.get(item.noteId);
@@ -229,6 +230,14 @@ function validateBackupGraph(document: BackupDocument): void {
     if (note.type !== 'checklist') {
       throw new Error(`Checklist item ${item.id} belongs to a text note.`);
     }
+
+    const positions = positionsByNote.get(item.noteId) ?? new Set<number>();
+    if (positions.has(item.position)) {
+      throw new Error(`Checklist note ${item.noteId} contains a duplicate item position.`);
+    }
+    positions.add(item.position);
+    positionsByNote.set(item.noteId, positions);
+
     if (item.parentId === item.id) {
       throw new Error(`Checklist item ${item.id} cannot parent itself.`);
     }
@@ -239,6 +248,9 @@ function validateBackupGraph(document: BackupDocument): void {
       }
       if (parent.parentId !== null) {
         throw new Error(`Checklist item ${item.id} exceeds the supported nesting depth.`);
+      }
+      if (parent.position >= item.position) {
+        throw new Error(`Checklist item ${item.id} must appear after its parent.`);
       }
     }
   }
