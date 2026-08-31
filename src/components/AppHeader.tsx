@@ -1,5 +1,15 @@
 import { useEffect, useRef } from 'react';
-import { Menu, Monitor, Moon, Search, SlidersHorizontal, StickyNote, Sun, X } from 'lucide-react';
+import {
+  Command,
+  Menu,
+  Monitor,
+  Moon,
+  Search,
+  SlidersHorizontal,
+  StickyNote,
+  Sun,
+  X,
+} from 'lucide-react';
 
 import { IconButton } from './ui/IconButton';
 import { useTheme } from '../theme/ThemeContext';
@@ -13,6 +23,7 @@ const THEME_LABELS: Record<ThemePreference, string> = {
 
 interface AppHeaderProps {
   onMenu(): void;
+  onCommandPalette(): void;
   searchQuery: string;
   filtersOpen: boolean;
   filtersActive: boolean;
@@ -23,6 +34,7 @@ interface AppHeaderProps {
 
 export function AppHeader({
   onMenu,
+  onCommandPalette,
   searchQuery,
   filtersOpen,
   filtersActive,
@@ -46,6 +58,7 @@ export function AppHeader({
       ) {
         return;
       }
+      if (document.querySelector('[role="dialog"], .note-composer')) return;
       event.preventDefault();
       searchInputRef.current?.focus();
     };
@@ -120,6 +133,15 @@ export function AppHeader({
       </div>
 
       <div className="header-actions">
+        <IconButton
+          label="Command palette"
+          tooltip="Command palette · Ctrl/⌘ K"
+          aria-keyshortcuts="Control+K Meta+K"
+          onClick={onCommandPalette}
+          data-testid="command-palette-toggle"
+        >
+          <Command />
+        </IconButton>
         <IconButton
           label={`Appearance: ${THEME_LABELS[preference]}`}
           tooltip={`${THEME_LABELS[preference]} appearance · switch to ${THEME_LABELS[nextPreference]}`}
