@@ -52,7 +52,7 @@ Undo is state-aware rather than merely visibility-aware:
 - restore → moves the note back to trash,
 - duplicate → permanently removes only the newly created copy.
 
-Permanent deletion is the exception: it cannot be undone and therefore requires explicit confirmation.
+The Undo opportunity is intentionally scoped to the current collection view and is dismissed once navigation to another primary section completes. Permanent deletion is the exception: it cannot be undone and therefore requires explicit confirmation.
 
 ## Archive and Trash views
 
