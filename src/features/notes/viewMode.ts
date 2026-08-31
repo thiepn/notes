@@ -7,7 +7,9 @@ export interface ViewModeStorage {
   setItem(key: string, value: string): void;
 }
 
-export function readNotesViewMode(storage: ViewModeStorage | null = browserStorage()): NotesViewMode {
+export function readNotesViewMode(
+  storage: ViewModeStorage | null = browserStorage(),
+): NotesViewMode {
   if (!storage) return 'grid';
 
   try {
