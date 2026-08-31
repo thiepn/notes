@@ -4,7 +4,7 @@ import type { ChecklistItemRecord, LabelRecord, NoteRecord, ReminderRecord } fro
 import {
   NoteCard,
   type NoteCardActions,
-  type NoteCollectionMode,
+  type NoteCardMode,
   type NoteSelectionIntent,
 } from './NoteCard';
 import type { NotesViewMode } from './viewMode';
@@ -13,7 +13,7 @@ interface MasonryGridProps {
   notes: NoteRecord[];
   viewMode: NotesViewMode;
   ariaLabel: string;
-  mode: NoteCollectionMode;
+  mode: NoteCardMode;
   actions: NoteCardActions;
   labels: LabelRecord[];
   labelIdsByNote: Record<string, string[]>;
@@ -51,7 +51,7 @@ export function MasonryGrid({
             labels={labels}
             selectedLabelIds={labelIdsByNote[note.id] ?? []}
             checklistItems={checklistItemsByNote[note.id] ?? []}
-            reminder={remindersByNote[note.id] ?? null}
+            reminder={remindersByNote[note.id] ?? undefined}
             attachmentRefreshKey={attachmentRefreshByNote[note.id] ?? 0}
             selection={
               onSelectionIntent
