@@ -8,11 +8,13 @@ import {
 } from 'react';
 import { History } from 'lucide-react';
 
-import type {
-  ChecklistDraftItem,
-  ChecklistItemRecord,
-  ChecklistsRepository,
-  NoteRecord,
+import {
+  RevisionsRepository,
+  notesDatabase,
+  type ChecklistDraftItem,
+  type ChecklistItemRecord,
+  type ChecklistsRepository,
+  type NoteRecord,
 } from '../../db';
 import {
   clearChecklistEditorJournal,
@@ -20,9 +22,11 @@ import {
   writeChecklistEditorJournal,
 } from './checklistJournal';
 import { ChecklistEditorFields } from './ChecklistEditorFields';
+import { RevisionHistoryDialog } from './RevisionHistoryDialog';
 
 const AUTOSAVE_DELAY_MS = 180;
 const MOVE_COMPLETED_KEY = 'notes.checklist.move-completed';
+const revisionsRepository = new RevisionsRepository(notesDatabase);
 
 type EditorStatus = 'idle' | 'saving' | 'error';
 
@@ -32,7 +36,6 @@ interface ChecklistEditorDialogProps {
   repository: ChecklistsRepository;
   onSaved(note: NoteRecord, items: ChecklistItemRecord[]): void;
   onConverted(note: NoteRecord): void;
-  onHistoryRequested(noteId: string): void;
   onClose(): void;
 }
 
@@ -47,7 +50,6 @@ export function ChecklistEditorDialog({
   repository,
   onSaved,
   onConverted,
-  onHistoryRequested,
   onClose,
 }: ChecklistEditorDialogProps) {
   const [initial] = useState(() => {
@@ -66,6 +68,8 @@ export function ChecklistEditorDialog({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [hideCompleted, setHideCompleted] = useState(false);
   const [moveCompletedDown, setMoveCompletedDown] = useState(readMoveCompletedPreference);
+  const [historyNote, setHistoryNote] = useState<NoteRecord | null>(null);
+  const [historyChanged, setHistoryChanged] = useState(false);
 
   const pendingDraftRef = useRef<ChecklistDraft>(initial.draft);
   const noteRef = useRef(note);
@@ -163,11 +167,16 @@ export function ChecklistEditorDialog({
   const finish = useCallback(async () => {
     clearTimer();
     try {
-      await persistLatest();
+      const saved = await persistLatest();
+      await revisionsRepository.checkpoint(saved.note.id, 'close');
       clearChecklistEditorJournal();
       onClose();
       return true;
-    } catch {
+    } catch (error) {
+      if (mountedRef.current) {
+        setStatus('error');
+        setErrorMessage(toErrorMessage(error));
+      }
       return false;
     }
   }, [clearTimer, onClose, persistLatest]);
@@ -176,7 +185,9 @@ export function ChecklistEditorDialog({
     clearTimer();
     try {
       const saved = await persistLatest();
+      await revisionsRepository.checkpoint(saved.note.id, 'close');
       const converted = await repository.convertChecklistToText(saved.note.id, saved.note.revision);
+      await revisionsRepository.checkpoint(converted.id, 'conversion');
       clearChecklistEditorJournal();
       onConverted(converted);
       onClose();
@@ -189,20 +200,39 @@ export function ChecklistEditorDialog({
   }, [clearTimer, onClose, onConverted, persistLatest, repository]);
 
   const openHistory = useCallback(async () => {
-    const saved = await finish();
-    if (saved) onHistoryRequested(note.id);
-  }, [finish, note.id, onHistoryRequested]);
+    clearTimer();
+    try {
+      const saved = await persistLatest();
+      await revisionsRepository.checkpoint(saved.note.id, 'close');
+      clearChecklistEditorJournal();
+      setHistoryNote(saved.note);
+      setHistoryChanged(false);
+    } catch (error) {
+      if (mountedRef.current) {
+        setStatus('error');
+        setErrorMessage(toErrorMessage(error));
+      }
+    }
+  }, [clearTimer, persistLatest]);
+
+  const closeHistory = useCallback(() => {
+    setHistoryNote(null);
+    if (historyChanged) onClose();
+  }, [historyChanged, onClose]);
 
   useEffect(() => {
     mountedRef.current = true;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    void revisionsRepository.checkpoint(note.id, 'edit').catch(() => {
+      // Editing remains available if history storage fails; opening History surfaces the error.
+    });
     return () => {
       mountedRef.current = false;
       clearTimer();
       document.body.style.overflow = previousOverflow;
     };
-  }, [clearTimer]);
+  }, [clearTimer, note.id]);
 
   useEffect(() => {
     if (initial.journal) void persistLatest();
@@ -219,6 +249,7 @@ export function ChecklistEditorDialog({
   }, [clearTimer, persistLatest]);
 
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (historyNote) return;
     if (event.key === 'Escape' || (event.key === 'Enter' && (event.metaKey || event.ctrlKey))) {
       event.preventDefault();
       void finish();
@@ -226,69 +257,89 @@ export function ChecklistEditorDialog({
   };
 
   const handleLayerPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.target === event.currentTarget) void finish();
+    if (!historyNote && event.target === event.currentTarget) void finish();
   };
 
   return (
-    <div className="note-editor-layer" onPointerDown={handleLayerPointerDown}>
-      <div
-        className="note-editor-dialog checklist-editor-dialog"
-        data-color={note.color}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Edit checklist"
-        onKeyDown={handleKeyDown}
-      >
-        <ChecklistEditorFields
-          title={draft.title}
-          items={draft.items}
-          hideCompleted={hideCompleted}
-          moveCompletedDown={moveCompletedDown}
-          onTitleChange={(title) => updateDraft({ ...pendingDraftRef.current, title })}
-          onItemsChange={(nextItems) =>
-            updateDraft({ ...pendingDraftRef.current, items: nextItems })
-          }
-          onHideCompletedChange={setHideCompleted}
-          onMoveCompletedDownChange={(enabled) => {
-            setMoveCompletedDown(enabled);
-            writeMoveCompletedPreference(enabled);
-          }}
-        />
+    <>
+      <div className="note-editor-layer" onPointerDown={handleLayerPointerDown}>
+        <div
+          className="note-editor-dialog checklist-editor-dialog"
+          data-color={note.color}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Edit checklist"
+          onKeyDown={handleKeyDown}
+        >
+          <ChecklistEditorFields
+            title={draft.title}
+            items={draft.items}
+            hideCompleted={hideCompleted}
+            moveCompletedDown={moveCompletedDown}
+            onTitleChange={(title) => updateDraft({ ...pendingDraftRef.current, title })}
+            onItemsChange={(nextItems) =>
+              updateDraft({ ...pendingDraftRef.current, items: nextItems })
+            }
+            onHideCompletedChange={setHideCompleted}
+            onMoveCompletedDownChange={(enabled) => {
+              setMoveCompletedDown(enabled);
+              writeMoveCompletedPreference(enabled);
+            }}
+          />
 
-        <div className="note-editor-footer">
-          <div className="note-editor-state" aria-live="polite">
-            {status === 'saving' ? <span>Saving…</span> : null}
-            {errorMessage ? (
-              <span className="note-editor-error" role="alert">
-                {errorMessage}
-                <button type="button" onClick={() => void persistLatest()}>
-                  Retry
-                </button>
-              </span>
-            ) : null}
-          </div>
-          <div className="note-editor-footer-actions">
-            <button
-              className="note-editor-secondary"
-              type="button"
-              onClick={() => void openHistory()}
-            >
-              <History aria-hidden="true" /> History
-            </button>
-            <button
-              className="note-editor-secondary"
-              type="button"
-              onClick={() => void convertToText()}
-            >
-              Convert to text
-            </button>
-            <button className="note-editor-close" type="button" onClick={() => void finish()}>
-              Close
-            </button>
+          <div className="note-editor-footer">
+            <div className="note-editor-state" aria-live="polite">
+              {status === 'saving' ? <span>Saving…</span> : null}
+              {errorMessage ? (
+                <span className="note-editor-error" role="alert">
+                  {errorMessage}
+                  <button type="button" onClick={() => void persistLatest()}>
+                    Retry
+                  </button>
+                </span>
+              ) : null}
+            </div>
+            <div className="note-editor-footer-actions">
+              <button
+                className="note-editor-secondary"
+                type="button"
+                onClick={() => void openHistory()}
+              >
+                <History aria-hidden="true" /> History
+              </button>
+              <button
+                className="note-editor-secondary"
+                type="button"
+                onClick={() => void convertToText()}
+              >
+                Convert to text
+              </button>
+              <button className="note-editor-close" type="button" onClick={() => void finish()}>
+                Close
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {historyNote ? (
+        <RevisionHistoryDialog
+          note={historyNote}
+          repository={revisionsRepository}
+          onClose={closeHistory}
+          onRestored={(result) => {
+            onSaved(result.note, result.items);
+            setHistoryNote(result.note);
+            setHistoryChanged(true);
+          }}
+          onCopied={(result) => {
+            if (note.archivedAt === null && note.trashedAt === null) {
+              onSaved(result.note, result.items);
+            }
+          }}
+        />
+      ) : null}
+    </>
   );
 }
 
