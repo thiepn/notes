@@ -16,6 +16,7 @@ interface UseExistingNoteEditorOptions {
   note: NoteRecord;
   repository: NotesRepository;
   onSaved(note: NoteRecord): void;
+  beforeClose?: ((note: NoteRecord) => Promise<void>) | undefined;
   onClose(): void;
 }
 
@@ -23,6 +24,7 @@ export function useExistingNoteEditor({
   note,
   repository,
   onSaved,
+  beforeClose,
   onClose,
 }: UseExistingNoteEditorOptions) {
   const [initialEditor] = useState(() => {
@@ -148,18 +150,32 @@ export function useExistingNoteEditor({
     [scheduleSave],
   );
 
-  const finishEditing = useCallback(async (): Promise<boolean> => {
+  const saveNow = useCallback(async (): Promise<NoteRecord | null> => {
     clearTimer();
+    try {
+      return await persistLatest();
+    } catch {
+      return null;
+    }
+  }, [clearTimer, persistLatest]);
+
+  const finishEditing = useCallback(async (): Promise<boolean> => {
+    const saved = await saveNow();
+    if (!saved) return false;
 
     try {
-      await persistLatest();
+      if (beforeClose) await beforeClose(saved);
       clearEditorJournal();
       onClose();
       return true;
-    } catch {
+    } catch (error) {
+      if (mountedRef.current) {
+        setStatus('error');
+        setErrorMessage(toErrorMessage(error));
+      }
       return false;
     }
-  }, [clearTimer, onClose, persistLatest]);
+  }, [beforeClose, onClose, saveNow]);
 
   const retrySave = useCallback(() => {
     clearTimer();
@@ -196,6 +212,7 @@ export function useExistingNoteEditor({
     status,
     setTitle: (title: string) => updateDraft({ title }),
     setContent: (content: string) => updateDraft({ content }),
+    saveNow,
     finishEditing,
     retrySave,
   };
