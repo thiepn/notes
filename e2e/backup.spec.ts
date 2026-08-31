@@ -6,14 +6,6 @@ async function waitForNotes(page: Page) {
   await expect(page.getByRole('heading', { name: 'Notes', level: 1 })).toBeVisible();
 }
 
-async function openBackup(page: Page) {
-  await page.goto('./');
-  await waitForNotes(page);
-  await page.getByRole('button', { name: 'Backup' }).click();
-  await expect(page.getByRole('heading', { name: 'Backup', level: 1 })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Back up this device' })).toBeVisible();
-}
-
 async function seedCompleteLibrary(page: Page) {
   return page.evaluate(async () => {
     const dbModule = await import('/notes/src/db/index.ts');
@@ -257,7 +249,7 @@ test('a write failure after table clearing rolls the entire replacement transact
     const current = await notes.create({ title: 'Rollback source', content: 'Must survive.' });
     const repository = new backupModule.BackupRepository(dbModule.notesDatabase);
     const exported = await repository.exportBackup();
-    const raw = JSON.parse(exported.json) as backupFormat.BackupDocument;
+    const raw = JSON.parse(exported.json);
     raw.data.notes[0]!.title = 'Replacement target';
     const prepared = await backupFormat.prepareBackup(raw);
 
