@@ -15,14 +15,15 @@ export class SearchRepository {
   constructor(private readonly database: NotesDatabase) {}
 
   async loadIndex(): Promise<SearchDocument[]> {
-    const [rawNotes, rawItems, rawLabels, rawLinks, rawAttachments, rawReminders] = await Promise.all([
-      this.database.notes.toArray(),
-      this.database.checklistItems.toArray(),
-      this.database.labels.toArray(),
-      this.database.noteLabels.toArray(),
-      this.database.attachments.toArray(),
-      this.database.reminders.toArray(),
-    ]);
+    const [rawNotes, rawItems, rawLabels, rawLinks, rawAttachments, rawReminders] =
+      await Promise.all([
+        this.database.notes.toArray(),
+        this.database.checklistItems.toArray(),
+        this.database.labels.toArray(),
+        this.database.noteLabels.toArray(),
+        this.database.attachments.toArray(),
+        this.database.reminders.toArray(),
+      ]);
 
     const notes = rawNotes
       .map((note) => noteRecordSchema.parse(note))
