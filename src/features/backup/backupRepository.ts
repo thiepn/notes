@@ -35,13 +35,15 @@ export class BackupRepository {
     const exportedAt = Date.now();
     const snapshot = await this.database.transaction(
       'r',
-      this.database.notes,
-      this.database.checklistItems,
-      this.database.labels,
-      this.database.noteLabels,
-      this.database.attachments,
-      this.database.revisions,
-      this.database.settings,
+      [
+        this.database.notes,
+        this.database.checklistItems,
+        this.database.labels,
+        this.database.noteLabels,
+        this.database.attachments,
+        this.database.revisions,
+        this.database.settings,
+      ],
       async () => {
         const [notes, checklistItems, labels, noteLabels, attachments, revisions, settings] =
           await Promise.all([
@@ -98,13 +100,15 @@ export class BackupRepository {
 
     await this.database.transaction(
       'rw',
-      this.database.notes,
-      this.database.checklistItems,
-      this.database.labels,
-      this.database.noteLabels,
-      this.database.attachments,
-      this.database.revisions,
-      this.database.settings,
+      [
+        this.database.notes,
+        this.database.checklistItems,
+        this.database.labels,
+        this.database.noteLabels,
+        this.database.attachments,
+        this.database.revisions,
+        this.database.settings,
+      ],
       async () => {
         await Promise.all([
           this.database.noteLabels.clear(),

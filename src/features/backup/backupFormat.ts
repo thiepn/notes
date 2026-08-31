@@ -122,7 +122,7 @@ export async function prepareBackup(raw: unknown): Promise<PreparedBackup> {
         mimeType: attachment.mimeType,
         size: attachment.size,
         checksum: attachment.checksum,
-        data: new Blob([bytes], { type: attachment.mimeType }),
+        data: new Blob([ownedArrayBuffer(bytes)], { type: attachment.mimeType }),
         createdAt: attachment.createdAt,
       });
     }),
@@ -174,9 +174,12 @@ export function base64ToBytes(value: string): Uint8Array {
 }
 
 export async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
-  const digest = await crypto.subtle.digest('SHA-256', buffer);
+  const digest = await crypto.subtle.digest('SHA-256', ownedArrayBuffer(bytes));
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function ownedArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  return Uint8Array.from(bytes).buffer;
 }
 
 function validateBackupGraph(document: BackupDocument): void {
