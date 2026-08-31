@@ -24,10 +24,11 @@ Search text is normalized before matching:
 
 1. Unicode NFKD normalization,
 2. combining-mark removal for accent-insensitive matching,
-3. case folding,
-4. `ß` → `ss`,
-5. punctuation replaced with spaces,
-6. repeated whitespace collapsed.
+3. NFC recomposition so scripts such as Hangul remain in normal composed form,
+4. case folding,
+5. `ß` → `ss`,
+6. punctuation replaced with spaces,
+7. repeated whitespace collapsed.
 
 This means `uberblick` matches `Überblick` and `cafe` matches `café`, while scripts such as Korean and Japanese remain searchable as native letters.
 
