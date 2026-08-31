@@ -274,6 +274,7 @@ export class NotesRepository {
       this.database.checklistItems,
       this.database.noteLabels,
       this.database.attachments,
+      this.database.reminders,
       this.database.revisions,
       async () => {
         const note = await this.database.notes.get(id);
@@ -285,6 +286,7 @@ export class NotesRepository {
           this.database.checklistItems.where('noteId').equals(id).delete(),
           this.database.noteLabels.where('noteId').equals(id).delete(),
           this.database.attachments.where('noteId').equals(id).delete(),
+          this.database.reminders.where('noteId').equals(id).delete(),
           this.database.revisions.where('noteId').equals(id).delete(),
         ]);
         await this.database.notes.delete(id);
