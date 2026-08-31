@@ -1,0 +1,83 @@
+name: Harden P13 Compatibility
+
+on:
+  push:
+    paths:
+      - '.github/workflows/p13-compat-hardening.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - run: npm install --no-audit --no-fund
+      - name: Harden Keep compatibility aliases
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          source_path = Path('src/features/import/googleKeepImport.ts')
+          source = source_path.read_text()
+
+          replacements = [
+              (
+                  """const keepAttachmentSchema = z\n  .object({\n    filePath: z.string().min(1),\n    mimetype: z.string().optional(),\n  })\n  .passthrough();\n""",
+                  """const keepAttachmentSchema = z\n  .object({\n    filePath: z.string().min(1),\n    mimetype: z.string().optional(),\n    mimeType: z.string().optional(),\n  })\n  .passthrough();\n""",
+              ),
+              (
+                  """const keepListItemSchema = z\n  .object({\n    text: z.string(),\n    isChecked: z.boolean().optional().default(false),\n    childItems: z.array(z.unknown()).optional(),\n  })\n  .passthrough();\n""",
+                  """const keepListItemSchema = z\n  .object({\n    text: z.string(),\n    isChecked: z.boolean().optional(),\n    checked: z.boolean().optional(),\n    childItems: z.array(z.unknown()).optional(),\n    childListItems: z.array(z.unknown()).optional(),\n  })\n  .passthrough();\n""",
+              ),
+              (
+                  """    const checksum = await sha256Hex(resolved.bytes);\n    attachments.push({\n      name: basename(attachment.filePath),\n      mimeType: normalizeMimeType(attachment.mimetype, attachment.filePath),\n      size: resolved.bytes.byteLength,\n      checksum,\n      data: new Blob([ownedArrayBuffer(resolved.bytes)], {\n        type: normalizeMimeType(attachment.mimetype, attachment.filePath),\n      }),\n      createdAt,\n    });\n""",
+                  """    const checksum = await sha256Hex(resolved.bytes);\n    const mimeType = normalizeMimeType(\n      attachment.mimetype ?? attachment.mimeType,\n      attachment.filePath,\n    );\n    attachments.push({\n      name: basename(attachment.filePath),\n      mimeType,\n      size: resolved.bytes.byteLength,\n      checksum,\n      data: new Blob([ownedArrayBuffer(resolved.bytes)], { type: mimeType }),\n      createdAt,\n    });\n""",
+              ),
+              (
+                  """      checked: parsed.data.isChecked,\n""",
+                  """      checked: parsed.data.isChecked ?? parsed.data.checked ?? false,\n""",
+              ),
+              (
+                  """    const children = parsed.data.childItems ?? [];\n""",
+                  """    const children = parsed.data.childItems ?? parsed.data.childListItems ?? [];\n""",
+              ),
+          ]
+
+          for old, new in replacements:
+              if source.count(old) != 1:
+                  raise SystemExit(f'Source compatibility anchor count was {source.count(old)} instead of 1:\n{old[:120]}')
+              source = source.replace(old, new, 1)
+          source_path.write_text(source)
+
+          test_path = Path('src/features/import/googleKeepImport.test.ts')
+          tests = test_path.read_text()
+          anchor = """  it('preserves checklist check state and collapses deeper nesting safely', async () => {\n"""
+          compatibility_test = """  it('accepts current Keep compatibility aliases for nested lists and MIME metadata', async () => {\n    const file = takeoutFile({\n      'Takeout/Keep/Compatibility.json': json({\n        color: 'DEFAULT',\n        isPinned: false,\n        isArchived: false,\n        title: 'Compatibility',\n        listContent: [\n          {\n            text: 'Parent',\n            checked: false,\n            childListItems: [{ text: 'Child', checked: true }],\n          },\n        ],\n        createdTimestampUsec: 1_780_000_000_000_000,\n        userEditedTimestampUsec: 1_780_000_100_000_000,\n        attachments: [{ filePath: 'modern.png', mimeType: 'image/png' }],\n      }),\n      'Takeout/Keep/modern.png': strToU8('modern-image-bytes'),\n    });\n\n    const prepared = await prepareGoogleKeepImport([file]);\n    const note = prepared.notes[0];\n\n    expect(note?.items).toEqual([\n      { text: 'Parent', checked: false, parentIndex: null },\n      { text: 'Child', checked: true, parentIndex: 0 },\n    ]);\n    expect(note?.attachments[0]?.mimeType).toBe('image/png');\n    expect(await note?.attachments[0]?.data.text()).toBe('modern-image-bytes');\n  });\n\n"""
+          if tests.count(anchor) != 1:
+              raise SystemExit('Parser test insertion anchor not found exactly once')
+          test_path.write_text(tests.replace(anchor, compatibility_test + anchor, 1))
+
+          docs_path = Path('docs/GOOGLE_KEEP_IMPORT.md')
+          docs = docs_path.read_text()
+          docs_anchor = """A Keep JSON record with `listContent` becomes a Notes checklist. A record without `listContent` becomes a text note.\n\n"""
+          docs_insert = """A Keep JSON record with `listContent` becomes a Notes checklist. A record without `listContent` becomes a text note.\n\nHistorical Takeout JSON commonly uses `isChecked` for checklist state and `mimetype` for attachment MIME metadata. The compatibility layer also accepts `checked`, `childListItems`, and `mimeType` aliases used by current Keep tooling/API-shaped exports, preventing checked state, nested rows, or MIME metadata from being lost when a Takeout has been normalized by another tool.\n\n"""
+          if docs.count(docs_anchor) != 1:
+              raise SystemExit('P13 docs insertion anchor not found exactly once')
+          docs_path.write_text(docs.replace(docs_anchor, docs_insert, 1))
+          PY
+          npx prettier --write src/features/import/googleKeepImport.ts src/features/import/googleKeepImport.test.ts docs/GOOGLE_KEEP_IMPORT.md
+      - name: Commit compatibility hardening and remove one-shot workflow
+        run: |
+          rm .github/workflows/p13-compat-hardening.yml
+          git config user.name thiepn
+          git config user.email junsosmart@gmail.com
+          git add src/features/import/googleKeepImport.ts src/features/import/googleKeepImport.test.ts docs/GOOGLE_KEEP_IMPORT.md .github/workflows/p13-compat-hardening.yml
+          git commit -m "fix: harden Google Keep import compatibility"
+          git push origin HEAD:main
