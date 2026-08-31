@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { bytesToBase64, prepareBackup, sha256Hex } from './backupFormat';
+import {
+  bytesToBase64,
+  prepareBackup,
+  sha256Hex,
+  type BackupDocument,
+} from './backupFormat';
 
 const NOTE_ID = '10000000-0000-4000-8000-000000000001';
 const CHECKLIST_ID = '10000000-0000-4000-8000-000000000002';
@@ -10,7 +15,7 @@ const ATTACHMENT_ID = '10000000-0000-4000-8000-000000000005';
 const REVISION_ID = '10000000-0000-4000-8000-000000000006';
 const SECOND_ITEM_ID = '10000000-0000-4000-8000-000000000007';
 
-async function validBackup() {
+async function validBackup(): Promise<BackupDocument> {
   const bytes = new TextEncoder().encode('attachment bytes');
   return {
     format: 'thiepn.notes.backup',
