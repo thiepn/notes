@@ -6,9 +6,11 @@ A local-first, zero-friction notes PWA designed to match Google Keep's capture s
 
 ## Status
 
-**P3 — Text Note Capture is complete.** The app now has a one-click text composer, optional titles, no-save-button finishing, serialized 180 ms IndexedDB autosave, synchronous recovery journaling for debounce-window reloads, empty-draft cleanup, keyboard finishing, and real-browser capture persistence tests.
+**P4 — Note Cards + Main Grid is implemented.** Saved notes now use the permanent responsive card surface with measured Keep-style masonry, persistent grid/list modes, Pinned/Others grouping, theme-aware note colors, and an existing-note editor with serialized autosave and independent reload recovery.
 
-**Next phase:** P4 — Note Cards + Main Grid.
+**Validation status:** the latest P4 GitHub Actions run is queued for runner capacity. The preceding failure was formatting-only and all reported Prettier changes have been applied. P4 should not be considered CI-certified until that queued run completes.
+
+**Next phase after P4 certification:** P5 — Note Lifecycle.
 
 ## V1 scope
 
@@ -38,15 +40,17 @@ V1 explicitly excludes cloud sync, accounts, collaboration, AI, OCR, voice notes
 - Repository-only write access for application features
 - Optimistic per-note revision checks
 - Transaction-safe multi-table operations
-- Serialized text autosave with a synchronous recovery journal
+- Serialized text autosave with synchronous recovery journals
+- Accessible measured CSS Grid masonry with persistent list mode
+- Existing-note editor with separate crash/reload recovery
 - Tokenized responsive design system with light/dark/system appearance
 - Vite PWA / service-worker layer
 - Vitest for unit tests
-- Playwright for real-browser IndexedDB, capture recovery, responsive-shell, and end-to-end tests
+- Playwright for real-browser IndexedDB, capture recovery, card/grid, responsive-shell, and end-to-end tests
 - GitHub Actions for CI and deployment
 - GitHub Pages-compatible build rooted at `/notes/`
 
-See [`docs/DATABASE.md`](docs/DATABASE.md) for database invariants, [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for the shell and styling contract, and [`docs/CAPTURE.md`](docs/CAPTURE.md) for text-capture and recovery behavior.
+See [`docs/DATABASE.md`](docs/DATABASE.md) for database invariants, [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for the shell and styling contract, [`docs/CAPTURE.md`](docs/CAPTURE.md) for new-note capture and recovery, and [`docs/CARDS_AND_GRID.md`](docs/CARDS_AND_GRID.md) for the P4 card, masonry, list-view, and existing-note editing architecture.
 
 ## Principles
 
