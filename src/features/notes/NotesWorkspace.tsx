@@ -65,7 +65,11 @@ const EMPTY_COPY: Record<NoteCollectionMode, { title: string; description: strin
   },
 };
 
-export function NotesWorkspace({ mode = 'notes', labels, filterLabelId = null }: NotesWorkspaceProps) {
+export function NotesWorkspace({
+  mode = 'notes',
+  labels,
+  filterLabelId = null,
+}: NotesWorkspaceProps) {
   const [initialEditorNoteId] = useState(
     () => readEditorJournal()?.noteId ?? readChecklistEditorJournal()?.noteId ?? null,
   );
@@ -224,120 +228,144 @@ export function NotesWorkspace({ mode = 'notes', labels, filterLabelId = null }:
     writeNotesViewMode(nextMode);
   }, []);
 
-  const handleTogglePin = useCallback(async (note: NoteRecord) => {
-    const wasPinned = note.pinnedAt !== null;
-    try {
-      await notesRepository.setPinned(note.id, !wasPinned, note.revision);
-      await refreshCollection();
-      showToast(wasPinned ? 'Note unpinned.' : 'Note pinned.', async () => {
-        await notesRepository.setPinned(note.id, wasPinned);
+  const handleTogglePin = useCallback(
+    async (note: NoteRecord) => {
+      const wasPinned = note.pinnedAt !== null;
+      try {
+        await notesRepository.setPinned(note.id, !wasPinned, note.revision);
         await refreshCollection();
-      });
-    } catch {
-      showToast('Pin state could not be changed.');
-    }
-  }, [refreshCollection, showToast]);
+        showToast(wasPinned ? 'Note unpinned.' : 'Note pinned.', async () => {
+          await notesRepository.setPinned(note.id, wasPinned);
+          await refreshCollection();
+        });
+      } catch {
+        showToast('Pin state could not be changed.');
+      }
+    },
+    [refreshCollection, showToast],
+  );
 
-  const handleArchive = useCallback(async (note: NoteRecord) => {
-    const wasPinned = note.pinnedAt !== null;
-    try {
-      await notesRepository.archive(note.id, note.revision);
-      await refreshCollection();
-      showToast('Note archived.', async () => {
-        const restored = await notesRepository.unarchive(note.id);
-        if (wasPinned) await notesRepository.setPinned(note.id, true, restored.revision);
+  const handleArchive = useCallback(
+    async (note: NoteRecord) => {
+      const wasPinned = note.pinnedAt !== null;
+      try {
+        await notesRepository.archive(note.id, note.revision);
         await refreshCollection();
-      });
-    } catch {
-      showToast('Note could not be archived.');
-    }
-  }, [refreshCollection, showToast]);
+        showToast('Note archived.', async () => {
+          const restored = await notesRepository.unarchive(note.id);
+          if (wasPinned) await notesRepository.setPinned(note.id, true, restored.revision);
+          await refreshCollection();
+        });
+      } catch {
+        showToast('Note could not be archived.');
+      }
+    },
+    [refreshCollection, showToast],
+  );
 
-  const handleUnarchive = useCallback(async (note: NoteRecord) => {
-    try {
-      await notesRepository.unarchive(note.id, note.revision);
-      await refreshCollection();
-      showToast('Note moved to Notes.', async () => {
-        await notesRepository.archive(note.id);
+  const handleUnarchive = useCallback(
+    async (note: NoteRecord) => {
+      try {
+        await notesRepository.unarchive(note.id, note.revision);
         await refreshCollection();
-      });
-    } catch {
-      showToast('Note could not be unarchived.');
-    }
-  }, [refreshCollection, showToast]);
+        showToast('Note moved to Notes.', async () => {
+          await notesRepository.archive(note.id);
+          await refreshCollection();
+        });
+      } catch {
+        showToast('Note could not be unarchived.');
+      }
+    },
+    [refreshCollection, showToast],
+  );
 
-  const handleTrash = useCallback(async (note: NoteRecord) => {
-    const wasArchived = note.archivedAt !== null;
-    const wasPinned = note.pinnedAt !== null;
-    try {
-      await notesRepository.trash(note.id, note.revision);
-      await refreshCollection();
-      showToast('Note moved to trash.', async () => {
-        const restored = await notesRepository.restore(note.id);
-        if (wasArchived) await notesRepository.archive(note.id, restored.revision);
-        else if (wasPinned) await notesRepository.setPinned(note.id, true, restored.revision);
+  const handleTrash = useCallback(
+    async (note: NoteRecord) => {
+      const wasArchived = note.archivedAt !== null;
+      const wasPinned = note.pinnedAt !== null;
+      try {
+        await notesRepository.trash(note.id, note.revision);
         await refreshCollection();
-      });
-    } catch {
-      showToast('Note could not be moved to trash.');
-    }
-  }, [refreshCollection, showToast]);
+        showToast('Note moved to trash.', async () => {
+          const restored = await notesRepository.restore(note.id);
+          if (wasArchived) await notesRepository.archive(note.id, restored.revision);
+          else if (wasPinned) await notesRepository.setPinned(note.id, true, restored.revision);
+          await refreshCollection();
+        });
+      } catch {
+        showToast('Note could not be moved to trash.');
+      }
+    },
+    [refreshCollection, showToast],
+  );
 
-  const handleRestore = useCallback(async (note: NoteRecord) => {
-    try {
-      await notesRepository.restore(note.id, note.revision);
-      await refreshCollection();
-      showToast('Note restored to Notes.', async () => {
-        await notesRepository.trash(note.id);
+  const handleRestore = useCallback(
+    async (note: NoteRecord) => {
+      try {
+        await notesRepository.restore(note.id, note.revision);
         await refreshCollection();
-      });
-    } catch {
-      showToast('Note could not be restored.');
-    }
-  }, [refreshCollection, showToast]);
+        showToast('Note restored to Notes.', async () => {
+          await notesRepository.trash(note.id);
+          await refreshCollection();
+        });
+      } catch {
+        showToast('Note could not be restored.');
+      }
+    },
+    [refreshCollection, showToast],
+  );
 
-  const handleDuplicate = useCallback(async (note: NoteRecord) => {
-    try {
-      const duplicate = await notesRepository.duplicate(note.id);
-      await refreshCollection();
-      showToast(mode === 'notes' ? 'Note duplicated.' : 'Copy created in Notes.', async () => {
-        await notesRepository.deletePermanently(duplicate.id);
+  const handleDuplicate = useCallback(
+    async (note: NoteRecord) => {
+      try {
+        const duplicate = await notesRepository.duplicate(note.id);
         await refreshCollection();
-      });
-    } catch {
-      showToast('Note could not be duplicated.');
-    }
-  }, [mode, refreshCollection, showToast]);
+        showToast(mode === 'notes' ? 'Note duplicated.' : 'Copy created in Notes.', async () => {
+          await notesRepository.deletePermanently(duplicate.id);
+          await refreshCollection();
+        });
+      } catch {
+        showToast('Note could not be duplicated.');
+      }
+    },
+    [mode, refreshCollection, showToast],
+  );
 
-  const handleSetColor = useCallback(async (note: NoteRecord, color: NoteColor) => {
-    if (note.color === color) return;
-    const previousColor = note.color;
-    try {
-      const saved = await notesRepository.update(note.id, { color }, note.revision);
-      handleSaved(saved);
-      showToast('Color changed.', async () => {
-        await notesRepository.update(note.id, { color: previousColor });
-        await refreshCollection();
-      });
-    } catch {
-      showToast('Note color could not be changed.');
-    }
-  }, [handleSaved, refreshCollection, showToast]);
+  const handleSetColor = useCallback(
+    async (note: NoteRecord, color: NoteColor) => {
+      if (note.color === color) return;
+      const previousColor = note.color;
+      try {
+        const saved = await notesRepository.update(note.id, { color }, note.revision);
+        handleSaved(saved);
+        showToast('Color changed.', async () => {
+          await notesRepository.update(note.id, { color: previousColor });
+          await refreshCollection();
+        });
+      } catch {
+        showToast('Note color could not be changed.');
+      }
+    },
+    [handleSaved, refreshCollection, showToast],
+  );
 
-  const handleSetLabels = useCallback(async (note: NoteRecord, labelIds: string[]) => {
-    const previousLabelIds = labelIdsByNote[note.id] ?? [];
-    if (sameStringSet(previousLabelIds, labelIds)) return;
-    try {
-      await labelsRepository.setForNote(note.id, labelIds);
-      await refreshCollection();
-      showToast('Labels updated.', async () => {
-        await labelsRepository.setForNote(note.id, previousLabelIds);
+  const handleSetLabels = useCallback(
+    async (note: NoteRecord, labelIds: string[]) => {
+      const previousLabelIds = labelIdsByNote[note.id] ?? [];
+      if (sameStringSet(previousLabelIds, labelIds)) return;
+      try {
+        await labelsRepository.setForNote(note.id, labelIds);
         await refreshCollection();
-      });
-    } catch {
-      showToast('Note labels could not be changed.');
-    }
-  }, [labelIdsByNote, refreshCollection, showToast]);
+        showToast('Labels updated.', async () => {
+          await labelsRepository.setForNote(note.id, previousLabelIds);
+          await refreshCollection();
+        });
+      } catch {
+        showToast('Note labels could not be changed.');
+      }
+    },
+    [labelIdsByNote, refreshCollection, showToast],
+  );
 
   const handleConfirmDelete = useCallback(async () => {
     const note = deleteCandidate;
@@ -359,18 +387,30 @@ export function NotesWorkspace({ mode = 'notes', labels, filterLabelId = null }:
     void undo().catch(() => showToast('Undo could not be completed.'));
   }, [showToast, toast]);
 
-  const actions = useMemo<NoteCardActions>(() => ({
-    open: (note) => setEditingNoteId(note.id),
-    togglePin: (note) => void handleTogglePin(note),
-    archive: (note) => void handleArchive(note),
-    unarchive: (note) => void handleUnarchive(note),
-    trash: (note) => void handleTrash(note),
-    restore: (note) => void handleRestore(note),
-    duplicate: (note) => void handleDuplicate(note),
-    deletePermanently: (note) => setDeleteCandidate(note),
-    setColor: (note, color) => void handleSetColor(note, color),
-    setLabels: (note, labelIds) => void handleSetLabels(note, labelIds),
-  }), [handleArchive, handleDuplicate, handleRestore, handleSetColor, handleSetLabels, handleTogglePin, handleTrash, handleUnarchive]);
+  const actions = useMemo<NoteCardActions>(
+    () => ({
+      open: (note) => setEditingNoteId(note.id),
+      togglePin: (note) => void handleTogglePin(note),
+      archive: (note) => void handleArchive(note),
+      unarchive: (note) => void handleUnarchive(note),
+      trash: (note) => void handleTrash(note),
+      restore: (note) => void handleRestore(note),
+      duplicate: (note) => void handleDuplicate(note),
+      deletePermanently: (note) => setDeleteCandidate(note),
+      setColor: (note, color) => void handleSetColor(note, color),
+      setLabels: (note, labelIds) => void handleSetLabels(note, labelIds),
+    }),
+    [
+      handleArchive,
+      handleDuplicate,
+      handleRestore,
+      handleSetColor,
+      handleSetLabels,
+      handleTogglePin,
+      handleTrash,
+      handleUnarchive,
+    ],
+  );
 
   const visibleNotes = useMemo(
     () => notes.filter((note) => note.id !== activeCaptureNoteId),
@@ -386,7 +426,10 @@ export function NotesWorkspace({ mode = 'notes', labels, filterLabelId = null }:
   );
   const editingNote = notes.find((note) => note.id === editingNoteId) ?? null;
   const emptyCopy = filterLabelId
-    ? { title: 'No notes with this label', description: 'Create a note here or add this label to an existing note.' }
+    ? {
+        title: 'No notes with this label',
+        description: 'Create a note here or add this label to an existing note.',
+      }
     : EMPTY_COPY[mode];
 
   return (
@@ -417,27 +460,61 @@ export function NotesWorkspace({ mode = 'notes', labels, filterLabelId = null }:
       {visibleNotes.length > 0 ? (
         <div className="notes-board" data-view={viewMode} data-mode={mode}>
           <div className="notes-toolbar">
-            <span className="notes-count">{visibleNotes.length} {visibleNotes.length === 1 ? 'note' : 'notes'}</span>
+            <span className="notes-count">
+              {visibleNotes.length} {visibleNotes.length === 1 ? 'note' : 'notes'}
+            </span>
             <div className="notes-view-toggle" role="group" aria-label="Note view">
-              <IconButton className="notes-view-button" label="Grid view" aria-pressed={viewMode === 'grid'} data-active={viewMode === 'grid'} onClick={() => handleViewMode('grid')}>
+              <IconButton
+                className="notes-view-button"
+                label="Grid view"
+                aria-pressed={viewMode === 'grid'}
+                data-active={viewMode === 'grid'}
+                onClick={() => handleViewMode('grid')}
+              >
                 <LayoutGrid />
               </IconButton>
-              <IconButton className="notes-view-button" label="List view" aria-pressed={viewMode === 'list'} data-active={viewMode === 'list'} onClick={() => handleViewMode('list')}>
+              <IconButton
+                className="notes-view-button"
+                label="List view"
+                aria-pressed={viewMode === 'list'}
+                data-active={viewMode === 'list'}
+                onClick={() => handleViewMode('list')}
+              >
                 <Rows3 />
               </IconButton>
             </div>
           </div>
 
           {pinnedNotes.length > 0 ? (
-            <NoteSection title="Pinned" notes={pinnedNotes} viewMode={viewMode} mode={mode} actions={actions} labels={labels} labelIdsByNote={labelIdsByNote} checklistItemsByNote={checklistItemsByNote} />
+            <NoteSection
+              title="Pinned"
+              notes={pinnedNotes}
+              viewMode={viewMode}
+              mode={mode}
+              actions={actions}
+              labels={labels}
+              labelIdsByNote={labelIdsByNote}
+              checklistItemsByNote={checklistItemsByNote}
+            />
           ) : null}
           {otherNotes.length > 0 ? (
-            <NoteSection title={pinnedNotes.length > 0 ? 'Others' : null} notes={otherNotes} viewMode={viewMode} mode={mode} actions={actions} labels={labels} labelIdsByNote={labelIdsByNote} checklistItemsByNote={checklistItemsByNote} />
+            <NoteSection
+              title={pinnedNotes.length > 0 ? 'Others' : null}
+              notes={otherNotes}
+              viewMode={viewMode}
+              mode={mode}
+              actions={actions}
+              labels={labels}
+              labelIdsByNote={labelIdsByNote}
+              checklistItemsByNote={checklistItemsByNote}
+            />
           ) : null}
         </div>
       ) : loaded ? (
         <section className="empty-state" aria-labelledby={`empty-${mode}-title`}>
-          <span className="empty-state-icon" aria-hidden="true"><NotebookPen /></span>
+          <span className="empty-state-icon" aria-hidden="true">
+            <NotebookPen />
+          </span>
           <h2 id={`empty-${mode}-title`}>{emptyCopy.title}</h2>
           <p>{emptyCopy.description}</p>
         </section>
@@ -476,13 +553,26 @@ export function NotesWorkspace({ mode = 'notes', labels, filterLabelId = null }:
 
       {toast ? <LifecycleToast toast={toast} onUndo={handleUndo} /> : null}
       {deleteCandidate ? (
-        <ConfirmDeleteDialog title={deleteCandidate.title} onCancel={() => setDeleteCandidate(null)} onConfirm={() => void handleConfirmDelete()} />
+        <ConfirmDeleteDialog
+          title={deleteCandidate.title}
+          onCancel={() => setDeleteCandidate(null)}
+          onConfirm={() => void handleConfirmDelete()}
+        />
       ) : null}
     </>
   );
 }
 
-function NoteSection({ title, notes, viewMode, mode, actions, labels, labelIdsByNote, checklistItemsByNote }: {
+function NoteSection({
+  title,
+  notes,
+  viewMode,
+  mode,
+  actions,
+  labels,
+  labelIdsByNote,
+  checklistItemsByNote,
+}: {
   title: string | null;
   notes: NoteRecord[];
   viewMode: NotesViewMode;
@@ -492,16 +582,35 @@ function NoteSection({ title, notes, viewMode, mode, actions, labels, labelIdsBy
   labelIdsByNote: Record<string, string[]>;
   checklistItemsByNote: Record<string, ChecklistItemRecord[]>;
 }) {
-  const ariaLabel = title !== null ? `${title} notes` : mode === 'archive' ? 'Archived notes' : mode === 'trash' ? 'Trashed notes' : 'Saved notes';
+  const ariaLabel =
+    title !== null
+      ? `${title} notes`
+      : mode === 'archive'
+        ? 'Archived notes'
+        : mode === 'trash'
+          ? 'Trashed notes'
+          : 'Saved notes';
   return (
     <section className="note-section" aria-label={title ?? 'Notes'}>
       {title ? <h2 className="note-section-title">{title}</h2> : null}
-      <MasonryGrid notes={notes} viewMode={viewMode} ariaLabel={ariaLabel} mode={mode} actions={actions} labels={labels} labelIdsByNote={labelIdsByNote} checklistItemsByNote={checklistItemsByNote} />
+      <MasonryGrid
+        notes={notes}
+        viewMode={viewMode}
+        ariaLabel={ariaLabel}
+        mode={mode}
+        actions={actions}
+        labels={labels}
+        labelIdsByNote={labelIdsByNote}
+        checklistItemsByNote={checklistItemsByNote}
+      />
     </section>
   );
 }
 
-async function loadCollection(mode: NoteCollectionMode, filterLabelId: string | null): Promise<{
+async function loadCollection(
+  mode: NoteCollectionMode,
+  filterLabelId: string | null,
+): Promise<{
   notes: NoteRecord[];
   labelIdsByNote: Record<string, string[]>;
   checklistItemsByNote: Record<string, ChecklistItemRecord[]>;
@@ -516,7 +625,10 @@ async function loadCollection(mode: NoteCollectionMode, filterLabelId: string | 
   return { notes, labelIdsByNote, checklistItemsByNote };
 }
 
-async function listNotesForMode(mode: NoteCollectionMode, filterLabelId: string | null): Promise<NoteRecord[]> {
+async function listNotesForMode(
+  mode: NoteCollectionMode,
+  filterLabelId: string | null,
+): Promise<NoteRecord[]> {
   if (mode === 'archive') return notesRepository.listArchived();
   if (mode === 'trash') return notesRepository.listTrashed();
   if (!filterLabelId) return notesRepository.listActive();
@@ -529,13 +641,15 @@ async function listNotesForMode(mode: NoteCollectionMode, filterLabelId: string 
 }
 
 function sortNotesForMode(notes: NoteRecord[], mode: NoteCollectionMode): NoteRecord[] {
-  if (mode === 'archive') return [...notes].sort((a, b) => (b.archivedAt ?? 0) - (a.archivedAt ?? 0));
+  if (mode === 'archive')
+    return [...notes].sort((a, b) => (b.archivedAt ?? 0) - (a.archivedAt ?? 0));
   if (mode === 'trash') return [...notes].sort((a, b) => (b.trashedAt ?? 0) - (a.trashedAt ?? 0));
   return [...notes].sort((a, b) => {
     const aPinned = a.pinnedAt !== null;
     const bPinned = b.pinnedAt !== null;
     if (aPinned !== bPinned) return aPinned ? -1 : 1;
-    if (aPinned && bPinned && a.pinnedAt !== b.pinnedAt) return (b.pinnedAt ?? 0) - (a.pinnedAt ?? 0);
+    if (aPinned && bPinned && a.pinnedAt !== b.pinnedAt)
+      return (b.pinnedAt ?? 0) - (a.pinnedAt ?? 0);
     return b.updatedAt - a.updatedAt || b.createdAt - a.createdAt;
   });
 }

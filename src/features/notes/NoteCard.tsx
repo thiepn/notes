@@ -147,28 +147,48 @@ export function NoteCard({
         ) : null}
 
         {mode === 'notes' ? (
-          <IconButton className="note-card-action" label={`Archive note: ${label}`} onClick={() => actions.archive(note)}>
+          <IconButton
+            className="note-card-action"
+            label={`Archive note: ${label}`}
+            onClick={() => actions.archive(note)}
+          >
             <Archive />
           </IconButton>
         ) : null}
         {mode === 'archive' ? (
-          <IconButton className="note-card-action" label={`Unarchive note: ${label}`} onClick={() => actions.unarchive(note)}>
+          <IconButton
+            className="note-card-action"
+            label={`Unarchive note: ${label}`}
+            onClick={() => actions.unarchive(note)}
+          >
             <RotateCcw />
           </IconButton>
         ) : null}
         {mode !== 'trash' ? (
-          <IconButton className="note-card-action" label={`Duplicate note: ${label}`} onClick={() => actions.duplicate(note)}>
+          <IconButton
+            className="note-card-action"
+            label={`Duplicate note: ${label}`}
+            onClick={() => actions.duplicate(note)}
+          >
             <Copy />
           </IconButton>
         ) : null}
         {mode !== 'trash' ? (
-          <IconButton className="note-card-action" label={`Move note to trash: ${label}`} onClick={() => actions.trash(note)}>
+          <IconButton
+            className="note-card-action"
+            label={`Move note to trash: ${label}`}
+            onClick={() => actions.trash(note)}
+          >
             <Trash2 />
           </IconButton>
         ) : null}
         {mode === 'trash' ? (
           <>
-            <IconButton className="note-card-action" label={`Restore note: ${label}`} onClick={() => actions.restore(note)}>
+            <IconButton
+              className="note-card-action"
+              label={`Restore note: ${label}`}
+              onClick={() => actions.restore(note)}
+            >
               <RotateCcw />
             </IconButton>
             <IconButton

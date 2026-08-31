@@ -19,7 +19,9 @@ async function createChecklist(page: Page, title: string, items: string[]) {
   return page.locator('[data-note-type="checklist"]').filter({ hasText: title });
 }
 
-test('creates a checklist, previews it on the card, and persists all rows across reload', async ({ page }) => {
+test('creates a checklist, previews it on the card, and persists all rows across reload', async ({
+  page,
+}) => {
   const card = await createChecklist(page, 'Groceries', ['Milk', 'Eggs', 'Bread']);
   await expect(card).toBeVisible();
   await expect(card.getByText('Milk', { exact: true })).toBeVisible();
@@ -35,7 +37,10 @@ test('creates a checklist, previews it on the card, and persists all rows across
     const checklists = new dbModule.ChecklistsRepository(dbModule.notesDatabase);
     const note = (await notes.listActive()).find((entry) => entry.title === 'Groceries');
     return note
-      ? { type: note.type, items: (await checklists.itemsForNote(note.id)).map((item) => item.text) }
+      ? {
+          type: note.type,
+          items: (await checklists.itemsForNote(note.id)).map((item) => item.text),
+        }
       : null;
   });
   expect(stored).toEqual({ type: 'checklist', items: ['Milk', 'Eggs', 'Bread'] });
@@ -98,12 +103,14 @@ test('converts text notes to checklists and back without losing item text', asyn
   await checklistDialog.getByRole('button', { name: 'Convert to text' }).click();
 
   await page.getByRole('button', { name: 'Open note: Convert me' }).click();
-  await expect(page.getByRole('dialog', { name: 'Edit note' }).getByLabel('Edit note text')).toHaveValue(
-    'Alpha\nBeta\nGamma',
-  );
+  await expect(
+    page.getByRole('dialog', { name: 'Edit note' }).getByLabel('Edit note text'),
+  ).toHaveValue('Alpha\nBeta\nGamma');
 });
 
-test('recovers an existing checklist edit after an immediate reload inside the autosave window', async ({ page }) => {
+test('recovers an existing checklist edit after an immediate reload inside the autosave window', async ({
+  page,
+}) => {
   const card = await createChecklist(page, 'Recovery list', ['Original']);
   await card.getByRole('button', { name: 'Open note: Recovery list' }).click();
   const dialog = page.getByRole('dialog', { name: 'Edit checklist' });

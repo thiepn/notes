@@ -1,12 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import {
-  ArrowDown,
-  ArrowLeft,
-  ArrowRight,
-  ArrowUp,
-  GripVertical,
-  Trash2,
-} from 'lucide-react';
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react';
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, GripVertical, Trash2 } from 'lucide-react';
 
 import { IconButton } from '../../components/ui/IconButton';
 import type { ChecklistDraftItem } from '../../db';
@@ -242,7 +241,9 @@ export function ChecklistEditorFields({
               onClick={() => onHideCompletedChange(!hideCompleted)}
               aria-pressed={hideCompleted}
             >
-              {hideCompleted ? `Show completed (${completedCount})` : `Hide completed (${completedCount})`}
+              {hideCompleted
+                ? `Show completed (${completedCount})`
+                : `Hide completed (${completedCount})`}
             </button>
             <button
               type="button"

@@ -1,6 +1,9 @@
 import type { ChecklistDraftItem } from '../../db';
 
-export function createChecklistDraftItem(text = '', parentId: string | null = null): ChecklistDraftItem {
+export function createChecklistDraftItem(
+  text = '',
+  parentId: string | null = null,
+): ChecklistDraftItem {
   return { id: crypto.randomUUID(), text, checked: false, parentId };
 }
 
@@ -41,7 +44,10 @@ export function removeChecklistItem(
   return { items: next, focusId: next[focusIndex]?.id ?? null };
 }
 
-export function indentChecklistItem(items: ChecklistDraftItem[], itemId: string): ChecklistDraftItem[] {
+export function indentChecklistItem(
+  items: ChecklistDraftItem[],
+  itemId: string,
+): ChecklistDraftItem[] {
   const index = items.findIndex((item) => item.id === itemId);
   if (index <= 0) return items;
   const current = items[index];
@@ -51,7 +57,10 @@ export function indentChecklistItem(items: ChecklistDraftItem[], itemId: string)
   return items.map((item) => (item.id === itemId ? { ...item, parentId } : item));
 }
 
-export function outdentChecklistItem(items: ChecklistDraftItem[], itemId: string): ChecklistDraftItem[] {
+export function outdentChecklistItem(
+  items: ChecklistDraftItem[],
+  itemId: string,
+): ChecklistDraftItem[] {
   return items.map((item) =>
     item.id === itemId && item.parentId !== null ? { ...item, parentId: null } : item,
   );

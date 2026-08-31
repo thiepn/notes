@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 
 import type {
   ChecklistDraftItem,
@@ -81,7 +88,12 @@ export function ChecklistEditorDialog({
         setErrorMessage(null);
       }
       const current = noteRef.current;
-      const saved = await repository.save(current.id, snapshot.title, snapshot.items, current.revision);
+      const saved = await repository.save(
+        current.id,
+        snapshot.title,
+        snapshot.items,
+        current.revision,
+      );
       noteRef.current = saved.note;
       onSaved(saved.note, saved.items);
       if (mountedRef.current) setStatus('idle');
@@ -225,7 +237,9 @@ export function ChecklistEditorDialog({
           hideCompleted={hideCompleted}
           moveCompletedDown={moveCompletedDown}
           onTitleChange={(title) => updateDraft({ ...pendingDraftRef.current, title })}
-          onItemsChange={(nextItems) => updateDraft({ ...pendingDraftRef.current, items: nextItems })}
+          onItemsChange={(nextItems) =>
+            updateDraft({ ...pendingDraftRef.current, items: nextItems })
+          }
           onHideCompletedChange={setHideCompleted}
           onMoveCompletedDownChange={(enabled) => {
             setMoveCompletedDown(enabled);
@@ -246,7 +260,11 @@ export function ChecklistEditorDialog({
             ) : null}
           </div>
           <div className="note-editor-footer-actions">
-            <button className="note-editor-secondary" type="button" onClick={() => void convertToText()}>
+            <button
+              className="note-editor-secondary"
+              type="button"
+              onClick={() => void convertToText()}
+            >
               Convert to text
             </button>
             <button className="note-editor-close" type="button" onClick={() => void finish()}>

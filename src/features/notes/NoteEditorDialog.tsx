@@ -110,7 +110,11 @@ export function NoteEditorDialog({
             <button className="note-editor-secondary" type="button" onClick={() => void convert()}>
               Convert to checklist
             </button>
-            <button className="note-editor-close" type="button" onClick={() => void finishEditing()}>
+            <button
+              className="note-editor-close"
+              type="button"
+              onClick={() => void finishEditing()}
+            >
               Close
             </button>
           </div>

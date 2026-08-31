@@ -142,7 +142,10 @@ export class ChecklistsRepository {
     );
   }
 
-  async convertTextToChecklist(noteId: string, expectedRevision?: number): Promise<ChecklistSnapshot> {
+  async convertTextToChecklist(
+    noteId: string,
+    expectedRevision?: number,
+  ): Promise<ChecklistSnapshot> {
     return this.database.transaction(
       'rw',
       this.database.notes,
@@ -200,9 +203,7 @@ export class ChecklistsRepository {
           throw new NoteConflictError(noteId, expectedRevision, current.revision);
         }
 
-        const items = (
-          await this.database.checklistItems.where('noteId').equals(noteId).toArray()
-        )
+        const items = (await this.database.checklistItems.where('noteId').equals(noteId).toArray())
           .map((item) => checklistItemRecordSchema.parse(item))
           .sort(compareItems);
         const itemById = new Map(items.map((item) => [item.id, item]));
@@ -266,11 +267,14 @@ function buildItemRecords(
 }
 
 function validateDraftItems(items: ChecklistDraftItem[]): void {
-  if (items.length > 10_000) throw new RangeError('A checklist cannot contain more than 10,000 items.');
+  if (items.length > 10_000)
+    throw new RangeError('A checklist cannot contain more than 10,000 items.');
   const seen = new Set<string>();
   for (const item of items) {
     if (seen.has(item.id)) throw new Error(`Duplicate checklist item ID: ${item.id}`);
-    checklistItemRecordSchema.pick({ id: true, text: true, checked: true, parentId: true }).parse(item);
+    checklistItemRecordSchema
+      .pick({ id: true, text: true, checked: true, parentId: true })
+      .parse(item);
     if (item.parentId === item.id) throw new Error('A checklist item cannot be its own parent.');
     if (item.parentId !== null && !seen.has(item.parentId)) {
       throw new Error('A checklist parent must appear before its child.');
@@ -288,11 +292,11 @@ function sameChecklist(
     const next = draft[index];
     return Boolean(
       next &&
-        item.id === next.id &&
-        item.text === next.text &&
-        item.checked === next.checked &&
-        item.parentId === next.parentId &&
-        item.position === next.position,
+      item.id === next.id &&
+      item.text === next.text &&
+      item.checked === next.checked &&
+      item.parentId === next.parentId &&
+      item.position === next.position,
     );
   });
 }

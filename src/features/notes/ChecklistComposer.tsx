@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react';
 
 import type {
   ChecklistDraftItem,
@@ -253,7 +259,8 @@ export function ChecklistComposer({
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState !== 'hidden') return;
-      if (!isMeaningfulChecklist(pendingDraftRef.current.title, pendingDraftRef.current.items)) return;
+      if (!isMeaningfulChecklist(pendingDraftRef.current.title, pendingDraftRef.current.items))
+        return;
       clearTimer();
       void persistLatest();
     };
