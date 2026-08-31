@@ -170,16 +170,13 @@ export function ChecklistComposer({
       }
 
       let current = noteRef.current;
-      if (!current && noteIdRef.current) current = (await notesRepository.get(noteIdRef.current)) ?? null;
-      let items: ChecklistItemRecord[] = [];
+      if (!current && noteIdRef.current)
+        current = (await notesRepository.get(noteIdRef.current)) ?? null;
       if (!current) {
         const created = await repository.create('', []);
         current = created.note;
-        items = created.items;
         if (beforeSaved) await beforeSaved(current);
-        onSaved(current, items);
-      } else {
-        items = await repository.itemsForNote(current.id);
+        onSaved(current, created.items);
       }
 
       noteRef.current = current;
@@ -203,7 +200,15 @@ export function ChecklistComposer({
       }
       return null;
     }
-  }, [beforeSaved, clearTimer, notesRepository, onActiveNoteChange, onSaved, persistLatest, repository]);
+  }, [
+    beforeSaved,
+    clearTimer,
+    notesRepository,
+    onActiveNoteChange,
+    onSaved,
+    persistLatest,
+    repository,
+  ]);
 
   const scheduleSave = useCallback(
     (nextDraft: ChecklistDraft) => {
@@ -303,16 +308,17 @@ export function ChecklistComposer({
     const journal = initial.journal;
     if (!journal) return;
     if (!isMeaningfulChecklist(journal.title, journal.items)) {
-      if (!journal.noteId) {
+      const journalNoteId = journal.noteId;
+      if (!journalNoteId) {
         clearChecklistCaptureJournal();
         return;
       }
       void (async () => {
         try {
-          const preserve = await attachmentsRepository.hasAny(journal.noteId ?? '');
-          if (!preserve && journal.noteId) {
-            await notesRepository.deletePermanently(journal.noteId);
-            onRemoved(journal.noteId);
+          const preserve = await attachmentsRepository.hasAny(journalNoteId);
+          if (!preserve) {
+            await notesRepository.deletePermanently(journalNoteId);
+            onRemoved(journalNoteId);
           }
         } catch {
           // Leave the note intact when recovery cannot prove it is safe to delete.
