@@ -91,6 +91,14 @@ export function SearchWorkspace({
   }, [showToast]);
 
   useEffect(() => {
+    const handleReminderChanged = () => {
+      void reloadIndex().catch(() => showToast('Search index could not be refreshed.'));
+    };
+    window.addEventListener('notes-reminders-changed', handleReminderChanged);
+    return () => window.removeEventListener('notes-reminders-changed', handleReminderChanged);
+  }, [reloadIndex, showToast]);
+
+  useEffect(() => {
     if (!toast) return;
     const timer = window.setTimeout(() => {
       setToast((current) => (current?.id === toast.id ? null : current));
