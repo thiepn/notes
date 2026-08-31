@@ -41,7 +41,7 @@ interface NoteCardProps {
   labels: LabelRecord[];
   selectedLabelIds: string[];
   checklistItems: ChecklistItemRecord[];
-  selection: NoteCardSelection;
+  selection?: NoteCardSelection | undefined;
 }
 
 type OrganizationPanel = 'color' | 'labels' | null;
@@ -64,7 +64,9 @@ export function NoteCard({
   const label = noteLabel(note, checklistItems);
   const canOpen = mode !== 'trash';
   const selectedLabels = labels.filter((item) => selectedLabelIds.includes(item.id));
-  const visiblePanel = selection.active ? null : openPanel;
+  const selectionActive = selection?.active ?? false;
+  const selectionSelected = selection?.selected ?? false;
+  const visiblePanel = selectionActive ? null : openPanel;
 
   useEffect(() => {
     if (!visiblePanel) return;
@@ -99,7 +101,7 @@ export function NoteCard({
   };
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLElement>) => {
-    if (event.pointerType === 'mouse' || event.button !== 0) return;
+    if (!selection || event.pointerType === 'mouse' || event.button !== 0) return;
     const target = event.target;
     if (!(target instanceof Element) || !target.closest('.note-card-open')) return;
 
@@ -119,7 +121,7 @@ export function NoteCard({
       return;
     }
 
-    if (selection.active || event.metaKey || event.ctrlKey || event.shiftKey) {
+    if (selection && (selection.active || event.metaKey || event.ctrlKey || event.shiftKey)) {
       event.preventDefault();
       selection.onIntent(note, event.shiftKey ? 'range' : 'toggle');
       return;
@@ -136,25 +138,27 @@ export function NoteCard({
       data-note-type={note.type}
       data-color={note.color}
       data-pinned={note.pinnedAt !== null}
-      data-selected={selection.selected}
-      data-selection-active={selection.active}
+      data-selected={selectionSelected}
+      data-selection-active={selectionActive}
       onPointerDown={handlePointerDown}
       onPointerUp={clearLongPress}
       onPointerCancel={clearLongPress}
       onPointerLeave={clearLongPress}
     >
-      <button
-        className="note-card-select"
-        type="button"
-        aria-label={`${selection.selected ? 'Deselect' : 'Select'} note: ${label}`}
-        aria-pressed={selection.selected}
-        onClick={(event) => {
-          event.stopPropagation();
-          selection.onIntent(note, 'toggle');
-        }}
-      >
-        <span aria-hidden="true">{selection.selected ? <Check /> : null}</span>
-      </button>
+      {selection ? (
+        <button
+          className="note-card-select"
+          type="button"
+          aria-label={`${selectionSelected ? 'Deselect' : 'Select'} note: ${label}`}
+          aria-pressed={selectionSelected}
+          onClick={(event) => {
+            event.stopPropagation();
+            selection.onIntent(note, 'toggle');
+          }}
+        >
+          <span aria-hidden="true">{selectionSelected ? <Check /> : null}</span>
+        </button>
+      ) : null}
 
       {canOpen ? (
         <button
@@ -171,7 +175,7 @@ export function NoteCard({
         </div>
       )}
 
-      {!selection.active && mode === 'notes' ? (
+      {!selectionActive && mode === 'notes' ? (
         <div className="note-card-pin-action">
           <IconButton
             className="note-card-action"
@@ -183,7 +187,7 @@ export function NoteCard({
         </div>
       ) : null}
 
-      {!selection.active ? (
+      {!selectionActive ? (
         <div className="note-card-actions">
           {mode !== 'trash' ? (
             <>
