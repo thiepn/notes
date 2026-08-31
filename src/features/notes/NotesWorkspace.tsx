@@ -275,14 +275,7 @@ export function NotesWorkspace({ mode = 'notes' }: NotesWorkspaceProps) {
       duplicate: (note) => void handleDuplicate(note),
       deletePermanently: (note) => setDeleteCandidate(note),
     }),
-    [
-      handleArchive,
-      handleDuplicate,
-      handleRestore,
-      handleTogglePin,
-      handleTrash,
-      handleUnarchive,
-    ],
+    [handleArchive, handleDuplicate, handleRestore, handleTogglePin, handleTrash, handleUnarchive],
   );
 
   const visibleNotes = useMemo(
