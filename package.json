@@ -18,7 +18,8 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "e2e:pwa": "playwright test --config=playwright.pwa.config.ts"
   },
   "dependencies": {
     "dexie": "^4.4.5",
