@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { NOTE_COLORS, NOTE_TYPES, REVISION_REASONS } from './types';
+import { NOTE_COLORS, NOTE_TYPES, REMINDER_STATUSES, REVISION_REASONS } from './types';
 
 const uuidSchema = z.string().uuid();
 const timestampSchema = z.number().int().nonnegative();
@@ -90,6 +90,35 @@ export const attachmentRecordSchema = z
     createdAt: timestampSchema,
   })
   .strict();
+
+export const reminderRecordSchema = z
+  .object({
+    id: uuidSchema,
+    noteId: uuidSchema,
+    dueAt: timestampSchema,
+    timeZone: z.string().trim().min(1).max(100),
+    status: z.enum(REMINDER_STATUSES),
+    createdAt: timestampSchema,
+    updatedAt: timestampSchema,
+    completedAt: nullableTimestampSchema,
+    dismissedAt: nullableTimestampSchema,
+    lastNotifiedAt: nullableTimestampSchema,
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (value.status === 'active' && (value.completedAt !== null || value.dismissedAt !== null)) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Active reminders cannot have completed or dismissed timestamps.',
+      });
+    }
+    if (value.status === 'completed' && value.completedAt === null) {
+      context.addIssue({ code: 'custom', message: 'Completed reminders require completedAt.' });
+    }
+    if (value.status === 'dismissed' && value.dismissedAt === null) {
+      context.addIssue({ code: 'custom', message: 'Dismissed reminders require dismissedAt.' });
+    }
+  });
 
 export const revisionRecordSchema = z
   .object({
