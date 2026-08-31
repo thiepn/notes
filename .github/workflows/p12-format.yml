@@ -1,0 +1,44 @@
+name: Format P12
+
+on:
+  push:
+    paths:
+      - '.github/workflows/p12-format.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - run: npm install --no-audit --no-fund
+      - name: Format P12 files
+        run: >-
+          npx prettier --write
+          e2e/backup.spec.ts
+          docs/BACKUP.md
+          src/app/AppShell.tsx
+          src/components/AppSidebar.tsx
+          src/features/backup/BackupWorkspace.tsx
+          src/features/backup/backupFormat.ts
+          src/features/backup/backupFormat.test.ts
+          src/features/backup/backupRepository.ts
+          src/styles/backup.css
+          src/styles.css
+      - name: Commit canonical formatting
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name thiepn
+          git config user.email junsosmart@gmail.com
+          git add e2e/backup.spec.ts docs/BACKUP.md src/app/AppShell.tsx src/components/AppSidebar.tsx src/features/backup/BackupWorkspace.tsx src/features/backup/backupFormat.ts src/features/backup/backupFormat.test.ts src/features/backup/backupRepository.ts src/styles/backup.css src/styles.css
+          git commit -m "style: format P12 backup and recovery"
+          git push origin HEAD:main
