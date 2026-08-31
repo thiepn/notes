@@ -6,9 +6,9 @@ A local-first, zero-friction notes PWA designed to match Google Keep's capture s
 
 ## Status
 
-**P7 — Checklist Engine is complete.** Notes now support first-class checklist capture and editing, transactional checklist snapshot saves, keyboard item creation/removal, one-level subtasks, drag and button-based reordering, completed-item controls, text/checklist conversion, checklist card previews, and independent crash/reload recovery.
+**P8 — Selection + Bulk Actions is complete.** Notes now support Ctrl/Cmd-click selection, Shift-range selection, touch/pen long-press selection, explicit card selection controls, Select all, a mode-aware bulk toolbar, transactional bulk lifecycle/color/label operations, state-scoped Undo, confirmed bulk permanent deletion in Trash, and a permanent 500-note bulk-operation regression gate.
 
-**Next phase:** P8 — Selection + Bulk Actions.
+**Next phase:** P9 — Search System.
 
 ## V1 scope
 
@@ -44,17 +44,19 @@ V1 explicitly excludes cloud sync, accounts, collaboration, AI, OCR, voice notes
 - Accessible measured CSS Grid masonry with persistent list mode
 - Existing-note editor with separate crash/reload recovery
 - State-aware lifecycle actions with reversible Undo toasts
+- Context-scoped card selection with modifier, range, explicit-control, and touch long-press entry
+- Transactional bulk lifecycle/color/label mutations with field-scoped Undo snapshots
 - Database-backed Notes, Archive, and Trash collections with persisted primary navigation
 - Case-insensitive normalized labels backed by a many-to-many `noteLabels` relationship table
 - Persistent color and label organization with label-filtered views and automatic label inheritance during capture
 - Tokenized responsive design system with light/dark/system appearance
 - Vite PWA / service-worker layer
 - Vitest for unit tests
-- Playwright for real-browser IndexedDB, capture recovery, card/grid, lifecycle, organization, checklist, responsive-shell, and end-to-end tests
+- Playwright for real-browser IndexedDB, capture recovery, card/grid, lifecycle, organization, checklist, selection/bulk, responsive-shell, and end-to-end tests
 - GitHub Actions for CI and deployment
 - GitHub Pages-compatible build rooted at `/notes/`
 
-See [`docs/DATABASE.md`](docs/DATABASE.md) for database invariants, [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for the shell and styling contract, [`docs/CAPTURE.md`](docs/CAPTURE.md) for new-note capture and recovery, [`docs/CARDS_AND_GRID.md`](docs/CARDS_AND_GRID.md) for the P4 card and editor architecture, [`docs/LIFECYCLE.md`](docs/LIFECYCLE.md) for lifecycle state, Undo, Archive, Trash, duplication, and permanent deletion behavior, [`docs/ORGANIZATION.md`](docs/ORGANIZATION.md) for P6 color, label, label-view, and organization behavior, and [`docs/CHECKLISTS.md`](docs/CHECKLISTS.md) for P7 checklist storage, interaction, conversion, and recovery behavior.
+See [`docs/DATABASE.md`](docs/DATABASE.md) for database invariants, [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for the shell and styling contract, [`docs/CAPTURE.md`](docs/CAPTURE.md) for new-note capture and recovery, [`docs/CARDS_AND_GRID.md`](docs/CARDS_AND_GRID.md) for the P4 card and editor architecture, [`docs/LIFECYCLE.md`](docs/LIFECYCLE.md) for lifecycle state, Undo, Archive, Trash, duplication, and permanent deletion behavior, [`docs/ORGANIZATION.md`](docs/ORGANIZATION.md) for P6 color, label, label-view, and organization behavior, [`docs/CHECKLISTS.md`](docs/CHECKLISTS.md) for P7 checklist storage, interaction, conversion, and recovery behavior, and [`docs/SELECTION_AND_BULK.md`](docs/SELECTION_AND_BULK.md) for P8 selection scope, bulk toolbar behavior, transactional batch mutations, and Undo semantics.
 
 ## Principles
 
