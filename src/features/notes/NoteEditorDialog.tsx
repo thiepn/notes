@@ -5,6 +5,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
+import { History } from 'lucide-react';
 
 import type { NoteRecord, NotesRepository } from '../../db';
 import { useExistingNoteEditor } from './useExistingNoteEditor';
@@ -14,6 +15,7 @@ interface NoteEditorDialogProps {
   repository: NotesRepository;
   onSaved(note: NoteRecord): void;
   onConvertToChecklist(): Promise<void>;
+  onHistoryRequested(noteId: string): void;
   onClose(): void;
 }
 
@@ -22,6 +24,7 @@ export function NoteEditorDialog({
   repository,
   onSaved,
   onConvertToChecklist,
+  onHistoryRequested,
   onClose,
 }: NoteEditorDialogProps) {
   const bodyRef = useRef<HTMLTextAreaElement>(null);
@@ -63,6 +66,11 @@ export function NoteEditorDialog({
   const convert = async () => {
     const saved = await finishEditing();
     if (saved) await onConvertToChecklist();
+  };
+
+  const openHistory = async () => {
+    const saved = await finishEditing();
+    if (saved) onHistoryRequested(note.id);
   };
 
   return (
@@ -107,6 +115,9 @@ export function NoteEditorDialog({
             ) : null}
           </div>
           <div className="note-editor-footer-actions">
+            <button className="note-editor-secondary" type="button" onClick={() => void openHistory()}>
+              <History aria-hidden="true" /> History
+            </button>
             <button className="note-editor-secondary" type="button" onClick={() => void convert()}>
               Convert to checklist
             </button>
