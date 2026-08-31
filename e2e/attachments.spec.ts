@@ -74,7 +74,9 @@ test('quick image capture preserves an attachment-only note and supports lightbo
   const lightbox = page.getByRole('dialog', { name: 'Image viewer: pixel.png' });
   await expect(lightbox).toBeVisible();
   await expect(lightbox.locator('img')).toBeVisible();
-  await lightbox.getByRole('button', { name: 'Close image viewer' }).click();
+  await page.keyboard.press('Escape');
+  await expect(lightbox).not.toBeVisible();
+  await expect(editor).toBeVisible();
 
   await editor.getByRole('button', { name: 'Open image: pixel.png' }).hover();
   await editor.getByRole('button', { name: 'Remove image: pixel.png' }).click();
