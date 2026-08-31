@@ -1,0 +1,109 @@
+name: Finalize P11 Runtime
+
+on:
+  push:
+    paths:
+      - '.github/workflows/p11-finalize-runtime.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - run: npm install --no-audit --no-fund
+      - name: Add final recovery regression and accurate restore copy
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          dialog = Path('src/features/notes/RevisionHistoryDialog.tsx')
+          text = dialog.read_text()
+          old = 'Restoring changes content and color only. Labels and lifecycle state stay current.'
+          new = 'Restoring changes title, note type/content, and color. Labels and lifecycle state stay current.'
+          if old not in text:
+              raise SystemExit('Revision-history restore copy anchor not found')
+          dialog.write_text(text.replace(old, new, 1))
+
+          spec = Path('e2e/history.spec.ts')
+          text = spec.read_text()
+          anchor = "test('revision pruning preserves recent detail and long-term reach while corrupt restore rolls back', async ({"
+          if anchor not in text:
+              raise SystemExit('History pruning test anchor not found')
+          cross_type = r'''test('cross-type restore keeps History reversible and surfaces checklist rows immediately', async ({
+            page,
+          }) => {
+            const card = await createChecklist(page, 'Cross type history', ['First item', 'Second item']);
+            const noteId = await card.getAttribute('data-note-id');
+            expect(noteId).toBeTruthy();
+
+            await card.getByRole('button', { name: 'Open note: Cross type history' }).click();
+            await waitForBaselineRevision(page, noteId!);
+            const checklistEditor = page.getByRole('dialog', { name: 'Edit checklist' });
+            await checklistEditor.getByRole('button', { name: 'Convert to text' }).click();
+            await expect(checklistEditor).toHaveCount(0);
+
+            const textCard = page.locator(
+              `[data-note-id="${noteId}"][data-note-type="text"]`,
+            );
+            await expect(textCard).toBeVisible();
+            await textCard.getByRole('button', { name: 'Open note: Cross type history' }).click();
+            const textEditor = page.getByRole('dialog', { name: 'Edit note' });
+            await textEditor.getByRole('button', { name: 'History' }).click();
+
+            const history = page.getByRole('dialog', { name: 'Version history' });
+            await expect(history.locator('.revision-history-item')).toHaveCount(2);
+            await history.locator('.revision-history-item').last().click();
+            await expect(history.getByText('First item', { exact: true })).toBeVisible();
+            await history.getByRole('button', { name: 'Restore this version' }).click();
+            await expect(history).toBeVisible();
+            await expect(history.getByRole('status')).toContainText('Version restored');
+
+            await history.getByRole('button', { name: 'Undo restore' }).click();
+            await expect(history).toBeVisible();
+            await expect(history.getByRole('status')).toContainText('Restore undone');
+            const undoneType = await page.evaluate(async (id) => {
+              const dbModule = await import('/notes/src/db/index.ts');
+              return (await new dbModule.NotesRepository(dbModule.notesDatabase).require(id)).type;
+            }, noteId!);
+            expect(undoneType).toBe('text');
+
+            await history.getByRole('button', { name: 'Restore this version' }).click();
+            await expect(history.getByRole('status')).toContainText('Version restored');
+            await history.getByRole('button', { name: 'Close version history' }).click();
+            await expect(textEditor).toHaveCount(0);
+
+            const checklistCard = page.locator(
+              `[data-note-id="${noteId}"][data-note-type="checklist"]`,
+            );
+            await expect(checklistCard).toBeVisible();
+            await expect(checklistCard.getByText('First item', { exact: true })).toBeVisible();
+            await expect(checklistCard.getByText('Second item', { exact: true })).toBeVisible();
+
+            await checklistCard.getByRole('button', { name: 'Open note: Cross type history' }).click();
+            const reopened = page.getByRole('dialog', { name: 'Edit checklist' });
+            await expect(reopened.getByLabel('Checklist item 1')).toHaveValue('First item');
+            await expect(reopened.getByLabel('Checklist item 2')).toHaveValue('Second item');
+            await reopened.getByRole('button', { name: 'Close' }).click();
+          });
+
+          '''
+          if "cross-type restore keeps History reversible" in text:
+              raise SystemExit('Cross-type regression already exists')
+          spec.write_text(text.replace(anchor, cross_type + anchor, 1))
+          PY
+          npx prettier --write e2e/history.spec.ts src/features/notes/RevisionHistoryDialog.tsx src/features/notes/NoteEditorDialog.tsx src/features/notes/ChecklistEditorDialog.tsx
+      - name: Commit final P11 runtime hardening
+        run: |
+          git config user.name thiepn
+          git config user.email junsosmart@gmail.com
+          git add e2e/history.spec.ts src/features/notes/RevisionHistoryDialog.tsx src/features/notes/NoteEditorDialog.tsx src/features/notes/ChecklistEditorDialog.tsx
+          git commit -m "test: harden P11 cross-type recovery"
+          git push origin HEAD:main
