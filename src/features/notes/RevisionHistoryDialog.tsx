@@ -246,7 +246,10 @@ export function RevisionHistoryDialog({
         ) : null}
 
         <footer className="revision-history-footer">
-          <p>Restoring changes content and color only. Labels and lifecycle state stay current.</p>
+          <p>
+            Restoring changes title, note type/content, and color. Labels and lifecycle state stay
+            current.
+          </p>
           <div className="revision-history-actions">
             {lastRestore ? (
               <button

@@ -185,6 +185,59 @@ test('copying a historical version creates an active copy and preserves current 
   expect(copies?.labels).toContain(labelId);
 });
 
+test('cross-type restore keeps History reversible and surfaces checklist rows immediately', async ({
+  page,
+}) => {
+  const card = await createChecklist(page, 'Cross type history', ['First item', 'Second item']);
+  const noteId = await card.getAttribute('data-note-id');
+  expect(noteId).toBeTruthy();
+
+  await card.getByRole('button', { name: 'Open note: Cross type history' }).click();
+  await waitForBaselineRevision(page, noteId!);
+  const checklistEditor = page.getByRole('dialog', { name: 'Edit checklist' });
+  await checklistEditor.getByRole('button', { name: 'Convert to text' }).click();
+  await expect(checklistEditor).toHaveCount(0);
+
+  const textCard = page.locator(`[data-note-id="${noteId}"][data-note-type="text"]`);
+  await expect(textCard).toBeVisible();
+  await textCard.getByRole('button', { name: 'Open note: Cross type history' }).click();
+  const textEditor = page.getByRole('dialog', { name: 'Edit note' });
+  await textEditor.getByRole('button', { name: 'History' }).click();
+
+  const history = page.getByRole('dialog', { name: 'Version history' });
+  await expect(history.locator('.revision-history-item')).toHaveCount(2);
+  await history.locator('.revision-history-item').last().click();
+  await expect(history.getByText('First item', { exact: true })).toBeVisible();
+  await history.getByRole('button', { name: 'Restore this version' }).click();
+  await expect(history).toBeVisible();
+  await expect(history.getByRole('status')).toContainText('Version restored');
+
+  await history.getByRole('button', { name: 'Undo restore' }).click();
+  await expect(history).toBeVisible();
+  await expect(history.getByRole('status')).toContainText('Restore undone');
+  const undoneType = await page.evaluate(async (id) => {
+    const dbModule = await import('/notes/src/db/index.ts');
+    return (await new dbModule.NotesRepository(dbModule.notesDatabase).require(id)).type;
+  }, noteId!);
+  expect(undoneType).toBe('text');
+
+  await history.getByRole('button', { name: 'Restore this version' }).click();
+  await expect(history.getByRole('status')).toContainText('Version restored');
+  await history.getByRole('button', { name: 'Close version history' }).click();
+  await expect(textEditor).toHaveCount(0);
+
+  const checklistCard = page.locator(`[data-note-id="${noteId}"][data-note-type="checklist"]`);
+  await expect(checklistCard).toBeVisible();
+  await expect(checklistCard.getByText('First item', { exact: true })).toBeVisible();
+  await expect(checklistCard.getByText('Second item', { exact: true })).toBeVisible();
+
+  await checklistCard.getByRole('button', { name: 'Open note: Cross type history' }).click();
+  const reopened = page.getByRole('dialog', { name: 'Edit checklist' });
+  await expect(reopened.getByLabel('Checklist item 1')).toHaveValue('First item');
+  await expect(reopened.getByLabel('Checklist item 2')).toHaveValue('Second item');
+  await reopened.getByRole('button', { name: 'Close' }).click();
+});
+
 test('revision pruning preserves recent detail and long-term reach while corrupt restore rolls back', async ({
   page,
 }) => {
