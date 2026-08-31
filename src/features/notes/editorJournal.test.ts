@@ -29,9 +29,9 @@ describe('editor journal', () => {
     const storage = new MemoryStorage();
     const noteId = '1adfe7cb-af93-4e6b-94cf-a574e2f2ae99';
 
-    expect(writeEditorJournal({ noteId, title: 'Edited', content: 'Recovered body' }, storage)).toBe(
-      true,
-    );
+    expect(
+      writeEditorJournal({ noteId, title: 'Edited', content: 'Recovered body' }, storage),
+    ).toBe(true);
     expect(readEditorJournal(storage)).toMatchObject({
       version: 1,
       noteId,
