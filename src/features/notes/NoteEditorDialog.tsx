@@ -89,7 +89,12 @@ export function NoteEditorDialog({
 
   const convert = async () => {
     const saved = await finishEditing();
-    if (saved) await onConvertToChecklist();
+    if (!saved) return;
+    await onConvertToChecklist();
+    const converted = await repository.require(note.id);
+    if (converted.type === 'checklist') {
+      await revisionsRepository.checkpoint(converted.id, 'conversion');
+    }
   };
 
   const openHistory = async () => {
