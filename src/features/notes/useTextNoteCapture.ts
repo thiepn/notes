@@ -7,7 +7,6 @@ import {
   readCaptureJournal,
   writeCaptureJournal,
   type CaptureDraft,
-  type CaptureJournal,
 } from './captureJournal';
 
 const AUTOSAVE_DELAY_MS = 180;
@@ -22,27 +21,29 @@ interface UseTextNoteCaptureOptions {
 }
 
 export function useTextNoteCapture({ repository, onSaved, onRemoved }: UseTextNoteCaptureOptions) {
-  const initialJournalRef = useRef<CaptureJournal | null | undefined>(undefined);
-  if (initialJournalRef.current === undefined) {
-    initialJournalRef.current = readCaptureJournal();
-  }
+  const [initialCapture] = useState(() => {
+    const journal = readCaptureJournal();
+    const draft: CaptureDraft = journal
+      ? { title: journal.title, content: journal.content }
+      : EMPTY_DRAFT;
 
-  const initialJournal = initialJournalRef.current;
-  const initialDraft: CaptureDraft = initialJournal
-    ? { title: initialJournal.title, content: initialJournal.content }
-    : EMPTY_DRAFT;
+    return {
+      journal,
+      draft,
+      expanded: Boolean(journal && isMeaningfulDraft(journal)),
+      noteId: journal?.noteId ?? null,
+    };
+  });
 
-  const [draft, setDraft] = useState<CaptureDraft>(initialDraft);
-  const [expanded, setExpanded] = useState(
-    Boolean(initialJournal && isMeaningfulDraft(initialJournal)),
-  );
-  const [activeNoteId, setActiveNoteId] = useState<string | null>(initialJournal?.noteId ?? null);
+  const [draft, setDraft] = useState<CaptureDraft>(initialCapture.draft);
+  const [expanded, setExpanded] = useState(initialCapture.expanded);
+  const [activeNoteId, setActiveNoteId] = useState<string | null>(initialCapture.noteId);
   const [status, setStatus] = useState<CaptureStatus>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const pendingDraftRef = useRef<CaptureDraft>(initialDraft);
+  const pendingDraftRef = useRef<CaptureDraft>(initialCapture.draft);
   const noteRef = useRef<NoteRecord | null>(null);
-  const noteIdRef = useRef<string | null>(initialJournal?.noteId ?? null);
+  const noteIdRef = useRef<string | null>(initialCapture.noteId);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveChainRef = useRef<Promise<void>>(Promise.resolve());
   const mountedRef = useRef(false);
@@ -221,7 +222,7 @@ export function useTextNoteCapture({ repository, onSaved, onRemoved }: UseTextNo
   }, [clearTimer]);
 
   useEffect(() => {
-    const journal = initialJournalRef.current;
+    const journal = initialCapture.journal;
     if (!journal) return;
 
     if (!isMeaningfulDraft(journal)) {
@@ -238,7 +239,7 @@ export function useTextNoteCapture({ repository, onSaved, onRemoved }: UseTextNo
     }
 
     void persistLatest();
-  }, [onRemoved, persistLatest, repository]);
+  }, [initialCapture.journal, onRemoved, persistLatest, repository]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
