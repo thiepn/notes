@@ -8,6 +8,7 @@ const ITEM_ID = '10000000-0000-4000-8000-000000000003';
 const LABEL_ID = '10000000-0000-4000-8000-000000000004';
 const ATTACHMENT_ID = '10000000-0000-4000-8000-000000000005';
 const REVISION_ID = '10000000-0000-4000-8000-000000000006';
+const SECOND_ITEM_ID = '10000000-0000-4000-8000-000000000007';
 
 async function validBackup() {
   const bytes = new TextEncoder().encode('attachment bytes');
@@ -135,5 +136,28 @@ describe('P12 backup format', () => {
       id: '10000000-0000-4000-8000-000000000088',
     });
     await expect(prepareBackup(backup)).rejects.toThrow('duplicate normalized label name');
+  });
+
+  it('rejects duplicate checklist positions within one note', async () => {
+    const backup = await validBackup();
+    backup.data.checklistItems.push({
+      ...backup.data.checklistItems[0]!,
+      id: SECOND_ITEM_ID,
+      text: 'Second task',
+    });
+    await expect(prepareBackup(backup)).rejects.toThrow('duplicate item position');
+  });
+
+  it('rejects a nested checklist item ordered before its parent', async () => {
+    const backup = await validBackup();
+    backup.data.checklistItems[0]!.position = 1;
+    backup.data.checklistItems.push({
+      ...backup.data.checklistItems[0]!,
+      id: SECOND_ITEM_ID,
+      text: 'Child task',
+      parentId: ITEM_ID,
+      position: 0,
+    });
+    await expect(prepareBackup(backup)).rejects.toThrow('must appear after its parent');
   });
 });
