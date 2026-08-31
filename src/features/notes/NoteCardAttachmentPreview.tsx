@@ -9,6 +9,7 @@ import {
 } from '../../db';
 
 const attachmentRepository = new AttachmentsRepository(notesDatabase);
+const CARD_THUMBNAIL_MAX_DIMENSION = 720;
 
 interface PreviewState {
   count: number;
@@ -30,7 +31,7 @@ export function NoteCardAttachmentPreview({
   const [loaded, setLoaded] = useState(false);
   const [preview, setPreview] = useState<PreviewState>(EMPTY_PREVIEW);
   const [imageFailed, setImageFailed] = useState(false);
-  const imageUrl = useBlobUrl(imageFailed ? null : preview.firstImage?.data ?? null);
+  const imageUrl = useThumbnailUrl(imageFailed ? null : preview.firstImage?.data ?? null);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -93,12 +94,7 @@ export function NoteCardAttachmentPreview({
     >
       {hasImage ? (
         <span className="note-card-image-wrap">
-          <img
-            src={imageUrl ?? undefined}
-            alt=""
-            loading="lazy"
-            onError={() => setImageFailed(true)}
-          />
+          <img src={imageUrl ?? undefined} alt="" onError={() => setImageFailed(true)} />
           {preview.imageCount > 1 ? (
             <span className="note-card-image-count">
               <Image /> {preview.imageCount}
@@ -119,16 +115,53 @@ export function NoteCardAttachmentPreview({
   );
 }
 
-function useBlobUrl(blob: Blob | null): string | null {
+function useThumbnailUrl(blob: Blob | null): string | null {
   const [url, setUrl] = useState<string | null>(null);
+
   useEffect(() => {
     if (!blob) {
       setUrl(null);
       return;
     }
-    const next = URL.createObjectURL(blob);
-    setUrl(next);
-    return () => URL.revokeObjectURL(next);
+
+    let cancelled = false;
+    let objectUrl: string | null = null;
+    void createThumbnailBlob(blob)
+      .catch(() => blob)
+      .then((thumbnail) => {
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(thumbnail);
+        setUrl(objectUrl);
+      });
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
   }, [blob]);
+
   return url;
+}
+
+async function createThumbnailBlob(blob: Blob): Promise<Blob> {
+  const bitmap = await createImageBitmap(blob);
+  try {
+    const longest = Math.max(bitmap.width, bitmap.height);
+    const scale = longest > CARD_THUMBNAIL_MAX_DIMENSION ? CARD_THUMBNAIL_MAX_DIMENSION / longest : 1;
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Canvas unavailable');
+    context.drawImage(bitmap, 0, 0, width, height);
+    const thumbnail = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, 'image/webp', 0.78),
+    );
+    if (!thumbnail || thumbnail.size === 0) throw new Error('Thumbnail encoding failed');
+    return thumbnail;
+  } finally {
+    bitmap.close();
+  }
 }
