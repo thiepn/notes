@@ -17,6 +17,11 @@ interface PreviewState {
   firstImage: AttachmentRecord | null;
 }
 
+interface ThumbnailState {
+  blob: Blob | null;
+  url: string | null;
+}
+
 const EMPTY_PREVIEW: PreviewState = { count: 0, imageCount: 0, firstImage: null };
 
 export function NoteCardAttachmentPreview({
@@ -27,19 +32,20 @@ export function NoteCardAttachmentPreview({
   refreshKey?: number;
 }) {
   const rootRef = useRef<HTMLSpanElement>(null);
-  const [shouldLoad, setShouldLoad] = useState(false);
+  const [shouldLoad, setShouldLoad] = useState(
+    () => typeof window === 'undefined' || !('IntersectionObserver' in window),
+  );
   const [loaded, setLoaded] = useState(false);
   const [preview, setPreview] = useState<PreviewState>(EMPTY_PREVIEW);
-  const [imageFailed, setImageFailed] = useState(false);
-  const imageUrl = useThumbnailUrl(imageFailed ? null : (preview.firstImage?.data ?? null));
+  const [failedImageId, setFailedImageId] = useState<string | null>(null);
+  const firstImage = preview.firstImage;
+  const imageUrl = useThumbnailUrl(
+    firstImage && failedImageId !== firstImage.id ? firstImage.data : null,
+  );
 
   useEffect(() => {
     const root = rootRef.current;
     if (!root || shouldLoad) return;
-    if (!('IntersectionObserver' in window)) {
-      setShouldLoad(true);
-      return;
-    }
     const observer = new IntersectionObserver(
       (entries) => {
         if (!entries.some((entry) => entry.isIntersecting)) return;
@@ -55,8 +61,6 @@ export function NoteCardAttachmentPreview({
   useEffect(() => {
     if (!shouldLoad) return;
     let cancelled = false;
-    setLoaded(false);
-    setImageFailed(false);
     void attachmentRepository
       .list(noteId)
       .then((attachments) => {
@@ -81,7 +85,7 @@ export function NoteCardAttachmentPreview({
     };
   }, [noteId, refreshKey, shouldLoad]);
 
-  const hasImage = Boolean(imageUrl && preview.firstImage && !imageFailed);
+  const hasImage = Boolean(imageUrl && firstImage && failedImageId !== firstImage.id);
   return (
     <span
       ref={rootRef}
@@ -94,7 +98,11 @@ export function NoteCardAttachmentPreview({
     >
       {hasImage ? (
         <span className="note-card-image-wrap">
-          <img src={imageUrl ?? undefined} alt="" onError={() => setImageFailed(true)} />
+          <img
+            src={imageUrl ?? undefined}
+            alt=""
+            onError={() => setFailedImageId(firstImage?.id ?? null)}
+          />
           {preview.imageCount > 1 ? (
             <span className="note-card-image-count">
               <Image /> {preview.imageCount}
@@ -116,13 +124,10 @@ export function NoteCardAttachmentPreview({
 }
 
 function useThumbnailUrl(blob: Blob | null): string | null {
-  const [url, setUrl] = useState<string | null>(null);
+  const [state, setState] = useState<ThumbnailState>({ blob: null, url: null });
 
   useEffect(() => {
-    if (!blob) {
-      setUrl(null);
-      return;
-    }
+    if (!blob) return;
 
     let cancelled = false;
     let objectUrl: string | null = null;
@@ -131,7 +136,7 @@ function useThumbnailUrl(blob: Blob | null): string | null {
       .then((thumbnail) => {
         if (cancelled) return;
         objectUrl = URL.createObjectURL(thumbnail);
-        setUrl(objectUrl);
+        setState({ blob, url: objectUrl });
       });
 
     return () => {
@@ -140,7 +145,7 @@ function useThumbnailUrl(blob: Blob | null): string | null {
     };
   }, [blob]);
 
-  return url;
+  return blob !== null && state.blob === blob ? state.url : null;
 }
 
 async function createThumbnailBlob(blob: Blob): Promise<Blob> {
