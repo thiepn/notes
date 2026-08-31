@@ -27,6 +27,7 @@ export function NoteCardAttachmentPreview({
 }) {
   const rootRef = useRef<HTMLSpanElement>(null);
   const [shouldLoad, setShouldLoad] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [preview, setPreview] = useState<PreviewState>(EMPTY_PREVIEW);
   const [imageFailed, setImageFailed] = useState(false);
   const imageUrl = useBlobUrl(imageFailed ? null : preview.firstImage?.data ?? null);
@@ -53,6 +54,7 @@ export function NoteCardAttachmentPreview({
   useEffect(() => {
     if (!shouldLoad) return;
     let cancelled = false;
+    setLoaded(false);
     setImageFailed(false);
     void attachmentRepository
       .list(noteId)
@@ -66,9 +68,12 @@ export function NoteCardAttachmentPreview({
           imageCount: images.length,
           firstImage: images[0] ?? null,
         });
+        setLoaded(true);
       })
       .catch(() => {
-        if (!cancelled) setPreview(EMPTY_PREVIEW);
+        if (cancelled) return;
+        setPreview(EMPTY_PREVIEW);
+        setLoaded(true);
       });
     return () => {
       cancelled = true;
@@ -80,6 +85,7 @@ export function NoteCardAttachmentPreview({
     <span
       ref={rootRef}
       className="note-card-attachment-preview"
+      data-loaded={loaded}
       data-has-attachment={preview.count > 0}
       data-has-image={hasImage}
       aria-hidden="true"
