@@ -110,9 +110,7 @@ test('enforces lifecycle transitions and active-note ordering', async ({ page })
   expect(result.restoredAt).toBeNull();
 });
 
-test('stores, transitions, snoozes, and deduplicates one reminder per note', async ({
-  page,
-}) => {
+test('stores, transitions, snoozes, and deduplicates one reminder per note', async ({ page }) => {
   await page.goto('./');
   const databaseName = testDatabaseName('reminders');
 
@@ -305,112 +303,116 @@ test('rolls back failed transactions and cascades permanent deletion', async ({ 
   });
 });
 
-test('duplicates dependent note data without copying lifecycle state or reminders', async ({
-  page,
-}) => {
-  await page.goto('./');
-  const databaseName = testDatabaseName('duplicate');
+test(
+  'duplicates dependent note data without copying lifecycle state or reminders',
+  async ({ page }) => {
+    await page.goto('./');
+    const databaseName = testDatabaseName('duplicate');
 
-  const result = await page.evaluate(async (name) => {
-    const dbModule = await import('/notes/src/db/index.ts');
-    const database = dbModule.createNotesDatabase(name);
-    const repository = new dbModule.NotesRepository(database);
-    const reminders = new dbModule.RemindersRepository(database);
+    const result = await page.evaluate(async (name) => {
+      const dbModule = await import('/notes/src/db/index.ts');
+      const database = dbModule.createNotesDatabase(name);
+      const repository = new dbModule.NotesRepository(database);
+      const reminders = new dbModule.RemindersRepository(database);
 
-    try {
-      const source = await repository.create({
-        type: 'checklist',
-        title: 'Source',
-      });
-      const labelId = crypto.randomUUID();
-      const sourceParentId = crypto.randomUUID();
-      const sourceChildId = crypto.randomUUID();
-      await database.labels.add({
-        id: labelId,
-        name: 'Copied',
-        nameNormalized: 'copied',
-        createdAt: 20,
-        updatedAt: 20,
-      });
-      await database.checklistItems.bulkAdd([
-        {
-          id: sourceParentId,
-          noteId: source.id,
-          text: 'Parent',
-          checked: false,
-          parentId: null,
-          position: 0,
+      try {
+        const source = await repository.create({
+          type: 'checklist',
+          title: 'Source',
+        });
+        const labelId = crypto.randomUUID();
+        const sourceParentId = crypto.randomUUID();
+        const sourceChildId = crypto.randomUUID();
+        await database.labels.add({
+          id: labelId,
+          name: 'Copied',
+          nameNormalized: 'copied',
           createdAt: 20,
           updatedAt: 20,
-        },
-        {
-          id: sourceChildId,
+        });
+        await database.checklistItems.bulkAdd([
+          {
+            id: sourceParentId,
+            noteId: source.id,
+            text: 'Parent',
+            checked: false,
+            parentId: null,
+            position: 0,
+            createdAt: 20,
+            updatedAt: 20,
+          },
+          {
+            id: sourceChildId,
+            noteId: source.id,
+            text: 'Child',
+            checked: false,
+            parentId: sourceParentId,
+            position: 1,
+            createdAt: 20,
+            updatedAt: 20,
+          },
+        ]);
+        await database.noteLabels.add({
           noteId: source.id,
-          text: 'Child',
-          checked: false,
-          parentId: sourceParentId,
-          position: 1,
+          labelId,
+          assignedAt: 20,
+        });
+        await database.attachments.add({
+          id: crypto.randomUUID(),
+          noteId: source.id,
+          name: null,
+          mimeType: 'text/plain',
+          size: 1,
+          checksum: 'x',
+          data: new Blob(['x']),
           createdAt: 20,
-          updatedAt: 20,
-        },
-      ]);
-      await database.noteLabels.add({
-        noteId: source.id,
-        labelId,
-        assignedAt: 20,
-      });
-      await database.attachments.add({
-        id: crypto.randomUUID(),
-        noteId: source.id,
-        name: null,
-        mimeType: 'text/plain',
-        size: 1,
-        checksum: 'x',
-        data: new Blob(['x']),
-        createdAt: 20,
-      });
-      await reminders.set(source.id, { dueAt: Date.now() + 60_000, timeZone: 'Europe/Berlin' });
-      await repository.setPinned(source.id, true);
+        });
+        await reminders.set(source.id, {
+          dueAt: Date.now() + 60_000,
+          timeZone: 'Europe/Berlin',
+        });
+        await repository.setPinned(source.id, true);
 
-      const duplicate = await repository.duplicate(source.id);
-      const duplicatedItems = await database.checklistItems
-        .where('noteId')
-        .equals(duplicate.id)
-        .sortBy('position');
-      const [duplicatedParent, duplicatedChild] = duplicatedItems;
+        const duplicate = await repository.duplicate(source.id);
+        const duplicatedItems = await database.checklistItems
+          .where('noteId')
+          .equals(duplicate.id)
+          .sortBy('position');
+        const [duplicatedParent, duplicatedChild] = duplicatedItems;
 
-      return {
-        sourceId: source.id,
-        sourceParentId,
-        sourceChildId,
-        duplicate,
-        duplicatedParentId: duplicatedParent?.id ?? null,
-        duplicatedChildId: duplicatedChild?.id ?? null,
-        duplicatedChildParentId: duplicatedChild?.parentId ?? null,
-        items: duplicatedItems.length,
-        labels: await database.noteLabels.where('noteId').equals(duplicate.id).count(),
-        attachments: await database.attachments.where('noteId').equals(duplicate.id).count(),
-        reminders: await database.reminders.where('noteId').equals(duplicate.id).count(),
-      };
-    } finally {
-      database.close();
-      await dbModule.deleteNotesDatabase(name);
-    }
-  }, databaseName);
+        return {
+          sourceId: source.id,
+          sourceParentId,
+          sourceChildId,
+          duplicate,
+          duplicatedParentId: duplicatedParent?.id ?? null,
+          duplicatedChildId: duplicatedChild?.id ?? null,
+          duplicatedChildParentId: duplicatedChild?.parentId ?? null,
+          items: duplicatedItems.length,
+          labels: await database.noteLabels.where('noteId').equals(duplicate.id).count(),
+          attachments: await database.attachments.where('noteId').equals(duplicate.id).count(),
+          reminders: await database.reminders.where('noteId').equals(duplicate.id).count(),
+        };
+      } finally {
+        database.close();
+        await dbModule.deleteNotesDatabase(name);
+      }
+    }, databaseName);
 
-  expect(result.duplicate.id).not.toBe(result.sourceId);
-  expect(result.duplicate.revision).toBe(1);
-  expect(result.duplicate.pinnedAt).toBeNull();
-  expect(result.duplicate.archivedAt).toBeNull();
-  expect(result.duplicate.trashedAt).toBeNull();
-  expect(result.items).toBe(2);
-  expect(result.duplicatedParentId).not.toBe(result.sourceParentId);
-  expect(result.duplicatedChildId).not.toBe(result.sourceChildId);
-  expect(result.duplicatedChildParentId).toBe(result.duplicatedParentId);
-  expect(result.labels).toBe(1);
-  expect(result.attachments).toBe(1);
-  expect(result.reminders).toBe(0);
-});
+    expect(result.duplicate.id).not.toBe(result.sourceId);
+    expect(result.duplicate.revision).toBe(1);
+    expect(result.duplicate.pinnedAt).toBeNull();
+    expect(result.duplicate.archivedAt).toBeNull();
+    expect(result.duplicate.trashedAt).toBeNull();
+    expect(result.items).toBe(2);
+    expect(result.duplicatedParentId).not.toBe(result.sourceParentId);
+    expect(result.duplicatedChildId).not.toBe(result.sourceChildId);
+    expect(result.duplicatedChildParentId).toBe(result.duplicatedParentId);
+    expect(result.labels).toBe(1);
+    expect(result.attachments).toBe(1);
+    expect(result.reminders).toBe(0);
+  },
+);
 
 test('bulk permanent deletion also removes reminder rows', async ({ page }) => {
   await page.goto('./');
