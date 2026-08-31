@@ -19,7 +19,7 @@ P6 uses the existing database-v1 tables:
 - `labels`
 - `noteLabels`
 
-No database migration is required.
+No database migration is required. P6 keeps database schema version 1 unchanged.
 
 A label has a user-facing `name` and a unique `nameNormalized` key. Names are trimmed, repeated whitespace is collapsed, Unicode compatibility forms are normalized with NFKC, and comparisons are case-insensitive. This prevents labels such as `Study`, `study`, and `STUDY` from becoming separate labels.
 
