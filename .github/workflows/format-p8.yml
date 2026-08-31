@@ -1,0 +1,67 @@
+name: Format P8
+
+on:
+  push:
+    paths:
+      - '.github/workflows/format-p8.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - run: npm install --no-audit --no-fund
+      - name: Apply P8 strictness fixes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          bulk = Path('src/db/repositories/bulkActionsRepository.ts')
+          text = bulk.read_text()
+          text = text.replace(
+              'return this.restoreFields(states, (note, state) => ({',
+              'return this.restoreFields(states, (_note, state) => ({',
+              1,
+          )
+          bulk.write_text(text)
+
+          spec = Path('e2e/selection.spec.ts')
+          text = spec.read_text()
+          text = text.replace(
+              "return dbModule.notesDatabase.notes.where('color').equals('gray').count();",
+              "return (await dbModule.notesDatabase.notes.toArray()).filter((note) => note.color === 'gray').length;",
+          )
+          spec.write_text(text)
+          PY
+      - name: Format P8 files
+        run: >-
+          npx prettier --write
+          e2e/selection.spec.ts
+          src/db/index.ts
+          src/db/repositories/bulkActionsRepository.ts
+          src/features/notes/BulkSelectionToolbar.tsx
+          src/features/notes/ConfirmDeleteDialog.tsx
+          src/features/notes/MasonryGrid.tsx
+          src/features/notes/NoteCard.tsx
+          src/features/notes/NotesWorkspace.tsx
+          src/styles.css
+          src/styles/selection.css
+          docs/SELECTION_AND_BULK.md
+      - name: Commit P8 cleanup
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name thiepn
+          git config user.email junsosmart@gmail.com
+          git add e2e/selection.spec.ts src/db/index.ts src/db/repositories/bulkActionsRepository.ts src/features/notes/BulkSelectionToolbar.tsx src/features/notes/ConfirmDeleteDialog.tsx src/features/notes/MasonryGrid.tsx src/features/notes/NoteCard.tsx src/features/notes/NotesWorkspace.tsx src/styles.css src/styles/selection.css docs/SELECTION_AND_BULK.md
+          git commit -m "fix: clean up P8 selection implementation"
+          git push origin HEAD:main
