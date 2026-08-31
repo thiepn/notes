@@ -42,7 +42,7 @@ Deleting a label removes only the label and its `noteLabels` relationships. It n
 
 Selecting a sidebar label shows active notes carrying that label. Pinned notes remain pinned inside the filtered view.
 
-The selected label ID is persisted under `notes.active-label`, so a label view survives reload. If the referenced label no longer exists, the application falls back to the normal Notes view.
+The selected label ID is persisted under `notes.active-label`, so a label view survives reload. If the referenced label no longer exists, asynchronous label hydration clears that stale selection and the application falls back to the normal Notes view.
 
 Creating a note while inside a label view automatically assigns that label before the capture is considered successfully saved. The assignment is idempotent and participates in P3 recovery: if a capture reloads inside the autosave window, the label is ensured again before the recovered note is surfaced.
 
