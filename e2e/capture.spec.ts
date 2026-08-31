@@ -21,14 +21,14 @@ test('creates a text note, closes without a save button, and survives reload', a
     .fill('Build the capture path before adding more organization.');
   await page.getByRole('button', { name: 'Close' }).click();
 
-  await expect(page.getByRole('heading', { name: 'Research idea', level: 2 })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open note: Research idea' })).toBeVisible();
   await expect(
     page.getByText('Build the capture path before adding more organization.'),
   ).toBeVisible();
 
   await page.reload();
 
-  await expect(page.getByRole('heading', { name: 'Research idea', level: 2 })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open note: Research idea' })).toBeVisible();
   const notes = await activeNotes(page);
   expect(notes).toHaveLength(1);
   expect(notes[0]).toMatchObject({
@@ -79,7 +79,9 @@ test('Ctrl+Enter finishes the current note and preserves rapid edits', async ({ 
   await page.getByLabel('Note text').press('Control+Enter');
 
   await expect(page.getByRole('form', { name: 'New note' })).toBeHidden();
-  await expect(page.getByText('one two three four five')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open note: Fast capture' })).toContainText(
+    'one two three four five',
+  );
 
   const notes = await activeNotes(page);
   expect(notes).toHaveLength(1);
