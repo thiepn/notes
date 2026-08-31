@@ -160,8 +160,8 @@ test('a note can hold multiple labels', async ({ page }) => {
   await picker.getByLabel('Add label Research: Multi label').check();
   await picker.getByLabel('Add label Study: Multi label').check();
 
-  await expect(card.getByText('Research', { exact: true })).toBeVisible();
-  await expect(card.getByText('Study', { exact: true })).toBeVisible();
+  await expect(card.locator('.note-label-chip').filter({ hasText: /^Research$/u })).toBeVisible();
+  await expect(card.locator('.note-label-chip').filter({ hasText: /^Study$/u })).toBeVisible();
 
   const labelCount = await page.evaluate(async (id) => {
     const dbModule = await import('/notes/src/db/index.ts');
