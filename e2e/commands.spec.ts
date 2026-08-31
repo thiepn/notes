@@ -1,7 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
 
+async function waitForNotesWorkspace(page: Page) {
+  await expect(page.getByRole('heading', { name: 'Notes', level: 1 })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Create a text note' })).toBeVisible();
+}
+
 async function seedKeyboardLibrary(page: Page) {
   await page.goto('./');
+  await waitForNotesWorkspace(page);
   const ids = await page.evaluate(async () => {
     const dbModule = await import('/notes/src/db/index.ts');
     const notes = new dbModule.NotesRepository(dbModule.notesDatabase);
@@ -13,6 +19,9 @@ async function seedKeyboardLibrary(page: Page) {
     return { firstId: first.id, secondId: second.id, labelId: label.id };
   });
   await page.reload();
+  await waitForNotesWorkspace(page);
+  await expect(page.locator(`[data-note-id="${ids.firstId}"]`)).toBeVisible();
+  await expect(page.locator(`[data-note-id="${ids.secondId}"]`)).toBeVisible();
   return ids;
 }
 
@@ -26,6 +35,7 @@ test('Ctrl+K opens a searchable command palette and runs navigation/create comma
   page,
 }) => {
   await page.goto('./');
+  await waitForNotesWorkspace(page);
   await page.keyboard.press('Control+K');
   const palette = page.getByRole('dialog', { name: 'Command palette' });
   await expect(palette).toBeVisible();
@@ -37,6 +47,7 @@ test('Ctrl+K opens a searchable command palette and runs navigation/create comma
 
   await page.keyboard.press('Control+K');
   const secondPalette = page.getByRole('dialog', { name: 'Command palette' });
+  await expect(secondPalette).toBeVisible();
   await secondPalette.getByRole('combobox', { name: 'Search commands' }).fill('new checklist');
   await secondPalette.getByRole('combobox', { name: 'Search commands' }).press('Enter');
   await expect(page.getByRole('form', { name: 'New checklist' })).toBeVisible();
@@ -46,6 +57,7 @@ test('C starts text capture while editor typing suppresses global shortcuts and 
   page,
 }) => {
   await page.goto('./');
+  await waitForNotesWorkspace(page);
   await page.keyboard.press('c');
   const composer = page.getByRole('form', { name: 'New note' });
   await expect(composer).toBeVisible();
@@ -127,8 +139,10 @@ test('focused-card P, #, E, and Delete shortcuts use normal card actions', async
 
 test('command palette can open label management and focuses label creation', async ({ page }) => {
   await page.goto('./');
+  await waitForNotesWorkspace(page);
   await page.keyboard.press('Control+K');
   const palette = page.getByRole('dialog', { name: 'Command palette' });
+  await expect(palette).toBeVisible();
   const input = palette.getByRole('combobox', { name: 'Search commands' });
   await input.fill('manage labels');
   await input.press('Enter');
