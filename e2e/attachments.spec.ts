@@ -226,10 +226,14 @@ test('imported non-image attachments are visible and downloadable instead of dis
   const editor = page.getByRole('dialog', { name: 'Edit note' });
   await expect(editor.getByText('details.txt')).toBeVisible();
   await expect(editor.getByText(/text\/plain/u)).toBeVisible();
-  await expect(editor.getByRole('button', { name: 'Download attachment: details.txt' })).toBeVisible();
+  await expect(
+    editor.getByRole('button', { name: 'Download attachment: details.txt' }),
+  ).toBeVisible();
 });
 
-test('image attachment controls remain usable at the minimum supported viewport', async ({ page }) => {
+test('image attachment controls remain usable at the minimum supported viewport', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 320, height: 720 });
   await page.goto('./');
   await waitForNotes(page);
