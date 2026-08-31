@@ -42,6 +42,25 @@ describe('checklist model', () => {
     expect(next.find((entry) => entry.id === 'b')?.parentId).toBe('a');
   });
 
+  it('keeps a completed child after its parent even when it has no sibling', () => {
+    const items = [item('a', 'Parent'), item('b', 'Only child', 'a'), item('c', 'Next root')];
+    const next = toggleChecklistItem(items, 'b', true, true);
+    expect(next.map((entry) => entry.id)).toEqual(['a', 'b', 'c']);
+    expect(next[1]).toMatchObject({ id: 'b', checked: true, parentId: 'a' });
+  });
+
+  it('moves a completed child after its remaining siblings without crossing the root boundary', () => {
+    const items = [
+      item('a', 'Parent'),
+      item('b', 'First child', 'a'),
+      item('c', 'Second child', 'a'),
+      item('d', 'Next root'),
+    ];
+    const next = toggleChecklistItem(items, 'b', true, true);
+    expect(next.map((entry) => entry.id)).toEqual(['a', 'c', 'b', 'd']);
+    expect(next.find((entry) => entry.id === 'b')).toMatchObject({ checked: true, parentId: 'a' });
+  });
+
   it('clearing a completed parent also removes its children', () => {
     const parent = { ...item('a', 'A'), checked: true };
     const child = item('b', 'B', 'a');
