@@ -94,7 +94,9 @@ export class GoogleKeepImportRepository {
     onProgress?: (progress: GoogleKeepCommitProgress) => void,
   ): Promise<GoogleKeepImportResult> {
     const reminderPrepared = prepared as PreparedKeepImportWithReminders;
-    const selectedNotes = reminderPrepared.notes.filter((note) => shouldImportNote(note, selection));
+    const selectedNotes = reminderPrepared.notes.filter((note) =>
+      shouldImportNote(note, selection),
+    );
     const skippedBySelection = reminderPrepared.notes.length - selectedNotes.length;
 
     return this.database.transaction(
@@ -291,13 +293,14 @@ export class GoogleKeepImportRepository {
         )
       : [];
 
+    const reminderAt = source.reminderAt ?? null;
     const reminder =
-      source.reminderAt === null
+      reminderAt === null
         ? null
         : reminderRecordSchema.parse({
             id: this.idFactory(),
             noteId,
-            dueAt: source.reminderAt,
+            dueAt: reminderAt,
             timeZone: 'UTC',
             status: 'active',
             createdAt: importedAt,
