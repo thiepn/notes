@@ -83,7 +83,6 @@ test('cold reload, reading, and writing remain functional with the network disab
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.getByRole('heading', { name: 'Notes', level: 1 })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Open note: Offline seed' })).toBeVisible();
-  await expect(page.getByText('Offline', { exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Create a text note' }).click();
   await page.getByLabel('Title').fill('Written offline');
@@ -96,6 +95,18 @@ test('cold reload, reading, and writing remain functional with the network disab
   await expect(page.getByRole('button', { name: 'Open note: Written offline' })).toBeVisible();
 
   await context.setOffline(false);
+});
+
+test('offline browser events surface the local-only status without disabling the app', async ({ page }) => {
+  await page.goto('./');
+
+  await page.evaluate(() => window.dispatchEvent(new Event('offline')));
+  await expect(page.getByText('Offline', { exact: true })).toBeVisible();
+  await expect(page.getByText('Your notes stay available on this device.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Create a text note' })).toBeEnabled();
+
+  await page.evaluate(() => window.dispatchEvent(new Event('online')));
+  await expect(page.getByText('Offline', { exact: true })).not.toBeVisible();
 });
 
 test('install prompt is opt-in and can be dismissed without changing notes', async ({ page }) => {
@@ -111,7 +122,7 @@ test('install prompt is opt-in and can be dismissed without changing notes', asy
   });
 
   await expect(page.getByText('Install Notes', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Install' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Install', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Dismiss install prompt' }).click();
   await expect(page.getByText('Install Notes', { exact: true })).not.toBeVisible();
 });
