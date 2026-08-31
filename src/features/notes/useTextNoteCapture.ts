@@ -17,6 +17,7 @@ type CaptureStatus = 'idle' | 'saving' | 'error';
 interface UseTextNoteCaptureOptions {
   repository: NotesRepository;
   beforeSaved?: ((note: NoteRecord) => Promise<void>) | undefined;
+  shouldPreserveEmptyNote?: ((noteId: string) => Promise<boolean>) | undefined;
   onSaved(note: NoteRecord): void;
   onRemoved(noteId: string): void;
 }
@@ -24,6 +25,7 @@ interface UseTextNoteCaptureOptions {
 export function useTextNoteCapture({
   repository,
   beforeSaved,
+  shouldPreserveEmptyNote,
   onSaved,
   onRemoved,
 }: UseTextNoteCaptureOptions) {
@@ -140,6 +142,49 @@ export function useTextNoteCapture({
     return guardedTask;
   }, [beforeSaved, onSaved, repository]);
 
+  const ensureNote = useCallback(async (): Promise<NoteRecord | null> => {
+    clearTimer();
+    if (isMeaningfulDraft(pendingDraftRef.current)) return persistLatest();
+
+    try {
+      await saveChainRef.current;
+      if (mountedRef.current) {
+        setStatus('saving');
+        setErrorMessage(null);
+      }
+
+      const snapshot = { ...pendingDraftRef.current };
+      let note = noteRef.current;
+      if (!note && noteIdRef.current) note = (await repository.get(noteIdRef.current)) ?? null;
+      if (!note) {
+        note = await repository.create({ type: 'text', title: snapshot.title, content: snapshot.content });
+      } else if (note.title !== snapshot.title || note.content !== snapshot.content) {
+        note = await repository.update(
+          note.id,
+          { title: snapshot.title, content: snapshot.content },
+          note.revision,
+        );
+      }
+      if (beforeSaved) await beforeSaved(note);
+      noteRef.current = note;
+      noteIdRef.current = note.id;
+      onSaved(note);
+      writeCaptureJournal({ noteId: note.id, title: snapshot.title, content: snapshot.content });
+      if (mountedRef.current) {
+        setActiveNoteId(note.id);
+        setExpanded(true);
+        setStatus('idle');
+      }
+      return note;
+    } catch (error) {
+      if (mountedRef.current) {
+        setStatus('error');
+        setErrorMessage(toErrorMessage(error));
+      }
+      return null;
+    }
+  }, [beforeSaved, clearTimer, onSaved, persistLatest, repository]);
+
   const scheduleSave = useCallback(
     (nextDraft: CaptureDraft) => {
       writeCaptureJournal({
@@ -192,8 +237,11 @@ export function useTextNoteCapture({
       const noteId = noteIdRef.current;
       if (noteId) {
         try {
-          await repository.deletePermanently(noteId);
-          onRemoved(noteId);
+          const preserve = (await shouldPreserveEmptyNote?.(noteId)) ?? false;
+          if (!preserve) {
+            await repository.deletePermanently(noteId);
+            onRemoved(noteId);
+          }
         } catch (error) {
           if (mountedRef.current) {
             setStatus('error');
@@ -214,7 +262,7 @@ export function useTextNoteCapture({
     } catch {
       return false;
     }
-  }, [clearTimer, onRemoved, persistLatest, repository, resetCapture]);
+  }, [clearTimer, onRemoved, persistLatest, repository, resetCapture, shouldPreserveEmptyNote]);
 
   const retrySave = useCallback(() => {
     clearTimer();
@@ -235,19 +283,26 @@ export function useTextNoteCapture({
 
     if (!isMeaningfulDraft(journal)) {
       const journalNoteId = journal.noteId;
-      if (journalNoteId) {
-        void repository
-          .deletePermanently(journalNoteId)
-          .then(() => onRemoved(journalNoteId))
-          .finally(() => clearCaptureJournal());
-      } else {
+      if (!journalNoteId) {
         clearCaptureJournal();
+        return;
       }
+      void (async () => {
+        try {
+          const preserve = (await shouldPreserveEmptyNote?.(journalNoteId)) ?? false;
+          if (!preserve) {
+            await repository.deletePermanently(journalNoteId);
+            onRemoved(journalNoteId);
+          }
+        } finally {
+          resetCapture();
+        }
+      })();
       return;
     }
 
     void persistLatest();
-  }, [initialCapture.journal, onRemoved, persistLatest, repository]);
+  }, [initialCapture.journal, onRemoved, persistLatest, repository, resetCapture, shouldPreserveEmptyNote]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -269,6 +324,7 @@ export function useTextNoteCapture({
     expanded,
     status,
     openCapture: () => setExpanded(true),
+    ensureNote,
     setTitle: (title: string) => updateDraft({ title }),
     setContent: (content: string) => updateDraft({ content }),
     finishCapture,
