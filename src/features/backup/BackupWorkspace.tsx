@@ -10,6 +10,7 @@ import {
 import { ZodError } from 'zod';
 
 import { notesDatabase } from '../../db';
+import { GoogleKeepImportPanel } from '../import/GoogleKeepImportPanel';
 import { BackupRepository, backupFilename } from './backupRepository';
 import { MAX_BACKUP_FILE_BYTES, type PreparedBackup } from './backupFormat';
 
@@ -129,6 +130,8 @@ export function BackupWorkspace({ onRestored }: BackupWorkspaceProps) {
         </button>
       </section>
 
+      <GoogleKeepImportPanel onImported={onRestored} />
+
       <section className="backup-card" aria-labelledby="backup-restore-title">
         <div className="backup-card-icon" aria-hidden="true">
           <HardDriveUpload />
@@ -226,11 +229,12 @@ export function BackupWorkspace({ onRestored }: BackupWorkspaceProps) {
       ) : null}
 
       <section className="backup-details" aria-labelledby="backup-details-title">
-        <h2 id="backup-details-title">What is preserved</h2>
+        <h2 id="backup-details-title">Portability and recovery</h2>
         <p>
-          P12 restores database records exactly: IDs, timestamps, lifecycle state, labels, checklist
-          structure, attachments, and P11 revision history. Temporary editor recovery journals and
-          UI-only local preferences are intentionally not part of the library backup.
+          P12 backups replace and recover the complete local Notes library. P13 Google Keep import is
+          intentionally different: it adds validated Takeout notes to the existing library, merges
+          labels by normalized name, preserves source state and attachments, and records imported
+          sources so the same Keep export is not duplicated later.
         </p>
       </section>
     </div>
