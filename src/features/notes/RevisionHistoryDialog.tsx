@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { Clock3, Copy, History, RotateCcw, X } from 'lucide-react';
+import { Clock3, Copy, History, RotateCcw, Undo2, X } from 'lucide-react';
 
 import { IconButton } from '../../components/ui/IconButton';
 import type {
@@ -38,6 +38,8 @@ export function RevisionHistoryDialog({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [lastRestore, setLastRestore] = useState<RevisionRestoreResult | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -84,15 +86,48 @@ export function RevisionHistoryDialog({
     if (event.target === event.currentTarget && !busy) onClose();
   };
 
+  const refreshEntries = async () => {
+    const loaded = await repository.list(note.id);
+    setEntries(loaded);
+    setSelectedId((current) =>
+      current && loaded.some((entry) => entry.record.id === current)
+        ? current
+        : (loaded[0]?.record.id ?? null),
+    );
+  };
+
   const restore = async () => {
     if (!selected || busy) return;
     setBusy(true);
     setErrorMessage(null);
+    setStatusMessage(null);
     try {
       const result = await repository.restore(note.id, selected.record.id, note.revision);
       onRestored(result);
+      setLastRestore(result);
+      setStatusMessage('Version restored. You can undo this restore before closing history.');
+      await refreshEntries();
     } catch (error) {
       setErrorMessage(toErrorMessage(error));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const undoRestore = async () => {
+    if (!lastRestore || busy) return;
+    setBusy(true);
+    setErrorMessage(null);
+    setStatusMessage(null);
+    try {
+      const result = await repository.restore(note.id, lastRestore.undoRevisionId, note.revision);
+      onRestored(result);
+      setLastRestore(null);
+      setStatusMessage('Restore undone.');
+      await refreshEntries();
+    } catch (error) {
+      setErrorMessage(toErrorMessage(error));
+    } finally {
       setBusy(false);
     }
   };
@@ -101,11 +136,14 @@ export function RevisionHistoryDialog({
     if (!selected || busy) return;
     setBusy(true);
     setErrorMessage(null);
+    setStatusMessage(null);
     try {
       const result = await repository.copyAsNew(selected.record.id);
       onCopied(result);
+      setStatusMessage('Historical version copied to a new active note.');
     } catch (error) {
       setErrorMessage(toErrorMessage(error));
+    } finally {
       setBusy(false);
     }
   };
@@ -201,10 +239,25 @@ export function RevisionHistoryDialog({
             {errorMessage}
           </p>
         ) : null}
+        {statusMessage ? (
+          <p className="revision-history-status" role="status">
+            {statusMessage}
+          </p>
+        ) : null}
 
         <footer className="revision-history-footer">
           <p>Restoring changes content and color only. Labels and lifecycle state stay current.</p>
           <div className="revision-history-actions">
+            {lastRestore ? (
+              <button
+                className="note-editor-secondary"
+                type="button"
+                disabled={busy}
+                onClick={() => void undoRestore()}
+              >
+                <Undo2 aria-hidden="true" /> Undo restore
+              </button>
+            ) : null}
             <button
               className="note-editor-secondary"
               type="button"
