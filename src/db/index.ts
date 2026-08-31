@@ -7,6 +7,11 @@ export {
 } from './database';
 export { InvalidNoteStateError, NoteConflictError, NoteNotFoundError } from './errors';
 export { DATABASE_SCHEMA_V1, DATABASE_VERSION } from './migrations/v1';
+export {
+  ChecklistsRepository,
+  type ChecklistDraftItem,
+  type ChecklistSnapshot,
+} from './repositories/checklistsRepository';
 export { LabelsRepository, normalizeLabelName } from './repositories/labelsRepository';
 export { NotesRepository } from './repositories/notesRepository';
 export type {

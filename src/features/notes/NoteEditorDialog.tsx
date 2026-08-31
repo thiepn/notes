@@ -13,10 +13,17 @@ interface NoteEditorDialogProps {
   note: NoteRecord;
   repository: NotesRepository;
   onSaved(note: NoteRecord): void;
+  onConvertToChecklist(): Promise<void>;
   onClose(): void;
 }
 
-export function NoteEditorDialog({ note, repository, onSaved, onClose }: NoteEditorDialogProps) {
+export function NoteEditorDialog({
+  note,
+  repository,
+  onSaved,
+  onConvertToChecklist,
+  onClose,
+}: NoteEditorDialogProps) {
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const { draft, errorMessage, status, setTitle, setContent, finishEditing, retrySave } =
     useExistingNoteEditor({ note, repository, onSaved, onClose });
@@ -24,7 +31,6 @@ export function NoteEditorDialog({ note, repository, onSaved, onClose }: NoteEdi
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-
     return () => {
       document.body.style.overflow = previousOverflow;
     };
@@ -33,7 +39,6 @@ export function NoteEditorDialog({ note, repository, onSaved, onClose }: NoteEdi
   useLayoutEffect(() => {
     const textarea = bodyRef.current;
     if (!textarea) return;
-
     textarea.style.height = 'auto';
     textarea.style.height = `${textarea.scrollHeight}px`;
   }, [draft.content]);
@@ -44,7 +49,6 @@ export function NoteEditorDialog({ note, repository, onSaved, onClose }: NoteEdi
       void finishEditing();
       return;
     }
-
     if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
       void finishEditing();
@@ -54,6 +58,11 @@ export function NoteEditorDialog({ note, repository, onSaved, onClose }: NoteEdi
   const handleLayerPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.target !== event.currentTarget) return;
     void finishEditing();
+  };
+
+  const convert = async () => {
+    const saved = await finishEditing();
+    if (saved) await onConvertToChecklist();
   };
 
   return (
@@ -75,7 +84,6 @@ export function NoteEditorDialog({ note, repository, onSaved, onClose }: NoteEdi
           autoComplete="off"
           onChange={(event) => setTitle(event.target.value)}
         />
-
         <textarea
           ref={bodyRef}
           className="note-editor-body"
@@ -86,7 +94,6 @@ export function NoteEditorDialog({ note, repository, onSaved, onClose }: NoteEdi
           autoFocus
           onChange={(event) => setContent(event.target.value)}
         />
-
         <div className="note-editor-footer">
           <div className="note-editor-state" aria-live="polite">
             {status === 'saving' ? <span>Saving…</span> : null}
@@ -99,10 +106,14 @@ export function NoteEditorDialog({ note, repository, onSaved, onClose }: NoteEdi
               </span>
             ) : null}
           </div>
-
-          <button className="note-editor-close" type="button" onClick={() => void finishEditing()}>
-            Close
-          </button>
+          <div className="note-editor-footer-actions">
+            <button className="note-editor-secondary" type="button" onClick={() => void convert()}>
+              Convert to checklist
+            </button>
+            <button className="note-editor-close" type="button" onClick={() => void finishEditing()}>
+              Close
+            </button>
+          </div>
         </div>
       </div>
     </div>

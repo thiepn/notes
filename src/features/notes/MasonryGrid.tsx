@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, type ReactNode } from 'react';
 
-import type { LabelRecord, NoteRecord } from '../../db';
+import type { ChecklistItemRecord, LabelRecord, NoteRecord } from '../../db';
 import { NoteCard, type NoteCardActions, type NoteCollectionMode } from './NoteCard';
 import type { NotesViewMode } from './viewMode';
 
@@ -12,6 +12,7 @@ interface MasonryGridProps {
   actions: NoteCardActions;
   labels: LabelRecord[];
   labelIdsByNote: Record<string, string[]>;
+  checklistItemsByNote: Record<string, ChecklistItemRecord[]>;
 }
 
 export function MasonryGrid({
@@ -22,6 +23,7 @@ export function MasonryGrid({
   actions,
   labels,
   labelIdsByNote,
+  checklistItemsByNote,
 }: MasonryGridProps) {
   return (
     <div className="note-grid" data-view={viewMode} role="list" aria-label={ariaLabel}>
@@ -33,6 +35,7 @@ export function MasonryGrid({
             actions={actions}
             labels={labels}
             selectedLabelIds={labelIdsByNote[note.id] ?? []}
+            checklistItems={checklistItemsByNote[note.id] ?? []}
           />
         </MasonryItem>
       ))}
@@ -56,9 +59,7 @@ function MasonryItem({ children, viewMode }: { children: ReactNode; viewMode: No
 
     const grid = item.parentElement;
     if (!grid) return;
-
     let animationFrame = 0;
-
     const updateSpan = () => {
       cancelAnimationFrame(animationFrame);
       animationFrame = requestAnimationFrame(() => {
@@ -74,7 +75,6 @@ function MasonryItem({ children, viewMode }: { children: ReactNode; viewMode: No
     const observer = new ResizeObserver(updateSpan);
     observer.observe(content);
     updateSpan();
-
     return () => {
       cancelAnimationFrame(animationFrame);
       observer.disconnect();
