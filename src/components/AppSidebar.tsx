@@ -1,8 +1,17 @@
-import { Archive, Bell, Lightbulb, Pencil, ShieldCheck, Tag, Trash2 } from 'lucide-react';
+import {
+  Archive,
+  Bell,
+  DatabaseBackup,
+  Lightbulb,
+  Pencil,
+  ShieldCheck,
+  Tag,
+  Trash2,
+} from 'lucide-react';
 
 import type { LabelRecord } from '../db';
 
-export type AppSection = 'notes' | 'reminders' | 'archive' | 'trash';
+export type AppSection = 'notes' | 'reminders' | 'archive' | 'trash' | 'backup';
 
 interface AppSidebarProps {
   activeSection: AppSection;
@@ -21,6 +30,7 @@ const NAVIGATION = [
   { id: 'reminders', label: 'Reminders', icon: Bell },
   { id: 'archive', label: 'Archive', icon: Archive },
   { id: 'trash', label: 'Trash', icon: Trash2 },
+  { id: 'backup', label: 'Backup', icon: DatabaseBackup },
 ] satisfies Array<{ id: AppSection; label: string; icon: typeof Lightbulb }>;
 
 export function AppSidebar({
