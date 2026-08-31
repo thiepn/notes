@@ -56,7 +56,8 @@ Validation covers:
 - duplicate note-label pairs
 - duplicate setting keys
 - checklist note references
-- checklist parent relationships and supported nesting depth
+- duplicate checklist positions within a note
+- checklist parent relationships, parent-before-child ordering, and supported nesting depth
 - note-label references
 - attachment note references
 - revision note references
@@ -137,6 +138,8 @@ P12 verifies in real Chromium that:
 - replace restore removes rows created after the original backup
 - corrupt/dangling backups are rejected during preview without writes
 - a forced mid-restore write failure rolls the whole replacement back
+
+Unit-level format validation additionally rejects duplicate checklist positions and child rows ordered before their parent.
 
 ## Phase boundary
 
