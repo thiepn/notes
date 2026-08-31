@@ -36,6 +36,7 @@
   --motion-standard: 180ms;
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
 
+  --z-dialog: 100;
   --z-sidebar: 80;
   --z-scrim: 70;
   --z-header: 60;
