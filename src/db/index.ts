@@ -21,6 +21,17 @@ export {
 } from './repositories/checklistsRepository';
 export { LabelsRepository, normalizeLabelName } from './repositories/labelsRepository';
 export { NotesRepository } from './repositories/notesRepository';
+export {
+  RevisionsRepository,
+  parseRevisionPayload,
+  revisionSnapshotSchema,
+  serializeRevisionSnapshot,
+  type RevisionChecklistItemSnapshot,
+  type RevisionCopyResult,
+  type RevisionEntry,
+  type RevisionRestoreResult,
+  type RevisionSnapshot,
+} from './repositories/revisionsRepository';
 export type {
   AttachmentRecord,
   ChecklistItemRecord,
@@ -29,10 +40,11 @@ export type {
   NoteLabelRecord,
   NoteRecord,
   NoteType,
+  RevisionReason,
   RevisionRecord,
   SettingRecord,
 } from './types';
-export { NOTE_COLORS } from './types';
+export { NOTE_COLORS, REVISION_REASONS } from './types';
 export {
   attachmentRecordSchema,
   checklistItemRecordSchema,
