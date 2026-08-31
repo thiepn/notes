@@ -31,7 +31,7 @@ export function NoteCardAttachmentPreview({
   const [loaded, setLoaded] = useState(false);
   const [preview, setPreview] = useState<PreviewState>(EMPTY_PREVIEW);
   const [imageFailed, setImageFailed] = useState(false);
-  const imageUrl = useThumbnailUrl(imageFailed ? null : preview.firstImage?.data ?? null);
+  const imageUrl = useThumbnailUrl(imageFailed ? null : (preview.firstImage?.data ?? null));
 
   useEffect(() => {
     const root = rootRef.current;
@@ -147,7 +147,8 @@ async function createThumbnailBlob(blob: Blob): Promise<Blob> {
   const bitmap = await createImageBitmap(blob);
   try {
     const longest = Math.max(bitmap.width, bitmap.height);
-    const scale = longest > CARD_THUMBNAIL_MAX_DIMENSION ? CARD_THUMBNAIL_MAX_DIMENSION / longest : 1;
+    const scale =
+      longest > CARD_THUMBNAIL_MAX_DIMENSION ? CARD_THUMBNAIL_MAX_DIMENSION / longest : 1;
     const width = Math.max(1, Math.round(bitmap.width * scale));
     const height = Math.max(1, Math.round(bitmap.height * scale));
     const canvas = document.createElement('canvas');
