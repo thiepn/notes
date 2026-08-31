@@ -164,8 +164,9 @@ export function toggleChecklistItem(
 
   if (updated.parentId !== null) {
     next = next.filter((candidate) => candidate.id !== itemId);
-    let insertAt = -1;
-    for (let i = 0; i < next.length; i += 1) {
+    let insertAt = next.findIndex((candidate) => candidate.id === updated.parentId);
+    if (insertAt < 0) return items;
+    for (let i = insertAt + 1; i < next.length; i += 1) {
       if (next[i]?.parentId === updated.parentId) insertAt = i;
     }
     next.splice(insertAt + 1, 0, updated);
