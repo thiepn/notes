@@ -20,6 +20,11 @@ import { useExistingNoteEditor } from './useExistingNoteEditor';
 
 const revisionsRepository = new RevisionsRepository(notesDatabase);
 
+interface HistoricalResult {
+  note: NoteRecord;
+  items: ChecklistItemRecord[];
+}
+
 interface NoteEditorDialogProps {
   note: NoteRecord;
   repository: NotesRepository;
@@ -39,7 +44,8 @@ export function NoteEditorDialog({
 }: NoteEditorDialogProps) {
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const [historyNote, setHistoryNote] = useState<NoteRecord | null>(null);
-  const [historyChanged, setHistoryChanged] = useState(false);
+  const [pendingHistoryResult, setPendingHistoryResult] = useState<HistoricalResult | null>(null);
+  const [pendingHistoryCopies, setPendingHistoryCopies] = useState<HistoricalResult[]>([]);
   const { draft, errorMessage, status, setTitle, setContent, saveNow, finishEditing, retrySave } =
     useExistingNoteEditor({
       note,
@@ -100,25 +106,33 @@ export function NoteEditorDialog({
     }
   };
 
-  const openHistory = async () => {
-    const saved = await saveNow();
-    if (!saved) return;
-    await revisionsRepository.checkpoint(saved.id, 'close');
-    setHistoryNote(saved);
-    setHistoryChanged(false);
-  };
-
-  const closeHistory = () => {
-    setHistoryNote(null);
-    if (historyChanged) onClose();
-  };
-
-  const surfaceHistoricalResult = (result: { note: NoteRecord; items: ChecklistItemRecord[] }) => {
+  const surfaceHistoricalResult = (result: HistoricalResult) => {
     if (result.note.type === 'checklist') {
       onHistoryChecklistSaved(result.note, result.items);
     } else {
       onSaved(result.note);
     }
+  };
+
+  const openHistory = async () => {
+    const saved = await saveNow();
+    if (!saved) return;
+    await revisionsRepository.checkpoint(saved.id, 'close');
+    setHistoryNote(saved);
+    setPendingHistoryResult(null);
+    setPendingHistoryCopies([]);
+  };
+
+  const closeHistory = () => {
+    const result = pendingHistoryResult;
+    const copies = pendingHistoryCopies;
+    setHistoryNote(null);
+    setPendingHistoryResult(null);
+    setPendingHistoryCopies([]);
+
+    for (const copy of copies) surfaceHistoricalResult(copy);
+    if (result) surfaceHistoricalResult(result);
+    if (result || copies.length > 0) onClose();
   };
 
   return (
@@ -196,13 +210,12 @@ export function NoteEditorDialog({
           repository={revisionsRepository}
           onClose={closeHistory}
           onRestored={(result) => {
-            surfaceHistoricalResult(result);
+            setPendingHistoryResult(result);
             setHistoryNote(result.note);
-            setHistoryChanged(true);
           }}
           onCopied={(result) => {
             if (note.archivedAt === null && note.trashedAt === null) {
-              surfaceHistoricalResult(result);
+              setPendingHistoryCopies((current) => [...current, result]);
             }
           }}
         />
