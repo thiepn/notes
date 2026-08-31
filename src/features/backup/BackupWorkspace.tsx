@@ -18,6 +18,7 @@ const backupRepository = new BackupRepository(notesDatabase);
 
 interface BackupWorkspaceProps {
   onRestored(): Promise<void> | void;
+  onImported(): Promise<void> | void;
 }
 
 interface SelectedBackup {
@@ -26,7 +27,7 @@ interface SelectedBackup {
   prepared: PreparedBackup;
 }
 
-export function BackupWorkspace({ onRestored }: BackupWorkspaceProps) {
+export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [selected, setSelected] = useState<SelectedBackup | null>(null);
   const [confirmed, setConfirmed] = useState(false);
@@ -130,7 +131,7 @@ export function BackupWorkspace({ onRestored }: BackupWorkspaceProps) {
         </button>
       </section>
 
-      <GoogleKeepImportPanel onImported={onRestored} />
+      <GoogleKeepImportPanel onImported={onImported} />
 
       <section className="backup-card" aria-labelledby="backup-restore-title">
         <div className="backup-card-icon" aria-hidden="true">
