@@ -144,7 +144,9 @@ export async function prepareGoogleKeepImport(
   if (files.length === 0) throw new Error('Choose a Google Takeout ZIP or extracted Keep files.');
   const inputBytes = files.reduce((total, file) => total + file.size, 0);
   if (inputBytes > MAX_KEEP_ARCHIVE_BYTES) {
-    throw new Error('The selected Google Keep files exceed the 512 MB browser import safety limit.');
+    throw new Error(
+      'The selected Google Keep files exceed the 512 MB browser import safety limit.',
+    );
   }
 
   const collector = createWarningCollector();
@@ -201,7 +203,9 @@ export async function prepareGoogleKeepImport(
   let skippedNotes = 0;
   let missingAttachments = 0;
   let htmlFallbackNotes = 0;
-  const pairedJsonPaths = new Set(jsonEntries.map((entry) => withoutExtension(entry.path).toLocaleLowerCase()));
+  const pairedJsonPaths = new Set(
+    jsonEntries.map((entry) => withoutExtension(entry.path).toLocaleLowerCase()),
+  );
   const parseTotal = jsonEntries.length + htmlEntries.length;
   let parseCompleted = 0;
 
@@ -319,7 +323,12 @@ export async function prepareGoogleKeepImport(
     for (const label of note.labels) uniqueLabels.add(normalizeLabelName(label));
   }
 
-  onProgress?.({ phase: 'ready', completed: parseTotal, total: parseTotal, message: 'Preview ready.' });
+  onProgress?.({
+    phase: 'ready',
+    completed: parseTotal,
+    total: parseTotal,
+    message: 'Preview ready.',
+  });
   return {
     archiveNames: files.map((file) => file.name),
     notes,
@@ -421,15 +430,24 @@ async function mapKeepNote(
   const createdCandidate = usecToMillis(note.createdTimestampUsec);
   const updatedCandidate = usecToMillis(note.userEditedTimestampUsec);
   if (note.createdTimestampUsec !== undefined && createdCandidate === null) {
-    collector.push(source.path, 'The Google Keep creation timestamp was invalid and a fallback was used.');
+    collector.push(
+      source.path,
+      'The Google Keep creation timestamp was invalid and a fallback was used.',
+    );
   }
   if (note.userEditedTimestampUsec !== undefined && updatedCandidate === null) {
-    collector.push(source.path, 'The Google Keep edit timestamp was invalid and a fallback was used.');
+    collector.push(
+      source.path,
+      'The Google Keep edit timestamp was invalid and a fallback was used.',
+    );
   }
   const createdAt = createdCandidate ?? updatedCandidate ?? now;
   let updatedAt = updatedCandidate ?? createdAt;
   if (updatedAt < createdAt) {
-    collector.push(source.path, 'The edit timestamp predates creation and was normalized to creation time.');
+    collector.push(
+      source.path,
+      'The edit timestamp predates creation and was normalized to creation time.',
+    );
     updatedAt = createdAt;
   }
 
@@ -444,7 +462,10 @@ async function mapKeepNote(
   const fallbackHtmlText = note.textContentHtml ? htmlToPlainText(note.textContentHtml) : '';
   const content = isChecklist ? '' : (note.textContent ?? fallbackHtmlText);
   if (isChecklist && (note.textContent?.trim() || fallbackHtmlText.trim())) {
-    collector.push(source.path, 'Both text and checklist content were present; the checklist representation was used.');
+    collector.push(
+      source.path,
+      'Both text and checklist content were present; the checklist representation was used.',
+    );
   }
   if (content.length > 1_000_000)
     throw new Error('The note body exceeds the Notes 1,000,000-character limit.');
@@ -533,7 +554,10 @@ async function mapKeepHtml(
     const resolved = resolveAttachment(source, reference, entryIndex);
     if (!resolved) {
       missingAttachments += 1;
-      collector.push(source.path, `HTML attachment “${reference}” was not found in the selected files.`);
+      collector.push(
+        source.path,
+        `HTML attachment “${reference}” was not found in the selected files.`,
+      );
       continue;
     }
     attachments.push(await prepareAttachment(resolved, reference, undefined, createdAt));
