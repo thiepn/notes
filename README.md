@@ -6,11 +6,9 @@ A local-first, zero-friction notes PWA designed to match Google Keep's capture s
 
 ## Status
 
-**P4 — Note Cards + Main Grid is implemented.** Saved notes now use the permanent responsive card surface with measured Keep-style masonry, persistent grid/list modes, Pinned/Others grouping, theme-aware note colors, and an existing-note editor with serialized autosave and independent reload recovery.
+**P4 — Note Cards + Main Grid is complete.** Saved notes now use the permanent responsive card surface with measured Keep-style masonry, persistent grid/list modes, Pinned/Others grouping, theme-aware note colors, and an existing-note editor with serialized autosave and independent reload recovery.
 
-**Validation status:** the latest P4 GitHub Actions run is queued for runner capacity. The preceding failure was formatting-only and all reported Prettier changes have been applied. P4 should not be considered CI-certified until that queued run completes.
-
-**Next phase after P4 certification:** P5 — Note Lifecycle.
+**Next phase:** P5 — Note Lifecycle.
 
 ## V1 scope
 
