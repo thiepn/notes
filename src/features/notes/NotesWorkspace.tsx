@@ -3,15 +3,21 @@ import { LayoutGrid, NotebookPen, Rows3 } from 'lucide-react';
 
 import { IconButton } from '../../components/ui/IconButton';
 import {
+  BulkActionsRepository,
   ChecklistsRepository,
   LabelsRepository,
   NotesRepository,
   notesDatabase,
+  type BulkColorState,
+  type BulkLabelState,
+  type BulkLifecycleState,
+  type BulkNoteTarget,
   type ChecklistItemRecord,
   type LabelRecord,
   type NoteColor,
   type NoteRecord,
 } from '../../db';
+import { BulkSelectionToolbar } from './BulkSelectionToolbar';
 import { ChecklistComposer } from './ChecklistComposer';
 import { ChecklistEditorDialog } from './ChecklistEditorDialog';
 import {
@@ -23,7 +29,11 @@ import { ConfirmDeleteDialog } from './ConfirmDeleteDialog';
 import { clearEditorJournal, readEditorJournal } from './editorJournal';
 import { LifecycleToast, type LifecycleToastState } from './LifecycleToast';
 import { MasonryGrid } from './MasonryGrid';
-import { type NoteCardActions, type NoteCollectionMode } from './NoteCard';
+import {
+  type NoteCardActions,
+  type NoteCollectionMode,
+  type NoteSelectionIntent,
+} from './NoteCard';
 import { NoteEditorDialog } from './NoteEditorDialog';
 import { TextNoteComposer } from './TextNoteComposer';
 import { readNotesViewMode, writeNotesViewMode, type NotesViewMode } from './viewMode';
@@ -31,9 +41,11 @@ import { readNotesViewMode, writeNotesViewMode, type NotesViewMode } from './vie
 const notesRepository = new NotesRepository(notesDatabase);
 const labelsRepository = new LabelsRepository(notesDatabase);
 const checklistsRepository = new ChecklistsRepository(notesDatabase);
+const bulkActionsRepository = new BulkActionsRepository(notesDatabase);
 const EMPTY_NOTES: NoteRecord[] = [];
 const EMPTY_LABEL_MAP: Record<string, string[]> = {};
 const EMPTY_CHECKLIST_MAP: Record<string, ChecklistItemRecord[]> = {};
+const EMPTY_SELECTION = new Set<string>();
 
 interface NotesWorkspaceProps {
   mode?: NoteCollectionMode;
@@ -48,6 +60,13 @@ interface CollectionState {
   labelIdsByNote: Record<string, string[]>;
   checklistItemsByNote: Record<string, ChecklistItemRecord[]>;
   loaded: boolean;
+}
+
+interface SelectionState {
+  mode: NoteCollectionMode;
+  filterLabelId: string | null;
+  noteIds: Set<string>;
+  anchorId: string | null;
 }
 
 const EMPTY_COPY: Record<NoteCollectionMode, { title: string; description: string }> = {
@@ -90,6 +109,13 @@ export function NotesWorkspace({
   const [viewMode, setViewMode] = useState<NotesViewMode>(() => readNotesViewMode());
   const [toast, setToast] = useState<LifecycleToastState | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<NoteRecord | null>(null);
+  const [bulkDeleteIds, setBulkDeleteIds] = useState<string[] | null>(null);
+  const [selection, setSelection] = useState<SelectionState>({
+    mode,
+    filterLabelId,
+    noteIds: new Set(),
+    anchorId: null,
+  });
 
   const showToast = useCallback((message: string, undo?: () => Promise<void>) => {
     const id = crypto.randomUUID();
@@ -424,6 +450,246 @@ export function NotesWorkspace({
     () => (mode === 'notes' ? visibleNotes.filter((note) => note.pinnedAt === null) : visibleNotes),
     [mode, visibleNotes],
   );
+
+  const selectionMatches = selection.mode === mode && selection.filterLabelId === filterLabelId;
+  const selectedNoteIds = selectionMatches ? selection.noteIds : EMPTY_SELECTION;
+  const selectionActive = selectedNoteIds.size > 0;
+  const selectedNotes = useMemo(
+    () => visibleNotes.filter((note) => selectedNoteIds.has(note.id)),
+    [selectedNoteIds, visibleNotes],
+  );
+
+  const clearSelection = useCallback(() => {
+    setSelection({ mode, filterLabelId, noteIds: new Set(), anchorId: null });
+  }, [filterLabelId, mode]);
+
+  const handleSelectionIntent = useCallback(
+    (note: NoteRecord, intent: NoteSelectionIntent) => {
+      setSelection((current) => {
+        const matches = current.mode === mode && current.filterLabelId === filterLabelId;
+        const nextIds = matches ? new Set(current.noteIds) : new Set<string>();
+        const anchorId = matches ? current.anchorId : null;
+
+        if (intent === 'range') {
+          const anchorIndex = anchorId
+            ? visibleNotes.findIndex((candidate) => candidate.id === anchorId)
+            : -1;
+          const noteIndex = visibleNotes.findIndex((candidate) => candidate.id === note.id);
+          if (anchorIndex >= 0 && noteIndex >= 0) {
+            const start = Math.min(anchorIndex, noteIndex);
+            const end = Math.max(anchorIndex, noteIndex);
+            for (let index = start; index <= end; index += 1) {
+              const candidate = visibleNotes[index];
+              if (candidate) nextIds.add(candidate.id);
+            }
+            return { mode, filterLabelId, noteIds: nextIds, anchorId };
+          }
+          nextIds.add(note.id);
+          return { mode, filterLabelId, noteIds: nextIds, anchorId: note.id };
+        }
+
+        if (intent === 'select') {
+          nextIds.add(note.id);
+          return {
+            mode,
+            filterLabelId,
+            noteIds: nextIds,
+            anchorId: anchorId ?? note.id,
+          };
+        }
+
+        if (nextIds.has(note.id)) nextIds.delete(note.id);
+        else nextIds.add(note.id);
+        return {
+          mode,
+          filterLabelId,
+          noteIds: nextIds,
+          anchorId: nextIds.size > 0 ? note.id : null,
+        };
+      });
+    },
+    [filterLabelId, mode, visibleNotes],
+  );
+
+  const handleSelectAll = useCallback(() => {
+    setSelection((current) => ({
+      mode,
+      filterLabelId,
+      noteIds: new Set(visibleNotes.map((note) => note.id)),
+      anchorId:
+        current.mode === mode && current.filterLabelId === filterLabelId
+          ? current.anchorId ?? visibleNotes[0]?.id ?? null
+          : visibleNotes[0]?.id ?? null,
+    }));
+  }, [filterLabelId, mode, visibleNotes]);
+
+  useEffect(() => {
+    if (!selectionActive) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      if (document.querySelector('.bulk-selection-popover, .confirm-dialog')) return;
+      event.preventDefault();
+      clearSelection();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [clearSelection, selectionActive]);
+
+  const handleBulkSetPinned = useCallback(
+    async (pinned: boolean) => {
+      if (selectedNotes.length === 0) return;
+      const targets = toBulkTargets(selectedNotes);
+      const previous = toLifecycleStates(selectedNotes);
+      try {
+        await bulkActionsRepository.setPinned(targets, pinned);
+        await refreshCollection();
+        showToast(
+          `${selectedNotes.length} ${selectedNotes.length === 1 ? 'note' : 'notes'} ${pinned ? 'pinned' : 'unpinned'}.`,
+          async () => {
+            await bulkActionsRepository.restoreLifecycle(previous);
+            await refreshCollection();
+          },
+        );
+      } catch {
+        showToast('Selected notes could not be updated.');
+      }
+    },
+    [refreshCollection, selectedNotes, showToast],
+  );
+
+  const handleBulkArchive = useCallback(async () => {
+    if (selectedNotes.length === 0) return;
+    const targets = toBulkTargets(selectedNotes);
+    const previous = toLifecycleStates(selectedNotes);
+    const count = selectedNotes.length;
+    try {
+      await bulkActionsRepository.archive(targets);
+      clearSelection();
+      await refreshCollection();
+      showToast(`${count} ${count === 1 ? 'note' : 'notes'} archived.`, async () => {
+        await bulkActionsRepository.restoreLifecycle(previous);
+        await refreshCollection();
+      });
+    } catch {
+      showToast('Selected notes could not be archived.');
+    }
+  }, [clearSelection, refreshCollection, selectedNotes, showToast]);
+
+  const handleBulkUnarchive = useCallback(async () => {
+    if (selectedNotes.length === 0) return;
+    const targets = toBulkTargets(selectedNotes);
+    const previous = toLifecycleStates(selectedNotes);
+    const count = selectedNotes.length;
+    try {
+      await bulkActionsRepository.unarchive(targets);
+      clearSelection();
+      await refreshCollection();
+      showToast(`${count} ${count === 1 ? 'note' : 'notes'} moved to Notes.`, async () => {
+        await bulkActionsRepository.restoreLifecycle(previous);
+        await refreshCollection();
+      });
+    } catch {
+      showToast('Selected notes could not be moved to Notes.');
+    }
+  }, [clearSelection, refreshCollection, selectedNotes, showToast]);
+
+  const handleBulkTrash = useCallback(async () => {
+    if (selectedNotes.length === 0) return;
+    const targets = toBulkTargets(selectedNotes);
+    const previous = toLifecycleStates(selectedNotes);
+    const count = selectedNotes.length;
+    try {
+      await bulkActionsRepository.trash(targets);
+      clearSelection();
+      await refreshCollection();
+      showToast(`${count} ${count === 1 ? 'note' : 'notes'} moved to trash.`, async () => {
+        await bulkActionsRepository.restoreLifecycle(previous);
+        await refreshCollection();
+      });
+    } catch {
+      showToast('Selected notes could not be moved to trash.');
+    }
+  }, [clearSelection, refreshCollection, selectedNotes, showToast]);
+
+  const handleBulkRestore = useCallback(async () => {
+    if (selectedNotes.length === 0) return;
+    const targets = toBulkTargets(selectedNotes);
+    const previous = toLifecycleStates(selectedNotes);
+    const count = selectedNotes.length;
+    try {
+      await bulkActionsRepository.restore(targets);
+      clearSelection();
+      await refreshCollection();
+      showToast(`${count} ${count === 1 ? 'note' : 'notes'} restored.`, async () => {
+        await bulkActionsRepository.restoreLifecycle(previous);
+        await refreshCollection();
+      });
+    } catch {
+      showToast('Selected notes could not be restored.');
+    }
+  }, [clearSelection, refreshCollection, selectedNotes, showToast]);
+
+  const handleBulkSetColor = useCallback(
+    async (color: NoteColor) => {
+      if (selectedNotes.length === 0 || selectedNotes.every((note) => note.color === color)) return;
+      const targets = toBulkTargets(selectedNotes);
+      const previous: BulkColorState[] = selectedNotes.map((note) => ({ id: note.id, color: note.color }));
+      const count = selectedNotes.length;
+      try {
+        await bulkActionsRepository.setColor(targets, color);
+        await refreshCollection();
+        showToast(`Color changed for ${count} ${count === 1 ? 'note' : 'notes'}.`, async () => {
+          await bulkActionsRepository.restoreColors(previous);
+          await refreshCollection();
+        });
+      } catch {
+        showToast('Selected note colors could not be changed.');
+      }
+    },
+    [refreshCollection, selectedNotes, showToast],
+  );
+
+  const handleBulkSetLabelMembership = useCallback(
+    async (labelId: string, assigned: boolean) => {
+      if (selectedNotes.length === 0) return;
+      const previous: BulkLabelState[] = selectedNotes.map((note) => ({
+        noteId: note.id,
+        labelIds: [...(labelIdsByNote[note.id] ?? [])],
+      }));
+      const count = selectedNotes.length;
+      try {
+        await bulkActionsRepository.setLabelMembership(
+          selectedNotes.map((note) => note.id),
+          labelId,
+          assigned,
+        );
+        clearSelection();
+        await refreshCollection();
+        showToast(`Labels updated for ${count} ${count === 1 ? 'note' : 'notes'}.`, async () => {
+          await bulkActionsRepository.restoreLabels(previous);
+          await refreshCollection();
+        });
+      } catch {
+        showToast('Selected note labels could not be changed.');
+      }
+    },
+    [clearSelection, labelIdsByNote, refreshCollection, selectedNotes, showToast],
+  );
+
+  const handleConfirmBulkDelete = useCallback(async () => {
+    const noteIds = bulkDeleteIds;
+    if (!noteIds || noteIds.length === 0) return;
+    setBulkDeleteIds(null);
+    try {
+      const deleted = await bulkActionsRepository.deletePermanently(noteIds);
+      clearSelection();
+      await refreshCollection();
+      showToast(`${deleted} ${deleted === 1 ? 'note' : 'notes'} deleted permanently.`);
+    } catch {
+      showToast('Selected notes could not be deleted.');
+    }
+  }, [bulkDeleteIds, clearSelection, refreshCollection, showToast]);
+
   const editingNote = notes.find((note) => note.id === editingNoteId) ?? null;
   const emptyCopy = filterLabelId
     ? {
@@ -459,31 +725,53 @@ export function NotesWorkspace({
 
       {visibleNotes.length > 0 ? (
         <div className="notes-board" data-view={viewMode} data-mode={mode}>
-          <div className="notes-toolbar">
-            <span className="notes-count">
-              {visibleNotes.length} {visibleNotes.length === 1 ? 'note' : 'notes'}
-            </span>
-            <div className="notes-view-toggle" role="group" aria-label="Note view">
-              <IconButton
-                className="notes-view-button"
-                label="Grid view"
-                aria-pressed={viewMode === 'grid'}
-                data-active={viewMode === 'grid'}
-                onClick={() => handleViewMode('grid')}
-              >
-                <LayoutGrid />
-              </IconButton>
-              <IconButton
-                className="notes-view-button"
-                label="List view"
-                aria-pressed={viewMode === 'list'}
-                data-active={viewMode === 'list'}
-                onClick={() => handleViewMode('list')}
-              >
-                <Rows3 />
-              </IconButton>
+          {selectionActive ? (
+            <BulkSelectionToolbar
+              mode={mode}
+              selectedNotes={selectedNotes}
+              visibleCount={visibleNotes.length}
+              labels={labels}
+              labelIdsByNote={labelIdsByNote}
+              onClear={clearSelection}
+              onSelectAll={handleSelectAll}
+              onSetPinned={(pinned) => void handleBulkSetPinned(pinned)}
+              onArchive={() => void handleBulkArchive()}
+              onUnarchive={() => void handleBulkUnarchive()}
+              onTrash={() => void handleBulkTrash()}
+              onRestore={() => void handleBulkRestore()}
+              onDeletePermanently={() => setBulkDeleteIds(selectedNotes.map((note) => note.id))}
+              onSetColor={(color) => void handleBulkSetColor(color)}
+              onSetLabelMembership={(labelId, assigned) =>
+                void handleBulkSetLabelMembership(labelId, assigned)
+              }
+            />
+          ) : (
+            <div className="notes-toolbar">
+              <span className="notes-count">
+                {visibleNotes.length} {visibleNotes.length === 1 ? 'note' : 'notes'}
+              </span>
+              <div className="notes-view-toggle" role="group" aria-label="Note view">
+                <IconButton
+                  className="notes-view-button"
+                  label="Grid view"
+                  aria-pressed={viewMode === 'grid'}
+                  data-active={viewMode === 'grid'}
+                  onClick={() => handleViewMode('grid')}
+                >
+                  <LayoutGrid />
+                </IconButton>
+                <IconButton
+                  className="notes-view-button"
+                  label="List view"
+                  aria-pressed={viewMode === 'list'}
+                  data-active={viewMode === 'list'}
+                  onClick={() => handleViewMode('list')}
+                >
+                  <Rows3 />
+                </IconButton>
+              </div>
             </div>
-          </div>
+          )}
 
           {pinnedNotes.length > 0 ? (
             <NoteSection
@@ -495,6 +783,9 @@ export function NotesWorkspace({
               labels={labels}
               labelIdsByNote={labelIdsByNote}
               checklistItemsByNote={checklistItemsByNote}
+              selectedNoteIds={selectedNoteIds}
+              selectionActive={selectionActive}
+              onSelectionIntent={handleSelectionIntent}
             />
           ) : null}
           {otherNotes.length > 0 ? (
@@ -507,6 +798,9 @@ export function NotesWorkspace({
               labels={labels}
               labelIdsByNote={labelIdsByNote}
               checklistItemsByNote={checklistItemsByNote}
+              selectedNoteIds={selectedNoteIds}
+              selectionActive={selectionActive}
+              onSelectionIntent={handleSelectionIntent}
             />
           ) : null}
         </div>
@@ -559,6 +853,13 @@ export function NotesWorkspace({
           onConfirm={() => void handleConfirmDelete()}
         />
       ) : null}
+      {bulkDeleteIds ? (
+        <ConfirmDeleteDialog
+          count={bulkDeleteIds.length}
+          onCancel={() => setBulkDeleteIds(null)}
+          onConfirm={() => void handleConfirmBulkDelete()}
+        />
+      ) : null}
     </>
   );
 }
@@ -572,6 +873,9 @@ function NoteSection({
   labels,
   labelIdsByNote,
   checklistItemsByNote,
+  selectedNoteIds,
+  selectionActive,
+  onSelectionIntent,
 }: {
   title: string | null;
   notes: NoteRecord[];
@@ -581,6 +885,9 @@ function NoteSection({
   labels: LabelRecord[];
   labelIdsByNote: Record<string, string[]>;
   checklistItemsByNote: Record<string, ChecklistItemRecord[]>;
+  selectedNoteIds: Set<string>;
+  selectionActive: boolean;
+  onSelectionIntent(note: NoteRecord, intent: NoteSelectionIntent): void;
 }) {
   const ariaLabel =
     title !== null
@@ -602,6 +909,9 @@ function NoteSection({
         labels={labels}
         labelIdsByNote={labelIdsByNote}
         checklistItemsByNote={checklistItemsByNote}
+        selectedNoteIds={selectedNoteIds}
+        selectionActive={selectionActive}
+        onSelectionIntent={onSelectionIntent}
       />
     </section>
   );
@@ -658,4 +968,17 @@ function sameStringSet(a: string[], b: string[]): boolean {
   if (a.length !== b.length) return false;
   const values = new Set(a);
   return b.every((value) => values.has(value));
+}
+
+function toBulkTargets(notes: NoteRecord[]): BulkNoteTarget[] {
+  return notes.map((note) => ({ id: note.id, expectedRevision: note.revision }));
+}
+
+function toLifecycleStates(notes: NoteRecord[]): BulkLifecycleState[] {
+  return notes.map((note) => ({
+    id: note.id,
+    pinnedAt: note.pinnedAt,
+    archivedAt: note.archivedAt,
+    trashedAt: note.trashedAt,
+  }));
 }

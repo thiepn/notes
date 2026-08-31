@@ -8,6 +8,13 @@ export {
 export { InvalidNoteStateError, NoteConflictError, NoteNotFoundError } from './errors';
 export { DATABASE_SCHEMA_V1, DATABASE_VERSION } from './migrations/v1';
 export {
+  BulkActionsRepository,
+  type BulkColorState,
+  type BulkLabelState,
+  type BulkLifecycleState,
+  type BulkNoteTarget,
+} from './repositories/bulkActionsRepository';
+export {
   ChecklistsRepository,
   type ChecklistDraftItem,
   type ChecklistSnapshot,

@@ -1,5 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
-import { Archive, Copy, Palette, Pin, PinOff, RotateCcw, Tag, Trash2 } from 'lucide-react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
+import { Archive, Check, Copy, Palette, Pin, PinOff, RotateCcw, Tag, Trash2 } from 'lucide-react';
 
 import { IconButton } from '../../components/ui/IconButton';
 import type { ChecklistItemRecord, LabelRecord, NoteColor, NoteRecord } from '../../db';
@@ -7,6 +13,7 @@ import { NoteColorPicker } from './NoteColorPicker';
 import { NoteLabelPicker } from './NoteLabelPicker';
 
 export type NoteCollectionMode = 'notes' | 'archive' | 'trash';
+export type NoteSelectionIntent = 'toggle' | 'range' | 'select';
 
 export interface NoteCardActions {
   open(note: NoteRecord): void;
@@ -21,6 +28,12 @@ export interface NoteCardActions {
   setLabels(note: NoteRecord, labelIds: string[]): void;
 }
 
+export interface NoteCardSelection {
+  active: boolean;
+  selected: boolean;
+  onIntent(note: NoteRecord, intent: NoteSelectionIntent): void;
+}
+
 interface NoteCardProps {
   note: NoteRecord;
   mode: NoteCollectionMode;
@@ -28,9 +41,12 @@ interface NoteCardProps {
   labels: LabelRecord[];
   selectedLabelIds: string[];
   checklistItems: ChecklistItemRecord[];
+  selection: NoteCardSelection;
 }
 
 type OrganizationPanel = 'color' | 'labels' | null;
+
+const LONG_PRESS_MS = 480;
 
 export function NoteCard({
   note,
@@ -39,15 +55,19 @@ export function NoteCard({
   labels,
   selectedLabelIds,
   checklistItems,
+  selection,
 }: NoteCardProps) {
   const cardRef = useRef<HTMLElement>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressTriggeredRef = useRef(false);
   const [openPanel, setOpenPanel] = useState<OrganizationPanel>(null);
   const label = noteLabel(note, checklistItems);
   const canOpen = mode !== 'trash';
   const selectedLabels = labels.filter((item) => selectedLabelIds.includes(item.id));
+  const visiblePanel = selection.active ? null : openPanel;
 
   useEffect(() => {
-    if (!openPanel) return;
+    if (!visiblePanel) return;
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target;
       if (!(target instanceof Node)) return;
@@ -63,7 +83,49 @@ export function NoteCard({
       document.removeEventListener('pointerdown', handlePointerDown, true);
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [openPanel]);
+  }, [visiblePanel]);
+
+  useEffect(
+    () => () => {
+      if (longPressTimerRef.current !== null) clearTimeout(longPressTimerRef.current);
+    },
+    [],
+  );
+
+  const clearLongPress = () => {
+    if (longPressTimerRef.current === null) return;
+    clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = null;
+  };
+
+  const handlePointerDown = (event: ReactPointerEvent<HTMLElement>) => {
+    if (event.pointerType === 'mouse' || event.button !== 0) return;
+    const target = event.target;
+    if (!(target instanceof Element) || !target.closest('.note-card-open')) return;
+
+    longPressTriggeredRef.current = false;
+    clearLongPress();
+    longPressTimerRef.current = setTimeout(() => {
+      longPressTimerRef.current = null;
+      longPressTriggeredRef.current = true;
+      selection.onIntent(note, 'select');
+    }, LONG_PRESS_MS);
+  };
+
+  const handleOpenClick = (event: ReactMouseEvent<HTMLButtonElement>) => {
+    if (longPressTriggeredRef.current) {
+      longPressTriggeredRef.current = false;
+      event.preventDefault();
+      return;
+    }
+
+    if (selection.active || event.metaKey || event.ctrlKey || event.shiftKey) {
+      event.preventDefault();
+      selection.onIntent(note, event.shiftKey ? 'range' : 'toggle');
+      return;
+    }
+    actions.open(note);
+  };
 
   return (
     <article
@@ -74,13 +136,32 @@ export function NoteCard({
       data-note-type={note.type}
       data-color={note.color}
       data-pinned={note.pinnedAt !== null}
+      data-selected={selection.selected}
+      data-selection-active={selection.active}
+      onPointerDown={handlePointerDown}
+      onPointerUp={clearLongPress}
+      onPointerCancel={clearLongPress}
+      onPointerLeave={clearLongPress}
     >
+      <button
+        className="note-card-select"
+        type="button"
+        aria-label={`${selection.selected ? 'Deselect' : 'Select'} note: ${label}`}
+        aria-pressed={selection.selected}
+        onClick={(event) => {
+          event.stopPropagation();
+          selection.onIntent(note, 'toggle');
+        }}
+      >
+        <span aria-hidden="true">{selection.selected ? <Check /> : null}</span>
+      </button>
+
       {canOpen ? (
         <button
           className="note-card-open"
           type="button"
           aria-label={`Open note: ${label}`}
-          onClick={() => actions.open(note)}
+          onClick={handleOpenClick}
         >
           <NoteCardContent note={note} labels={selectedLabels} checklistItems={checklistItems} />
         </button>
@@ -90,7 +171,7 @@ export function NoteCard({
         </div>
       )}
 
-      {mode === 'notes' ? (
+      {!selection.active && mode === 'notes' ? (
         <div className="note-card-pin-action">
           <IconButton
             className="note-card-action"
@@ -102,105 +183,107 @@ export function NoteCard({
         </div>
       ) : null}
 
-      <div className="note-card-actions">
-        {mode !== 'trash' ? (
-          <>
-            <div className="note-card-action-slot">
-              <IconButton
-                className="note-card-action"
-                label={`Change color: ${label}`}
-                aria-expanded={openPanel === 'color'}
-                onClick={() => setOpenPanel((current) => (current === 'color' ? null : 'color'))}
-              >
-                <Palette />
-              </IconButton>
-              {openPanel === 'color' ? (
-                <NoteColorPicker
-                  noteLabel={label}
-                  value={note.color}
-                  onChange={(color) => {
-                    setOpenPanel(null);
-                    actions.setColor(note, color);
-                  }}
-                />
-              ) : null}
-            </div>
-            <div className="note-card-action-slot">
-              <IconButton
-                className="note-card-action"
-                label={`Change labels: ${label}`}
-                aria-expanded={openPanel === 'labels'}
-                onClick={() => setOpenPanel((current) => (current === 'labels' ? null : 'labels'))}
-              >
-                <Tag />
-              </IconButton>
-              {openPanel === 'labels' ? (
-                <NoteLabelPicker
-                  labels={labels}
-                  noteLabel={label}
-                  selectedLabelIds={selectedLabelIds}
-                  onChange={(labelIds) => actions.setLabels(note, labelIds)}
-                />
-              ) : null}
-            </div>
-          </>
-        ) : null}
+      {!selection.active ? (
+        <div className="note-card-actions">
+          {mode !== 'trash' ? (
+            <>
+              <div className="note-card-action-slot">
+                <IconButton
+                  className="note-card-action"
+                  label={`Change color: ${label}`}
+                  aria-expanded={visiblePanel === 'color'}
+                  onClick={() => setOpenPanel((current) => (current === 'color' ? null : 'color'))}
+                >
+                  <Palette />
+                </IconButton>
+                {visiblePanel === 'color' ? (
+                  <NoteColorPicker
+                    noteLabel={label}
+                    value={note.color}
+                    onChange={(color) => {
+                      setOpenPanel(null);
+                      actions.setColor(note, color);
+                    }}
+                  />
+                ) : null}
+              </div>
+              <div className="note-card-action-slot">
+                <IconButton
+                  className="note-card-action"
+                  label={`Change labels: ${label}`}
+                  aria-expanded={visiblePanel === 'labels'}
+                  onClick={() => setOpenPanel((current) => (current === 'labels' ? null : 'labels'))}
+                >
+                  <Tag />
+                </IconButton>
+                {visiblePanel === 'labels' ? (
+                  <NoteLabelPicker
+                    labels={labels}
+                    noteLabel={label}
+                    selectedLabelIds={selectedLabelIds}
+                    onChange={(labelIds) => actions.setLabels(note, labelIds)}
+                  />
+                ) : null}
+              </div>
+            </>
+          ) : null}
 
-        {mode === 'notes' ? (
-          <IconButton
-            className="note-card-action"
-            label={`Archive note: ${label}`}
-            onClick={() => actions.archive(note)}
-          >
-            <Archive />
-          </IconButton>
-        ) : null}
-        {mode === 'archive' ? (
-          <IconButton
-            className="note-card-action"
-            label={`Unarchive note: ${label}`}
-            onClick={() => actions.unarchive(note)}
-          >
-            <RotateCcw />
-          </IconButton>
-        ) : null}
-        {mode !== 'trash' ? (
-          <IconButton
-            className="note-card-action"
-            label={`Duplicate note: ${label}`}
-            onClick={() => actions.duplicate(note)}
-          >
-            <Copy />
-          </IconButton>
-        ) : null}
-        {mode !== 'trash' ? (
-          <IconButton
-            className="note-card-action"
-            label={`Move note to trash: ${label}`}
-            onClick={() => actions.trash(note)}
-          >
-            <Trash2 />
-          </IconButton>
-        ) : null}
-        {mode === 'trash' ? (
-          <>
+          {mode === 'notes' ? (
             <IconButton
               className="note-card-action"
-              label={`Restore note: ${label}`}
-              onClick={() => actions.restore(note)}
+              label={`Archive note: ${label}`}
+              onClick={() => actions.archive(note)}
+            >
+              <Archive />
+            </IconButton>
+          ) : null}
+          {mode === 'archive' ? (
+            <IconButton
+              className="note-card-action"
+              label={`Unarchive note: ${label}`}
+              onClick={() => actions.unarchive(note)}
             >
               <RotateCcw />
             </IconButton>
+          ) : null}
+          {mode !== 'trash' ? (
             <IconButton
-              className="note-card-action note-card-action-danger"
-              label={`Delete note permanently: ${label}`}
-              onClick={() => actions.deletePermanently(note)}
+              className="note-card-action"
+              label={`Duplicate note: ${label}`}
+              onClick={() => actions.duplicate(note)}
+            >
+              <Copy />
+            </IconButton>
+          ) : null}
+          {mode !== 'trash' ? (
+            <IconButton
+              className="note-card-action"
+              label={`Move note to trash: ${label}`}
+              onClick={() => actions.trash(note)}
             >
               <Trash2 />
             </IconButton>
-          </>
-        ) : null}
-      </div>
+          ) : null}
+          {mode === 'trash' ? (
+            <>
+              <IconButton
+                className="note-card-action"
+                label={`Restore note: ${label}`}
+                onClick={() => actions.restore(note)}
+              >
+                <RotateCcw />
+              </IconButton>
+              <IconButton
+                className="note-card-action note-card-action-danger"
+                label={`Delete note permanently: ${label}`}
+                onClick={() => actions.deletePermanently(note)}
+              >
+                <Trash2 />
+              </IconButton>
+            </>
+          ) : null}
+        </div>
+      ) : null}
     </article>
   );
 }

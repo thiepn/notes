@@ -1,12 +1,13 @@
 import { useEffect, type PointerEvent as ReactPointerEvent } from 'react';
 
 interface ConfirmDeleteDialogProps {
-  title: string;
+  title?: string;
+  count?: number;
   onCancel(): void;
   onConfirm(): void;
 }
 
-export function ConfirmDeleteDialog({ title, onCancel, onConfirm }: ConfirmDeleteDialogProps) {
+export function ConfirmDeleteDialog({ title = '', count, onCancel, onConfirm }: ConfirmDeleteDialogProps) {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -23,6 +24,13 @@ export function ConfirmDeleteDialog({ title, onCancel, onConfirm }: ConfirmDelet
     if (event.target === event.currentTarget) onCancel();
   };
 
+  const isBulk = count !== undefined && count > 1;
+  const description = isBulk
+    ? `${count} selected notes will be permanently deleted.`
+    : title
+      ? `“${title}” will be permanently deleted.`
+      : 'This note will be permanently deleted.';
+
   return (
     <div className="confirm-dialog-layer" onPointerDown={handleLayerPointerDown}>
       <div
@@ -32,12 +40,11 @@ export function ConfirmDeleteDialog({ title, onCancel, onConfirm }: ConfirmDelet
         aria-labelledby="confirm-delete-title"
         aria-describedby="confirm-delete-description"
       >
-        <h2 id="confirm-delete-title">Delete note permanently?</h2>
+        <h2 id="confirm-delete-title">
+          {isBulk ? `Delete ${count} notes permanently?` : 'Delete note permanently?'}
+        </h2>
         <p id="confirm-delete-description">
-          {title
-            ? `“${title}” will be permanently deleted.`
-            : 'This note will be permanently deleted.'}{' '}
-          This cannot be undone.
+          {description} This cannot be undone.
         </p>
         <div className="confirm-dialog-actions">
           <button type="button" autoFocus onClick={onCancel}>

@@ -1,7 +1,12 @@
 import { useLayoutEffect, useRef, type ReactNode } from 'react';
 
 import type { ChecklistItemRecord, LabelRecord, NoteRecord } from '../../db';
-import { NoteCard, type NoteCardActions, type NoteCollectionMode } from './NoteCard';
+import {
+  NoteCard,
+  type NoteCardActions,
+  type NoteCollectionMode,
+  type NoteSelectionIntent,
+} from './NoteCard';
 import type { NotesViewMode } from './viewMode';
 
 interface MasonryGridProps {
@@ -13,6 +18,9 @@ interface MasonryGridProps {
   labels: LabelRecord[];
   labelIdsByNote: Record<string, string[]>;
   checklistItemsByNote: Record<string, ChecklistItemRecord[]>;
+  selectedNoteIds: Set<string>;
+  selectionActive: boolean;
+  onSelectionIntent(note: NoteRecord, intent: NoteSelectionIntent): void;
 }
 
 export function MasonryGrid({
@@ -24,6 +32,9 @@ export function MasonryGrid({
   labels,
   labelIdsByNote,
   checklistItemsByNote,
+  selectedNoteIds,
+  selectionActive,
+  onSelectionIntent,
 }: MasonryGridProps) {
   return (
     <div className="note-grid" data-view={viewMode} role="list" aria-label={ariaLabel}>
@@ -36,6 +47,11 @@ export function MasonryGrid({
             labels={labels}
             selectedLabelIds={labelIdsByNote[note.id] ?? []}
             checklistItems={checklistItemsByNote[note.id] ?? []}
+            selection={{
+              active: selectionActive,
+              selected: selectedNoteIds.has(note.id),
+              onIntent: onSelectionIntent,
+            }}
           />
         </MasonryItem>
       ))}
@@ -59,7 +75,9 @@ function MasonryItem({ children, viewMode }: { children: ReactNode; viewMode: No
 
     const grid = item.parentElement;
     if (!grid) return;
+
     let animationFrame = 0;
+
     const updateSpan = () => {
       cancelAnimationFrame(animationFrame);
       animationFrame = requestAnimationFrame(() => {
@@ -75,6 +93,7 @@ function MasonryItem({ children, viewMode }: { children: ReactNode; viewMode: No
     const observer = new ResizeObserver(updateSpan);
     observer.observe(content);
     updateSpan();
+
     return () => {
       cancelAnimationFrame(animationFrame);
       observer.disconnect();
