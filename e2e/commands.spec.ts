@@ -99,6 +99,7 @@ test('J and K cycle focus through visible cards and Enter opens the focused note
 
 test('focused-card P, #, E, and Delete shortcuts use normal card actions', async ({ page }) => {
   const ids = await seedKeyboardLibrary(page);
+  const sidebar = page.getByTestId('app-sidebar');
 
   await page.keyboard.press('j');
   const targetId = await focusedNoteId(page);
@@ -123,7 +124,7 @@ test('focused-card P, #, E, and Delete shortcuts use normal card actions', async
   expect(archiveTargetId).not.toBeNull();
   await page.keyboard.press('e');
   await expect(page.locator(`[data-note-id="${archiveTargetId}"]`)).toHaveCount(0);
-  await page.getByRole('button', { name: 'Archive' }).click();
+  await sidebar.getByRole('button', { name: 'Archive', exact: true }).click();
   await expect(page.locator(`[data-note-id="${archiveTargetId}"]`)).toBeVisible();
 
   await page.keyboard.press('j');
@@ -131,7 +132,7 @@ test('focused-card P, #, E, and Delete shortcuts use normal card actions', async
   expect(trashTargetId).not.toBeNull();
   await page.keyboard.press('Delete');
   await expect(page.locator(`[data-note-id="${trashTargetId}"]`)).toHaveCount(0);
-  await page.getByRole('button', { name: 'Trash' }).click();
+  await sidebar.getByRole('button', { name: 'Trash', exact: true }).click();
   await expect(page.locator(`[data-note-id="${trashTargetId}"]`)).toBeVisible();
 
   expect(ids.labelId).toBeTruthy();
