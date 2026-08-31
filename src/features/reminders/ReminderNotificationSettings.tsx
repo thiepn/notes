@@ -33,7 +33,9 @@ export function ReminderNotificationSettings() {
         <ShieldAlert aria-hidden="true" />
         <div>
           <strong>Notifications blocked</strong>
-          <span>Enable notifications for this site in your browser settings if you want local alerts.</span>
+          <span>
+            Enable notifications for this site in your browser settings if you want local alerts.
+          </span>
         </div>
       </div>
     );
