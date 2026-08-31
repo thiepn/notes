@@ -318,10 +318,7 @@ export class GoogleKeepImportRepository {
   }
 }
 
-function shouldImportNote(
-  source: PreparedKeepNote,
-  selection: GoogleKeepImportSelection,
-): boolean {
+function shouldImportNote(source: PreparedKeepNote, selection: GoogleKeepImportSelection): boolean {
   if (source.trashed) return selection.trashed;
   if (source.archived) return selection.archived;
   return selection.active;
