@@ -158,19 +158,28 @@ export function RemindersWorkspace({ labels }: RemindersWorkspaceProps) {
       open: (note) => setEditingNoteId(note.id),
       togglePin: () => undefined,
       archive: (note) => {
-        void notesRepository.archive(note.id, note.revision).then(reload).catch(() => {
-          showToast('Note could not be archived.');
-        });
+        void notesRepository
+          .archive(note.id, note.revision)
+          .then(reload)
+          .catch(() => {
+            showToast('Note could not be archived.');
+          });
       },
       unarchive: (note) => {
-        void notesRepository.unarchive(note.id, note.revision).then(reload).catch(() => {
-          showToast('Note could not be moved to Notes.');
-        });
+        void notesRepository
+          .unarchive(note.id, note.revision)
+          .then(reload)
+          .catch(() => {
+            showToast('Note could not be moved to Notes.');
+          });
       },
       trash: (note) => {
-        void notesRepository.trash(note.id, note.revision).then(reload).catch(() => {
-          showToast('Note could not be moved to trash.');
-        });
+        void notesRepository
+          .trash(note.id, note.revision)
+          .then(reload)
+          .catch(() => {
+            showToast('Note could not be moved to trash.');
+          });
       },
       restore: () => undefined,
       duplicate: (note) => {
