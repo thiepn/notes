@@ -20,7 +20,9 @@ async function tomorrowInput(page: Page) {
   });
 }
 
-test('reminders can be scheduled, viewed, completed, and restored with their note', async ({ page }) => {
+test('reminders can be scheduled, viewed, completed, and restored with their note', async ({
+  page,
+}) => {
   await page.goto('./');
   await createTextNote(page, 'Call tomorrow');
 
@@ -39,7 +41,9 @@ test('reminders can be scheduled, viewed, completed, and restored with their not
 
   const stored = await page.evaluate(async () => {
     const db = await import('/notes/src/db/index.ts');
-    const note = (await db.notesDatabase.notes.toArray()).find((item) => item.title === 'Call tomorrow');
+    const note = (await db.notesDatabase.notes.toArray()).find(
+      (item) => item.title === 'Call tomorrow',
+    );
     const reminder = note
       ? await db.notesDatabase.reminders.where('noteId').equals(note.id).first()
       : undefined;
@@ -60,7 +64,9 @@ test('reminders can be scheduled, viewed, completed, and restored with their not
   await expect(reminderEditor.getByText('Reminder completed')).toBeVisible();
   await reminderEditor.getByRole('button', { name: 'Close' }).click();
 
-  await expect(page.getByRole('heading', { name: 'Completed & dismissed', level: 2 })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Completed & dismissed', level: 2 }),
+  ).toBeVisible();
   await expect(page.locator('.note-card-reminder').filter({ hasText: 'Completed' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Open note: Call tomorrow' }).click();
@@ -107,7 +113,13 @@ test('has:reminder tracks active reminder changes without leaving search', async
   await expect(page.getByRole('button', { name: 'Open note: Search reminder' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Open note: Search reminder' }).click();
-  await page.getByRole('dialog', { name: 'Edit note' }).getByRole('button', { name: 'Dismiss' }).click();
-  await page.getByRole('dialog', { name: 'Edit note' }).getByRole('button', { name: 'Close' }).click();
+  await page
+    .getByRole('dialog', { name: 'Edit note' })
+    .getByRole('button', { name: 'Dismiss' })
+    .click();
+  await page
+    .getByRole('dialog', { name: 'Edit note' })
+    .getByRole('button', { name: 'Close' })
+    .click();
   await expect(page.getByRole('button', { name: 'Open note: Search reminder' })).not.toBeVisible();
 });
