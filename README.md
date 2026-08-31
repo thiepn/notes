@@ -6,9 +6,9 @@ A local-first, zero-friction notes PWA designed to match Google Keep's capture s
 
 ## Status
 
-**P9 — Search System is complete.** Notes now support instant local search across active and archived notes, accent-insensitive multilingual matching, title/body/checklist/label retrieval, relevance ordering, type/status/color/label/date filters, advanced query operators, image/link predicates, `/` keyboard focus, editable search results, and a permanent 10,000-note search-performance regression gate.
+**P10 — Command Palette + Keyboard UX is complete.** Notes now support a searchable `Ctrl/⌘+K` command palette, global capture/search/navigation/view commands, real DOM card focus with J/K navigation and native Enter opening, focused-card pin/archive/label/trash shortcuts, and strict shortcut suppression while typing or operating composers and dialogs.
 
-**Next phase:** P10 — Command Palette + Keyboard UX.
+**Next phase:** P11 — Revision History + Recovery.
 
 ## V1 scope
 
@@ -49,17 +49,20 @@ V1 explicitly excludes cloud sync, accounts, collaboration, AI, OCR, voice notes
 - Dependency-free in-memory search over a normalized IndexedDB-derived document index
 - Accent-insensitive multilingual normalization with title/label/checklist/body relevance weighting
 - Search filters and query operators for type, status, color, labels, dates, images, and links
+- Searchable command palette with global navigation, creation, organization, view, and appearance commands
+- Real DOM card focus for J/K navigation and native Enter activation
+- Shortcut safety guards for editable controls, composers, and modal dialogs
 - Database-backed Notes, Archive, and Trash collections with persisted primary navigation
 - Case-insensitive normalized labels backed by a many-to-many `noteLabels` relationship table
 - Persistent color and label organization with label-filtered views and automatic label inheritance during capture
 - Tokenized responsive design system with light/dark/system appearance
 - Vite PWA / service-worker layer
 - Vitest for unit tests
-- Playwright for real-browser IndexedDB, capture recovery, card/grid, lifecycle, organization, checklist, selection/bulk, search, responsive-shell, and end-to-end tests
+- Playwright for real-browser IndexedDB, capture recovery, card/grid, lifecycle, organization, checklist, selection/bulk, search, command/keyboard, responsive-shell, and end-to-end tests
 - GitHub Actions for CI and deployment
 - GitHub Pages-compatible build rooted at `/notes/`
 
-See [`docs/DATABASE.md`](docs/DATABASE.md) for database invariants, [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for the shell and styling contract, [`docs/CAPTURE.md`](docs/CAPTURE.md) for new-note capture and recovery, [`docs/CARDS_AND_GRID.md`](docs/CARDS_AND_GRID.md) for the P4 card and editor architecture, [`docs/LIFECYCLE.md`](docs/LIFECYCLE.md) for lifecycle state, Undo, Archive, Trash, duplication, and permanent deletion behavior, [`docs/ORGANIZATION.md`](docs/ORGANIZATION.md) for P6 color, label, label-view, and organization behavior, [`docs/CHECKLISTS.md`](docs/CHECKLISTS.md) for P7 checklist storage, interaction, conversion, and recovery behavior, [`docs/SELECTION_AND_BULK.md`](docs/SELECTION_AND_BULK.md) for P8 selection scope, bulk toolbar behavior, transactional batch mutations, and Undo semantics, and [`docs/SEARCH.md`](docs/SEARCH.md) for P9 indexing, normalization, ranking, filters, query operators, and performance behavior.
+See [`docs/DATABASE.md`](docs/DATABASE.md) for database invariants, [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for the shell and styling contract, [`docs/CAPTURE.md`](docs/CAPTURE.md) for new-note capture and recovery, [`docs/CARDS_AND_GRID.md`](docs/CARDS_AND_GRID.md) for the P4 card and editor architecture, [`docs/LIFECYCLE.md`](docs/LIFECYCLE.md) for lifecycle state, Undo, Archive, Trash, duplication, and permanent deletion behavior, [`docs/ORGANIZATION.md`](docs/ORGANIZATION.md) for P6 color, label, label-view, and organization behavior, [`docs/CHECKLISTS.md`](docs/CHECKLISTS.md) for P7 checklist storage, interaction, conversion, and recovery behavior, [`docs/SELECTION_AND_BULK.md`](docs/SELECTION_AND_BULK.md) for P8 selection scope, bulk toolbar behavior, transactional batch mutations, and Undo semantics, [`docs/SEARCH.md`](docs/SEARCH.md) for P9 indexing, normalization, ranking, filters, query operators, and performance behavior, and [`docs/KEYBOARD.md`](docs/KEYBOARD.md) for P10 command palette, shortcut safety, and focused-card keyboard behavior.
 
 ## Principles
 
