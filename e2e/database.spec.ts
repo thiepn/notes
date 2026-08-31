@@ -110,7 +110,9 @@ test('enforces lifecycle transitions and active-note ordering', async ({ page })
   expect(result.restoredAt).toBeNull();
 });
 
-test('stores, transitions, snoozes, and deduplicates one reminder per note', async ({ page }) => {
+test('stores, transitions, snoozes, and deduplicates one reminder per note', async ({
+  page,
+}) => {
   await page.goto('./');
   const databaseName = testDatabaseName('reminders');
 
@@ -303,7 +305,9 @@ test('rolls back failed transactions and cascades permanent deletion', async ({ 
   });
 });
 
-test('duplicates dependent note data without copying lifecycle state or reminders', async ({ page }) => {
+test('duplicates dependent note data without copying lifecycle state or reminders', async ({
+  page,
+}) => {
   await page.goto('./');
   const databaseName = testDatabaseName('duplicate');
 
