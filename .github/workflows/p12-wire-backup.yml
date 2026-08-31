@@ -1,0 +1,75 @@
+name: Wire P12 Backup Workspace
+
+on:
+  push:
+    paths:
+      - '.github/workflows/p12-wire-backup.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - run: npm install --no-audit --no-fund
+      - name: Wire backup section
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/app/AppShell.tsx')
+          text = path.read_text()
+
+          anchor = "import { AppSidebar, type AppSection } from '../components/AppSidebar';\n"
+          replacement = anchor + "import { BackupWorkspace } from '../features/backup/BackupWorkspace';\n"
+          if text.count(anchor) != 1:
+              raise SystemExit('AppShell import anchor not found')
+          text = text.replace(anchor, replacement, 1)
+
+          anchor = "  trash: {\n    title: 'Trash',\n    description: 'Recover notes you removed or delete them permanently.',\n    emptyTitle: 'Trash is empty',\n    emptyDescription: 'Notes you move to trash will appear here.',\n  },\n"
+          replacement = anchor + "  backup: {\n    title: 'Backup',\n    description: 'Protect the complete local library and recover it when needed.',\n    emptyTitle: 'Backup',\n    emptyDescription: 'Export or restore the complete local library.',\n  },\n"
+          if text.count(anchor) != 1:
+              raise SystemExit('Section-copy anchor not found')
+          text = text.replace(anchor, replacement, 1)
+
+          anchor = "  const clearSearch = useCallback(() => {\n    setSearchQuery('');\n    setSearchFilters({ ...DEFAULT_SEARCH_FILTERS });\n    setSearchFiltersOpen(false);\n  }, []);\n"
+          replacement = anchor + "\n  const handleLibraryRestored = useCallback(async () => {\n    clearSearch();\n    setActiveSection('notes');\n    setActiveLabelId(null);\n    persistActiveSection('notes');\n    persistActiveLabelId(null);\n    await refreshLabels();\n  }, [clearSearch, refreshLabels]);\n"
+          if text.count(anchor) != 1:
+              raise SystemExit('clearSearch anchor not found')
+          text = text.replace(anchor, replacement, 1)
+
+          anchor = "    {\n      id: 'open-trash',\n      label: 'Open Trash',\n      description: 'Restore or permanently delete notes',\n      group: 'Navigate',\n      keywords: ['deleted'],\n      run: () => handleNavigate('trash'),\n    },\n"
+          replacement = anchor + "    {\n      id: 'open-backup',\n      label: 'Backup and restore',\n      description: 'Export or recover the complete local library',\n      group: 'Navigate',\n      keywords: ['backup', 'restore', 'recovery', 'export'],\n      run: () => handleNavigate('backup'),\n    },\n"
+          if text.count(anchor) != 1:
+              raise SystemExit('palette anchor not found')
+          text = text.replace(anchor, replacement, 1)
+
+          anchor = "            ) : lifecycleSection ? (\n              <NotesWorkspace\n"
+          replacement = "            ) : activeSection === 'backup' ? (\n              <BackupWorkspace onRestored={handleLibraryRestored} />\n            ) : lifecycleSection ? (\n              <NotesWorkspace\n"
+          if text.count(anchor) != 1:
+              raise SystemExit('workspace render anchor not found')
+          text = text.replace(anchor, replacement, 1)
+
+          anchor = "    return stored === 'reminders' || stored === 'archive' || stored === 'trash' ? stored : 'notes';\n"
+          replacement = "    return\n      stored === 'reminders' ||\n      stored === 'archive' ||\n      stored === 'trash' ||\n      stored === 'backup'\n        ? stored\n        : 'notes';\n"
+          if text.count(anchor) != 1:
+              raise SystemExit('active-section storage anchor not found')
+          text = text.replace(anchor, replacement, 1)
+
+          path.write_text(text)
+          PY
+          npx prettier --write src/app/AppShell.tsx src/components/AppSidebar.tsx src/features/backup/BackupWorkspace.tsx src/features/backup/backupFormat.ts src/features/backup/backupRepository.ts src/features/backup/backupFormat.test.ts src/styles/backup.css src/styles.css
+      - name: Commit P12 workspace wiring
+        run: |
+          git config user.name thiepn
+          git config user.email junsosmart@gmail.com
+          git add src/app/AppShell.tsx src/components/AppSidebar.tsx src/features/backup/BackupWorkspace.tsx src/features/backup/backupFormat.ts src/features/backup/backupRepository.ts src/features/backup/backupFormat.test.ts src/styles/backup.css src/styles.css
+          git commit -m "feat: wire P12 backup and recovery workspace"
+          git push origin HEAD:main
