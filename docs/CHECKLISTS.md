@@ -98,6 +98,8 @@ Playwright covers:
 - 100-item atomic persistence across IndexedDB close/reopen,
 - all P1-P6 regressions.
 
+P7 is validated through the same format, React lint, strict TypeScript, production-build, and real-Chromium gates as earlier phases before closeout.
+
 ## Phase boundary
 
 P7 owns checklist capture, editing, nesting, ordering, completed-item controls, conversion, preview rendering, and crash/reload recovery. P8 owns selection mode and bulk actions across cards.
