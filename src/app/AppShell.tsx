@@ -113,7 +113,11 @@ export function AppShell() {
               <span className="local-badge">Local only</span>
             </header>
 
-            {activeSection === 'notes' ? <NotesWorkspacePreview /> : <SectionPlaceholder title={section.title} />}
+            {activeSection === 'notes' ? (
+              <NotesWorkspacePreview />
+            ) : (
+              <SectionPlaceholder title={section.title} />
+            )}
           </div>
         </main>
       </div>

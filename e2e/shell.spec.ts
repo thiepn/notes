@@ -28,7 +28,9 @@ test('shell remains horizontally stable across target breakpoints', async ({ pag
   }
 });
 
-test('mobile navigation opens as an off-canvas drawer and closes from the backdrop', async ({ page }) => {
+test('mobile navigation opens as an off-canvas drawer and closes from the backdrop', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto('./');
 
