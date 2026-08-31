@@ -573,11 +573,7 @@ async function assertStorageLooksSufficient(files: File[]): Promise<void> {
   }
 }
 
-function formatAddResult(
-  added: number,
-  skippedDuplicates: number,
-  source: AddSource,
-): string {
+function formatAddResult(added: number, skippedDuplicates: number, source: AddSource): string {
   if (added === 0 && skippedDuplicates > 0) {
     return `${skippedDuplicates} duplicate ${skippedDuplicates === 1 ? 'image was' : 'images were'} skipped.`;
   }
