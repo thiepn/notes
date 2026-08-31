@@ -3,6 +3,7 @@ import { LayoutGrid, NotebookPen, Rows3 } from 'lucide-react';
 
 import { IconButton } from '../../components/ui/IconButton';
 import {
+  AttachmentsRepository,
   BulkActionsRepository,
   ChecklistsRepository,
   LabelsRepository,
@@ -41,6 +42,7 @@ import { readNotesViewMode, writeNotesViewMode, type NotesViewMode } from './vie
 const notesRepository = new NotesRepository(notesDatabase);
 const labelsRepository = new LabelsRepository(notesDatabase);
 const checklistsRepository = new ChecklistsRepository(notesDatabase);
+const attachmentsRepository = new AttachmentsRepository(notesDatabase);
 const bulkActionsRepository = new BulkActionsRepository(notesDatabase);
 const EMPTY_NOTES: NoteRecord[] = [];
 const EMPTY_LABEL_MAP: Record<string, string[]> = {};
@@ -110,6 +112,9 @@ export function NotesWorkspace({
   const [toast, setToast] = useState<LifecycleToastState | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<NoteRecord | null>(null);
   const [bulkDeleteIds, setBulkDeleteIds] = useState<string[] | null>(null);
+  const [attachmentRefreshByNote, setAttachmentRefreshByNote] = useState<Record<string, number>>(
+    {},
+  );
   const [selection, setSelection] = useState<SelectionState>({
     mode,
     filterLabelId,
@@ -218,6 +223,13 @@ export function NotesWorkspace({
     [filterLabelId, handleSaved, mode],
   );
 
+  const handleAttachmentsChanged = useCallback((noteId: string) => {
+    setAttachmentRefreshByNote((current) => ({
+      ...current,
+      [noteId]: (current[noteId] ?? 0) + 1,
+    }));
+  }, []);
+
   const handleRemoved = useCallback(
     (noteId: string) => {
       setCollection((current) => {
@@ -232,6 +244,12 @@ export function NotesWorkspace({
           labelIdsByNote: nextLabelIdsByNote,
           checklistItemsByNote: nextChecklistItemsByNote,
         };
+      });
+      setAttachmentRefreshByNote((current) => {
+        if (!(noteId in current)) return current;
+        const next = { ...current };
+        delete next[noteId];
+        return next;
       });
     },
     [filterLabelId, mode],
@@ -708,19 +726,23 @@ export function NotesWorkspace({
           <ChecklistComposer
             repository={checklistsRepository}
             notesRepository={notesRepository}
+            attachmentsRepository={attachmentsRepository}
             beforeSaved={prepareCapturedNote}
             onSaved={handleChecklistSaved}
             onRemoved={handleRemoved}
             onActiveNoteChange={setActiveCaptureNoteId}
+            onAttachmentsChanged={handleAttachmentsChanged}
             onFinished={() => setChecklistCaptureOpen(false)}
           />
         ) : (
           <TextNoteComposer
             repository={notesRepository}
+            attachmentsRepository={attachmentsRepository}
             beforeSaved={prepareCapturedNote}
             onSaved={handleSaved}
             onRemoved={handleRemoved}
             onActiveNoteChange={setActiveCaptureNoteId}
+            onAttachmentsChanged={handleAttachmentsChanged}
             onChecklistRequested={() => setChecklistCaptureOpen(true)}
           />
         )
@@ -786,6 +808,7 @@ export function NotesWorkspace({
               labels={labels}
               labelIdsByNote={labelIdsByNote}
               checklistItemsByNote={checklistItemsByNote}
+              attachmentRefreshByNote={attachmentRefreshByNote}
               selectedNoteIds={selectedNoteIds}
               selectionActive={selectionActive}
               onSelectionIntent={handleSelectionIntent}
@@ -801,6 +824,7 @@ export function NotesWorkspace({
               labels={labels}
               labelIdsByNote={labelIdsByNote}
               checklistItemsByNote={checklistItemsByNote}
+              attachmentRefreshByNote={attachmentRefreshByNote}
               selectedNoteIds={selectedNoteIds}
               selectionActive={selectionActive}
               onSelectionIntent={handleSelectionIntent}
@@ -824,7 +848,10 @@ export function NotesWorkspace({
             note={editingNote}
             items={checklistItemsByNote[editingNote.id] ?? []}
             repository={checklistsRepository}
+            attachmentsRepository={attachmentsRepository}
+            attachmentRefreshKey={attachmentRefreshByNote[editingNote.id] ?? 0}
             onSaved={handleChecklistSaved}
+            onAttachmentsChanged={handleAttachmentsChanged}
             onConverted={handleConvertedToText}
             onClose={() => setEditingNoteId(null)}
           />
@@ -833,7 +860,10 @@ export function NotesWorkspace({
             key={editingNote.id}
             note={editingNote}
             repository={notesRepository}
+            attachmentsRepository={attachmentsRepository}
+            attachmentRefreshKey={attachmentRefreshByNote[editingNote.id] ?? 0}
             onSaved={handleSaved}
+            onAttachmentsChanged={handleAttachmentsChanged}
             onHistoryChecklistSaved={handleChecklistSaved}
             onConvertToChecklist={async () => {
               try {
@@ -877,6 +907,7 @@ function NoteSection({
   labels,
   labelIdsByNote,
   checklistItemsByNote,
+  attachmentRefreshByNote,
   selectedNoteIds,
   selectionActive,
   onSelectionIntent,
@@ -889,6 +920,7 @@ function NoteSection({
   labels: LabelRecord[];
   labelIdsByNote: Record<string, string[]>;
   checklistItemsByNote: Record<string, ChecklistItemRecord[]>;
+  attachmentRefreshByNote: Record<string, number>;
   selectedNoteIds: Set<string>;
   selectionActive: boolean;
   onSelectionIntent(note: NoteRecord, intent: NoteSelectionIntent): void;
@@ -913,6 +945,7 @@ function NoteSection({
         labels={labels}
         labelIdsByNote={labelIdsByNote}
         checklistItemsByNote={checklistItemsByNote}
+        attachmentRefreshByNote={attachmentRefreshByNote}
         selectedNoteIds={selectedNoteIds}
         selectionActive={selectionActive}
         onSelectionIntent={onSelectionIntent}
