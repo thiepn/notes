@@ -19,6 +19,9 @@ export type NoteColor = (typeof NOTE_COLORS)[number];
 export const REVISION_REASONS = ['edit', 'close', 'import', 'restore', 'conversion'] as const;
 export type RevisionReason = (typeof REVISION_REASONS)[number];
 
+export const REMINDER_STATUSES = ['active', 'completed', 'dismissed'] as const;
+export type ReminderStatus = (typeof REMINDER_STATUSES)[number];
+
 export interface NoteRecord {
   id: string;
   type: NoteType;
@@ -68,6 +71,19 @@ export interface AttachmentRecord {
   checksum: string;
   data: Blob;
   createdAt: number;
+}
+
+export interface ReminderRecord {
+  id: string;
+  noteId: string;
+  dueAt: number;
+  timeZone: string;
+  status: ReminderStatus;
+  createdAt: number;
+  updatedAt: number;
+  completedAt: number | null;
+  dismissedAt: number | null;
+  lastNotifiedAt: number | null;
 }
 
 export interface RevisionRecord {
