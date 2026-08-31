@@ -157,7 +157,11 @@ export function useTextNoteCapture({
       let note = noteRef.current;
       if (!note && noteIdRef.current) note = (await repository.get(noteIdRef.current)) ?? null;
       if (!note) {
-        note = await repository.create({ type: 'text', title: snapshot.title, content: snapshot.content });
+        note = await repository.create({
+          type: 'text',
+          title: snapshot.title,
+          content: snapshot.content,
+        });
       } else if (note.title !== snapshot.title || note.content !== snapshot.content) {
         note = await repository.update(
           note.id,
@@ -294,6 +298,8 @@ export function useTextNoteCapture({
             await repository.deletePermanently(journalNoteId);
             onRemoved(journalNoteId);
           }
+        } catch {
+          // If attachment lookup fails, leave the note intact rather than risking data loss.
         } finally {
           resetCapture();
         }
@@ -302,7 +308,14 @@ export function useTextNoteCapture({
     }
 
     void persistLatest();
-  }, [initialCapture.journal, onRemoved, persistLatest, repository, resetCapture, shouldPreserveEmptyNote]);
+  }, [
+    initialCapture.journal,
+    onRemoved,
+    persistLatest,
+    repository,
+    resetCapture,
+    shouldPreserveEmptyNote,
+  ]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
