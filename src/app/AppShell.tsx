@@ -585,8 +585,10 @@ function readActiveSection(): AppSection {
 
   try {
     const stored = window.localStorage.getItem(ACTIVE_SECTION_KEY);
-    return;
-    stored === 'reminders' || stored === 'archive' || stored === 'trash' || stored === 'backup'
+    return stored === 'reminders' ||
+      stored === 'archive' ||
+      stored === 'trash' ||
+      stored === 'backup'
       ? stored
       : 'notes';
   } catch {
