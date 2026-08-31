@@ -132,16 +132,36 @@
   background: var(--note-default);
 }
 
-.search-color-filter[data-color='red'] > span { background: var(--note-red); }
-.search-color-filter[data-color='orange'] > span { background: var(--note-orange); }
-.search-color-filter[data-color='yellow'] > span { background: var(--note-yellow); }
-.search-color-filter[data-color='green'] > span { background: var(--note-green); }
-.search-color-filter[data-color='teal'] > span { background: var(--note-teal); }
-.search-color-filter[data-color='blue'] > span { background: var(--note-blue); }
-.search-color-filter[data-color='purple'] > span { background: var(--note-purple); }
-.search-color-filter[data-color='pink'] > span { background: var(--note-pink); }
-.search-color-filter[data-color='brown'] > span { background: var(--note-brown); }
-.search-color-filter[data-color='gray'] > span { background: var(--note-gray); }
+.search-color-filter[data-color='red'] > span {
+  background: var(--note-red);
+}
+.search-color-filter[data-color='orange'] > span {
+  background: var(--note-orange);
+}
+.search-color-filter[data-color='yellow'] > span {
+  background: var(--note-yellow);
+}
+.search-color-filter[data-color='green'] > span {
+  background: var(--note-green);
+}
+.search-color-filter[data-color='teal'] > span {
+  background: var(--note-teal);
+}
+.search-color-filter[data-color='blue'] > span {
+  background: var(--note-blue);
+}
+.search-color-filter[data-color='purple'] > span {
+  background: var(--note-purple);
+}
+.search-color-filter[data-color='pink'] > span {
+  background: var(--note-pink);
+}
+.search-color-filter[data-color='brown'] > span {
+  background: var(--note-brown);
+}
+.search-color-filter[data-color='gray'] > span {
+  background: var(--note-gray);
+}
 
 .search-color-filter:hover,
 .search-color-filter:focus-visible,

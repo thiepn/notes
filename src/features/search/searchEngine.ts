@@ -133,7 +133,11 @@ export function searchDocuments(
     if (!parsed.types.every((type) => note.type === type)) continue;
     if (selectedColors.size > 0 && !selectedColors.has(note.color)) continue;
     if ([...selectedLabelIds].some((labelId) => !document.labelIds.includes(labelId))) continue;
-    if (parsed.labelNames.some((name) => !document.labelNames.some((label) => normalizeSearchText(label) === name))) {
+    if (
+      parsed.labelNames.some(
+        (name) => !document.labelNames.some((label) => normalizeSearchText(label) === name),
+      )
+    ) {
       continue;
     }
     if (parsed.requireImage && !document.hasImage) continue;
@@ -210,11 +214,7 @@ function parseLocalDate(value: string): number | null {
   const month = Number(match[2]);
   const day = Number(match[3]);
   const date = new Date(year, month - 1, day);
-  if (
-    date.getFullYear() !== year ||
-    date.getMonth() !== month - 1 ||
-    date.getDate() !== day
-  ) {
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
     return null;
   }
   return date.getTime();

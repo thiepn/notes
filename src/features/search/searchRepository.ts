@@ -85,12 +85,7 @@ export class SearchRepository {
         normalizedBody,
         normalizedChecklist,
         normalizedLabels,
-        normalizedAll: [
-          normalizedTitle,
-          normalizedBody,
-          normalizedChecklist,
-          normalizedLabels,
-        ]
+        normalizedAll: [normalizedTitle, normalizedBody, normalizedChecklist, normalizedLabels]
           .filter(Boolean)
           .join(' '),
       };

@@ -27,16 +27,18 @@ function note(overrides: Partial<NoteRecord> = {}): NoteRecord {
   };
 }
 
-function document(input: {
-  note?: NoteRecord;
-  title?: string;
-  body?: string;
-  checklist?: string;
-  labelNames?: string[];
-  labelIds?: string[];
-  hasImage?: boolean;
-  hasLink?: boolean;
-} = {}): SearchDocument {
+function document(
+  input: {
+    note?: NoteRecord;
+    title?: string;
+    body?: string;
+    checklist?: string;
+    labelNames?: string[];
+    labelIds?: string[];
+    hasImage?: boolean;
+    hasLink?: boolean;
+  } = {},
+): SearchDocument {
   const record = input.note ?? note({ title: input.title ?? '', content: input.body ?? '' });
   const normalizedTitle = normalizeSearchText(record.title);
   const normalizedBody = normalizeSearchText(record.content);

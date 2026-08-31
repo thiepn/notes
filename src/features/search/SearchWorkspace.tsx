@@ -94,13 +94,22 @@ export function SearchWorkspace({
   }, [toast]);
 
   const parsedQuery = useMemo(() => parseSearchQuery(query), [query]);
-  const results = useMemo(() => searchDocuments(documents, query, filters), [documents, filters, query]);
+  const results = useMemo(
+    () => searchDocuments(documents, query, filters),
+    [documents, filters, query],
+  );
   const activeDocuments = useMemo(
-    () => results.map((result) => result.document).filter((document) => document.note.archivedAt === null),
+    () =>
+      results
+        .map((result) => result.document)
+        .filter((document) => document.note.archivedAt === null),
     [results],
   );
   const archivedDocuments = useMemo(
-    () => results.map((result) => result.document).filter((document) => document.note.archivedAt !== null),
+    () =>
+      results
+        .map((result) => result.document)
+        .filter((document) => document.note.archivedAt !== null),
     [results],
   );
   const documentsById = useMemo(
@@ -380,7 +389,9 @@ export function SearchWorkspace({
             onSaved={handleSaved}
             onConvertToChecklist={async () => {
               try {
-                const converted = await checklistsRepository.convertTextToChecklist(editing.note.id);
+                const converted = await checklistsRepository.convertTextToChecklist(
+                  editing.note.id,
+                );
                 setEditing({ note: converted.note, items: converted.items });
                 await reloadIndex();
               } catch {

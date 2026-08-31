@@ -8,9 +8,18 @@ async function seedSearchLibrary(page: Page) {
     const labels = new dbModule.LabelsRepository(dbModule.notesDatabase);
     const checklists = new dbModule.ChecklistsRepository(dbModule.notesDatabase);
 
-    const titleNote = await notes.create({ title: 'Überblick Mission', content: 'Planning notes.' });
-    const bodyNote = await notes.create({ title: 'Coffee', content: 'Meet at the café after church.' });
-    const linkNote = await notes.create({ title: 'Reference', content: 'Read https://example.com/resource' });
+    const titleNote = await notes.create({
+      title: 'Überblick Mission',
+      content: 'Planning notes.',
+    });
+    const bodyNote = await notes.create({
+      title: 'Coffee',
+      content: 'Meet at the café after church.',
+    });
+    const linkNote = await notes.create({
+      title: 'Reference',
+      content: 'Read https://example.com/resource',
+    });
     const checklist = await checklists.create('Groceries', [
       { id: crypto.randomUUID(), text: 'Milk', checked: false, parentId: null },
       { id: crypto.randomUUID(), text: 'Bread', checked: false, parentId: null },
