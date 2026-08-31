@@ -8,7 +8,7 @@
 .app-header {
   position: sticky;
   top: 0;
-  z-index: 60;
+  z-index: var(--z-header);
   display: grid;
   grid-template-columns: minmax(170px, 1fr) minmax(260px, 720px) minmax(80px, 1fr);
   align-items: center;
@@ -155,7 +155,7 @@
 .app-sidebar {
   position: sticky;
   top: var(--header-height);
-  z-index: 40;
+  z-index: var(--z-sidebar-base);
   display: flex;
   width: var(--sidebar-width);
   height: calc(100vh - var(--header-height));
@@ -498,7 +498,7 @@
     position: fixed;
     top: var(--header-height);
     left: 0;
-    z-index: 80;
+    z-index: var(--z-sidebar);
     width: min(var(--sidebar-width), calc(100vw - 48px));
     height: calc(100dvh - var(--header-height));
     transform: translateX(-105%);
@@ -536,7 +536,7 @@
   .sidebar-backdrop {
     position: fixed;
     inset: var(--header-height) 0 0;
-    z-index: 70;
+    z-index: var(--z-scrim);
     display: block;
     width: 100%;
     height: auto;

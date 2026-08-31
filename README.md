@@ -6,9 +6,9 @@ A local-first, zero-friction notes PWA designed to match Google Keep's capture s
 
 ## Status
 
-**P1 — Database Architecture is complete.** The app now has a tested IndexedDB/Dexie schema v1, validated note models, transactional repository APIs, optimistic revision checks, lifecycle operations, cascade deletion, and real-browser persistence tests.
+**P2 — App Shell + Design System is complete.** The app now has a production-style responsive shell, desktop/medium/mobile navigation modes, a tokenized light/dark design system, system-theme persistence without flash, accessible shared controls, and permanent breakpoint regression coverage.
 
-**Next phase:** P2 — App Shell + Design System.
+**Next phase:** P3 — Text Note Capture.
 
 ## V1 scope
 
@@ -38,13 +38,14 @@ V1 explicitly excludes cloud sync, accounts, collaboration, AI, OCR, voice notes
 - Repository-only write access for application features
 - Optimistic per-note revision checks
 - Transaction-safe multi-table operations
+- Tokenized responsive design system with light/dark/system appearance
 - Vite PWA / service-worker layer
 - Vitest for unit tests
-- Playwright for real-browser IndexedDB and end-to-end tests
+- Playwright for real-browser IndexedDB, responsive-shell, and end-to-end tests
 - GitHub Actions for CI and deployment
 - GitHub Pages-compatible build rooted at `/notes/`
 
-See [`docs/DATABASE.md`](docs/DATABASE.md) for the database schema and invariants.
+See [`docs/DATABASE.md`](docs/DATABASE.md) for database invariants and [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for the shell and styling contract.
 
 ## Principles
 

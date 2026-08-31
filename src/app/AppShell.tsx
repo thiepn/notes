@@ -6,22 +6,33 @@ import { AppSidebar, type AppSection } from '../components/AppSidebar';
 
 const MOBILE_QUERY = '(max-width: 767px)';
 
-const SECTION_COPY: Record<AppSection, { title: string; description: string }> = {
+const SECTION_COPY: Record<
+  AppSection,
+  { title: string; description: string; emptyTitle: string; emptyDescription: string }
+> = {
   notes: {
     title: 'Notes',
     description: 'Capture first. Organize only when it helps.',
+    emptyTitle: 'Your notes will appear here',
+    emptyDescription: 'Create a note to keep thoughts, lists, and useful details close at hand.',
   },
   reminders: {
     title: 'Reminders',
-    description: 'Time-based note views arrive in a later phase.',
+    description: 'Keep time-sensitive notes easy to find.',
+    emptyTitle: 'No reminders yet',
+    emptyDescription: 'Notes with reminders will appear here.',
   },
   archive: {
     title: 'Archive',
     description: 'Finished notes stay searchable without crowding your workspace.',
+    emptyTitle: 'Your archive is empty',
+    emptyDescription: 'Archived notes will appear here.',
   },
   trash: {
     title: 'Trash',
-    description: 'Deleted notes remain recoverable until you remove them permanently.',
+    description: 'Recover notes you removed or delete them permanently.',
+    emptyTitle: 'Trash is empty',
+    emptyDescription: 'Notes you move to trash will appear here.',
   },
 };
 
@@ -115,7 +126,10 @@ export function AppShell() {
             {activeSection === 'notes' ? (
               <NotesWorkspacePreview />
             ) : (
-              <SectionPlaceholder title={section.title} />
+              <SectionPlaceholder
+                title={section.emptyTitle}
+                description={section.emptyDescription}
+              />
             )}
           </div>
         </main>
@@ -140,20 +154,20 @@ function NotesWorkspacePreview() {
           <NotebookPen />
         </span>
         <h2 id="empty-notes-title">Your notes will appear here</h2>
-        <p>P3 connects this shell to instant local note capture and auto-save.</p>
+        <p>Create a note to keep thoughts, lists, and useful details close at hand.</p>
       </section>
     </>
   );
 }
 
-function SectionPlaceholder({ title }: { title: string }) {
+function SectionPlaceholder({ title, description }: { title: string; description: string }) {
   return (
     <section className="empty-state" aria-labelledby="section-placeholder-title">
       <span className="empty-state-icon" aria-hidden="true">
         <NotebookPen />
       </span>
-      <h2 id="section-placeholder-title">No {title.toLowerCase()} yet</h2>
-      <p>This view is structurally ready and will connect to its data phase later.</p>
+      <h2 id="section-placeholder-title">{title}</h2>
+      <p>{description}</p>
     </section>
   );
 }

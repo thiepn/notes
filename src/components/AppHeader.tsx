@@ -36,7 +36,7 @@ export function AppHeader({ onMenu }: { onMenu: () => void }) {
         </div>
       </div>
 
-      <label className="search-shell" title="Full search is implemented in P9">
+      <label className="search-shell">
         <Search aria-hidden="true" />
         <input type="search" placeholder="Search notes" aria-label="Search notes" disabled />
       </label>
