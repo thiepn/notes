@@ -12,13 +12,7 @@ interface MasonryGridProps {
   actions: NoteCardActions;
 }
 
-export function MasonryGrid({
-  notes,
-  viewMode,
-  ariaLabel,
-  mode,
-  actions,
-}: MasonryGridProps) {
+export function MasonryGrid({ notes, viewMode, ariaLabel, mode, actions }: MasonryGridProps) {
   return (
     <div className="note-grid" data-view={viewMode} role="list" aria-label={ariaLabel}>
       {notes.map((note) => (
