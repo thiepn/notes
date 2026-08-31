@@ -7,6 +7,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import {
+  Camera,
   ChevronLeft,
   ChevronRight,
   Download,
@@ -34,6 +35,8 @@ interface AttachmentPanelProps {
   onChanged?: ((noteId: string) => void) | undefined;
 }
 
+type AddSource = 'picker' | 'drop' | 'paste' | 'camera';
+
 export function AttachmentPanel({
   noteId,
   repository,
@@ -43,6 +46,7 @@ export function AttachmentPanel({
   onChanged,
 }: AttachmentPanelProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const [resolvedNoteId, setResolvedNoteId] = useState<string | null>(noteId);
   const [attachments, setAttachments] = useState<AttachmentRecord[]>([]);
   const [busy, setBusy] = useState(false);
@@ -71,7 +75,7 @@ export function AttachmentPanel({
   }, [load, noteId, refreshKey]);
 
   const addFiles = useCallback(
-    async (files: File[]) => {
+    async (files: File[], source: AddSource = 'picker') => {
       if (!editable || files.length === 0 || busy) return;
       setBusy(true);
       setStatusMessage(null);
@@ -83,7 +87,7 @@ export function AttachmentPanel({
         await assertStorageLooksSufficient(files);
         const result = await repository.addImages(targetNoteId, files);
         setAttachments(result.attachments);
-        setStatusMessage(formatAddResult(result.added, result.skippedDuplicates));
+        setStatusMessage(formatAddResult(result.added, result.skippedDuplicates, source));
         onChanged?.(targetNoteId);
       } catch (error) {
         setErrorMessage(toErrorMessage(error));
@@ -93,6 +97,20 @@ export function AttachmentPanel({
     },
     [busy, editable, ensureNoteId, onChanged, repository, resolvedNoteId],
   );
+
+  useEffect(() => {
+    if (!editable) return;
+    const handlePaste = (event: ClipboardEvent) => {
+      const files = Array.from(event.clipboardData?.files ?? []).filter((file) =>
+        file.type.toLocaleLowerCase().startsWith('image/'),
+      );
+      if (files.length === 0) return;
+      event.preventDefault();
+      void addFiles(files, 'paste');
+    };
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, [addFiles, editable]);
 
   const removeAttachment = async (attachmentId: string) => {
     const targetNoteId = resolvedNoteId;
@@ -118,7 +136,7 @@ export function AttachmentPanel({
     if (!editable) return;
     event.preventDefault();
     setDragActive(false);
-    void addFiles(Array.from(event.dataTransfer.files));
+    void addFiles(Array.from(event.dataTransfer.files), 'drop');
   };
 
   const previewImages = attachments.filter((attachment) =>
@@ -164,7 +182,7 @@ export function AttachmentPanel({
           )}
         </div>
         {editable ? (
-          <>
+          <div className="attachment-source-actions">
             <input
               ref={inputRef}
               className="attachment-file-input"
@@ -175,9 +193,32 @@ export function AttachmentPanel({
               onChange={(event) => {
                 const files = Array.from(event.target.files ?? []);
                 event.target.value = '';
-                void addFiles(files);
+                void addFiles(files, 'picker');
               }}
             />
+            <input
+              ref={cameraInputRef}
+              className="attachment-file-input"
+              type="file"
+              accept="image/*"
+              capture="environment"
+              aria-label="Take photo"
+              onChange={(event) => {
+                const files = Array.from(event.target.files ?? []);
+                event.target.value = '';
+                void addFiles(files, 'camera');
+              }}
+            />
+            <button
+              className="attachment-add-button attachment-camera-button"
+              type="button"
+              aria-label="Take a photo"
+              disabled={busy}
+              onClick={() => cameraInputRef.current?.click()}
+            >
+              <Camera aria-hidden="true" />
+              Camera
+            </button>
             <button
               className="attachment-add-button"
               type="button"
@@ -187,7 +228,7 @@ export function AttachmentPanel({
               <ImagePlus aria-hidden="true" />
               {busy ? 'Working…' : 'Add image'}
             </button>
-          </>
+          </div>
         ) : null}
       </div>
 
@@ -236,7 +277,7 @@ export function AttachmentPanel({
           <ImagePlus aria-hidden="true" />
           <span>
             <strong>Add an image</strong>
-            <small>or drag images here</small>
+            <small>or drag/paste images here</small>
           </span>
         </button>
       ) : null}
@@ -287,7 +328,12 @@ function AttachmentImageTile({
   const label = attachment.name ?? 'Attached image';
   return (
     <div className="attachment-image-tile">
-      <button className="attachment-image-open" type="button" aria-label={`Open image: ${label}`} onClick={onOpen}>
+      <button
+        className="attachment-image-open"
+        type="button"
+        aria-label={`Open image: ${label}`}
+        onClick={onOpen}
+      >
         {url ? <img src={url} alt={label} loading="lazy" /> : null}
         <span className="attachment-image-open-icon" aria-hidden="true">
           <Maximize2 />
@@ -360,7 +406,11 @@ function AttachmentFileRow({
       </button>
       {editable ? (
         pendingRemove ? (
-          <div className="attachment-file-remove-confirm" role="group" aria-label={`Remove ${name}?`}>
+          <div
+            className="attachment-file-remove-confirm"
+            role="group"
+            aria-label={`Remove ${name}?`}
+          >
             <button type="button" disabled={busy} onClick={onConfirmRemove}>
               Remove
             </button>
@@ -438,7 +488,11 @@ function AttachmentLightbox({
         <span>
           {index + 1} / {attachments.length}
         </span>
-        <button type="button" aria-label={`Download image: ${name}`} onClick={() => downloadAttachment(attachment)}>
+        <button
+          type="button"
+          aria-label={`Download image: ${name}`}
+          onClick={() => downloadAttachment(attachment)}
+        >
           <Download aria-hidden="true" />
         </button>
         <button type="button" aria-label="Close image viewer" autoFocus onClick={onClose}>
@@ -447,7 +501,12 @@ function AttachmentLightbox({
       </div>
 
       {attachments.length > 1 ? (
-        <button className="attachment-lightbox-nav attachment-lightbox-prev" type="button" aria-label="Previous image" onClick={() => move(-1)}>
+        <button
+          className="attachment-lightbox-nav attachment-lightbox-prev"
+          type="button"
+          aria-label="Previous image"
+          onClick={() => move(-1)}
+        >
           <ChevronLeft aria-hidden="true" />
         </button>
       ) : null}
@@ -458,7 +517,12 @@ function AttachmentLightbox({
       </div>
 
       {attachments.length > 1 ? (
-        <button className="attachment-lightbox-nav attachment-lightbox-next" type="button" aria-label="Next image" onClick={() => move(1)}>
+        <button
+          className="attachment-lightbox-nav attachment-lightbox-next"
+          type="button"
+          aria-label="Next image"
+          onClick={() => move(1)}
+        >
           <ChevronRight aria-hidden="true" />
         </button>
       ) : null}
@@ -509,11 +573,16 @@ async function assertStorageLooksSufficient(files: File[]): Promise<void> {
   }
 }
 
-function formatAddResult(added: number, skippedDuplicates: number): string {
+function formatAddResult(
+  added: number,
+  skippedDuplicates: number,
+  source: AddSource,
+): string {
   if (added === 0 && skippedDuplicates > 0) {
     return `${skippedDuplicates} duplicate ${skippedDuplicates === 1 ? 'image was' : 'images were'} skipped.`;
   }
-  const addedText = `${added} ${added === 1 ? 'image' : 'images'} added.`;
+  const verb = source === 'paste' ? 'pasted' : source === 'camera' ? 'captured' : 'added';
+  const addedText = `${added} ${added === 1 ? 'image' : 'images'} ${verb}.`;
   return skippedDuplicates > 0
     ? `${addedText} ${skippedDuplicates} duplicate ${skippedDuplicates === 1 ? 'was' : 'images were'} skipped.`
     : addedText;
