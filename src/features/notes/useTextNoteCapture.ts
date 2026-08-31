@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import type { NoteRecord } from '../../db';
-import { NotesRepository } from '../../db';
+import type { NoteRecord, NotesRepository } from '../../db';
 import {
   clearCaptureJournal,
   isMeaningfulDraft,
@@ -232,10 +231,11 @@ export function useTextNoteCapture({
     if (!journal) return;
 
     if (!isMeaningfulDraft(journal)) {
-      if (journal.noteId) {
+      const journalNoteId = journal.noteId;
+      if (journalNoteId) {
         void repository
-          .deletePermanently(journal.noteId)
-          .then(() => onRemoved(journal.noteId as string))
+          .deletePermanently(journalNoteId)
+          .then(() => onRemoved(journalNoteId))
           .finally(() => clearCaptureJournal());
       } else {
         clearCaptureJournal();
