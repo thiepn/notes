@@ -3,6 +3,7 @@ import { NotebookPen } from 'lucide-react';
 
 import { AppHeader } from '../components/AppHeader';
 import { AppSidebar, type AppSection } from '../components/AppSidebar';
+import { BackupWorkspace } from '../features/backup/BackupWorkspace';
 import { LabelsRepository, notesDatabase, type LabelRecord } from '../db';
 import { CommandPalette, type CommandPaletteItem } from '../features/commands/CommandPalette';
 import { LabelManagerDialog } from '../features/notes/LabelManagerDialog';
@@ -48,6 +49,12 @@ const SECTION_COPY: Record<
     emptyTitle: 'Trash is empty',
     emptyDescription: 'Notes you move to trash will appear here.',
   },
+  backup: {
+    title: 'Backup',
+    description: 'Protect the complete local library and recover it when needed.',
+    emptyTitle: 'Backup',
+    emptyDescription: 'Export or restore the complete local library.',
+  },
 };
 
 export function AppShell() {
@@ -78,6 +85,15 @@ export function AppShell() {
     setSearchFilters({ ...DEFAULT_SEARCH_FILTERS });
     setSearchFiltersOpen(false);
   }, []);
+
+  const handleLibraryRestored = useCallback(async () => {
+    clearSearch();
+    setActiveSection('notes');
+    setActiveLabelId(null);
+    persistActiveSection('notes');
+    persistActiveLabelId(null);
+    await refreshLabels();
+  }, [clearSearch, refreshLabels]);
 
   useEffect(() => {
     let cancelled = false;
@@ -365,6 +381,14 @@ export function AppShell() {
       run: () => handleNavigate('trash'),
     },
     {
+      id: 'open-backup',
+      label: 'Backup and restore',
+      description: 'Export or recover the complete local library',
+      group: 'Navigate',
+      keywords: ['backup', 'restore', 'recovery', 'export'],
+      run: () => handleNavigate('backup'),
+    },
+    {
       id: 'manage-labels',
       label: 'Create or manage labels',
       description: 'Add, rename, or delete labels',
@@ -452,6 +476,8 @@ export function AppShell() {
                 labels={labels}
                 onFiltersChange={setSearchFilters}
               />
+            ) : activeSection === 'backup' ? (
+              <BackupWorkspace onRestored={handleLibraryRestored} />
             ) : lifecycleSection ? (
               <NotesWorkspace
                 mode={
@@ -559,7 +585,10 @@ function readActiveSection(): AppSection {
 
   try {
     const stored = window.localStorage.getItem(ACTIVE_SECTION_KEY);
-    return stored === 'reminders' || stored === 'archive' || stored === 'trash' ? stored : 'notes';
+    return;
+    stored === 'reminders' || stored === 'archive' || stored === 'trash' || stored === 'backup'
+      ? stored
+      : 'notes';
   } catch {
     return 'notes';
   }

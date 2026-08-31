@@ -183,14 +183,38 @@ function validateBackupGraph(document: BackupDocument): void {
   const { notes, checklistItems, labels, noteLabels, attachments, revisions, settings } =
     document.data;
 
-  assertUnique(notes.map((note) => note.id), 'note ID');
-  assertUnique(checklistItems.map((item) => item.id), 'checklist item ID');
-  assertUnique(labels.map((label) => label.id), 'label ID');
-  assertUnique(labels.map((label) => label.nameNormalized), 'normalized label name');
-  assertUnique(noteLabels.map((record) => `${record.noteId}:${record.labelId}`), 'note-label pair');
-  assertUnique(attachments.map((attachment) => attachment.id), 'attachment ID');
-  assertUnique(revisions.map((revision) => revision.id), 'revision ID');
-  assertUnique(settings.map((setting) => setting.key), 'setting key');
+  assertUnique(
+    notes.map((note) => note.id),
+    'note ID',
+  );
+  assertUnique(
+    checklistItems.map((item) => item.id),
+    'checklist item ID',
+  );
+  assertUnique(
+    labels.map((label) => label.id),
+    'label ID',
+  );
+  assertUnique(
+    labels.map((label) => label.nameNormalized),
+    'normalized label name',
+  );
+  assertUnique(
+    noteLabels.map((record) => `${record.noteId}:${record.labelId}`),
+    'note-label pair',
+  );
+  assertUnique(
+    attachments.map((attachment) => attachment.id),
+    'attachment ID',
+  );
+  assertUnique(
+    revisions.map((revision) => revision.id),
+    'revision ID',
+  );
+  assertUnique(
+    settings.map((setting) => setting.key),
+    'setting key',
+  );
 
   const noteById = new Map(notes.map((note) => [note.id, note]));
   const itemById = new Map(checklistItems.map((item) => [item.id, item]));

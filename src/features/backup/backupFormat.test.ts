@@ -130,7 +130,10 @@ describe('P12 backup format', () => {
 
   it('rejects duplicate semantic keys even when individual rows are valid', async () => {
     const backup = await validBackup();
-    backup.data.labels.push({ ...backup.data.labels[0]!, id: '10000000-0000-4000-8000-000000000088' });
+    backup.data.labels.push({
+      ...backup.data.labels[0]!,
+      id: '10000000-0000-4000-8000-000000000088',
+    });
     await expect(prepareBackup(backup)).rejects.toThrow('duplicate normalized label name');
   });
 });

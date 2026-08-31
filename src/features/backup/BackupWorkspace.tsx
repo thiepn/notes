@@ -1,5 +1,12 @@
 import { useRef, useState, type ChangeEvent } from 'react';
-import { DatabaseBackup, Download, FileCheck2, HardDriveUpload, ShieldCheck, TriangleAlert } from 'lucide-react';
+import {
+  DatabaseBackup,
+  Download,
+  FileCheck2,
+  HardDriveUpload,
+  ShieldCheck,
+  TriangleAlert,
+} from 'lucide-react';
 import { ZodError } from 'zod';
 
 import { notesDatabase } from '../../db';
@@ -33,7 +40,9 @@ export function BackupWorkspace({ onRestored }: BackupWorkspaceProps) {
     try {
       const backup = await backupRepository.exportBackup();
       triggerJsonDownload(backup.json, backup.filename);
-      setStatusMessage(`Full backup created with ${backup.stats.notes} notes and ${backup.stats.revisions} saved versions.`);
+      setStatusMessage(
+        `Full backup created with ${backup.stats.notes} notes and ${backup.stats.revisions} saved versions.`,
+      );
     } catch (error) {
       setErrorMessage(toErrorMessage(error));
     } finally {
@@ -98,11 +107,15 @@ export function BackupWorkspace({ onRestored }: BackupWorkspaceProps) {
           <p className="backup-eyebrow">Full local backup</p>
           <h2 id="backup-download-title">Back up this device</h2>
           <p>
-            Export every note, checklist row, label relationship, attachment, saved version, and database setting into one versioned JSON file.
+            Export every note, checklist row, label relationship, attachment, saved version, and
+            database setting into one versioned JSON file.
           </p>
           <div className="backup-assurance">
             <ShieldCheck aria-hidden="true" />
-            <span>The backup is validated before it is downloaded. Attachment bytes include an independent SHA-256 integrity check.</span>
+            <span>
+              The backup is validated before it is downloaded. Attachment bytes include an
+              independent SHA-256 integrity check.
+            </span>
           </div>
         </div>
         <button
@@ -124,7 +137,8 @@ export function BackupWorkspace({ onRestored }: BackupWorkspaceProps) {
           <p className="backup-eyebrow">Disaster recovery</p>
           <h2 id="backup-restore-title">Restore from a backup</h2>
           <p>
-            Choose a Notes backup to validate it first. Validation is read-only; nothing on this device changes until you explicitly restore.
+            Choose a Notes backup to validate it first. Validation is read-only; nothing on this
+            device changes until you explicitly restore.
           </p>
         </div>
 
@@ -161,14 +175,20 @@ export function BackupWorkspace({ onRestored }: BackupWorkspaceProps) {
               <BackupStat label="Labels" value={selected.prepared.stats.labels} />
               <BackupStat label="Attachments" value={selected.prepared.stats.attachments} />
               <BackupStat label="Saved versions" value={selected.prepared.stats.revisions} />
-              <BackupStat label="Exported" value={formatTimestamp(selected.prepared.document.exportedAt)} />
+              <BackupStat
+                label="Exported"
+                value={formatTimestamp(selected.prepared.document.exportedAt)}
+              />
             </dl>
 
             <div className="backup-restore-warning">
               <TriangleAlert aria-hidden="true" />
               <div>
                 <strong>This replaces the complete local library.</strong>
-                <span>Before replacement starts, Notes automatically downloads a fresh safety backup of the current device.</span>
+                <span>
+                  Before replacement starts, Notes automatically downloads a fresh safety backup of
+                  the current device.
+                </span>
               </div>
             </div>
 
@@ -208,7 +228,9 @@ export function BackupWorkspace({ onRestored }: BackupWorkspaceProps) {
       <section className="backup-details" aria-labelledby="backup-details-title">
         <h2 id="backup-details-title">What is preserved</h2>
         <p>
-          P12 restores database records exactly: IDs, timestamps, lifecycle state, labels, checklist structure, attachments, and P11 revision history. Temporary editor recovery journals and UI-only local preferences are intentionally not part of the library backup.
+          P12 restores database records exactly: IDs, timestamps, lifecycle state, labels, checklist
+          structure, attachments, and P11 revision history. Temporary editor recovery journals and
+          UI-only local preferences are intentionally not part of the library backup.
         </p>
       </section>
     </div>

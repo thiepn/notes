@@ -64,11 +64,15 @@ export class BackupRepository {
       exportedAt,
       data: {
         notes: snapshot.notes.map((record) => noteRecordSchema.parse(record)),
-        checklistItems: snapshot.checklistItems.map((record) => checklistItemRecordSchema.parse(record)),
+        checklistItems: snapshot.checklistItems.map((record) =>
+          checklistItemRecordSchema.parse(record),
+        ),
         labels: snapshot.labels.map((record) => labelRecordSchema.parse(record)),
         noteLabels: snapshot.noteLabels.map((record) => noteLabelRecordSchema.parse(record)),
         attachments: await Promise.all(
-          snapshot.attachments.map((record) => attachmentToBackup(attachmentRecordSchema.parse(record))),
+          snapshot.attachments.map((record) =>
+            attachmentToBackup(attachmentRecordSchema.parse(record)),
+          ),
         ),
         revisions: snapshot.revisions.map((record) => revisionRecordSchema.parse(record)),
         settings: snapshot.settings.map((record) => settingRecordSchema.parse(record)),
