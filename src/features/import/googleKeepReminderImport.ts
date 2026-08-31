@@ -6,7 +6,10 @@ export interface PreparedKeepNoteWithReminder extends PreparedKeepNote {
   reminderAt: number | null;
 }
 
-export interface PreparedKeepImportWithReminders extends Omit<PreparedKeepImport, 'notes' | 'stats'> {
+export interface PreparedKeepImportWithReminders extends Omit<
+  PreparedKeepImport,
+  'notes' | 'stats'
+> {
   notes: PreparedKeepNoteWithReminder[];
   stats: KeepImportStats & { reminders: number };
 }
@@ -124,8 +127,9 @@ function parseTimestampValue(value: unknown, key: string): number | null {
   if (!Number.isFinite(numeric) || numeric < 0 || !Number.isInteger(numeric)) return null;
 
   let milliseconds: number;
-  if (/usec$/iu.test(key) || numeric >= 100_000_000_000_000) milliseconds = Math.floor(numeric / 1000);
-  else if (numeric >= 100_000_000_000) milliseconds = numeric;
+  if (/usec$/iu.test(key) || numeric >= 100_000_000_000_000) {
+    milliseconds = Math.floor(numeric / 1000);
+  } else if (numeric >= 100_000_000_000) milliseconds = numeric;
   else if (numeric >= 1_000_000_000) milliseconds = numeric * 1000;
   else return null;
 
