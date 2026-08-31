@@ -6,9 +6,9 @@ A local-first, zero-friction notes PWA designed to match Google Keep's capture s
 
 ## Status
 
-**P12 — Backup + Recovery is complete.** Notes now exports a versioned, self-contained full-library JSON backup of all seven database-v1 tables, validates graph integrity and attachment SHA-256 checksums before any restore write, downloads a current-device safety backup before destructive recovery, and replaces the whole local library atomically with IndexedDB rollback on failure.
+**P13 — Google Keep Import is complete.** Notes now accepts Google Takeout ZIP files directly, including multi-part exports, builds a local read-only preview, maps Keep text/checklists/colors/labels/lifecycle/timestamps/attachments into the existing library, merges normalized labels, records an initial recovery revision and durable source ledger for each imported note, suppresses repeat imports, and commits the entire additive migration atomically without replacing local notes.
 
-**Next phase:** P13 — Google Keep Import.
+**Next phase:** P14 — Images.
 
 ## V1 scope
 
@@ -48,6 +48,12 @@ V1 explicitly excludes cloud sync, accounts, collaboration, AI, OCR, voice notes
 - Read-only backup validation and recovery preview before any destructive database write
 - Automatic current-device safety backup before full-library restore
 - Atomic seven-table replacement recovery with IndexedDB rollback on write failure
+- Direct local parsing of single- or multi-part Google Keep Takeout ZIP archives
+- Read-only Keep import preview before database writes, with recoverable-note warnings instead of silent truncation
+- Non-destructive seven-table Keep migration that never clears or replaces existing Notes data
+- Normalized Keep-label merge, source lifecycle/timestamp preservation, and attachment SHA-256 ingestion
+- Durable Google Keep source ledger for repeat-import suppression, preserved automatically by P12 backups
+- Initial P11 `import` revision for every migrated Keep note and atomic rollback of the complete import on failure
 - Accessible measured CSS Grid masonry with persistent list mode
 - Existing-note editor with separate crash/reload recovery
 - State-aware lifecycle actions with reversible Undo toasts
@@ -56,7 +62,7 @@ V1 explicitly excludes cloud sync, accounts, collaboration, AI, OCR, voice notes
 - Dependency-free in-memory search over a normalized IndexedDB-derived document index
 - Accent-insensitive multilingual normalization with title/label/checklist/body relevance weighting
 - Search filters and query operators for type, status, color, labels, dates, images, and links
-- Searchable command palette with global navigation, creation, organization, view, appearance, and backup/recovery commands
+- Searchable command palette with global navigation, creation, organization, view, appearance, backup/recovery, and Google Keep import commands
 - Real DOM card focus for J/K navigation and native Enter activation
 - Shortcut safety guards for editable controls, composers, and modal dialogs
 - Database-backed Notes, Archive, Trash, and Backup destinations with persisted primary navigation
@@ -65,11 +71,11 @@ V1 explicitly excludes cloud sync, accounts, collaboration, AI, OCR, voice notes
 - Tokenized responsive design system with light/dark/system appearance
 - Vite PWA / service-worker layer
 - Vitest for unit tests
-- Playwright for real-browser IndexedDB, capture recovery, card/grid, lifecycle, organization, checklist, selection/bulk, search, revision-history/recovery, backup/disaster-recovery, command/keyboard, responsive-shell, and end-to-end tests
+- Playwright for real-browser IndexedDB, capture recovery, card/grid, lifecycle, organization, checklist, selection/bulk, search, revision-history/recovery, backup/disaster-recovery, Google Keep migration, command/keyboard, responsive-shell, and end-to-end tests
 - GitHub Actions for CI and deployment
 - GitHub Pages-compatible build rooted at `/notes/`
 
-See [`docs/DATABASE.md`](docs/DATABASE.md) for database invariants, [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for the shell and styling contract, [`docs/CAPTURE.md`](docs/CAPTURE.md) for new-note capture and recovery, [`docs/CARDS_AND_GRID.md`](docs/CARDS_AND_GRID.md) for the P4 card and editor architecture, [`docs/LIFECYCLE.md`](docs/LIFECYCLE.md) for lifecycle state, Undo, Archive, Trash, duplication, and permanent deletion behavior, [`docs/ORGANIZATION.md`](docs/ORGANIZATION.md) for P6 color, label, label-view, and organization behavior, [`docs/CHECKLISTS.md`](docs/CHECKLISTS.md) for P7 checklist storage, interaction, conversion, and recovery behavior, [`docs/SELECTION_AND_BULK.md`](docs/SELECTION_AND_BULK.md) for P8 selection scope, bulk toolbar behavior, transactional batch mutations, and Undo semantics, [`docs/SEARCH.md`](docs/SEARCH.md) for P9 indexing, normalization, ranking, filters, query operators, and performance behavior, [`docs/KEYBOARD.md`](docs/KEYBOARD.md) for P10 command palette, shortcut safety, and focused-card keyboard behavior, [`docs/HISTORY.md`](docs/HISTORY.md) for P11 checkpoint, restore, Undo, copy, pruning, payload-validation, and cross-type recovery semantics, and [`docs/BACKUP.md`](docs/BACKUP.md) for P12 full-library backup format, validation, safety snapshot, atomic replacement, and disaster-recovery behavior.
+See [`docs/DATABASE.md`](docs/DATABASE.md) for database invariants, [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for the shell and styling contract, [`docs/CAPTURE.md`](docs/CAPTURE.md) for new-note capture and recovery, [`docs/CARDS_AND_GRID.md`](docs/CARDS_AND_GRID.md) for the P4 card and editor architecture, [`docs/LIFECYCLE.md`](docs/LIFECYCLE.md) for lifecycle state, Undo, Archive, Trash, duplication, and permanent deletion behavior, [`docs/ORGANIZATION.md`](docs/ORGANIZATION.md) for P6 color, label, label-view, and organization behavior, [`docs/CHECKLISTS.md`](docs/CHECKLISTS.md) for P7 checklist storage, interaction, conversion, and recovery behavior, [`docs/SELECTION_AND_BULK.md`](docs/SELECTION_AND_BULK.md) for P8 selection scope, bulk toolbar behavior, transactional batch mutations, and Undo semantics, [`docs/SEARCH.md`](docs/SEARCH.md) for P9 indexing, normalization, ranking, filters, query operators, and performance behavior, [`docs/KEYBOARD.md`](docs/KEYBOARD.md) for P10 command palette, shortcut safety, and focused-card keyboard behavior, [`docs/HISTORY.md`](docs/HISTORY.md) for P11 checkpoint, restore, Undo, copy, pruning, payload-validation, and cross-type recovery semantics, [`docs/BACKUP.md`](docs/BACKUP.md) for P12 full-library backup format, validation, safety snapshot, atomic replacement, and disaster-recovery behavior, and [`docs/GOOGLE_KEEP_IMPORT.md`](docs/GOOGLE_KEEP_IMPORT.md) for P13 Takeout ZIP parsing, mapping, preview, repeat-import protection, and atomic additive migration behavior.
 
 ## Principles
 
