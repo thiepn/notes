@@ -4,6 +4,10 @@ const PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAMAAAACCAIAAAASFvFNAAAAFUlEQVR4nGO8E+DGwMDAwMDAxAADABrWAXZuhrHqAAAAAElFTkSuQmCC',
   'base64',
 );
+const METADATA_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAQAAAADCAYAAAC09K7GAAAAH3RFWHRBdXRob3IAU2VjcmV0IEdQUy1saWtlIG1ldGFkYXRhNeasPQAAABVJREFUeJxj5DmR/J8BCTAxoAEMAQBqzQI8A1tEogAAAABJRU5ErkJggg==',
+  'base64',
+);
 
 function imageFile(name = 'pixel.png') {
   return { name, mimeType: 'image/png', buffer: PNG };
@@ -90,6 +94,68 @@ test('quick image capture preserves an attachment-only note and supports lightbo
   expect(finalState).toEqual({ noteCount: 1, attachmentCount: 0 });
 });
 
+test('clipboard image paste creates a local attachment without interfering with text paste', async ({
+  page,
+}) => {
+  await page.goto('./');
+  await waitForNotes(page);
+  await page.getByRole('button', { name: 'Create a text note' }).click();
+
+  await page.evaluate((bytes) => {
+    const transfer = new DataTransfer();
+    transfer.items.add(
+      new File([new Uint8Array(bytes)], 'pasted.png', {
+        type: 'image/png',
+        lastModified: Date.now(),
+      }),
+    );
+    document.dispatchEvent(
+      new ClipboardEvent('paste', {
+        clipboardData: transfer,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+  }, Array.from(PNG));
+
+  const composer = page.getByRole('form', { name: 'New note' });
+  await expect(composer.getByText('1 image pasted.')).toBeVisible();
+  await expect(composer.getByRole('button', { name: 'Open image: pasted.png' })).toBeVisible();
+});
+
+test('native static images are re-encoded without embedded text metadata', async ({ page }) => {
+  await page.goto('./');
+  await waitForNotes(page);
+
+  await page.getByLabel('Choose images for new note').setInputFiles({
+    name: 'private.png',
+    mimeType: 'image/png',
+    buffer: METADATA_PNG,
+  });
+  const composer = page.getByRole('form', { name: 'New note' });
+  await expect(composer.getByRole('button', { name: 'Open image: private.png' })).toBeVisible();
+
+  const stored = await page.evaluate(async () => {
+    const db = await import('/notes/src/db/index.ts');
+    const attachment = (await db.notesDatabase.attachments.toArray())[0];
+    if (!attachment) return null;
+    const bytes = new Uint8Array(await attachment.data.arrayBuffer());
+    let ascii = '';
+    for (const byte of bytes) ascii += String.fromCharCode(byte);
+    return {
+      name: attachment.name,
+      mimeType: attachment.mimeType,
+      containsPrivateMetadata: ascii.includes('Secret GPS-like metadata'),
+    };
+  });
+
+  expect(stored).toEqual({
+    name: 'private.png',
+    mimeType: 'image/png',
+    containsPrivateMetadata: false,
+  });
+});
+
 test('checklist capture accepts images and keeps the image across editing', async ({ page }) => {
   await page.goto('./');
   await waitForNotes(page);
@@ -113,7 +179,9 @@ test('checklist capture accepts images and keeps the image across editing', asyn
 
   const stored = await page.evaluate(async () => {
     const db = await import('/notes/src/db/index.ts');
-    const note = (await db.notesDatabase.notes.toArray()).find((candidate) => candidate.title === 'Packing photos');
+    const note = (await db.notesDatabase.notes.toArray()).find(
+      (candidate) => candidate.title === 'Packing photos',
+    );
     return {
       type: note?.type ?? null,
       attachments: note
@@ -169,6 +237,7 @@ test('image attachment controls remain usable at the minimum supported viewport'
   await page.getByLabel('Choose images for new note').setInputFiles(imageFile('mobile.png'));
   const composer = page.getByRole('form', { name: 'New note' });
   await expect(composer.getByRole('button', { name: 'Open image: mobile.png' })).toBeVisible();
+  await expect(composer.getByRole('button', { name: 'Take a photo' })).toBeVisible();
 
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
