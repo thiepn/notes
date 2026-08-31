@@ -30,6 +30,16 @@ const revisionsRepository = new RevisionsRepository(notesDatabase);
 
 type EditorStatus = 'idle' | 'saving' | 'error';
 
+interface ChecklistDraft {
+  title: string;
+  items: ChecklistDraftItem[];
+}
+
+interface HistoricalResult {
+  note: NoteRecord;
+  items: ChecklistItemRecord[];
+}
+
 interface ChecklistEditorDialogProps {
   note: NoteRecord;
   items: ChecklistItemRecord[];
@@ -37,11 +47,6 @@ interface ChecklistEditorDialogProps {
   onSaved(note: NoteRecord, items: ChecklistItemRecord[]): void;
   onConverted(note: NoteRecord): void;
   onClose(): void;
-}
-
-interface ChecklistDraft {
-  title: string;
-  items: ChecklistDraftItem[];
 }
 
 export function ChecklistEditorDialog({
@@ -69,7 +74,8 @@ export function ChecklistEditorDialog({
   const [hideCompleted, setHideCompleted] = useState(false);
   const [moveCompletedDown, setMoveCompletedDown] = useState(readMoveCompletedPreference);
   const [historyNote, setHistoryNote] = useState<NoteRecord | null>(null);
-  const [historyChanged, setHistoryChanged] = useState(false);
+  const [pendingHistoryResult, setPendingHistoryResult] = useState<HistoricalResult | null>(null);
+  const [pendingHistoryCopies, setPendingHistoryCopies] = useState<HistoricalResult[]>([]);
 
   const pendingDraftRef = useRef<ChecklistDraft>(initial.draft);
   const noteRef = useRef(note);
@@ -199,6 +205,13 @@ export function ChecklistEditorDialog({
     }
   }, [clearTimer, onClose, onConverted, persistLatest, repository]);
 
+  const surfaceHistoricalResult = useCallback(
+    (result: HistoricalResult) => {
+      onSaved(result.note, result.items);
+    },
+    [onSaved],
+  );
+
   const openHistory = useCallback(async () => {
     clearTimer();
     try {
@@ -206,7 +219,8 @@ export function ChecklistEditorDialog({
       await revisionsRepository.checkpoint(saved.note.id, 'close');
       clearChecklistEditorJournal();
       setHistoryNote(saved.note);
-      setHistoryChanged(false);
+      setPendingHistoryResult(null);
+      setPendingHistoryCopies([]);
     } catch (error) {
       if (mountedRef.current) {
         setStatus('error');
@@ -216,9 +230,16 @@ export function ChecklistEditorDialog({
   }, [clearTimer, persistLatest]);
 
   const closeHistory = useCallback(() => {
+    const result = pendingHistoryResult;
+    const copies = pendingHistoryCopies;
     setHistoryNote(null);
-    if (historyChanged) onClose();
-  }, [historyChanged, onClose]);
+    setPendingHistoryResult(null);
+    setPendingHistoryCopies([]);
+
+    for (const copy of copies) surfaceHistoricalResult(copy);
+    if (result) surfaceHistoricalResult(result);
+    if (result || copies.length > 0) onClose();
+  }, [onClose, pendingHistoryCopies, pendingHistoryResult, surfaceHistoricalResult]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -328,13 +349,12 @@ export function ChecklistEditorDialog({
           repository={revisionsRepository}
           onClose={closeHistory}
           onRestored={(result) => {
-            onSaved(result.note, result.items);
+            setPendingHistoryResult(result);
             setHistoryNote(result.note);
-            setHistoryChanged(true);
           }}
           onCopied={(result) => {
             if (note.archivedAt === null && note.trashedAt === null) {
-              onSaved(result.note, result.items);
+              setPendingHistoryCopies((current) => [...current, result]);
             }
           }}
         />
