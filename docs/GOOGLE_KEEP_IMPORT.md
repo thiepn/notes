@@ -61,19 +61,19 @@ A rejected note does not prevent other valid notes in the selected Takeout from 
 
 Google Keep color names are mapped to the closest Notes color token.
 
-| Google Keep values | Notes color |
-| --- | --- |
-| DEFAULT, WHITE, CHALK | default |
-| RED, CORAL | red |
-| ORANGE, PEACH | orange |
-| YELLOW, SAND | yellow |
-| GREEN, MINT, SAGE | green |
-| TEAL | teal |
-| BLUE, CERULEAN, DARK_BLUE, FOG | blue |
-| STORM, GRAY, GREY | gray |
-| PURPLE, DUSK | purple |
-| PINK, BLOSSOM | pink |
-| BROWN, CLAY | brown |
+| Google Keep values             | Notes color |
+| ------------------------------ | ----------- |
+| DEFAULT, WHITE, CHALK          | default     |
+| RED, CORAL                     | red         |
+| ORANGE, PEACH                  | orange      |
+| YELLOW, SAND                   | yellow      |
+| GREEN, MINT, SAGE              | green       |
+| TEAL                           | teal        |
+| BLUE, CERULEAN, DARK_BLUE, FOG | blue        |
+| STORM, GRAY, GREY              | gray        |
+| PURPLE, DUSK                   | purple      |
+| PINK, BLOSSOM                  | pink        |
+| BROWN, CLAY                    | brown       |
 
 Unknown colors are preserved as an import warning and use the default Notes color rather than blocking the note.
 
@@ -92,7 +92,7 @@ The Keep last-edited timestamp is used for the corresponding pin/archive/trash t
 
 Labels are merged by the same normalized identity used everywhere else in Notes: trimmed/collapsed whitespace, Unicode NFKC normalization, and case-insensitive comparison.
 
-For example, an existing Notes label `Work` and an imported Keep label ` work ` resolve to one label. P13 never creates a duplicate normalized label just because its display casing or spacing differs.
+For example, an existing Notes label `Work` and an imported Keep label `work` resolve to one label. P13 never creates a duplicate normalized label just because its display casing or spacing differs.
 
 Invalid or over-100-character Keep labels are skipped with a preview warning while the note itself remains importable.
 

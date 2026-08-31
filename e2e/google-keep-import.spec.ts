@@ -86,7 +86,9 @@ test('Google Keep Takeout imports non-destructively with metadata, attachments, 
   await expect(page.getByRole('heading', { name: 'Import Google Takeout' })).toBeVisible();
   await page.getByLabel('Choose Google Takeout archives').setInputFiles(takeoutParts());
 
-  await expect(page.getByText('Takeout inspected. No local notes have been changed.')).toBeVisible();
+  await expect(
+    page.getByText('Takeout inspected. No local notes have been changed.'),
+  ).toBeVisible();
   const preview = page.getByLabel('Google Keep import preview');
   await expect(preview).toContainText('2 Takeout ZIP files');
   await expect(preview).toContainText('3 Keep JSON files inspected');
@@ -109,9 +111,7 @@ test('Google Keep Takeout imports non-destructively with metadata, attachments, 
     const text = notes.find((note) => note.title === 'Imported text');
     const checklist = notes.find((note) => note.title === 'Imported checklist');
     const trash = notes.find((note) => note.title === 'Imported trash');
-    const attachment = text
-      ? attachments.find((record) => record.noteId === text.id)
-      : undefined;
+    const attachment = text ? attachments.find((record) => record.noteId === text.id) : undefined;
     const workLabels = labels.filter((label) => label.nameNormalized === 'work');
     const trips = labels.find((label) => label.nameNormalized === 'trips');
     const checklistRows = checklist
@@ -168,7 +168,9 @@ test('Google Keep Takeout imports non-destructively with metadata, attachments, 
       attachmentText: attachment ? await attachment.data.text() : null,
       attachmentChecksum: attachment?.checksum ?? null,
       importRevisionReasons: revisions
-        .filter((revision) => notes.some((note) => note.id === revision.noteId && note.id !== expected.noteId))
+        .filter((revision) =>
+          notes.some((note) => note.id === revision.noteId && note.id !== expected.noteId),
+        )
         .map((revision) => revision.reason),
       ledgerKeys: settings
         .filter((setting) => setting.key.startsWith('google-keep-import:v1:'))
@@ -243,67 +245,76 @@ test('Google Keep Takeout imports non-destructively with metadata, attachments, 
   expect(noteCount).toBe(4);
 });
 
-test('Google Keep import rolls back every table when a later attachment write fails', async ({ page }) => {
+test('Google Keep import rolls back every table when a later attachment write fails', async ({
+  page,
+}) => {
   await page.goto('./');
   await waitForNotes(page);
 
-  const result = await page.evaluate(async (zipBytes) => {
-    const db = await import('/notes/src/db/index.ts');
-    const parser = await import('/notes/src/features/import/googleKeepImport.ts');
-    const importer = await import('/notes/src/features/import/googleKeepRepository.ts');
-    const existing = await new db.NotesRepository(db.notesDatabase).create({
-      title: 'Rollback local note',
-      content: 'Must survive importer failure.',
-    });
-    const bytes = new Uint8Array(zipBytes);
-    const file = new File([bytes], 'rollback-takeout.zip', { type: 'application/zip' });
-    const prepared = await parser.prepareGoogleKeepImport([file]);
-    const repository = new importer.GoogleKeepImportRepository(db.notesDatabase);
+  const result = await page.evaluate(
+    async (zipBytes) => {
+      const db = await import('/notes/src/db/index.ts');
+      const parser = await import('/notes/src/features/import/googleKeepImport.ts');
+      const importer = await import('/notes/src/features/import/googleKeepRepository.ts');
+      const existing = await new db.NotesRepository(db.notesDatabase).create({
+        title: 'Rollback local note',
+        content: 'Must survive importer failure.',
+      });
+      const bytes = new Uint8Array(zipBytes);
+      const file = new File([bytes], 'rollback-takeout.zip', { type: 'application/zip' });
+      const prepared = await parser.prepareGoogleKeepImport([file]);
+      const repository = new importer.GoogleKeepImportRepository(db.notesDatabase);
 
-    const table = db.notesDatabase.attachments as typeof db.notesDatabase.attachments & {
-      bulkAdd: typeof db.notesDatabase.attachments.bulkAdd;
-    };
-    const originalBulkAdd = table.bulkAdd.bind(table);
-    table.bulkAdd = (() => Promise.reject(new Error('forced Keep attachment failure'))) as typeof table.bulkAdd;
-    let rejected = false;
-    try {
-      await repository.importPrepared(prepared);
-    } catch {
-      rejected = true;
-    } finally {
-      table.bulkAdd = originalBulkAdd;
-    }
+      const table = db.notesDatabase.attachments as typeof db.notesDatabase.attachments & {
+        bulkAdd: typeof db.notesDatabase.attachments.bulkAdd;
+      };
+      const originalBulkAdd = table.bulkAdd.bind(table);
+      table.bulkAdd = (() =>
+        Promise.reject(new Error('forced Keep attachment failure'))) as typeof table.bulkAdd;
+      let rejected = false;
+      try {
+        await repository.importPrepared(prepared);
+      } catch {
+        rejected = true;
+      } finally {
+        table.bulkAdd = originalBulkAdd;
+      }
 
-    const [notes, labels, attachments, revisions, settings] = await Promise.all([
-      db.notesDatabase.notes.toArray(),
-      db.notesDatabase.labels.toArray(),
-      db.notesDatabase.attachments.toArray(),
-      db.notesDatabase.revisions.toArray(),
-      db.notesDatabase.settings.toArray(),
-    ]);
-    return {
-      rejected,
-      local: notes.find((note) => note.id === existing.id) ?? null,
-      importedPresent: notes.some((note) => note.title === 'Rollback imported note'),
-      importedLabelPresent: labels.some((label) => label.nameNormalized === 'rollback-import'),
-      attachmentCount: attachments.length,
-      revisionCount: revisions.length,
-      ledgerCount: settings.filter((setting) => setting.key.startsWith('google-keep-import:v1:')).length,
-    };
-  }, Array.from(zipBuffer({
-    'Takeout/Keep/Rollback.json': json({
-      color: 'YELLOW',
-      isPinned: false,
-      isArchived: false,
-      title: 'Rollback imported note',
-      textContent: 'Should not commit.',
-      labels: [{ name: 'Rollback Import' }],
-      attachments: [{ filePath: 'rollback.png', mimetype: 'image/png' }],
-      createdTimestampUsec: '1780010000000000',
-      userEditedTimestampUsec: '1780010100000000',
-    }),
-    'Takeout/Keep/rollback.png': strToU8('rollback-image'),
-  })));
+      const [notes, labels, attachments, revisions, settings] = await Promise.all([
+        db.notesDatabase.notes.toArray(),
+        db.notesDatabase.labels.toArray(),
+        db.notesDatabase.attachments.toArray(),
+        db.notesDatabase.revisions.toArray(),
+        db.notesDatabase.settings.toArray(),
+      ]);
+      return {
+        rejected,
+        local: notes.find((note) => note.id === existing.id) ?? null,
+        importedPresent: notes.some((note) => note.title === 'Rollback imported note'),
+        importedLabelPresent: labels.some((label) => label.nameNormalized === 'rollback-import'),
+        attachmentCount: attachments.length,
+        revisionCount: revisions.length,
+        ledgerCount: settings.filter((setting) => setting.key.startsWith('google-keep-import:v1:'))
+          .length,
+      };
+    },
+    Array.from(
+      zipBuffer({
+        'Takeout/Keep/Rollback.json': json({
+          color: 'YELLOW',
+          isPinned: false,
+          isArchived: false,
+          title: 'Rollback imported note',
+          textContent: 'Should not commit.',
+          labels: [{ name: 'Rollback Import' }],
+          attachments: [{ filePath: 'rollback.png', mimetype: 'image/png' }],
+          createdTimestampUsec: '1780010000000000',
+          userEditedTimestampUsec: '1780010100000000',
+        }),
+        'Takeout/Keep/rollback.png': strToU8('rollback-image'),
+      }),
+    ),
+  );
 
   expect(result.rejected).toBe(true);
   expect(result.local).toEqual(
@@ -319,7 +330,9 @@ test('Google Keep import rolls back every table when a later attachment write fa
   expect(result.ledgerCount).toBe(0);
 });
 
-test('a Takeout with no recoverable Keep note is rejected without touching local data', async ({ page }) => {
+test('a Takeout with no recoverable Keep note is rejected without touching local data', async ({
+  page,
+}) => {
   await page.goto('./');
   await waitForNotes(page);
   await page.evaluate(async () => {

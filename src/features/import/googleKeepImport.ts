@@ -185,7 +185,10 @@ export async function prepareGoogleKeepImport(
       notes.push(mapped.note);
     } catch (error) {
       skippedNotes += 1;
-      collector.push(entry.path, error instanceof Error ? error.message : 'The note could not be mapped.');
+      collector.push(
+        entry.path,
+        error instanceof Error ? error.message : 'The note could not be mapped.',
+      );
     }
   }
 
@@ -281,7 +284,8 @@ async function mapKeepNote(
   collector: WarningCollector,
 ): Promise<{ note: PreparedKeepNote; missingAttachments: number }> {
   const now = Date.now();
-  const createdAt = usecToMillis(note.createdTimestampUsec) ?? usecToMillis(note.userEditedTimestampUsec) ?? now;
+  const createdAt =
+    usecToMillis(note.createdTimestampUsec) ?? usecToMillis(note.userEditedTimestampUsec) ?? now;
   const updatedAt = Math.max(createdAt, usecToMillis(note.userEditedTimestampUsec) ?? createdAt);
   const sourceKey = await keepSourceKey(note, raw, source.path);
   const title = note.title;
@@ -292,10 +296,12 @@ async function mapKeepNote(
   const isChecklist = note.listContent !== undefined;
   const items = isChecklist ? flattenKeepList(note.listContent ?? [], source.path, collector) : [];
   const content = isChecklist ? '' : (note.textContent ?? '');
-  if (content.length > 1_000_000) throw new Error('The note body exceeds the Notes 1,000,000-character limit.');
+  if (content.length > 1_000_000)
+    throw new Error('The note body exceeds the Notes 1,000,000-character limit.');
   if (items.length > 10_000) throw new Error('The checklist exceeds the Notes 10,000-item limit.');
   for (const item of items) {
-    if (item.text.length > 100_000) throw new Error('A checklist item exceeds the Notes 100,000-character limit.');
+    if (item.text.length > 100_000)
+      throw new Error('A checklist item exceeds the Notes 100,000-character limit.');
   }
 
   let missingAttachments = 0;
@@ -304,7 +310,10 @@ async function mapKeepNote(
     const resolved = resolveAttachment(source, attachment.filePath, entryIndex);
     if (!resolved) {
       missingAttachments += 1;
-      collector.push(source.path, `Attachment “${attachment.filePath}” was not found in the selected archives.`);
+      collector.push(
+        source.path,
+        `Attachment “${attachment.filePath}” was not found in the selected archives.`,
+      );
       continue;
     }
     const checksum = await sha256Hex(resolved.bytes);
@@ -364,7 +373,11 @@ function flattenKeepList(
     }
     const currentIndex = result.length;
     const effectiveParent = depth === 0 ? null : parentIndex;
-    result.push({ text: parsed.data.text, checked: parsed.data.isChecked, parentIndex: effectiveParent });
+    result.push({
+      text: parsed.data.text,
+      checked: parsed.data.isChecked,
+      parentIndex: effectiveParent,
+    });
 
     const children = parsed.data.childItems ?? [];
     if (children.length === 0) return;
@@ -390,7 +403,10 @@ function normalizeLabels(
     const display = label.name.trim().replace(/\s+/gu, ' ');
     if (!display) continue;
     if (display.length > 100) {
-      collector.push(source, `Label “${display.slice(0, 40)}…” exceeds the 100-character limit and was skipped.`);
+      collector.push(
+        source,
+        `Label “${display.slice(0, 40)}…” exceeds the 100-character limit and was skipped.`,
+      );
       continue;
     }
     try {
@@ -434,7 +450,10 @@ const KEEP_COLOR_MAP: Record<string, NoteColor> = {
 };
 
 function mapKeepColor(value: string, source: string, collector: WarningCollector): NoteColor {
-  const normalized = value.trim().replace(/[\s-]+/gu, '_').toLocaleUpperCase();
+  const normalized = value
+    .trim()
+    .replace(/[\s-]+/gu, '_')
+    .toLocaleUpperCase();
   const mapped = KEEP_COLOR_MAP[normalized];
   if (mapped) return mapped;
   collector.push(source, `Unknown Google Keep color “${value}” was mapped to the default color.`);
@@ -519,7 +538,10 @@ function usecToMillis(value: z.infer<typeof timestampUsecSchema>): number | null
 }
 
 function normalizeArchivePath(value: string): string | null {
-  const normalized = value.replace(/\\/gu, '/').replace(/^\.\//u, '').replace(/^\/+|\/+$/gu, '');
+  const normalized = value
+    .replace(/\\/gu, '/')
+    .replace(/^\.\//u, '')
+    .replace(/^\/+|\/+$/gu, '');
   if (!normalized) return null;
   const segments = normalized.split('/');
   if (segments.some((segment) => segment === '..' || segment === '')) return null;

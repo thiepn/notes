@@ -51,9 +51,9 @@ const SECTION_COPY: Record<
   },
   backup: {
     title: 'Backup',
-    description: 'Protect the complete local library and recover it when needed.',
+    description: 'Protect, recover, or move notes in from Google Keep.',
     emptyTitle: 'Backup',
-    emptyDescription: 'Export or restore the complete local library.',
+    emptyDescription: 'Export, restore, or import a Google Keep Takeout archive.',
   },
 };
 
@@ -382,10 +382,10 @@ export function AppShell() {
     },
     {
       id: 'open-backup',
-      label: 'Backup and restore',
-      description: 'Export or recover the complete local library',
+      label: 'Backup, restore, and import',
+      description: 'Export, recover, or import Google Keep Takeout',
       group: 'Navigate',
-      keywords: ['backup', 'restore', 'recovery', 'export'],
+      keywords: ['backup', 'restore', 'recovery', 'export', 'import', 'google', 'keep', 'takeout'],
       run: () => handleNavigate('backup'),
     },
     {

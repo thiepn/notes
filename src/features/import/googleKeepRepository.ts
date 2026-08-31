@@ -67,7 +67,9 @@ export class GoogleKeepImportRepository {
       ],
       async () => {
         const importedSourceKeys = await this.importedSourceKeys();
-        const notesToImport = prepared.notes.filter((note) => !importedSourceKeys.has(note.sourceKey));
+        const notesToImport = prepared.notes.filter(
+          (note) => !importedSourceKeys.has(note.sourceKey),
+        );
         const skippedAlreadyImported = prepared.notes.length - notesToImport.length;
         if (notesToImport.length === 0) {
           return {
@@ -82,7 +84,9 @@ export class GoogleKeepImportRepository {
         const existingLabels = (await this.database.labels.toArray()).map((label) =>
           labelRecordSchema.parse(label),
         );
-        const labelByNormalized = new Map(existingLabels.map((label) => [label.nameNormalized, label]));
+        const labelByNormalized = new Map(
+          existingLabels.map((label) => [label.nameNormalized, label]),
+        );
         const newLabels: LabelRecord[] = [];
         const notes: NoteRecord[] = [];
         const checklistItems: ChecklistItemRecord[] = [];
@@ -172,18 +176,27 @@ export class GoogleKeepImportRepository {
     });
 
     const itemIds = source.items.map(() => this.idFactory());
-    const items = source.items.map((item, index) =>
-      checklistItemRecordSchema.parse({
-        id: itemIds[index],
+    const items = source.items.map((item, index) => {
+      const id = itemIds[index];
+      if (!id) throw new Error('Failed to allocate a checklist item ID during Keep import.');
+      let parentId: string | null = null;
+      if (item.parentIndex !== null) {
+        parentId = itemIds[item.parentIndex] ?? null;
+        if (!parentId) {
+          throw new Error('A Keep checklist item references a missing imported parent.');
+        }
+      }
+      return checklistItemRecordSchema.parse({
+        id,
         noteId,
         text: item.text,
         checked: item.checked,
-        parentId: item.parentIndex === null ? null : itemIds[item.parentIndex],
+        parentId,
         position: index,
         createdAt: source.createdAt,
         updatedAt: source.updatedAt,
-      }),
-    );
+      });
+    });
 
     const attachments = source.attachments.map((attachment) =>
       attachmentRecordSchema.parse({

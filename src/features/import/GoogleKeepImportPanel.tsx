@@ -31,7 +31,9 @@ export function GoogleKeepImportPanel({ onImported }: GoogleKeepImportPanelProps
     try {
       const totalBytes = files.reduce((total, file) => total + file.size, 0);
       if (totalBytes > MAX_KEEP_ARCHIVE_BYTES) {
-        throw new Error('The selected Takeout archives exceed the 512 MB browser import safety limit.');
+        throw new Error(
+          'The selected Takeout archives exceed the 512 MB browser import safety limit.',
+        );
       }
       const prepared = await keepImportRepository.inspect(files);
       setSelected(prepared);
@@ -137,7 +139,8 @@ export function GoogleKeepImportPanel({ onImported }: GoogleKeepImportPanelProps
             <details className="keep-import-warnings">
               <summary>
                 <TriangleAlert aria-hidden="true" />
-                {selected.stats.warningCount} import {selected.stats.warningCount === 1 ? 'warning' : 'warnings'}
+                {selected.stats.warningCount} import{' '}
+                {selected.stats.warningCount === 1 ? 'warning' : 'warnings'}
               </summary>
               <ul>
                 {selected.warnings.map((warning, index) => (

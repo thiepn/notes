@@ -231,10 +231,10 @@ export function BackupWorkspace({ onRestored }: BackupWorkspaceProps) {
       <section className="backup-details" aria-labelledby="backup-details-title">
         <h2 id="backup-details-title">Portability and recovery</h2>
         <p>
-          P12 backups replace and recover the complete local Notes library. P13 Google Keep import is
-          intentionally different: it adds validated Takeout notes to the existing library, merges
-          labels by normalized name, preserves source state and attachments, and records imported
-          sources so the same Keep export is not duplicated later.
+          P12 backups replace and recover the complete local Notes library. P13 Google Keep import
+          is intentionally different: it adds validated Takeout notes to the existing library,
+          merges labels by normalized name, preserves source state and attachments, and records
+          imported sources so the same Keep export is not duplicated later.
         </p>
       </section>
     </div>
