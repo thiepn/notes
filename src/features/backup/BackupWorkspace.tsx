@@ -18,7 +18,7 @@ const backupRepository = new BackupRepository(notesDatabase);
 
 interface BackupWorkspaceProps {
   onRestored(): Promise<void> | void;
-  onImported(): Promise<void> | void;
+  onImported?(): Promise<void> | void;
 }
 
 interface SelectedBackup {
@@ -131,7 +131,7 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
         </button>
       </section>
 
-      <GoogleKeepImportPanel onImported={onImported} />
+      <GoogleKeepImportPanel onImported={onImported ?? noop} />
 
       <section className="backup-card" aria-labelledby="backup-restore-title">
         <div className="backup-card-icon" aria-hidden="true">
@@ -287,3 +287,5 @@ function toErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message.trim()) return error.message;
   return 'Backup or restore could not be completed.';
 }
+
+function noop(): void {}
