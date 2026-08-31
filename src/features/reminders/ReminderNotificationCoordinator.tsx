@@ -61,14 +61,16 @@ export function ReminderNotificationCoordinator() {
 async function showLocalNotification(title: string, body: string, noteId: string): Promise<boolean> {
   try {
     if ('serviceWorker' in navigator) {
-      const registration = await navigator.serviceWorker.ready;
-      await registration.showNotification(title, {
-        body,
-        tag: `notes-reminder:${noteId}`,
-        icon: '/notes/pwa-192x192.png',
-        badge: '/notes/pwa-192x192.png',
-      });
-      return true;
+      const registration = await navigator.serviceWorker.getRegistration('/notes/');
+      if (registration) {
+        await registration.showNotification(title, {
+          body,
+          tag: `notes-reminder:${noteId}`,
+          icon: '/notes/pwa-192x192.png',
+          badge: '/notes/pwa-192x192.png',
+        });
+        return true;
+      }
     }
 
     new Notification(title, { body, tag: `notes-reminder:${noteId}` });
