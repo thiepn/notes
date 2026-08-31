@@ -14,6 +14,7 @@ import type {
 import {
   checklistItemRecordSchema,
   noteColorSchema,
+  noteLabelRecordSchema,
   noteRecordSchema,
   noteTypeSchema,
   revisionRecordSchema,
@@ -184,12 +185,16 @@ export class RevisionsRepository {
       'rw',
       this.database.notes,
       this.database.checklistItems,
+      this.database.noteLabels,
       this.database.revisions,
       async () => {
         const rawRevision = await this.database.revisions.get(revisionId);
         if (!rawRevision) throw new Error('This revision no longer exists.');
         const revision = revisionRecordSchema.parse(rawRevision);
         const snapshot = parseRevisionPayload(revision.payload);
+        const sourceLabels = (
+          await this.database.noteLabels.where('noteId').equals(revision.noteId).toArray()
+        ).map((row) => noteLabelRecordSchema.parse(row));
         const timestamp = this.readClock();
         const note = noteRecordSchema.parse({
           id: this.idFactory(),
@@ -212,6 +217,17 @@ export class RevisionsRepository {
 
         await this.database.notes.add(note);
         if (items.length > 0) await this.database.checklistItems.bulkAdd(items);
+        if (sourceLabels.length > 0) {
+          await this.database.noteLabels.bulkAdd(
+            sourceLabels.map((row) =>
+              noteLabelRecordSchema.parse({
+                noteId: note.id,
+                labelId: row.labelId,
+                assignedAt: timestamp,
+              }),
+            ),
+          );
+        }
         return { note, items };
       },
     );
