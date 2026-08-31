@@ -222,16 +222,8 @@ function ownedArrayBuffer(bytes: Uint8Array): ArrayBuffer {
 }
 
 function validateBackupGraph(document: BackupDocument): void {
-  const {
-    notes,
-    checklistItems,
-    labels,
-    noteLabels,
-    attachments,
-    reminders,
-    revisions,
-    settings,
-  } = document.data;
+  const { notes, checklistItems, labels, noteLabels, attachments, reminders, revisions, settings } =
+    document.data;
 
   assertUnique(
     notes.map((note) => note.id),
