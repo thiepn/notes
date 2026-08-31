@@ -21,11 +21,7 @@ interface UseTextNoteCaptureOptions {
   onRemoved(noteId: string): void;
 }
 
-export function useTextNoteCapture({
-  repository,
-  onSaved,
-  onRemoved,
-}: UseTextNoteCaptureOptions) {
+export function useTextNoteCapture({ repository, onSaved, onRemoved }: UseTextNoteCaptureOptions) {
   const initialJournalRef = useRef<CaptureJournal | null | undefined>(undefined);
   if (initialJournalRef.current === undefined) {
     initialJournalRef.current = readCaptureJournal();
@@ -40,9 +36,7 @@ export function useTextNoteCapture({
   const [expanded, setExpanded] = useState(
     Boolean(initialJournal && isMeaningfulDraft(initialJournal)),
   );
-  const [activeNoteId, setActiveNoteId] = useState<string | null>(
-    initialJournal?.noteId ?? null,
-  );
+  const [activeNoteId, setActiveNoteId] = useState<string | null>(initialJournal?.noteId ?? null);
   const [status, setStatus] = useState<CaptureStatus>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 

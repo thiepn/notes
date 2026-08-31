@@ -56,7 +56,9 @@ export function NotesWorkspace() {
             <article className="capture-note-preview" key={note.id} data-note-id={note.id}>
               {note.title ? <h2>{note.title}</h2> : null}
               {note.content ? <p>{note.content}</p> : null}
-              {!note.title && !note.content ? <p className="capture-note-empty">Empty note</p> : null}
+              {!note.title && !note.content ? (
+                <p className="capture-note-empty">Empty note</p>
+              ) : null}
             </article>
           ))}
         </section>

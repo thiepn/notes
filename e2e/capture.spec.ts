@@ -16,11 +16,15 @@ test('creates a text note, closes without a save button, and survives reload', a
   await expect(page.getByLabel('Note text')).toBeFocused();
 
   await page.getByLabel('Title').fill('Research idea');
-  await page.getByLabel('Note text').fill('Build the capture path before adding more organization.');
+  await page
+    .getByLabel('Note text')
+    .fill('Build the capture path before adding more organization.');
   await page.getByRole('button', { name: 'Close' }).click();
 
   await expect(page.getByRole('heading', { name: 'Research idea', level: 2 })).toBeVisible();
-  await expect(page.getByText('Build the capture path before adding more organization.')).toBeVisible();
+  await expect(
+    page.getByText('Build the capture path before adding more organization.'),
+  ).toBeVisible();
 
   await page.reload();
 
@@ -34,7 +38,9 @@ test('creates a text note, closes without a save button, and survives reload', a
   });
 });
 
-test('recovers exact text when the page reloads inside the autosave debounce window', async ({ page }) => {
+test('recovers exact text when the page reloads inside the autosave debounce window', async ({
+  page,
+}) => {
   await page.goto('./');
 
   await page.getByRole('button', { name: 'Create a text note' }).click();
@@ -42,7 +48,9 @@ test('recovers exact text when the page reloads inside the autosave debounce win
   await page.reload();
 
   await expect(page.getByRole('form', { name: 'New note' })).toBeVisible();
-  await expect(page.getByLabel('Note text')).toHaveValue('This text must survive an immediate reload.');
+  await expect(page.getByLabel('Note text')).toHaveValue(
+    'This text must survive an immediate reload.',
+  );
 
   await page.getByRole('button', { name: 'Close' }).click();
   await expect(page.getByText('This text must survive an immediate reload.')).toBeVisible();

@@ -30,12 +30,7 @@ describe('capture journal', () => {
     const storage = new MemoryStorage();
     const noteId = '7d9f19ea-80e9-4c9c-9844-099860a44c28';
 
-    expect(
-      writeCaptureJournal(
-        { noteId, title: 'Title', content: 'Body' },
-        storage,
-      ),
-    ).toBe(true);
+    expect(writeCaptureJournal({ noteId, title: 'Title', content: 'Body' }, storage)).toBe(true);
 
     expect(readCaptureJournal(storage)).toMatchObject({
       version: 1,
