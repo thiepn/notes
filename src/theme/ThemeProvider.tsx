@@ -1,0 +1,84 @@
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+  type PropsWithChildren,
+} from 'react';
+
+import {
+  nextThemePreference,
+  readThemePreference,
+  resolveTheme,
+  THEME_STORAGE_KEY,
+  type ResolvedTheme,
+  type ThemePreference,
+} from './theme';
+
+interface ThemeContextValue {
+  preference: ThemePreference;
+  resolvedTheme: ResolvedTheme;
+  setPreference: (preference: ThemePreference) => void;
+  cyclePreference: () => void;
+}
+
+const ThemeContext = createContext<ThemeContextValue | null>(null);
+const DARK_MEDIA_QUERY = '(prefers-color-scheme: dark)';
+
+export function ThemeProvider({ children }: PropsWithChildren) {
+  const [preference, setPreferenceState] = useState<ThemePreference>(() =>
+    typeof window === 'undefined' ? 'system' : readThemePreference(window.localStorage),
+  );
+  const [systemPrefersDark, setSystemPrefersDark] = useState(() =>
+    typeof window === 'undefined' ? false : window.matchMedia(DARK_MEDIA_QUERY).matches,
+  );
+  const resolvedTheme = resolveTheme(preference, systemPrefersDark);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(DARK_MEDIA_QUERY);
+    const handleChange = (event: MediaQueryListEvent) => setSystemPrefersDark(event.matches);
+
+    setSystemPrefersDark(mediaQuery.matches);
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
+  useLayoutEffect(() => {
+    document.documentElement.dataset.theme = resolvedTheme;
+    document.documentElement.style.colorScheme = resolvedTheme;
+
+    const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    themeColor?.setAttribute('content', resolvedTheme === 'dark' ? '#111318' : '#f6f7f9');
+  }, [resolvedTheme]);
+
+  const setPreference = useCallback((nextPreference: ThemePreference) => {
+    setPreferenceState(nextPreference);
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, nextPreference);
+    } catch {
+      // Theme persistence is non-critical; the active session still updates.
+    }
+  }, []);
+
+  const cyclePreference = useCallback(() => {
+    setPreference(nextThemePreference(preference));
+  }, [preference, setPreference]);
+
+  const value = useMemo<ThemeContextValue>(
+    () => ({ preference, resolvedTheme, setPreference, cyclePreference }),
+    [cyclePreference, preference, resolvedTheme, setPreference],
+  );
+
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+}
+
+export function useTheme(): ThemeContextValue {
+  const context = useContext(ThemeContext);
+  if (!context) {
+    throw new Error('useTheme must be used inside ThemeProvider.');
+  }
+  return context;
+}
