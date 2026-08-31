@@ -5,15 +5,33 @@ import {
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
-import { Archive, Check, Copy, Palette, Pin, PinOff, RotateCcw, Tag, Trash2 } from 'lucide-react';
+import {
+  Archive,
+  Bell,
+  Check,
+  Copy,
+  Palette,
+  Pin,
+  PinOff,
+  RotateCcw,
+  Tag,
+  Trash2,
+} from 'lucide-react';
 
 import { IconButton } from '../../components/ui/IconButton';
-import type { ChecklistItemRecord, LabelRecord, NoteColor, NoteRecord } from '../../db';
+import type {
+  ChecklistItemRecord,
+  LabelRecord,
+  NoteColor,
+  NoteRecord,
+  ReminderRecord,
+} from '../../db';
+import { formatReminderShort } from '../reminders/reminderTime';
 import { NoteCardAttachmentPreview } from './NoteCardAttachmentPreview';
 import { NoteColorPicker } from './NoteColorPicker';
 import { NoteLabelPicker } from './NoteLabelPicker';
 
-export type NoteCollectionMode = 'notes' | 'archive' | 'trash';
+export type NoteCollectionMode = 'notes' | 'reminders' | 'archive' | 'trash';
 export type NoteSelectionIntent = 'toggle' | 'range' | 'select';
 
 export interface NoteCardActions {
@@ -42,6 +60,7 @@ interface NoteCardProps {
   labels: LabelRecord[];
   selectedLabelIds: string[];
   checklistItems: ChecklistItemRecord[];
+  reminder?: ReminderRecord | null;
   attachmentRefreshKey?: number;
   selection?: NoteCardSelection | undefined;
 }
@@ -57,6 +76,7 @@ export function NoteCard({
   labels,
   selectedLabelIds,
   checklistItems,
+  reminder = null,
   attachmentRefreshKey = 0,
   selection,
 }: NoteCardProps) {
@@ -143,6 +163,7 @@ export function NoteCard({
       data-pinned={note.pinnedAt !== null}
       data-selected={selectionSelected}
       data-selection-active={selectionActive}
+      data-has-reminder={reminder !== null}
       onPointerDown={handlePointerDown}
       onPointerUp={clearLongPress}
       onPointerCancel={clearLongPress}
@@ -172,6 +193,8 @@ export function NoteCard({
         >
           <NoteCardContent
             note={note}
+            mode={mode}
+            reminder={reminder}
             labels={selectedLabels}
             checklistItems={checklistItems}
             attachmentRefreshKey={attachmentRefreshKey}
@@ -181,6 +204,8 @@ export function NoteCard({
         <div className="note-card-open" data-readonly="true">
           <NoteCardContent
             note={note}
+            mode={mode}
+            reminder={reminder}
             labels={selectedLabels}
             checklistItems={checklistItems}
             attachmentRefreshKey={attachmentRefreshKey}
@@ -309,11 +334,15 @@ export function NoteCard({
 
 function NoteCardContent({
   note,
+  mode,
+  reminder,
   labels,
   checklistItems,
   attachmentRefreshKey,
 }: {
   note: NoteRecord;
+  mode: NoteCollectionMode;
+  reminder: ReminderRecord | null;
   labels: LabelRecord[];
   checklistItems: ChecklistItemRecord[];
   attachmentRefreshKey: number;
@@ -329,6 +358,20 @@ function NoteCardContent({
       ) : null}
       {note.type === 'text' && !note.title && !note.content ? (
         <span className="note-card-empty">Empty note</span>
+      ) : null}
+      {reminder && (reminder.status === 'active' || mode === 'reminders') ? (
+        <span
+          className="note-card-reminder"
+          data-status={reminder.status}
+          data-overdue={reminder.status === 'active' && reminder.dueAt < Date.now()}
+        >
+          <Bell aria-hidden="true" />
+          {reminder.status === 'active'
+            ? formatReminderShort(reminder.dueAt)
+            : reminder.status === 'completed'
+              ? 'Completed'
+              : 'Dismissed'}
+        </span>
       ) : null}
       {labels.length > 0 ? (
         <span className="note-card-labels" aria-label="Labels">
