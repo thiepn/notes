@@ -1,0 +1,45 @@
+name: Wire P11 Cross-Type History
+
+on:
+  push:
+    paths:
+      - '.github/workflows/p11-cross-type.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - run: npm install --no-audit --no-fund
+      - name: Wire checklist rows through text history restores
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          for path in [
+              Path('src/features/notes/NotesWorkspace.tsx'),
+              Path('src/features/search/SearchWorkspace.tsx'),
+          ]:
+              text = path.read_text()
+              needle = '            onSaved={handleSaved}\n            onConvertToChecklist={async () => {'
+              replacement = '            onSaved={handleSaved}\n            onHistoryChecklistSaved={handleChecklistSaved}\n            onConvertToChecklist={async () => {'
+              if text.count(needle) != 1:
+                  raise SystemExit(f'Expected exactly one NoteEditorDialog save block in {path}')
+              path.write_text(text.replace(needle, replacement))
+          PY
+          npx prettier --write src/features/notes/NotesWorkspace.tsx src/features/search/SearchWorkspace.tsx src/features/notes/NoteEditorDialog.tsx
+      - name: Commit cross-type wiring
+        run: |
+          git config user.name thiepn
+          git config user.email junsosmart@gmail.com
+          git add src/features/notes/NotesWorkspace.tsx src/features/search/SearchWorkspace.tsx src/features/notes/NoteEditorDialog.tsx
+          git commit -m "fix: refresh checklist rows after cross-type restore"
+          git push origin HEAD:main
