@@ -35,7 +35,8 @@ import { NoteLabelPicker } from './NoteLabelPicker';
 
 const remindersRepository = new RemindersRepository(notesDatabase);
 
-export type NoteCollectionMode = 'notes' | 'reminders' | 'archive' | 'trash';
+export type NoteCollectionMode = 'notes' | 'archive' | 'trash';
+export type NoteCardMode = NoteCollectionMode | 'reminders';
 export type NoteSelectionIntent = 'toggle' | 'range' | 'select';
 
 export interface NoteCardActions {
@@ -59,7 +60,7 @@ export interface NoteCardSelection {
 
 interface NoteCardProps {
   note: NoteRecord;
-  mode: NoteCollectionMode;
+  mode: NoteCardMode;
   actions: NoteCardActions;
   labels: LabelRecord[];
   selectedLabelIds: string[];
@@ -364,7 +365,7 @@ function NoteCardContent({
   attachmentRefreshKey,
 }: {
   note: NoteRecord;
-  mode: NoteCollectionMode;
+  mode: NoteCardMode;
   reminder: ReminderRecord | null;
   labels: LabelRecord[];
   checklistItems: ChecklistItemRecord[];
