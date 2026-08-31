@@ -1,0 +1,616 @@
+.attachment-panel {
+  position: relative;
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  margin-top: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid color-mix(in srgb, var(--border-strong) 56%, transparent);
+}
+
+.attachment-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.attachment-panel-heading > div {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.attachment-panel-heading strong {
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-weight: 680;
+}
+
+.attachment-panel-heading span,
+.attachment-panel-state {
+  color: var(--text-subtle);
+  font-size: var(--text-xs);
+}
+
+.attachment-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.attachment-add-button,
+.attachment-empty-dropzone,
+.attachment-file-action,
+.attachment-remove-button,
+.attachment-remove-confirm button,
+.attachment-file-remove-confirm button,
+.attachment-lightbox-toolbar button,
+.attachment-lightbox-nav {
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.attachment-add-button {
+  display: inline-flex;
+  min-height: 34px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+  color: var(--text);
+  font-size: var(--text-xs);
+  font-weight: 650;
+}
+
+.attachment-add-button:hover,
+.attachment-add-button:focus-visible {
+  background: color-mix(in srgb, var(--text) 12%, transparent);
+}
+
+.attachment-add-button:disabled,
+.attachment-empty-dropzone:disabled,
+.attachment-file-action:disabled,
+.attachment-remove-button:disabled,
+.attachment-remove-confirm button:disabled,
+.attachment-file-remove-confirm button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.attachment-add-button svg,
+.attachment-empty-dropzone svg,
+.attachment-file-action svg,
+.attachment-remove-button svg,
+.attachment-lightbox-toolbar svg,
+.attachment-lightbox-nav svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 1.9;
+}
+
+.attachment-image-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.attachment-image-tile {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--border-strong) 74%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface) 86%, var(--text) 4%);
+  aspect-ratio: 4 / 3;
+}
+
+.attachment-image-open {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+
+.attachment-image-open img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.attachment-image-open:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -3px;
+}
+
+.attachment-image-open-icon {
+  position: absolute;
+  right: 7px;
+  bottom: 7px;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  background: rgb(12 16 24 / 72%);
+  color: #fff;
+  opacity: 0;
+  transition: opacity var(--motion-fast) var(--ease-standard);
+}
+
+.attachment-image-open-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.attachment-image-tile:hover .attachment-image-open-icon,
+.attachment-image-open:focus-visible .attachment-image-open-icon {
+  opacity: 1;
+}
+
+.attachment-remove-button {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  z-index: 2;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  background: rgb(12 16 24 / 72%);
+  color: #fff;
+  opacity: 0;
+  transition: opacity var(--motion-fast) var(--ease-standard);
+}
+
+.attachment-image-tile:hover .attachment-remove-button,
+.attachment-remove-button:focus-visible {
+  opacity: 1;
+}
+
+.attachment-remove-confirm {
+  position: absolute;
+  inset: auto 7px 7px 7px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  background: rgb(12 16 24 / 86%);
+  color: #fff;
+  font-size: 0.72rem;
+}
+
+.attachment-remove-confirm span {
+  margin-right: auto;
+}
+
+.attachment-remove-confirm button,
+.attachment-file-remove-confirm button {
+  min-height: 26px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  background: rgb(255 255 255 / 12%);
+  color: inherit;
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+
+.attachment-remove-confirm button:hover,
+.attachment-remove-confirm button:focus-visible,
+.attachment-file-remove-confirm button:hover,
+.attachment-file-remove-confirm button:focus-visible {
+  background: rgb(255 255 255 / 22%);
+}
+
+.attachment-file-list {
+  display: grid;
+  gap: 6px;
+}
+
+.attachment-file-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid color-mix(in srgb, var(--border-strong) 64%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface) 76%, transparent);
+}
+
+.attachment-file-icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  color: var(--text-muted);
+}
+
+.attachment-file-icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.attachment-file-copy {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.attachment-file-copy strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: var(--text-xs);
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-file-copy small {
+  overflow: hidden;
+  color: var(--text-subtle);
+  font-size: 0.7rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-file-action {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.attachment-file-action:hover,
+.attachment-file-action:focus-visible {
+  background: color-mix(in srgb, var(--text) 9%, transparent);
+  color: var(--text);
+}
+
+.attachment-file-remove:hover,
+.attachment-file-remove:focus-visible {
+  color: #b42318;
+}
+
+.attachment-file-remove-confirm {
+  display: flex;
+  grid-column: 3 / 5;
+  justify-content: flex-end;
+  gap: 5px;
+  color: var(--text);
+}
+
+.attachment-file-remove-confirm button {
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  color: var(--text);
+}
+
+.attachment-empty-dropzone {
+  display: flex;
+  min-height: 72px;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px dashed color-mix(in srgb, var(--border-strong) 88%, transparent);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.attachment-empty-dropzone:hover,
+.attachment-empty-dropzone:focus-visible,
+.attachment-panel[data-drag-active='true'] .attachment-empty-dropzone {
+  border-color: var(--accent-strong);
+  background: color-mix(in srgb, var(--accent-soft) 40%, transparent);
+  color: var(--text);
+}
+
+.attachment-empty-dropzone span {
+  display: grid;
+  gap: 1px;
+  text-align: left;
+}
+
+.attachment-empty-dropzone strong {
+  font-size: var(--text-sm);
+  font-weight: 650;
+}
+
+.attachment-empty-dropzone small {
+  color: var(--text-subtle);
+  font-size: var(--text-xs);
+}
+
+.attachment-drop-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: grid;
+  place-items: center;
+  border: 2px dashed var(--accent-strong);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface) 88%, var(--accent-soft));
+  color: var(--accent-strong);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.attachment-panel-state {
+  min-height: 16px;
+}
+
+.attachment-panel-state:empty {
+  display: none;
+}
+
+.attachment-panel-error {
+  color: #b42318;
+}
+
+.note-editor-dialog:has(.attachment-panel) {
+  overflow: auto;
+}
+
+.note-card-attachment-preview {
+  display: none;
+}
+
+.note-card-attachment-preview[data-has-attachment='true'] {
+  position: relative;
+  display: block;
+  margin: calc(var(--space-4) * -1) calc(var(--space-4) * -1) var(--space-3);
+}
+
+.note-card-image-wrap {
+  position: relative;
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--surface) 72%, var(--text) 8%);
+  aspect-ratio: 16 / 10;
+}
+
+.note-card-image-wrap img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.note-card-image-count,
+.note-card-file-count {
+  position: absolute;
+  bottom: 7px;
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  gap: 4px;
+  padding: 0 7px;
+  border-radius: var(--radius-pill);
+  background: rgb(12 16 24 / 72%);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 650;
+}
+
+.note-card-image-count {
+  left: 7px;
+}
+
+.note-card-file-count {
+  right: 7px;
+}
+
+.note-card-image-count svg,
+.note-card-file-count svg,
+.note-card-file-only svg {
+  width: 13px;
+  height: 13px;
+}
+
+.note-card-file-only {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: var(--space-2);
+  padding: 5px 8px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.note-card-open:has(.note-card-attachment-preview[data-has-attachment='true']) > .note-card-empty {
+  display: none;
+}
+
+.note-grid[data-view='list'] .note-card-image-wrap {
+  max-height: 220px;
+  aspect-ratio: 21 / 9;
+}
+
+.attachment-lightbox-layer {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-dialog) + 60);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr);
+  align-items: center;
+  padding: max(var(--space-4), env(safe-area-inset-top))
+    max(var(--space-4), env(safe-area-inset-right))
+    max(var(--space-4), env(safe-area-inset-bottom))
+    max(var(--space-4), env(safe-area-inset-left));
+  background: rgb(5 8 14 / 94%);
+}
+
+.attachment-lightbox-toolbar {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  min-height: 44px;
+  color: #fff;
+}
+
+.attachment-lightbox-toolbar span {
+  margin-right: auto;
+  color: rgb(255 255 255 / 72%);
+  font-size: var(--text-xs);
+}
+
+.attachment-lightbox-toolbar button,
+.attachment-lightbox-nav {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  background: rgb(255 255 255 / 9%);
+  color: #fff;
+}
+
+.attachment-lightbox-toolbar button:hover,
+.attachment-lightbox-toolbar button:focus-visible,
+.attachment-lightbox-nav:hover,
+.attachment-lightbox-nav:focus-visible {
+  background: rgb(255 255 255 / 18%);
+}
+
+.attachment-lightbox-nav {
+  align-self: center;
+}
+
+.attachment-lightbox-prev {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.attachment-lightbox-next {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.attachment-lightbox-image-wrap {
+  display: grid;
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+  min-height: 0;
+  place-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.attachment-lightbox-image-wrap img {
+  display: block;
+  max-width: 100%;
+  max-height: calc(100vh - 112px);
+  max-height: calc(100dvh - 112px);
+  border-radius: var(--radius-sm);
+  object-fit: contain;
+  box-shadow: 0 18px 70px rgb(0 0 0 / 34%);
+}
+
+.attachment-lightbox-image-wrap span {
+  max-width: min(720px, 78vw);
+  overflow: hidden;
+  color: rgb(255 255 255 / 72%);
+  font-size: var(--text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (hover: none) {
+  .attachment-image-open-icon,
+  .attachment-remove-button {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 767px) {
+  .attachment-image-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .note-card-attachment-preview[data-has-attachment='true'] {
+    margin: calc(var(--space-3) * -1) calc(var(--space-3) * -1) var(--space-3);
+  }
+
+  .note-grid[data-view='list'] .note-card-image-wrap,
+  .note-card-image-wrap {
+    max-height: none;
+    aspect-ratio: 16 / 10;
+  }
+
+  .attachment-lightbox-layer {
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    padding-inline: max(var(--space-2), env(safe-area-inset-left));
+  }
+
+  .attachment-lightbox-image-wrap {
+    padding-inline: 0;
+  }
+
+  .attachment-lightbox-image-wrap img {
+    max-height: calc(100dvh - 108px);
+  }
+}
+
+@media (max-width: 430px) {
+  .attachment-panel-heading {
+    align-items: flex-start;
+  }
+
+  .attachment-add-button {
+    padding-inline: var(--space-2);
+  }
+
+  .attachment-image-grid {
+    gap: 6px;
+  }
+
+  .attachment-file-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .attachment-file-remove {
+    grid-column: 3;
+  }
+
+  .attachment-file-remove-confirm {
+    grid-column: 2 / 4;
+  }
+
+  .attachment-lightbox-nav {
+    width: 38px;
+    height: 38px;
+  }
+}
