@@ -13,6 +13,7 @@ import { TextNoteComposer } from './TextNoteComposer';
 import { readNotesViewMode, writeNotesViewMode, type NotesViewMode } from './viewMode';
 
 const notesRepository = new NotesRepository(notesDatabase);
+const EMPTY_NOTES: NoteRecord[] = [];
 
 interface NotesWorkspaceProps {
   mode?: NoteCollectionMode;
@@ -104,7 +105,7 @@ export function NotesWorkspace({ mode = 'notes' }: NotesWorkspaceProps) {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  const notes = collection.mode === mode ? collection.notes : [];
+  const notes = collection.mode === mode ? collection.notes : EMPTY_NOTES;
   const loaded = collection.mode === mode && collection.loaded;
 
   const handleSaved = useCallback(
@@ -157,9 +158,9 @@ export function NotesWorkspace({ mode = 'notes' }: NotesWorkspaceProps) {
         await notesRepository.archive(note.id, note.revision);
         await refreshCollection();
         showToast('Note archived.', async () => {
-          let restored = await notesRepository.unarchive(note.id);
+          const restored = await notesRepository.unarchive(note.id);
           if (wasPinned) {
-            restored = await notesRepository.setPinned(note.id, true, restored.revision);
+            await notesRepository.setPinned(note.id, true, restored.revision);
           }
           await refreshCollection();
         });
@@ -195,11 +196,11 @@ export function NotesWorkspace({ mode = 'notes' }: NotesWorkspaceProps) {
         await notesRepository.trash(note.id, note.revision);
         await refreshCollection();
         showToast('Note moved to trash.', async () => {
-          let restored = await notesRepository.restore(note.id);
+          const restored = await notesRepository.restore(note.id);
           if (wasArchived) {
-            restored = await notesRepository.archive(note.id, restored.revision);
+            await notesRepository.archive(note.id, restored.revision);
           } else if (wasPinned) {
-            restored = await notesRepository.setPinned(note.id, true, restored.revision);
+            await notesRepository.setPinned(note.id, true, restored.revision);
           }
           await refreshCollection();
         });
