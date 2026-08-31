@@ -147,7 +147,7 @@ test('full backup round-trips every v1 table and downloads a pre-restore safety 
   await expect(page.getByText('Backup validated. No local data has been changed.')).toBeVisible();
   const preview = page.getByLabel('Validated backup preview');
   await expect(preview.getByText('Validated', { exact: true })).toBeVisible();
-  await expect(preview).toContainText('Backup text');
+  await expect(preview).toContainText('Saved versions');
   await preview.getByRole('checkbox').check();
 
   const safetyDownloadPromise = page.waitForEvent('download');
