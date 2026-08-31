@@ -3,6 +3,7 @@ import { LayoutGrid, Rows3, SearchX } from 'lucide-react';
 
 import { IconButton } from '../../components/ui/IconButton';
 import {
+  AttachmentsRepository,
   ChecklistsRepository,
   LabelsRepository,
   NotesRepository,
@@ -27,6 +28,7 @@ const searchRepository = new SearchRepository(notesDatabase);
 const notesRepository = new NotesRepository(notesDatabase);
 const labelsRepository = new LabelsRepository(notesDatabase);
 const checklistsRepository = new ChecklistsRepository(notesDatabase);
+const attachmentsRepository = new AttachmentsRepository(notesDatabase);
 
 interface SearchWorkspaceProps {
   query: string;
@@ -53,6 +55,9 @@ export function SearchWorkspace({
   const [viewMode, setViewMode] = useState<NotesViewMode>(() => readNotesViewMode());
   const [editing, setEditing] = useState<EditingState | null>(null);
   const [toast, setToast] = useState<LifecycleToastState | null>(null);
+  const [attachmentRefreshByNote, setAttachmentRefreshByNote] = useState<Record<string, number>>(
+    {},
+  );
 
   const showToast = useCallback((message: string, undo?: () => Promise<void>) => {
     const id = crypto.randomUUID();
@@ -120,6 +125,13 @@ export function SearchWorkspace({
   const handleViewMode = useCallback((nextMode: NotesViewMode) => {
     setViewMode(nextMode);
     writeNotesViewMode(nextMode);
+  }, []);
+
+  const handleAttachmentsChanged = useCallback((noteId: string) => {
+    setAttachmentRefreshByNote((current) => ({
+      ...current,
+      [noteId]: (current[noteId] ?? 0) + 1,
+    }));
   }, []);
 
   const handleTogglePin = useCallback(
@@ -354,6 +366,7 @@ export function SearchWorkspace({
           viewMode={viewMode}
           labels={labels}
           actions={actions}
+          attachmentRefreshByNote={attachmentRefreshByNote}
         />
       ) : null}
       {archivedDocuments.length > 0 ? (
@@ -364,6 +377,7 @@ export function SearchWorkspace({
           viewMode={viewMode}
           labels={labels}
           actions={actions}
+          attachmentRefreshByNote={attachmentRefreshByNote}
         />
       ) : null}
 
@@ -374,7 +388,10 @@ export function SearchWorkspace({
             note={editing.note}
             items={editing.items}
             repository={checklistsRepository}
+            attachmentsRepository={attachmentsRepository}
+            attachmentRefreshKey={attachmentRefreshByNote[editing.note.id] ?? 0}
             onSaved={handleChecklistSaved}
+            onAttachmentsChanged={handleAttachmentsChanged}
             onConverted={(note) => {
               setEditing({ note, items: [] });
               void reloadIndex();
@@ -386,7 +403,10 @@ export function SearchWorkspace({
             key={editing.note.id}
             note={editing.note}
             repository={notesRepository}
+            attachmentsRepository={attachmentsRepository}
+            attachmentRefreshKey={attachmentRefreshByNote[editing.note.id] ?? 0}
             onSaved={handleSaved}
+            onAttachmentsChanged={handleAttachmentsChanged}
             onHistoryChecklistSaved={handleChecklistSaved}
             onConvertToChecklist={async () => {
               try {
@@ -416,6 +436,7 @@ function SearchSection({
   viewMode,
   labels,
   actions,
+  attachmentRefreshByNote,
 }: {
   title: string | null;
   documents: SearchDocument[];
@@ -423,6 +444,7 @@ function SearchSection({
   viewMode: NotesViewMode;
   labels: LabelRecord[];
   actions: NoteCardActions;
+  attachmentRefreshByNote: Record<string, number>;
 }) {
   const notes = documents.map((document) => document.note);
   const labelIdsByNote = Object.fromEntries(
@@ -444,6 +466,7 @@ function SearchSection({
         labels={labels}
         labelIdsByNote={labelIdsByNote}
         checklistItemsByNote={checklistItemsByNote}
+        attachmentRefreshByNote={attachmentRefreshByNote}
       />
     </section>
   );

@@ -11,11 +11,13 @@ import { History } from 'lucide-react';
 import {
   RevisionsRepository,
   notesDatabase,
+  type AttachmentsRepository,
   type ChecklistDraftItem,
   type ChecklistItemRecord,
   type ChecklistsRepository,
   type NoteRecord,
 } from '../../db';
+import { AttachmentPanel } from './AttachmentPanel';
 import {
   clearChecklistEditorJournal,
   readChecklistEditorJournal,
@@ -44,7 +46,10 @@ interface ChecklistEditorDialogProps {
   note: NoteRecord;
   items: ChecklistItemRecord[];
   repository: ChecklistsRepository;
+  attachmentsRepository: AttachmentsRepository;
+  attachmentRefreshKey?: number;
   onSaved(note: NoteRecord, items: ChecklistItemRecord[]): void;
+  onAttachmentsChanged(noteId: string): void;
   onConverted(note: NoteRecord): void;
   onClose(): void;
 }
@@ -53,7 +58,10 @@ export function ChecklistEditorDialog({
   note,
   items,
   repository,
+  attachmentsRepository,
+  attachmentRefreshKey = 0,
   onSaved,
+  onAttachmentsChanged,
   onConverted,
   onClose,
 }: ChecklistEditorDialogProps) {
@@ -306,6 +314,13 @@ export function ChecklistEditorDialog({
               setMoveCompletedDown(enabled);
               writeMoveCompletedPreference(enabled);
             }}
+          />
+
+          <AttachmentPanel
+            noteId={note.id}
+            repository={attachmentsRepository}
+            refreshKey={attachmentRefreshKey}
+            onChanged={onAttachmentsChanged}
           />
 
           <div className="note-editor-footer">

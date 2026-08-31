@@ -11,10 +11,12 @@ import { History } from 'lucide-react';
 import {
   RevisionsRepository,
   notesDatabase,
+  type AttachmentsRepository,
   type ChecklistItemRecord,
   type NoteRecord,
   type NotesRepository,
 } from '../../db';
+import { AttachmentPanel } from './AttachmentPanel';
 import { RevisionHistoryDialog } from './RevisionHistoryDialog';
 import { useExistingNoteEditor } from './useExistingNoteEditor';
 
@@ -28,7 +30,10 @@ interface HistoricalResult {
 interface NoteEditorDialogProps {
   note: NoteRecord;
   repository: NotesRepository;
+  attachmentsRepository: AttachmentsRepository;
+  attachmentRefreshKey?: number;
   onSaved(note: NoteRecord): void;
+  onAttachmentsChanged(noteId: string): void;
   onHistoryChecklistSaved(note: NoteRecord, items: ChecklistItemRecord[]): void;
   onConvertToChecklist(): Promise<void>;
   onClose(): void;
@@ -37,7 +42,10 @@ interface NoteEditorDialogProps {
 export function NoteEditorDialog({
   note,
   repository,
+  attachmentsRepository,
+  attachmentRefreshKey = 0,
   onSaved,
+  onAttachmentsChanged,
   onHistoryChecklistSaved,
   onConvertToChecklist,
   onClose,
@@ -165,6 +173,14 @@ export function NoteEditorDialog({
             autoFocus
             onChange={(event) => setContent(event.target.value)}
           />
+
+          <AttachmentPanel
+            noteId={note.id}
+            repository={attachmentsRepository}
+            refreshKey={attachmentRefreshKey}
+            onChanged={onAttachmentsChanged}
+          />
+
           <div className="note-editor-footer">
             <div className="note-editor-state" aria-live="polite">
               {status === 'saving' ? <span>Saving…</span> : null}

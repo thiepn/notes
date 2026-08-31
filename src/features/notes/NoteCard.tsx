@@ -9,6 +9,7 @@ import { Archive, Check, Copy, Palette, Pin, PinOff, RotateCcw, Tag, Trash2 } fr
 
 import { IconButton } from '../../components/ui/IconButton';
 import type { ChecklistItemRecord, LabelRecord, NoteColor, NoteRecord } from '../../db';
+import { NoteCardAttachmentPreview } from './NoteCardAttachmentPreview';
 import { NoteColorPicker } from './NoteColorPicker';
 import { NoteLabelPicker } from './NoteLabelPicker';
 
@@ -41,6 +42,7 @@ interface NoteCardProps {
   labels: LabelRecord[];
   selectedLabelIds: string[];
   checklistItems: ChecklistItemRecord[];
+  attachmentRefreshKey?: number;
   selection?: NoteCardSelection | undefined;
 }
 
@@ -55,6 +57,7 @@ export function NoteCard({
   labels,
   selectedLabelIds,
   checklistItems,
+  attachmentRefreshKey = 0,
   selection,
 }: NoteCardProps) {
   const cardRef = useRef<HTMLElement>(null);
@@ -167,11 +170,21 @@ export function NoteCard({
           aria-label={`Open note: ${label}`}
           onClick={handleOpenClick}
         >
-          <NoteCardContent note={note} labels={selectedLabels} checklistItems={checklistItems} />
+          <NoteCardContent
+            note={note}
+            labels={selectedLabels}
+            checklistItems={checklistItems}
+            attachmentRefreshKey={attachmentRefreshKey}
+          />
         </button>
       ) : (
         <div className="note-card-open" data-readonly="true">
-          <NoteCardContent note={note} labels={selectedLabels} checklistItems={checklistItems} />
+          <NoteCardContent
+            note={note}
+            labels={selectedLabels}
+            checklistItems={checklistItems}
+            attachmentRefreshKey={attachmentRefreshKey}
+          />
         </div>
       )}
 
@@ -298,13 +311,16 @@ function NoteCardContent({
   note,
   labels,
   checklistItems,
+  attachmentRefreshKey,
 }: {
   note: NoteRecord;
   labels: LabelRecord[];
   checklistItems: ChecklistItemRecord[];
+  attachmentRefreshKey: number;
 }) {
   return (
     <>
+      <NoteCardAttachmentPreview noteId={note.id} refreshKey={attachmentRefreshKey} />
       {note.title ? <span className="note-card-title">{note.title}</span> : null}
       {note.type === 'checklist' ? (
         <ChecklistPreview items={checklistItems} />
