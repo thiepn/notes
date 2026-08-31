@@ -34,7 +34,7 @@ export function MasonryGrid({
   labels,
   labelIdsByNote,
   checklistItemsByNote,
-  remindersByNote = {},
+  remindersByNote,
   attachmentRefreshByNote = {},
   selectedNoteIds,
   selectionActive = false,
@@ -42,29 +42,34 @@ export function MasonryGrid({
 }: MasonryGridProps) {
   return (
     <div className="note-grid" data-view={viewMode} role="list" aria-label={ariaLabel}>
-      {notes.map((note) => (
-        <MasonryItem key={note.id} viewMode={viewMode}>
-          <NoteCard
-            note={note}
-            mode={mode}
-            actions={actions}
-            labels={labels}
-            selectedLabelIds={labelIdsByNote[note.id] ?? []}
-            checklistItems={checklistItemsByNote[note.id] ?? []}
-            reminder={remindersByNote[note.id] ?? undefined}
-            attachmentRefreshKey={attachmentRefreshByNote[note.id] ?? 0}
-            selection={
-              onSelectionIntent
-                ? {
-                    active: selectionActive,
-                    selected: selectedNoteIds?.has(note.id) ?? false,
-                    onIntent: onSelectionIntent,
-                  }
-                : undefined
-            }
-          />
-        </MasonryItem>
-      ))}
+      {notes.map((note) => {
+        const reminderProps = remindersByNote
+          ? { reminder: remindersByNote[note.id] ?? null }
+          : {};
+        return (
+          <MasonryItem key={note.id} viewMode={viewMode}>
+            <NoteCard
+              note={note}
+              mode={mode}
+              actions={actions}
+              labels={labels}
+              selectedLabelIds={labelIdsByNote[note.id] ?? []}
+              checklistItems={checklistItemsByNote[note.id] ?? []}
+              {...reminderProps}
+              attachmentRefreshKey={attachmentRefreshByNote[note.id] ?? 0}
+              selection={
+                onSelectionIntent
+                  ? {
+                      active: selectionActive,
+                      selected: selectedNoteIds?.has(note.id) ?? false,
+                      onIntent: onSelectionIntent,
+                    }
+                  : undefined
+              }
+            />
+          </MasonryItem>
+        );
+      })}
     </div>
   );
 }
