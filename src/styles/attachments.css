@@ -446,8 +446,7 @@
   font-weight: 600;
 }
 
-.note-card-open:has(.note-card-attachment-preview[data-has-attachment='true'])
-  > .note-card-empty {
+.note-card-open:has(.note-card-attachment-preview[data-has-attachment='true']) > .note-card-empty {
   display: none;
 }
 
@@ -465,8 +464,7 @@
   grid-template-rows: auto minmax(0, 1fr);
   align-items: center;
   padding: max(var(--space-4), env(safe-area-inset-top))
-    max(var(--space-4), env(safe-area-inset-right))
-    max(var(--space-4), env(safe-area-inset-bottom))
+    max(var(--space-4), env(safe-area-inset-right)) max(var(--space-4), env(safe-area-inset-bottom))
     max(var(--space-4), env(safe-area-inset-left));
   background: rgb(5 8 14 / 94%);
 }
