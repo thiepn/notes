@@ -6,6 +6,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
+import { History } from 'lucide-react';
 
 import type {
   ChecklistDraftItem,
@@ -31,6 +32,7 @@ interface ChecklistEditorDialogProps {
   repository: ChecklistsRepository;
   onSaved(note: NoteRecord, items: ChecklistItemRecord[]): void;
   onConverted(note: NoteRecord): void;
+  onHistoryRequested(noteId: string): void;
   onClose(): void;
 }
 
@@ -45,6 +47,7 @@ export function ChecklistEditorDialog({
   repository,
   onSaved,
   onConverted,
+  onHistoryRequested,
   onClose,
 }: ChecklistEditorDialogProps) {
   const [initial] = useState(() => {
@@ -185,6 +188,11 @@ export function ChecklistEditorDialog({
     }
   }, [clearTimer, onClose, onConverted, persistLatest, repository]);
 
+  const openHistory = useCallback(async () => {
+    const saved = await finish();
+    if (saved) onHistoryRequested(note.id);
+  }, [finish, note.id, onHistoryRequested]);
+
   useEffect(() => {
     mountedRef.current = true;
     const previousOverflow = document.body.style.overflow;
@@ -260,6 +268,13 @@ export function ChecklistEditorDialog({
             ) : null}
           </div>
           <div className="note-editor-footer-actions">
+            <button
+              className="note-editor-secondary"
+              type="button"
+              onClick={() => void openHistory()}
+            >
+              <History aria-hidden="true" /> History
+            </button>
             <button
               className="note-editor-secondary"
               type="button"
