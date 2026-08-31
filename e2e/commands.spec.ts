@@ -17,12 +17,14 @@ async function seedKeyboardLibrary(page: Page) {
 }
 
 async function focusedNoteId(page: Page): Promise<string | null> {
-  return page.evaluate(() =>
-    document.activeElement?.closest('[data-note-card]')?.getAttribute('data-note-id') ?? null,
+  return page.evaluate(
+    () => document.activeElement?.closest('[data-note-card]')?.getAttribute('data-note-id') ?? null,
   );
 }
 
-test('Ctrl+K opens a searchable command palette and runs navigation/create commands', async ({ page }) => {
+test('Ctrl+K opens a searchable command palette and runs navigation/create commands', async ({
+  page,
+}) => {
   await page.goto('./');
   await page.keyboard.press('Control+K');
   const palette = page.getByRole('dialog', { name: 'Command palette' });
@@ -62,7 +64,9 @@ test('C starts text capture while editor typing suppresses global shortcuts and 
   await expect(card).toHaveAttribute('data-pinned', 'false');
 });
 
-test('J and K cycle focus through visible cards and Enter opens the focused note', async ({ page }) => {
+test('J and K cycle focus through visible cards and Enter opens the focused note', async ({
+  page,
+}) => {
   await seedKeyboardLibrary(page);
 
   await page.keyboard.press('j');

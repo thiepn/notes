@@ -4,10 +4,7 @@ import { NotebookPen } from 'lucide-react';
 import { AppHeader } from '../components/AppHeader';
 import { AppSidebar, type AppSection } from '../components/AppSidebar';
 import { LabelsRepository, notesDatabase, type LabelRecord } from '../db';
-import {
-  CommandPalette,
-  type CommandPaletteItem,
-} from '../features/commands/CommandPalette';
+import { CommandPalette, type CommandPaletteItem } from '../features/commands/CommandPalette';
 import { LabelManagerDialog } from '../features/notes/LabelManagerDialog';
 import { NotesWorkspace } from '../features/notes/NotesWorkspace';
 import { SearchWorkspace } from '../features/search/SearchWorkspace';
@@ -226,16 +223,18 @@ export function AppShell() {
   const setViewModeFromCommand = useCallback((view: 'grid' | 'list') => {
     setCommandPaletteOpen(false);
     afterUiUpdate(() => {
-      document.querySelector<HTMLButtonElement>(`button[aria-label="${view === 'grid' ? 'Grid' : 'List'} view"]`)?.click();
+      document
+        .querySelector<HTMLButtonElement>(
+          `button[aria-label="${view === 'grid' ? 'Grid' : 'List'} view"]`,
+        )
+        ?.click();
     });
   }, []);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const paletteChord =
-        (event.metaKey || event.ctrlKey) &&
-        !event.altKey &&
-        event.key.toLocaleLowerCase() === 'k';
+        (event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLocaleLowerCase() === 'k';
 
       if (paletteChord) {
         if (keyboardShortcutsBlocked(event.target)) return;
@@ -513,9 +512,9 @@ function keyboardShortcutsBlocked(target: EventTarget | null): boolean {
 }
 
 function focusAdjacentCard(direction: 1 | -1): void {
-  const cards = Array.from(document.querySelectorAll<HTMLButtonElement>('button.note-card-open')).filter(
-    (button) => button.getClientRects().length > 0,
-  );
+  const cards = Array.from(
+    document.querySelectorAll<HTMLButtonElement>('button.note-card-open'),
+  ).filter((button) => button.getClientRects().length > 0);
   if (cards.length === 0) return;
 
   const active = document.activeElement;

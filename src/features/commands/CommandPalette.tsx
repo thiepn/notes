@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import { Command, Search } from 'lucide-react';
 
 export interface CommandPaletteItem {
@@ -27,7 +33,9 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
     if (terms.length === 0) return commands;
     return commands.filter((command) => {
       const haystack = normalize(
-        [command.label, command.description ?? '', command.group, ...(command.keywords ?? [])].join(' '),
+        [command.label, command.description ?? '', command.group, ...(command.keywords ?? [])].join(
+          ' ',
+        ),
       );
       return terms.every((term) => haystack.includes(term));
     });
@@ -148,9 +156,16 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
         </div>
 
         <div className="command-palette-footer" aria-hidden="true">
-          <span><kbd>↑</kbd><kbd>↓</kbd> Navigate</span>
-          <span><kbd>Enter</kbd> Run</span>
-          <span><kbd>Esc</kbd> Close</span>
+          <span>
+            <kbd>↑</kbd>
+            <kbd>↓</kbd> Navigate
+          </span>
+          <span>
+            <kbd>Enter</kbd> Run
+          </span>
+          <span>
+            <kbd>Esc</kbd> Close
+          </span>
         </div>
       </div>
     </div>
