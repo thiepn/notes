@@ -184,13 +184,13 @@ async function prepareImage(file: File): Promise<PreparedImage> {
 
   const name = displayFileName(file);
   if (name.length > 1_024) throw new RangeError('An image filename exceeds the 1,024-character limit.');
-  const checksum = await sha256Hex(new Uint8Array(await file.arrayBuffer()));
+  const bytes = new Uint8Array(await file.arrayBuffer());
   return {
     name,
     mimeType,
     size: file.size,
-    checksum,
-    data: new Blob([await file.arrayBuffer()], { type: mimeType }),
+    checksum: await sha256Hex(bytes),
+    data: new Blob([Uint8Array.from(bytes).buffer], { type: mimeType }),
   };
 }
 
