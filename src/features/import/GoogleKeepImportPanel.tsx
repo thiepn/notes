@@ -1,10 +1,4 @@
-import {
-  useRef,
-  useState,
-  type ChangeEvent,
-  type DragEvent,
-  type RefCallback,
-} from 'react';
+import { useRef, useState, type ChangeEvent, type DragEvent, type RefCallback } from 'react';
 import {
   FileArchive,
   FolderOpen,
@@ -179,7 +173,9 @@ export function GoogleKeepImportPanel({ onImported }: GoogleKeepImportPanelProps
         <UploadCloud aria-hidden="true" />
         <div>
           <strong>Drop Takeout ZIPs or extracted Keep files here</strong>
-          <span>JSON is preferred. HTML is used only when a matching JSON note is unavailable.</span>
+          <span>
+            JSON is preferred. HTML is used only when a matching JSON note is unavailable.
+          </span>
         </div>
         <div className="keep-import-source-actions">
           <button
@@ -424,7 +420,8 @@ async function estimateStorageWarning(prepared: PreparedKeepImport): Promise<str
     if (estimate.quota === undefined) return null;
     const available = Math.max(0, estimate.quota - (estimate.usage ?? 0));
     const textBytes = prepared.notes.reduce(
-      (total, note) => total + (note.title.length + note.content.length) * 2 + note.items.length * 64,
+      (total, note) =>
+        total + (note.title.length + note.content.length) * 2 + note.items.length * 64,
       0,
     );
     const required = prepared.stats.attachmentBytes + textBytes;
