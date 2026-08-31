@@ -1,0 +1,389 @@
+.sidebar-label-section {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.sidebar-label-manager {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  margin-left: auto;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.sidebar-label-manager:hover,
+.sidebar-label-manager:focus-visible {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.sidebar-label-manager svg {
+  width: 15px;
+  height: 15px;
+}
+
+.sidebar-label-list {
+  display: grid;
+  gap: 2px;
+}
+
+.sidebar-label-item {
+  min-height: 40px;
+}
+
+.sidebar-empty-labels {
+  width: 100%;
+  padding: 8px 16px 8px 48px;
+  border: 0;
+  background: transparent;
+  color: var(--text-subtle);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--text-xs);
+  text-align: left;
+}
+
+.sidebar-empty-labels:hover {
+  color: var(--text-muted);
+}
+
+.app-sidebar[data-compact='true'] .sidebar-label-manager,
+.app-sidebar[data-compact='true'] .sidebar-empty-labels,
+.app-sidebar[data-compact='true'] .sidebar-label-list {
+  display: none;
+}
+
+.note-card {
+  overflow: visible;
+}
+
+.note-card-action-slot {
+  position: relative;
+  display: grid;
+  flex: 0 0 auto;
+}
+
+.note-organization-popover {
+  position: absolute;
+  z-index: 20;
+  bottom: calc(100% + 8px);
+  left: 0;
+  width: max-content;
+  max-width: min(300px, calc(100vw - 32px));
+  padding: var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  color: var(--text);
+}
+
+.note-organization-title {
+  display: block;
+  margin-bottom: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.note-color-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 28px);
+  gap: 7px;
+}
+
+.note-color-swatch {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  place-items: center;
+  border: 2px solid transparent;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  cursor: pointer;
+}
+
+.note-color-swatch > span {
+  width: 22px;
+  height: 22px;
+  border: 1px solid color-mix(in srgb, var(--border-strong) 80%, transparent);
+  border-radius: inherit;
+  background: var(--note-default);
+}
+
+.note-color-swatch[data-color='red'] > span {
+  background: var(--note-red);
+}
+
+.note-color-swatch[data-color='orange'] > span {
+  background: var(--note-orange);
+}
+
+.note-color-swatch[data-color='yellow'] > span {
+  background: var(--note-yellow);
+}
+
+.note-color-swatch[data-color='green'] > span {
+  background: var(--note-green);
+}
+
+.note-color-swatch[data-color='teal'] > span {
+  background: var(--note-teal);
+}
+
+.note-color-swatch[data-color='blue'] > span {
+  background: var(--note-blue);
+}
+
+.note-color-swatch[data-color='purple'] > span {
+  background: var(--note-purple);
+}
+
+.note-color-swatch[data-color='pink'] > span {
+  background: var(--note-pink);
+}
+
+.note-color-swatch[data-color='brown'] > span {
+  background: var(--note-brown);
+}
+
+.note-color-swatch[data-color='gray'] > span {
+  background: var(--note-gray);
+}
+
+.note-color-swatch:hover,
+.note-color-swatch:focus-visible,
+.note-color-swatch[data-selected='true'] {
+  border-color: var(--accent-strong);
+  outline: 0;
+}
+
+.note-label-picker {
+  width: 230px;
+  max-height: 280px;
+  overflow: auto;
+}
+
+.note-label-picker-list {
+  display: grid;
+  gap: 2px;
+}
+
+.note-label-picker-option {
+  display: flex;
+  min-height: 36px;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 5px 6px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--text-sm);
+}
+
+.note-label-picker-option:hover {
+  background: var(--surface-hover);
+}
+
+.note-label-picker-option input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent-strong);
+}
+
+.note-organization-empty {
+  max-width: 190px;
+  margin: 0;
+  color: var(--text-subtle);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+}
+
+.note-card-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: var(--space-3);
+}
+
+.note-label-chip {
+  display: inline-flex;
+  min-height: 22px;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--text) 9%, transparent);
+  color: color-mix(in srgb, var(--text) 78%, transparent);
+  font-size: 0.7rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.label-manager-layer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dialog);
+  display: grid;
+  place-items: center;
+  padding: var(--space-5);
+  background: var(--scrim);
+}
+
+.label-manager-dialog {
+  display: grid;
+  width: min(100%, 480px);
+  max-height: min(80vh, 680px);
+  gap: var(--space-4);
+  padding: var(--space-5);
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  box-shadow: 0 22px 70px rgb(15 18 24 / 28%);
+}
+
+.label-manager-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.label-manager-heading h2 {
+  margin: 2px 0 0;
+  font-size: var(--text-xl);
+}
+
+.label-create-row,
+.label-manager-rename {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.label-create-row input,
+.label-manager-rename input {
+  min-width: 0;
+  flex: 1;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-subtle);
+  color: var(--text);
+  font: inherit;
+}
+
+.label-create-row input:focus,
+.label-manager-rename input:focus {
+  border-color: var(--focus);
+  outline: 2px solid color-mix(in srgb, var(--focus) 20%, transparent);
+}
+
+.label-manager-error {
+  margin: -6px 0 0;
+  color: #b42318;
+  font-size: var(--text-xs);
+}
+
+.label-manager-list {
+  min-height: 72px;
+  overflow: auto;
+  border-top: 1px solid var(--border);
+}
+
+.label-manager-row {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.label-manager-name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.label-manager-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 2px;
+}
+
+.label-manager-rename {
+  width: 100%;
+}
+
+.label-delete-confirmation {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.label-delete-confirmation span {
+  min-width: 0;
+  flex: 1;
+  font-size: var(--text-sm);
+}
+
+.label-delete-confirmation button {
+  min-height: 32px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface-hover);
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.label-delete-confirmation button:first-of-type {
+  color: #b42318;
+}
+
+.label-manager-empty {
+  margin: var(--space-5) 0;
+  color: var(--text-subtle);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
+@media (max-width: 767px) {
+  .note-organization-popover {
+    right: auto;
+    left: -8px;
+  }
+
+  .note-label-picker {
+    width: min(230px, calc(100vw - 40px));
+  }
+
+  .label-manager-layer {
+    place-items: stretch;
+    padding: 0;
+  }
+
+  .label-manager-dialog {
+    width: 100%;
+    max-height: none;
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: calc(var(--space-5) + env(safe-area-inset-top)) var(--space-4)
+      calc(var(--space-4) + env(safe-area-inset-bottom));
+    border: 0;
+    border-radius: 0;
+  }
+}

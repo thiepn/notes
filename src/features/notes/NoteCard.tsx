@@ -1,7 +1,10 @@
-import { Archive, Copy, Pin, PinOff, RotateCcw, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Archive, Copy, Palette, Pin, PinOff, RotateCcw, Tag, Trash2 } from 'lucide-react';
 
 import { IconButton } from '../../components/ui/IconButton';
-import type { NoteRecord } from '../../db';
+import type { LabelRecord, NoteColor, NoteRecord } from '../../db';
+import { NoteColorPicker } from './NoteColorPicker';
+import { NoteLabelPicker } from './NoteLabelPicker';
 
 export type NoteCollectionMode = 'notes' | 'archive' | 'trash';
 
@@ -14,20 +17,57 @@ export interface NoteCardActions {
   restore(note: NoteRecord): void;
   duplicate(note: NoteRecord): void;
   deletePermanently(note: NoteRecord): void;
+  setColor(note: NoteRecord, color: NoteColor): void;
+  setLabels(note: NoteRecord, labelIds: string[]): void;
 }
 
 interface NoteCardProps {
   note: NoteRecord;
   mode: NoteCollectionMode;
   actions: NoteCardActions;
+  labels: LabelRecord[];
+  selectedLabelIds: string[];
 }
 
-export function NoteCard({ note, mode, actions }: NoteCardProps) {
+type OrganizationPanel = 'color' | 'labels' | null;
+
+export function NoteCard({
+  note,
+  mode,
+  actions,
+  labels,
+  selectedLabelIds,
+}: NoteCardProps) {
+  const cardRef = useRef<HTMLElement>(null);
+  const [openPanel, setOpenPanel] = useState<OrganizationPanel>(null);
   const label = noteLabel(note);
   const canOpen = mode !== 'trash';
+  const selectedLabels = labels.filter((item) => selectedLabelIds.includes(item.id));
+
+  useEffect(() => {
+    if (!openPanel) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (cardRef.current?.contains(target)) return;
+      setOpenPanel(null);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpenPanel(null);
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown, true);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown, true);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [openPanel]);
 
   return (
     <article
+      ref={cardRef}
       className="note-card"
       data-note-card
       data-note-id={note.id}
@@ -41,11 +81,11 @@ export function NoteCard({ note, mode, actions }: NoteCardProps) {
           aria-label={`Open note: ${label}`}
           onClick={() => actions.open(note)}
         >
-          <NoteCardContent note={note} />
+          <NoteCardContent note={note} labels={selectedLabels} />
         </button>
       ) : (
         <div className="note-card-open" data-readonly="true">
-          <NoteCardContent note={note} />
+          <NoteCardContent note={note} labels={selectedLabels} />
         </div>
       )}
 
@@ -62,6 +102,50 @@ export function NoteCard({ note, mode, actions }: NoteCardProps) {
       ) : null}
 
       <div className="note-card-actions">
+        {mode !== 'trash' ? (
+          <>
+            <div className="note-card-action-slot">
+              <IconButton
+                className="note-card-action"
+                label={`Change color: ${label}`}
+                aria-expanded={openPanel === 'color'}
+                onClick={() => setOpenPanel((current) => (current === 'color' ? null : 'color'))}
+              >
+                <Palette />
+              </IconButton>
+              {openPanel === 'color' ? (
+                <NoteColorPicker
+                  noteLabel={label}
+                  value={note.color}
+                  onChange={(color) => {
+                    setOpenPanel(null);
+                    actions.setColor(note, color);
+                  }}
+                />
+              ) : null}
+            </div>
+
+            <div className="note-card-action-slot">
+              <IconButton
+                className="note-card-action"
+                label={`Change labels: ${label}`}
+                aria-expanded={openPanel === 'labels'}
+                onClick={() => setOpenPanel((current) => (current === 'labels' ? null : 'labels'))}
+              >
+                <Tag />
+              </IconButton>
+              {openPanel === 'labels' ? (
+                <NoteLabelPicker
+                  labels={labels}
+                  noteLabel={label}
+                  selectedLabelIds={selectedLabelIds}
+                  onChange={(labelIds) => actions.setLabels(note, labelIds)}
+                />
+              ) : null}
+            </div>
+          </>
+        ) : null}
+
         {mode === 'notes' ? (
           <IconButton
             className="note-card-action"
@@ -125,12 +209,21 @@ export function NoteCard({ note, mode, actions }: NoteCardProps) {
   );
 }
 
-function NoteCardContent({ note }: { note: NoteRecord }) {
+function NoteCardContent({ note, labels }: { note: NoteRecord; labels: LabelRecord[] }) {
   return (
     <>
       {note.title ? <span className="note-card-title">{note.title}</span> : null}
       {note.content ? <span className="note-card-body">{note.content}</span> : null}
       {!note.title && !note.content ? <span className="note-card-empty">Empty note</span> : null}
+      {labels.length > 0 ? (
+        <span className="note-card-labels" aria-label="Labels">
+          {labels.map((label) => (
+            <span className="note-label-chip" key={label.id}>
+              {label.name}
+            </span>
+          ))}
+        </span>
+      ) : null}
     </>
   );
 }

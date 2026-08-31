@@ -16,11 +16,17 @@ type CaptureStatus = 'idle' | 'saving' | 'error';
 
 interface UseTextNoteCaptureOptions {
   repository: NotesRepository;
+  beforeSaved?: ((note: NoteRecord) => Promise<void>) | undefined;
   onSaved(note: NoteRecord): void;
   onRemoved(noteId: string): void;
 }
 
-export function useTextNoteCapture({ repository, onSaved, onRemoved }: UseTextNoteCaptureOptions) {
+export function useTextNoteCapture({
+  repository,
+  beforeSaved,
+  onSaved,
+  onRemoved,
+}: UseTextNoteCaptureOptions) {
   const [initialCapture] = useState(() => {
     const journal = readCaptureJournal();
     const draft: CaptureDraft = journal
@@ -85,6 +91,8 @@ export function useTextNoteCapture({ repository, onSaved, onRemoved }: UseTextNo
         );
       }
 
+      if (beforeSaved) await beforeSaved(note);
+
       noteRef.current = note;
       noteIdRef.current = note.id;
       onSaved(note);
@@ -130,7 +138,7 @@ export function useTextNoteCapture({ repository, onSaved, onRemoved }: UseTextNo
     );
 
     return guardedTask;
-  }, [onSaved, repository]);
+  }, [beforeSaved, onSaved, repository]);
 
   const scheduleSave = useCallback(
     (nextDraft: CaptureDraft) => {

@@ -1,12 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { NotebookPen } from 'lucide-react';
 
 import { AppHeader } from '../components/AppHeader';
 import { AppSidebar, type AppSection } from '../components/AppSidebar';
+import { LabelsRepository, notesDatabase, type LabelRecord } from '../db';
+import { LabelManagerDialog } from '../features/notes/LabelManagerDialog';
 import { NotesWorkspace } from '../features/notes/NotesWorkspace';
 
 const MOBILE_QUERY = '(max-width: 767px)';
 const ACTIVE_SECTION_KEY = 'notes.active-section';
+const ACTIVE_LABEL_KEY = 'notes.active-label';
+const labelsRepository = new LabelsRepository(notesDatabase);
 
 const SECTION_COPY: Record<
   AppSection,
@@ -40,11 +44,22 @@ const SECTION_COPY: Record<
 
 export function AppShell() {
   const [activeSection, setActiveSection] = useState<AppSection>(() => readActiveSection());
+  const [activeLabelId, setActiveLabelId] = useState<string | null>(() => readActiveLabelId());
+  const [labels, setLabels] = useState<LabelRecord[]>([]);
+  const [labelManagerOpen, setLabelManagerOpen] = useState(false);
   const [sidebarCompact, setSidebarCompact] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(() =>
     typeof window === 'undefined' ? false : window.matchMedia(MOBILE_QUERY).matches,
   );
+
+  const refreshLabels = useCallback(async () => {
+    setLabels(await labelsRepository.list());
+  }, []);
+
+  useEffect(() => {
+    void refreshLabels();
+  }, [refreshLabels]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia(MOBILE_QUERY);
@@ -60,14 +75,10 @@ export function AppShell() {
   }, []);
 
   useEffect(() => {
-    if (!mobileSidebarOpen) {
-      return;
-    }
+    if (!mobileSidebarOpen) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setMobileSidebarOpen(false);
-      }
+      if (event.key === 'Escape') setMobileSidebarOpen(false);
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -85,16 +96,59 @@ export function AppShell() {
 
   const handleNavigate = (section: AppSection) => {
     setActiveSection(section);
+    setActiveLabelId(null);
     persistActiveSection(section);
+    persistActiveLabelId(null);
 
-    if (isMobile) {
-      setMobileSidebarOpen(false);
-    }
+    if (isMobile) setMobileSidebarOpen(false);
   };
 
-  const section = SECTION_COPY[activeSection];
+  const handleLabelNavigate = (labelId: string) => {
+    setActiveSection('notes');
+    setActiveLabelId(labelId);
+    persistActiveSection('notes');
+    persistActiveLabelId(labelId);
+
+    if (isMobile) setMobileSidebarOpen(false);
+  };
+
+  const handleCreateLabel = async (name: string) => {
+    await labelsRepository.create(name);
+    await refreshLabels();
+  };
+
+  const handleRenameLabel = async (labelId: string, name: string) => {
+    await labelsRepository.rename(labelId, name);
+    await refreshLabels();
+  };
+
+  const handleDeleteLabel = async (labelId: string) => {
+    await labelsRepository.delete(labelId);
+    if (activeLabelId === labelId) {
+      setActiveLabelId(null);
+      setActiveSection('notes');
+      persistActiveLabelId(null);
+      persistActiveSection('notes');
+    }
+    await refreshLabels();
+  };
+
+  const activeLabel = activeLabelId
+    ? labels.find((label) => label.id === activeLabelId) ?? null
+    : null;
+  const section = activeLabel
+    ? {
+        title: activeLabel.name,
+        description: `Active notes labeled “${activeLabel.name}”.`,
+        emptyTitle: `No notes labeled “${activeLabel.name}”`,
+        emptyDescription: 'Create a note here or add this label to an existing note.',
+      }
+    : SECTION_COPY[activeSection];
   const lifecycleSection =
-    activeSection === 'notes' || activeSection === 'archive' || activeSection === 'trash';
+    activeLabel !== null ||
+    activeSection === 'notes' ||
+    activeSection === 'archive' ||
+    activeSection === 'trash';
 
   return (
     <div className="app-shell">
@@ -103,10 +157,14 @@ export function AppShell() {
       <div className="app-body">
         <AppSidebar
           activeSection={activeSection}
+          activeLabelId={activeLabel?.id ?? null}
+          labels={labels}
           compact={sidebarCompact}
           mobileOpen={mobileSidebarOpen}
           mobile={isMobile}
           onNavigate={handleNavigate}
+          onLabelNavigate={handleLabelNavigate}
+          onManageLabels={() => setLabelManagerOpen(true)}
         />
 
         {isMobile && mobileSidebarOpen ? (
@@ -130,7 +188,11 @@ export function AppShell() {
             </header>
 
             {lifecycleSection ? (
-              <NotesWorkspace mode={activeSection} />
+              <NotesWorkspace
+                mode={activeLabel ? 'notes' : activeSection === 'reminders' ? 'notes' : activeSection}
+                labels={labels}
+                filterLabelId={activeLabel?.id ?? null}
+              />
             ) : (
               <SectionPlaceholder
                 title={section.emptyTitle}
@@ -140,6 +202,16 @@ export function AppShell() {
           </div>
         </main>
       </div>
+
+      {labelManagerOpen ? (
+        <LabelManagerDialog
+          labels={labels}
+          onClose={() => setLabelManagerOpen(false)}
+          onCreate={handleCreateLabel}
+          onRename={handleRenameLabel}
+          onDelete={handleDeleteLabel}
+        />
+      ) : null}
     </div>
   );
 }
@@ -172,5 +244,23 @@ function persistActiveSection(section: AppSection): void {
     window.localStorage.setItem(ACTIVE_SECTION_KEY, section);
   } catch {
     // Navigation still works when storage is unavailable.
+  }
+}
+
+function readActiveLabelId(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.localStorage.getItem(ACTIVE_LABEL_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function persistActiveLabelId(labelId: string | null): void {
+  try {
+    if (labelId) window.localStorage.setItem(ACTIVE_LABEL_KEY, labelId);
+    else window.localStorage.removeItem(ACTIVE_LABEL_KEY);
+  } catch {
+    // Label navigation still works when storage is unavailable.
   }
 }

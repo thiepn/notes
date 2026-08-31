@@ -2,7 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LayoutGrid, NotebookPen, Rows3 } from 'lucide-react';
 
 import { IconButton } from '../../components/ui/IconButton';
-import { NotesRepository, notesDatabase, type NoteRecord } from '../../db';
+import {
+  LabelsRepository,
+  NotesRepository,
+  notesDatabase,
+  type LabelRecord,
+  type NoteColor,
+  type NoteRecord,
+} from '../../db';
 import { ConfirmDeleteDialog } from './ConfirmDeleteDialog';
 import { clearEditorJournal, readEditorJournal } from './editorJournal';
 import { LifecycleToast, type LifecycleToastState } from './LifecycleToast';
@@ -13,15 +20,21 @@ import { TextNoteComposer } from './TextNoteComposer';
 import { readNotesViewMode, writeNotesViewMode, type NotesViewMode } from './viewMode';
 
 const notesRepository = new NotesRepository(notesDatabase);
+const labelsRepository = new LabelsRepository(notesDatabase);
 const EMPTY_NOTES: NoteRecord[] = [];
+const EMPTY_LABEL_MAP: Record<string, string[]> = {};
 
 interface NotesWorkspaceProps {
   mode?: NoteCollectionMode;
+  labels: LabelRecord[];
+  filterLabelId?: string | null;
 }
 
 interface CollectionState {
   mode: NoteCollectionMode;
+  filterLabelId: string | null;
   notes: NoteRecord[];
+  labelIdsByNote: Record<string, string[]>;
   loaded: boolean;
 }
 
@@ -40,12 +53,18 @@ const EMPTY_COPY: Record<NoteCollectionMode, { title: string; description: strin
   },
 };
 
-export function NotesWorkspace({ mode = 'notes' }: NotesWorkspaceProps) {
+export function NotesWorkspace({
+  mode = 'notes',
+  labels,
+  filterLabelId = null,
+}: NotesWorkspaceProps) {
   const [initialEditorNoteId] = useState(() => readEditorJournal()?.noteId ?? null);
   const recoveryEditorNoteIdRef = useRef<string | null>(initialEditorNoteId);
   const [collection, setCollection] = useState<CollectionState>({
     mode,
+    filterLabelId,
     notes: [],
+    labelIdsByNote: {},
     loaded: false,
   });
   const [activeCaptureNoteId, setActiveCaptureNoteId] = useState<string | null>(null);
@@ -60,25 +79,26 @@ export function NotesWorkspace({ mode = 'notes' }: NotesWorkspaceProps) {
   }, []);
 
   const refreshCollection = useCallback(async () => {
-    const storedNotes = await listNotesForMode(mode);
-    setCollection({ mode, notes: storedNotes, loaded: true });
-  }, [mode]);
+    const storedNotes = await listNotesForMode(mode, filterLabelId);
+    const labelIdsByNote = await labelsRepository.labelIdsByNote(storedNotes.map((note) => note.id));
+    setCollection({ mode, filterLabelId, notes: storedNotes, labelIdsByNote, loaded: true });
+  }, [filterLabelId, mode]);
 
   useEffect(() => {
     let cancelled = false;
 
-    void listNotesForMode(mode)
-      .then((storedNotes) => {
+    void loadCollection(mode, filterLabelId)
+      .then(({ notes, labelIdsByNote }) => {
         if (cancelled) return;
 
-        setCollection({ mode, notes: storedNotes, loaded: true });
+        setCollection({ mode, filterLabelId, notes, labelIdsByNote, loaded: true });
         setToast(null);
 
         const recoveryNoteId = recoveryEditorNoteIdRef.current;
         if (recoveryNoteId === null) return;
 
         recoveryEditorNoteIdRef.current = null;
-        if (mode !== 'trash' && storedNotes.some((note) => note.id === recoveryNoteId)) {
+        if (mode !== 'trash' && notes.some((note) => note.id === recoveryNoteId)) {
           setEditingNoteId(recoveryNoteId);
         } else {
           clearEditorJournal();
@@ -86,14 +106,14 @@ export function NotesWorkspace({ mode = 'notes' }: NotesWorkspaceProps) {
       })
       .catch(() => {
         if (cancelled) return;
-        setCollection({ mode, notes: [], loaded: true });
+        setCollection({ mode, filterLabelId, notes: [], labelIdsByNote: {}, loaded: true });
         showToast('Notes could not be loaded.');
       });
 
     return () => {
       cancelled = true;
     };
-  }, [mode, showToast]);
+  }, [filterLabelId, mode, showToast]);
 
   useEffect(() => {
     if (!toast) return;
@@ -105,28 +125,52 @@ export function NotesWorkspace({ mode = 'notes' }: NotesWorkspaceProps) {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  const notes = collection.mode === mode ? collection.notes : EMPTY_NOTES;
-  const loaded = collection.mode === mode && collection.loaded;
+  const matchesCollection =
+    collection.mode === mode && collection.filterLabelId === filterLabelId;
+  const notes = matchesCollection ? collection.notes : EMPTY_NOTES;
+  const labelIdsByNote = matchesCollection ? collection.labelIdsByNote : EMPTY_LABEL_MAP;
+  const loaded = matchesCollection && collection.loaded;
+
+  const prepareCapturedNote = useCallback(
+    async (note: NoteRecord) => {
+      if (filterLabelId) await labelsRepository.assign(note.id, filterLabelId);
+    },
+    [filterLabelId],
+  );
 
   const handleSaved = useCallback(
     (note: NoteRecord) => {
       setCollection((current) => {
-        if (current.mode !== mode) return current;
+        if (current.mode !== mode || current.filterLabelId !== filterLabelId) return current;
+        const currentLabelIds = current.labelIdsByNote[note.id] ?? [];
+        const nextLabelIds = filterLabelId
+          ? [...new Set([...currentLabelIds, filterLabelId])]
+          : currentLabelIds;
         const nextNotes = [note, ...current.notes.filter((item) => item.id !== note.id)];
-        return { ...current, notes: sortNotesForMode(nextNotes, mode) };
+        return {
+          ...current,
+          notes: sortNotesForMode(nextNotes, mode),
+          labelIdsByNote: { ...current.labelIdsByNote, [note.id]: nextLabelIds },
+        };
       });
     },
-    [mode],
+    [filterLabelId, mode],
   );
 
   const handleRemoved = useCallback(
     (noteId: string) => {
       setCollection((current) => {
-        if (current.mode !== mode) return current;
-        return { ...current, notes: current.notes.filter((note) => note.id !== noteId) };
+        if (current.mode !== mode || current.filterLabelId !== filterLabelId) return current;
+        const nextLabelIdsByNote = { ...current.labelIdsByNote };
+        delete nextLabelIdsByNote[noteId];
+        return {
+          ...current,
+          notes: current.notes.filter((note) => note.id !== noteId),
+          labelIdsByNote: nextLabelIdsByNote,
+        };
       });
     },
-    [mode],
+    [filterLabelId, mode],
   );
 
   const handleViewMode = useCallback((nextMode: NotesViewMode) => {
@@ -159,9 +203,7 @@ export function NotesWorkspace({ mode = 'notes' }: NotesWorkspaceProps) {
         await refreshCollection();
         showToast('Note archived.', async () => {
           const restored = await notesRepository.unarchive(note.id);
-          if (wasPinned) {
-            await notesRepository.setPinned(note.id, true, restored.revision);
-          }
+          if (wasPinned) await notesRepository.setPinned(note.id, true, restored.revision);
           await refreshCollection();
         });
       } catch {
@@ -197,11 +239,8 @@ export function NotesWorkspace({ mode = 'notes' }: NotesWorkspaceProps) {
         await refreshCollection();
         showToast('Note moved to trash.', async () => {
           const restored = await notesRepository.restore(note.id);
-          if (wasArchived) {
-            await notesRepository.archive(note.id, restored.revision);
-          } else if (wasPinned) {
-            await notesRepository.setPinned(note.id, true, restored.revision);
-          }
+          if (wasArchived) await notesRepository.archive(note.id, restored.revision);
+          else if (wasPinned) await notesRepository.setPinned(note.id, true, restored.revision);
           await refreshCollection();
         });
       } catch {
@@ -243,6 +282,43 @@ export function NotesWorkspace({ mode = 'notes' }: NotesWorkspaceProps) {
     [mode, refreshCollection, showToast],
   );
 
+  const handleSetColor = useCallback(
+    async (note: NoteRecord, color: NoteColor) => {
+      if (note.color === color) return;
+      const previousColor = note.color;
+      try {
+        const saved = await notesRepository.update(note.id, { color }, note.revision);
+        handleSaved(saved);
+        showToast('Color changed.', async () => {
+          await notesRepository.update(note.id, { color: previousColor });
+          await refreshCollection();
+        });
+      } catch {
+        showToast('Note color could not be changed.');
+      }
+    },
+    [handleSaved, refreshCollection, showToast],
+  );
+
+  const handleSetLabels = useCallback(
+    async (note: NoteRecord, labelIds: string[]) => {
+      const previousLabelIds = labelIdsByNote[note.id] ?? [];
+      if (sameStringSet(previousLabelIds, labelIds)) return;
+
+      try {
+        await labelsRepository.setForNote(note.id, labelIds);
+        await refreshCollection();
+        showToast('Labels updated.', async () => {
+          await labelsRepository.setForNote(note.id, previousLabelIds);
+          await refreshCollection();
+        });
+      } catch {
+        showToast('Note labels could not be changed.');
+      }
+    },
+    [labelIdsByNote, refreshCollection, showToast],
+  );
+
   const handleConfirmDelete = useCallback(async () => {
     const note = deleteCandidate;
     if (!note) return;
@@ -275,8 +351,19 @@ export function NotesWorkspace({ mode = 'notes' }: NotesWorkspaceProps) {
       restore: (note) => void handleRestore(note),
       duplicate: (note) => void handleDuplicate(note),
       deletePermanently: (note) => setDeleteCandidate(note),
+      setColor: (note, color) => void handleSetColor(note, color),
+      setLabels: (note, labelIds) => void handleSetLabels(note, labelIds),
     }),
-    [handleArchive, handleDuplicate, handleRestore, handleTogglePin, handleTrash, handleUnarchive],
+    [
+      handleArchive,
+      handleDuplicate,
+      handleRestore,
+      handleSetColor,
+      handleSetLabels,
+      handleTogglePin,
+      handleTrash,
+      handleUnarchive,
+    ],
   );
 
   const visibleNotes = useMemo(
@@ -292,13 +379,19 @@ export function NotesWorkspace({ mode = 'notes' }: NotesWorkspaceProps) {
     [mode, visibleNotes],
   );
   const editingNote = notes.find((note) => note.id === editingNoteId) ?? null;
-  const emptyCopy = EMPTY_COPY[mode];
+  const emptyCopy = filterLabelId
+    ? {
+        title: 'No notes with this label',
+        description: 'Create a note here or add this label to an existing note.',
+      }
+    : EMPTY_COPY[mode];
 
   return (
     <>
       {mode === 'notes' ? (
         <TextNoteComposer
           repository={notesRepository}
+          beforeSaved={prepareCapturedNote}
           onSaved={handleSaved}
           onRemoved={handleRemoved}
           onActiveNoteChange={setActiveCaptureNoteId}
@@ -341,6 +434,8 @@ export function NotesWorkspace({ mode = 'notes' }: NotesWorkspaceProps) {
               viewMode={viewMode}
               mode={mode}
               actions={actions}
+              labels={labels}
+              labelIdsByNote={labelIdsByNote}
             />
           ) : null}
 
@@ -351,6 +446,8 @@ export function NotesWorkspace({ mode = 'notes' }: NotesWorkspaceProps) {
               viewMode={viewMode}
               mode={mode}
               actions={actions}
+              labels={labels}
+              labelIdsByNote={labelIdsByNote}
             />
           ) : null}
         </div>
@@ -393,12 +490,16 @@ function NoteSection({
   viewMode,
   mode,
   actions,
+  labels,
+  labelIdsByNote,
 }: {
   title: string | null;
   notes: NoteRecord[];
   viewMode: NotesViewMode;
   mode: NoteCollectionMode;
   actions: NoteCardActions;
+  labels: LabelRecord[];
+  labelIdsByNote: Record<string, string[]>;
 }) {
   const ariaLabel =
     title !== null
@@ -418,15 +519,36 @@ function NoteSection({
         ariaLabel={ariaLabel}
         mode={mode}
         actions={actions}
+        labels={labels}
+        labelIdsByNote={labelIdsByNote}
       />
     </section>
   );
 }
 
-async function listNotesForMode(mode: NoteCollectionMode): Promise<NoteRecord[]> {
+async function loadCollection(
+  mode: NoteCollectionMode,
+  filterLabelId: string | null,
+): Promise<{ notes: NoteRecord[]; labelIdsByNote: Record<string, string[]> }> {
+  const notes = await listNotesForMode(mode, filterLabelId);
+  const labelIdsByNote = await labelsRepository.labelIdsByNote(notes.map((note) => note.id));
+  return { notes, labelIdsByNote };
+}
+
+async function listNotesForMode(
+  mode: NoteCollectionMode,
+  filterLabelId: string | null,
+): Promise<NoteRecord[]> {
   if (mode === 'archive') return notesRepository.listArchived();
   if (mode === 'trash') return notesRepository.listTrashed();
-  return notesRepository.listActive();
+  if (!filterLabelId) return notesRepository.listActive();
+
+  const [activeNotes, labeledNoteIds] = await Promise.all([
+    notesRepository.listActive(),
+    labelsRepository.noteIdsForLabel(filterLabelId),
+  ]);
+  const labeled = new Set(labeledNoteIds);
+  return activeNotes.filter((note) => labeled.has(note.id));
 }
 
 function sortNotesForMode(notes: NoteRecord[], mode: NoteCollectionMode): NoteRecord[] {
@@ -449,4 +571,10 @@ function sortNotesForMode(notes: NoteRecord[], mode: NoteCollectionMode): NoteRe
 
     return b.updatedAt - a.updatedAt || b.createdAt - a.createdAt;
   });
+}
+
+function sameStringSet(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  const values = new Set(a);
+  return b.every((value) => values.has(value));
 }

@@ -12,6 +12,7 @@ import { useTextNoteCapture } from './useTextNoteCapture';
 
 interface TextNoteComposerProps {
   repository: NotesRepository;
+  beforeSaved?: ((note: NoteRecord) => Promise<void>) | undefined;
   onSaved(note: NoteRecord): void;
   onRemoved(noteId: string): void;
   onActiveNoteChange(noteId: string | null): void;
@@ -19,6 +20,7 @@ interface TextNoteComposerProps {
 
 export function TextNoteComposer({
   repository,
+  beforeSaved,
   onSaved,
   onRemoved,
   onActiveNoteChange,
@@ -36,7 +38,7 @@ export function TextNoteComposer({
     setContent,
     finishCapture,
     retrySave,
-  } = useTextNoteCapture({ repository, onSaved, onRemoved });
+  } = useTextNoteCapture({ repository, beforeSaved, onSaved, onRemoved });
 
   useEffect(() => {
     onActiveNoteChange(activeNoteId);

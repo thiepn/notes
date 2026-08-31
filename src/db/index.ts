@@ -7,6 +7,7 @@ export {
 } from './database';
 export { InvalidNoteStateError, NoteConflictError, NoteNotFoundError } from './errors';
 export { DATABASE_SCHEMA_V1, DATABASE_VERSION } from './migrations/v1';
+export { LabelsRepository, normalizeLabelName } from './repositories/labelsRepository';
 export { NotesRepository } from './repositories/notesRepository';
 export type {
   AttachmentRecord,
@@ -19,6 +20,7 @@ export type {
   RevisionRecord,
   SettingRecord,
 } from './types';
+export { NOTE_COLORS } from './types';
 export {
   attachmentRecordSchema,
   checklistItemRecordSchema,
