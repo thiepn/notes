@@ -231,32 +231,50 @@
 
 .note-card {
   position: relative;
-  display: block;
   width: 100%;
   min-width: 0;
-  min-height: 92px;
-  padding: var(--space-4);
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--border-strong) 82%, transparent);
   border-radius: var(--radius-lg);
   background: var(--note-default);
   color: var(--text);
-  cursor: pointer;
-  font: inherit;
-  text-align: left;
   transition:
     border-color var(--motion-fast) var(--ease-standard),
     box-shadow var(--motion-fast) var(--ease-standard),
     transform var(--motion-fast) var(--ease-standard);
 }
 
-.note-card:hover {
+.note-card:hover,
+.note-card:focus-within {
   border-color: color-mix(in srgb, var(--text-subtle) 72%, transparent);
   box-shadow: var(--shadow-md);
 }
 
-.note-card:active {
+.note-card:has(.note-card-open:active) {
   transform: translateY(1px);
+}
+
+.note-card-open {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 92px;
+  padding: var(--space-4) var(--space-4) 52px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.note-card-open[data-readonly='true'] {
+  cursor: default;
+}
+
+.note-card-open:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -3px;
 }
 
 .note-card[data-color='red'],
@@ -309,23 +327,66 @@
   background: var(--note-gray);
 }
 
-.note-card-pin {
+.note-card-pin-action {
   position: absolute;
-  top: 11px;
-  right: 11px;
-  display: grid;
-  width: 28px;
-  height: 28px;
-  place-items: center;
-  border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--text) 7%, transparent);
-  color: var(--text-muted);
+  top: 8px;
+  right: 8px;
 }
 
-.note-card-pin svg {
-  width: 15px;
-  height: 15px;
-  stroke-width: 2;
+.note-card-actions {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  left: 8px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(3px);
+  transition:
+    opacity var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard);
+}
+
+.note-card-pin-action {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--motion-fast) var(--ease-standard);
+}
+
+.note-card:hover .note-card-actions,
+.note-card:focus-within .note-card-actions,
+.note-card:hover .note-card-pin-action,
+.note-card:focus-within .note-card-pin-action {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.note-card[data-pinned='true'] .note-card-pin-action {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.note-card-action {
+  width: 34px;
+  height: 34px;
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+}
+
+.note-card-action:hover {
+  background: color-mix(in srgb, var(--text) 12%, transparent);
+}
+
+.note-card-action-danger:hover {
+  color: #b42318;
+}
+
+.note-card-action svg {
+  width: 17px;
+  height: 17px;
+  stroke-width: 1.9;
 }
 
 .note-card-title,
@@ -336,7 +397,7 @@
 }
 
 .note-card-title {
-  padding-right: 28px;
+  padding-right: 30px;
   font-size: 0.98rem;
   font-weight: 680;
   line-height: 1.4;
@@ -355,7 +416,7 @@
   -webkit-line-clamp: 14;
 }
 
-.note-card:not(:has(.note-card-title)) .note-card-body {
+.note-card-open:not(:has(.note-card-title)) .note-card-body {
   margin-top: 0;
 }
 
@@ -369,7 +430,8 @@
   font-style: italic;
 }
 
-.note-editor-layer {
+.note-editor-layer,
+.confirm-dialog-layer {
   position: fixed;
   inset: 0;
   z-index: var(--z-dialog);
@@ -397,6 +459,114 @@
   max-height: min(58vh, 560px);
 }
 
+.lifecycle-toast {
+  position: fixed;
+  right: var(--space-5);
+  bottom: var(--space-5);
+  z-index: calc(var(--z-dialog) + 20);
+  display: flex;
+  max-width: min(420px, calc(100vw - 32px));
+  min-height: 48px;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--border-strong) 72%, transparent);
+  border-radius: var(--radius-md);
+  background: var(--text);
+  box-shadow: var(--shadow-md);
+  color: var(--bg);
+  font-size: var(--text-sm);
+}
+
+.lifecycle-toast span {
+  min-width: 0;
+}
+
+.lifecycle-toast button {
+  flex: 0 0 auto;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--accent-soft);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 750;
+}
+
+.lifecycle-toast button:hover,
+.lifecycle-toast button:focus-visible {
+  background: color-mix(in srgb, var(--bg) 12%, transparent);
+}
+
+.confirm-dialog-layer {
+  z-index: calc(var(--z-dialog) + 10);
+}
+
+.confirm-dialog {
+  width: min(100%, 440px);
+  padding: var(--space-6);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  box-shadow: 0 22px 70px rgb(15 18 24 / 28%);
+}
+
+.confirm-dialog h2 {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+
+.confirm-dialog p {
+  margin: var(--space-3) 0 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-6);
+}
+
+.confirm-dialog-actions button {
+  min-height: 40px;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 650;
+}
+
+.confirm-dialog-actions button:hover,
+.confirm-dialog-actions button:focus-visible {
+  background: var(--surface-hover);
+}
+
+.confirm-dialog-actions .confirm-dialog-danger {
+  background: #b42318;
+  color: #ffffff;
+}
+
+.confirm-dialog-actions .confirm-dialog-danger:hover,
+.confirm-dialog-actions .confirm-dialog-danger:focus-visible {
+  background: #912018;
+}
+
+@media (hover: none) {
+  .note-card-actions,
+  .note-card-pin-action {
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+  }
+}
+
 @media (max-width: 767px) {
   .note-composer,
   .note-composer-collapsed {
@@ -416,8 +586,11 @@
   }
 
   .note-card {
-    padding: var(--space-3);
     border-radius: var(--radius-md);
+  }
+
+  .note-card-open {
+    padding: var(--space-3) var(--space-3) 48px;
   }
 
   .note-editor-layer {
@@ -438,6 +611,17 @@
 
   .note-editor-body {
     max-height: none;
+  }
+
+  .lifecycle-toast {
+    right: var(--space-4);
+    bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
+    left: var(--space-4);
+    max-width: none;
+  }
+
+  .confirm-dialog-layer {
+    padding: var(--space-4);
   }
 }
 

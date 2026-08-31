@@ -6,6 +6,7 @@ import { AppSidebar, type AppSection } from '../components/AppSidebar';
 import { NotesWorkspace } from '../features/notes/NotesWorkspace';
 
 const MOBILE_QUERY = '(max-width: 767px)';
+const ACTIVE_SECTION_KEY = 'notes.active-section';
 
 const SECTION_COPY: Record<
   AppSection,
@@ -38,7 +39,7 @@ const SECTION_COPY: Record<
 };
 
 export function AppShell() {
-  const [activeSection, setActiveSection] = useState<AppSection>('notes');
+  const [activeSection, setActiveSection] = useState<AppSection>(() => readActiveSection());
   const [sidebarCompact, setSidebarCompact] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(() =>
@@ -84,12 +85,16 @@ export function AppShell() {
 
   const handleNavigate = (section: AppSection) => {
     setActiveSection(section);
+    persistActiveSection(section);
+
     if (isMobile) {
       setMobileSidebarOpen(false);
     }
   };
 
   const section = SECTION_COPY[activeSection];
+  const lifecycleSection =
+    activeSection === 'notes' || activeSection === 'archive' || activeSection === 'trash';
 
   return (
     <div className="app-shell">
@@ -124,8 +129,8 @@ export function AppShell() {
               <span className="local-badge">Local only</span>
             </header>
 
-            {activeSection === 'notes' ? (
-              <NotesWorkspace />
+            {lifecycleSection ? (
+              <NotesWorkspace mode={activeSection} />
             ) : (
               <SectionPlaceholder
                 title={section.emptyTitle}
@@ -149,4 +154,23 @@ function SectionPlaceholder({ title, description }: { title: string; description
       <p>{description}</p>
     </section>
   );
+}
+
+function readActiveSection(): AppSection {
+  if (typeof window === 'undefined') return 'notes';
+
+  try {
+    const stored = window.localStorage.getItem(ACTIVE_SECTION_KEY);
+    return stored === 'reminders' || stored === 'archive' || stored === 'trash' ? stored : 'notes';
+  } catch {
+    return 'notes';
+  }
+}
+
+function persistActiveSection(section: AppSection): void {
+  try {
+    window.localStorage.setItem(ACTIVE_SECTION_KEY, section);
+  } catch {
+    // Navigation still works when storage is unavailable.
+  }
 }

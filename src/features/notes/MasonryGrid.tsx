@@ -1,22 +1,29 @@
 import { useLayoutEffect, useRef, type ReactNode } from 'react';
 
 import type { NoteRecord } from '../../db';
-import { NoteCard } from './NoteCard';
+import { NoteCard, type NoteCardActions, type NoteCollectionMode } from './NoteCard';
 import type { NotesViewMode } from './viewMode';
 
 interface MasonryGridProps {
   notes: NoteRecord[];
   viewMode: NotesViewMode;
   ariaLabel: string;
-  onOpen(noteId: string): void;
+  mode: NoteCollectionMode;
+  actions: NoteCardActions;
 }
 
-export function MasonryGrid({ notes, viewMode, ariaLabel, onOpen }: MasonryGridProps) {
+export function MasonryGrid({
+  notes,
+  viewMode,
+  ariaLabel,
+  mode,
+  actions,
+}: MasonryGridProps) {
   return (
     <div className="note-grid" data-view={viewMode} role="list" aria-label={ariaLabel}>
       {notes.map((note) => (
         <MasonryItem key={note.id} viewMode={viewMode}>
-          <NoteCard note={note} onOpen={onOpen} />
+          <NoteCard note={note} mode={mode} actions={actions} />
         </MasonryItem>
       ))}
     </div>
