@@ -9,17 +9,23 @@ No database migration is required for P13. Import identity is stored in the exis
 
 ## Input
 
-The importer accepts Google Takeout ZIP files directly. The user does not need to extract the archive first.
+The importer accepts three local source workflows:
+
+1. one or more Google Takeout ZIP files
+2. an extracted Google Keep folder
+3. individual extracted Keep files, including drag-and-drop
 
 Multiple ZIP parts can be selected together. This matters for large Google Takeout exports where Keep JSON and attachment files may be split across more than one archive.
 
+JSON is authoritative when both `.json` and `.html` representations of the same note exist. If a matching JSON note is unavailable, P13 can use the exported HTML as a best-effort, text-only fallback. Imported HTML is parsed as data and is never inserted or executed as arbitrary page markup.
+
 Current browser safety boundaries are:
 
-- maximum 512 MB total selected compressed ZIP size
-- maximum 100 MB for one expanded archive entry
+- maximum 512 MB total selected source size
+- maximum 100 MB for one expanded archive entry or selected file
 - maximum 768 MB expanded data per ZIP
-- HTML Keep sidecar files are ignored during extraction because the JSON files are authoritative
-- unsafe ZIP paths containing parent traversal are ignored
+- unsafe paths containing parent traversal are ignored
+- large imports receive a browser-storage preflight warning when available space appears insufficient
 
 The import runs entirely in the browser. No Takeout data is uploaded to a server.
 
@@ -42,13 +48,17 @@ P13 maps the durable Keep fields that fit the Notes v1 model:
 
 The parser is permissive about unknown extra JSON keys so future Takeout additions do not automatically make otherwise valid notes unreadable.
 
-## Text and checklist mapping
+## Text, checklist, and HTML mapping
 
 A Keep JSON record with `listContent` becomes a Notes checklist. A record without `listContent` becomes a text note.
 
 Historical Takeout JSON commonly uses `isChecked` for checklist state and `mimetype` for attachment MIME metadata. The compatibility layer also accepts `checked`, `childListItems`, and `mimeType` aliases used by current Keep tooling/API-shaped exports, preventing checked state, nested rows, or MIME metadata from being lost when a Takeout has been normalized by another tool.
 
 Checklist rows receive new local UUIDs. Parent relationships are remapped to those local IDs. Notes currently supports one level of checklist nesting. If a Takeout file contains deeper nesting, P13 keeps every row but flattens deeper descendants to the nearest supported root parent and surfaces a preview warning.
+
+If a JSON note unexpectedly contains both text and checklist content, P13 uses the structurally richer checklist representation and reports a warning instead of creating two notes.
+
+When only HTML is available, P13 extracts plain text, recognizable checklist rows, labels, and local attachment references where possible. Metadata that HTML cannot reliably preserve, such as color or lifecycle state, uses safe Notes defaults and is reported as a fallback limitation.
 
 Import refuses a note that exceeds the existing Notes data limits instead of silently truncating user data:
 
@@ -57,7 +67,7 @@ Import refuses a note that exceeds the existing Notes data limits instead of sil
 - checklist: 10,000 rows
 - one checklist item: 100,000 characters
 
-A rejected note does not prevent other valid notes in the selected Takeout from being previewed and imported.
+A rejected note does not prevent other valid notes in the selected source from being previewed and imported.
 
 ## Colors
 
@@ -90,6 +100,8 @@ P13 preserves the strongest durable Keep lifecycle state while respecting Notes 
 
 The Keep last-edited timestamp is used for the corresponding pin/archive/trash timestamp. Created and updated timestamps are converted from Takeout microseconds to Notes milliseconds.
 
+Malformed or impossible source timestamps no longer discard an otherwise usable note. P13 falls back to the remaining valid source time or the import time and reports a warning.
+
 ## Labels
 
 Labels are merged by the same normalized identity used everywhere else in Notes: trimmed/collapsed whitespace, Unicode NFKC normalization, and case-insensitive comparison.
@@ -98,18 +110,20 @@ For example, an existing Notes label `Work` and an imported Keep label `work` re
 
 Invalid or over-100-character Keep labels are skipped with a preview warning while the note itself remains importable.
 
+After a successful import, the application refreshes its label state immediately so newly created Keep labels appear in the sidebar without requiring a reload or leaving the import result screen.
+
 ## Attachments
 
 P13 stores attachment bytes in the existing `attachments` table and computes a lowercase SHA-256 checksum from the imported bytes.
 
 Attachment lookup supports:
 
-1. path relative to the note JSON file
-2. exact path inside the same ZIP
-3. a unique same-ZIP filename match
-4. a unique filename match across all selected Takeout ZIP parts
+1. path relative to the note file
+2. exact path inside the same selected source
+3. a unique same-archive filename match
+4. a unique filename match across all selected Takeout parts/files
 
-A missing attachment produces a warning and does not discard the note. This is preferable to losing the note when a Takeout archive is incomplete.
+A missing attachment produces a warning and does not discard the note. The preview also lets the user disable attachment import while still migrating note content.
 
 P13 is responsible for correct attachment ingestion and preservation. P14 is responsible for the full image viewing/attachment interaction experience.
 
@@ -119,27 +133,29 @@ The current Notes v1 scope has no collaboration/account model, so collaborator m
 
 Takeout annotations are likewise not represented as a separate Notes database concept. Existing text/list content remains intact and P13 reports the unsupported annotation metadata in preview.
 
-## Preview before write
+## Preview and import controls
 
-Selecting Takeout ZIP files is read-only. P13 fully extracts, parses, maps, hashes attachments, evaluates duplicate source identities, and builds a preview before the import button is enabled.
+Selecting a source is read-only. P13 extracts, parses, maps, hashes attachments, evaluates duplicate source identities, and builds a preview before the import button is enabled.
 
 The preview reports:
 
 - notes ready to import
 - source notes already imported
-- text-note count
-- checklist count
-- distinct imported labels
-- attachment count
-- skipped notes
-- missing attachments
+- active, archived, trashed, and pinned counts
+- text-note and checklist counts
+- distinct labels
+- attachment count and size
+- HTML fallback count
+- skipped notes and missing attachments
 - warnings
 
-Warnings do not imply partial database writes because no database mutation has happened yet.
+The user can include or exclude active notes, archived notes, trashed notes, and attachments before committing. Scan/import progress is reported using real completed/total work rather than a synthetic percentage.
+
+Warnings do not imply partial database writes because no database mutation has happened during preview.
 
 ## Repeat-import protection
 
-Every successfully imported source note gets a stable import source key. P13 prefers a future/available Keep source ID; otherwise it uses the note's Takeout creation timestamp, with a content/path hash fallback only when neither is available.
+Every successfully imported source note gets a stable source identity. P13 uses a Keep source ID when present. Otherwise it hashes a canonical representation of the source note, including its content and meaningful source metadata.
 
 The successful import records a setting with the prefix:
 
@@ -147,11 +163,15 @@ The successful import records a setting with the prefix:
 
 The setting stores the local note ID, source path, source update timestamp, and import timestamp.
 
-When the same source is selected again, it is shown as **Already imported** and is not imported a second time. This is intentionally conservative: if the user has edited the local imported note since migration, a later Takeout selection must not overwrite or duplicate those local edits.
+Earlier P13 builds used a creation-timestamp-derived fallback identity. The current importer retains that value as a compatibility alias when checking an existing ledger, so users who already migrated with the earlier implementation do not receive a duplicate library after upgrading.
+
+Within a new import, the stronger canonical fingerprint prevents distinct notes that happen to share the same creation timestamp from being collapsed into one source identity.
+
+When an already imported source is selected again, it is shown as **Already imported** and is not imported a second time. P13 never overwrites a locally edited note from a later Takeout selection.
 
 Because the ledger lives in the durable `settings` table, P12 full backups preserve repeat-import knowledge when the library moves to another browser installation.
 
-## Atomic import
+## Commit safety
 
 Import uses one Dexie read-write transaction spanning all seven durable tables:
 
@@ -163,20 +183,20 @@ Import uses one Dexie read-write transaction spanning all seven durable tables:
 - `revisions`
 - `settings`
 
-P13 rechecks source ledger keys inside that transaction to protect against a stale preview or another import completing between preview and commit.
+P13 rechecks source ledger identities inside that transaction to protect against a stale preview or another import completing between preview and commit.
 
 For each new source note the transaction creates:
 
-- one Notes note
+- one native Notes note
 - checklist rows when needed
 - missing normalized labels and note-label relationships
-- attachments that were found and verified
+- attachments when enabled and available
 - an initial P11 revision with reason `import`
 - one repeat-import ledger setting
 
 Existing local notes are never cleared or replaced.
 
-If any later write fails, IndexedDB aborts the whole import transaction. New notes, new labels, relationships, attachments, revisions, and ledger rows from that transaction all roll back together.
+If a later write fails, IndexedDB aborts the whole import transaction. New notes, new labels, relationships, attachments, revisions, and ledger rows from that transaction all roll back together.
 
 ## Initial revision baseline
 
@@ -184,20 +204,24 @@ Each imported note receives one P11 revision snapshot with reason `import`. This
 
 ## P13 regression gate
 
-Real Chromium coverage must prove that:
+Automated coverage must prove that:
 
-- a direct Takeout ZIP can be selected and previewed
+- direct Takeout ZIPs can be selected and previewed
 - multiple Takeout ZIP parts work together
+- extracted Keep folders/files can be imported without ZIP packaging
+- JSON wins over matching HTML sidecars
+- HTML-only notes use the safe fallback path
 - an existing local note survives unchanged
-- existing normalized labels are reused
-- new labels are created only once
+- existing normalized labels are reused and new labels are created only once
 - text content and checklist checked/parent state survive
 - compatibility aliases preserve `checked`/`childListItems` nesting and `mimeType` metadata
 - Keep color and lifecycle state map correctly
-- source timestamps survive conversion
+- valid timestamps survive conversion and invalid timestamps recover with warnings
 - attachment bytes and SHA-256 survive import
 - imported notes receive P11 `import` revisions
 - source ledger rows are written
+- stronger fingerprints distinguish notes that share a creation timestamp
+- legacy ledger aliases still prevent duplicate upgrades
 - selecting the same Takeout again produces no duplicate notes
 - malformed/unrecoverable Takeout input produces no writes
 - a forced write failure rolls back every imported table mutation

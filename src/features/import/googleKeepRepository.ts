@@ -20,13 +20,36 @@ import {
 import {
   KEEP_IMPORT_LEDGER_PREFIX,
   prepareGoogleKeepImport,
+  type KeepImportProgress,
   type PreparedKeepImport,
   type PreparedKeepNote,
 } from './googleKeepImport';
 
+export interface GoogleKeepImportSelection {
+  active: boolean;
+  archived: boolean;
+  trashed: boolean;
+  attachments: boolean;
+}
+
+export const DEFAULT_GOOGLE_KEEP_IMPORT_SELECTION: GoogleKeepImportSelection = {
+  active: true,
+  archived: true,
+  trashed: true,
+  attachments: true,
+};
+
+export interface GoogleKeepCommitProgress {
+  completed: number;
+  total: number;
+  message: string;
+}
+
 export interface GoogleKeepImportResult {
   importedNotes: number;
+  importedNoteIds: string[];
   skippedAlreadyImported: number;
+  skippedBySelection: number;
   createdLabels: number;
   importedAttachments: number;
 }
@@ -48,12 +71,22 @@ export class GoogleKeepImportRepository {
     this.idFactory = options.idFactory ?? (() => crypto.randomUUID());
   }
 
-  async inspect(files: File[]): Promise<PreparedKeepImport> {
+  async inspect(
+    files: File[],
+    onProgress?: (progress: KeepImportProgress) => void,
+  ): Promise<PreparedKeepImport> {
     const existingSourceKeys = await this.importedSourceKeys();
-    return prepareGoogleKeepImport(files, existingSourceKeys);
+    return prepareGoogleKeepImport(files, existingSourceKeys, onProgress);
   }
 
-  async importPrepared(prepared: PreparedKeepImport): Promise<GoogleKeepImportResult> {
+  async importPrepared(
+    prepared: PreparedKeepImport,
+    selection: GoogleKeepImportSelection = DEFAULT_GOOGLE_KEEP_IMPORT_SELECTION,
+    onProgress?: (progress: GoogleKeepCommitProgress) => void,
+  ): Promise<GoogleKeepImportResult> {
+    const selectedNotes = prepared.notes.filter((note) => shouldImportNote(note, selection));
+    const skippedBySelection = prepared.notes.length - selectedNotes.length;
+
     return this.database.transaction(
       'rw',
       [
@@ -67,14 +100,16 @@ export class GoogleKeepImportRepository {
       ],
       async () => {
         const importedSourceKeys = await this.importedSourceKeys();
-        const notesToImport = prepared.notes.filter(
-          (note) => !importedSourceKeys.has(note.sourceKey),
+        const notesToImport = selectedNotes.filter(
+          (note) => !noteSourceIdentities(note).some((key) => importedSourceKeys.has(key)),
         );
-        const skippedAlreadyImported = prepared.notes.length - notesToImport.length;
+        const skippedAlreadyImported = selectedNotes.length - notesToImport.length;
         if (notesToImport.length === 0) {
           return {
             importedNotes: 0,
+            importedNoteIds: [],
             skippedAlreadyImported,
+            skippedBySelection,
             createdLabels: 0,
             importedAttachments: 0,
           };
@@ -84,6 +119,11 @@ export class GoogleKeepImportRepository {
         const existingLabels = (await this.database.labels.toArray()).map((label) =>
           labelRecordSchema.parse(label),
         );
+        const existingNotes = (await this.database.notes.toArray()).map((note) =>
+          noteRecordSchema.parse(note),
+        );
+        const nextPosition =
+          existingNotes.reduce((highest, note) => Math.max(highest, note.position), -1) + 1;
         const labelByNormalized = new Map(
           existingLabels.map((label) => [label.nameNormalized, label]),
         );
@@ -96,7 +136,12 @@ export class GoogleKeepImportRepository {
         const settings: SettingRecord[] = [];
 
         for (const [position, sourceNote] of notesToImport.entries()) {
-          const built = this.buildImportedNote(sourceNote, position, importTimestamp);
+          const built = this.buildImportedNote(
+            sourceNote,
+            nextPosition + position,
+            importTimestamp,
+            selection.attachments,
+          );
           notes.push(built.note);
           checklistItems.push(...built.items);
           attachments.push(...built.attachments);
@@ -137,6 +182,11 @@ export class GoogleKeepImportRepository {
               updatedAt: importTimestamp,
             }),
           );
+          onProgress?.({
+            completed: position + 1,
+            total: notesToImport.length,
+            message: `Preparing notes… ${position + 1} / ${notesToImport.length}`,
+          });
         }
 
         if (newLabels.length > 0) await this.database.labels.bulkAdd(newLabels);
@@ -147,9 +197,16 @@ export class GoogleKeepImportRepository {
         if (revisions.length > 0) await this.database.revisions.bulkAdd(revisions);
         await this.database.settings.bulkPut(settings);
 
+        onProgress?.({
+          completed: notes.length,
+          total: notes.length,
+          message: `Imported ${notes.length} ${notes.length === 1 ? 'note' : 'notes'}.`,
+        });
         return {
           importedNotes: notes.length,
+          importedNoteIds: notes.map((note) => note.id),
           skippedAlreadyImported,
+          skippedBySelection,
           createdLabels: newLabels.length,
           importedAttachments: attachments.length,
         };
@@ -157,7 +214,12 @@ export class GoogleKeepImportRepository {
     );
   }
 
-  private buildImportedNote(source: PreparedKeepNote, position: number, importedAt: number) {
+  private buildImportedNote(
+    source: PreparedKeepNote,
+    position: number,
+    importedAt: number,
+    includeAttachments: boolean,
+  ) {
     const noteId = this.idFactory();
     const lifecycle = importedLifecycle(source);
     const note = noteRecordSchema.parse({
@@ -198,18 +260,20 @@ export class GoogleKeepImportRepository {
       });
     });
 
-    const attachments = source.attachments.map((attachment) =>
-      attachmentRecordSchema.parse({
-        id: this.idFactory(),
-        noteId,
-        name: attachment.name,
-        mimeType: attachment.mimeType,
-        size: attachment.size,
-        checksum: attachment.checksum,
-        data: attachment.data,
-        createdAt: attachment.createdAt,
-      }),
-    );
+    const attachments = includeAttachments
+      ? source.attachments.map((attachment) =>
+          attachmentRecordSchema.parse({
+            id: this.idFactory(),
+            noteId,
+            name: attachment.name,
+            mimeType: attachment.mimeType,
+            size: attachment.size,
+            checksum: attachment.checksum,
+            data: attachment.data,
+            createdAt: attachment.createdAt,
+          }),
+        )
+      : [];
 
     const revision = revisionRecordSchema.parse({
       id: this.idFactory(),
@@ -252,6 +316,16 @@ export class GoogleKeepImportRepository {
     }
     return timestamp;
   }
+}
+
+function shouldImportNote(source: PreparedKeepNote, selection: GoogleKeepImportSelection): boolean {
+  if (source.trashed) return selection.trashed;
+  if (source.archived) return selection.archived;
+  return selection.active;
+}
+
+function noteSourceIdentities(source: PreparedKeepNote): string[] {
+  return [source.sourceKey, ...source.sourceAliases];
 }
 
 function ledgerKey(sourceKey: string): string {

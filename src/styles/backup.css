@@ -41,7 +41,9 @@
 .backup-assurance svg,
 .backup-restore-warning svg,
 .keep-import-assurance svg,
-.keep-import-warnings svg {
+.keep-import-warnings svg,
+.keep-import-dropzone > svg,
+.keep-import-storage-warning svg {
   width: 20px;
   height: 20px;
   flex: 0 0 auto;
@@ -242,6 +244,146 @@
   margin-top: 1px;
 }
 
+.keep-import-dropzone,
+.keep-import-help,
+.keep-import-progress,
+.keep-import-result {
+  grid-column: 2 / 4;
+}
+
+.keep-import-dropzone {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px 14px;
+  align-items: start;
+  width: 100%;
+  border: 1px dashed color-mix(in srgb, var(--accent-strong) 40%, var(--border));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--accent-soft) 24%, var(--surface));
+  padding: 16px;
+}
+
+.keep-import-dropzone > svg {
+  margin-top: 1px;
+  color: var(--accent-strong);
+}
+
+.keep-import-dropzone > div:first-of-type {
+  display: grid;
+  gap: 3px;
+}
+
+.keep-import-dropzone strong {
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.keep-import-dropzone span,
+.keep-import-help,
+.keep-import-progress,
+.keep-import-storage-warning {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.keep-import-source-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.keep-import-source-button {
+  grid-column: auto;
+  justify-self: auto;
+  min-height: 36px;
+  padding: 0 13px;
+}
+
+.keep-import-help {
+  width: 100%;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.keep-import-help summary {
+  width: fit-content;
+  color: var(--text);
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.keep-import-help ol {
+  display: grid;
+  gap: 5px;
+  margin: 10px 0 0;
+  padding-left: 22px;
+}
+
+.keep-import-progress {
+  display: grid;
+  gap: 7px;
+  width: 100%;
+}
+
+.keep-import-progress progress {
+  width: 100%;
+  height: 8px;
+  border: 0;
+  border-radius: 999px;
+  overflow: hidden;
+  accent-color: var(--accent-strong);
+}
+
+.keep-import-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.keep-import-options legend {
+  padding: 0 5px;
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.keep-import-options label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.keep-import-options input {
+  width: 16px;
+  height: 16px;
+  margin: 1px 0 0;
+  accent-color: var(--accent-strong);
+}
+
+.keep-import-storage-warning {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  border: 1px solid color-mix(in srgb, #a15c00 26%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, #a15c00 7%, var(--surface));
+  padding: 11px 12px;
+}
+
+.keep-import-storage-warning svg {
+  margin-top: 1px;
+  color: #a15c00;
+}
+
 .keep-import-warnings {
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -355,16 +497,25 @@
   .backup-card > .backup-button,
   .backup-button-secondary,
   .backup-preview,
+  .keep-import-dropzone,
+  .keep-import-help,
+  .keep-import-progress,
+  .keep-import-result,
   .keep-import-message {
     grid-column: 1 / -1;
     justify-self: stretch;
+  }
+
+  .keep-import-source-button {
+    grid-column: auto;
   }
 
   .keep-import-submit {
     justify-self: stretch;
   }
 
-  .backup-stats {
+  .backup-stats,
+  .keep-import-options {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -374,12 +525,21 @@
     gap: 14px;
   }
 
-  .backup-stats {
+  .backup-stats,
+  .keep-import-options {
     grid-template-columns: 1fr;
   }
 
   .backup-preview-heading {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .keep-import-source-actions {
+    display: grid;
+  }
+
+  .keep-import-source-button {
+    width: 100%;
   }
 }

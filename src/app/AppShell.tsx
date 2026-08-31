@@ -477,7 +477,7 @@ export function AppShell() {
                 onFiltersChange={setSearchFilters}
               />
             ) : activeSection === 'backup' ? (
-              <BackupWorkspace onRestored={handleLibraryRestored} />
+              <BackupWorkspace onRestored={handleLibraryRestored} onImported={refreshLabels} />
             ) : lifecycleSection ? (
               <NotesWorkspace
                 mode={
