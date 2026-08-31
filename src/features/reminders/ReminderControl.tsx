@@ -109,7 +109,12 @@ export function ReminderControl({
             <span>Add a date and time to this note.</span>
           )}
         </div>
-        <button className="reminder-control-edit" type="button" onClick={openEditor} disabled={busy}>
+        <button
+          className="reminder-control-edit"
+          type="button"
+          onClick={openEditor}
+          disabled={busy}
+        >
           {reminder ? 'Change' : 'Add reminder'}
         </button>
       </div>
@@ -174,7 +179,9 @@ export function ReminderControl({
             <input
               type="date"
               value={draft.date}
-              onChange={(event) => setDraft((current) => ({ ...current, date: event.target.value }))}
+              onChange={(event) =>
+                setDraft((current) => ({ ...current, date: event.target.value }))
+              }
             />
           </label>
           <label>
@@ -182,7 +189,9 @@ export function ReminderControl({
             <input
               type="time"
               value={draft.time}
-              onChange={(event) => setDraft((current) => ({ ...current, time: event.target.value }))}
+              onChange={(event) =>
+                setDraft((current) => ({ ...current, time: event.target.value }))
+              }
             />
           </label>
           <div className="reminder-editor-actions">
