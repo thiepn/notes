@@ -58,8 +58,22 @@ export function AppShell() {
   }, []);
 
   useEffect(() => {
-    void refreshLabels();
-  }, [refreshLabels]);
+    let cancelled = false;
+
+    void labelsRepository.list().then((storedLabels) => {
+      if (cancelled) return;
+      setLabels(storedLabels);
+      setActiveLabelId((current) => {
+        if (!current || storedLabels.some((label) => label.id === current)) return current;
+        persistActiveLabelId(null);
+        return null;
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia(MOBILE_QUERY);

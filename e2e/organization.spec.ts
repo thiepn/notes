@@ -80,7 +80,7 @@ test('label views persist and new notes created inside them inherit the label', 
   await page.reload();
   await createLabelInUi(page, 'Ideas');
 
-  let card = await hoverCard(page, noteId);
+  const card = await hoverCard(page, noteId);
   await card.getByRole('button', { name: 'Change labels: Existing labeled note' }).click();
   await page
     .getByRole('dialog', { name: 'Note labels' })
