@@ -18,6 +18,7 @@ interface MasonryGridProps {
   labels: LabelRecord[];
   labelIdsByNote: Record<string, string[]>;
   checklistItemsByNote: Record<string, ChecklistItemRecord[]>;
+  attachmentRefreshByNote?: Record<string, number>;
   selectedNoteIds?: Set<string>;
   selectionActive?: boolean;
   onSelectionIntent?: ((note: NoteRecord, intent: NoteSelectionIntent) => void) | undefined;
@@ -32,6 +33,7 @@ export function MasonryGrid({
   labels,
   labelIdsByNote,
   checklistItemsByNote,
+  attachmentRefreshByNote = {},
   selectedNoteIds,
   selectionActive = false,
   onSelectionIntent,
@@ -47,6 +49,7 @@ export function MasonryGrid({
             labels={labels}
             selectedLabelIds={labelIdsByNote[note.id] ?? []}
             checklistItems={checklistItemsByNote[note.id] ?? []}
+            attachmentRefreshKey={attachmentRefreshByNote[note.id] ?? 0}
             selection={
               onSelectionIntent
                 ? {
