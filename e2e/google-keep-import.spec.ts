@@ -87,16 +87,20 @@ test('Google Keep Takeout imports non-destructively with metadata, attachments, 
   await page.getByLabel('Choose Google Takeout archives').setInputFiles(takeoutParts());
 
   await expect(
-    page.getByText('Takeout inspected. No local notes have been changed.'),
+    page.getByText('Google Keep source inspected. No local notes have been changed.'),
   ).toBeVisible();
   const preview = page.getByLabel('Google Keep import preview');
-  await expect(preview).toContainText('2 Takeout ZIP files');
-  await expect(preview).toContainText('3 Keep JSON files inspected');
+  await expect(preview).toContainText('2 selected source files');
+  await expect(preview).toContainText('3 JSON');
   await expect(preview).toContainText('Ready to import');
   await expect(preview).toContainText('3');
   await preview.getByRole('button', { name: 'Import 3 notes' }).click();
 
-  await waitForNotes(page);
+  const importResult = page.getByLabel('Google Keep import result');
+  await expect(importResult).toBeVisible();
+  await expect(importResult).toContainText('Notes imported');
+  await expect(importResult).toContainText('3');
+
   const imported = await page.evaluate(async (expected) => {
     const db = await import('/notes/src/db/index.ts');
     const [notes, items, labels, links, attachments, revisions, settings] = await Promise.all([
@@ -232,12 +236,13 @@ test('Google Keep Takeout imports non-destructively with metadata, attachments, 
   expect(imported.importRevisionReasons.every((reason) => reason === 'import')).toBe(true);
   expect(imported.ledgerKeys).toHaveLength(3);
 
-  await page.getByRole('button', { name: 'Backup' }).click();
   await page.getByLabel('Choose Google Takeout archives').setInputFiles(takeoutParts());
   const repeatPreview = page.getByLabel('Google Keep import preview');
   await expect(repeatPreview).toContainText('Already imported');
   await expect(repeatPreview).toContainText('3');
-  await expect(repeatPreview.getByRole('button', { name: 'Nothing new to import' })).toBeDisabled();
+  await expect(
+    repeatPreview.getByRole('button', { name: 'Nothing selected to import' }),
+  ).toBeDisabled();
   const noteCount = await page.evaluate(async () => {
     const db = await import('/notes/src/db/index.ts');
     return db.notesDatabase.notes.count();
