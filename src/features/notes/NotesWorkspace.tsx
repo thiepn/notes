@@ -7,11 +7,7 @@ import { clearEditorJournal, readEditorJournal } from './editorJournal';
 import { MasonryGrid } from './MasonryGrid';
 import { NoteEditorDialog } from './NoteEditorDialog';
 import { TextNoteComposer } from './TextNoteComposer';
-import {
-  readNotesViewMode,
-  writeNotesViewMode,
-  type NotesViewMode,
-} from './viewMode';
+import { readNotesViewMode, writeNotesViewMode, type NotesViewMode } from './viewMode';
 
 const notesRepository = new NotesRepository(notesDatabase);
 
