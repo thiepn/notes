@@ -7,13 +7,14 @@ import {
   labelRecordSchema,
   noteLabelRecordSchema,
   noteRecordSchema,
+  reminderRecordSchema,
   revisionRecordSchema,
   settingRecordSchema,
   type AttachmentRecord,
 } from '../../db';
 
 export const NOTES_BACKUP_FORMAT = 'thiepn.notes.backup';
-export const NOTES_BACKUP_FORMAT_VERSION = 1;
+export const NOTES_BACKUP_FORMAT_VERSION = 2;
 export const MAX_BACKUP_FILE_BYTES = 512 * 1024 * 1024;
 
 const timestampSchema = z.number().int().nonnegative();
@@ -33,11 +34,34 @@ export const backupAttachmentSchema = attachmentRecordSchema
   })
   .strict();
 
+const backupDataV2Schema = z
+  .object({
+    notes: z.array(noteRecordSchema),
+    checklistItems: z.array(checklistItemRecordSchema),
+    labels: z.array(labelRecordSchema),
+    noteLabels: z.array(noteLabelRecordSchema),
+    attachments: z.array(backupAttachmentSchema),
+    reminders: z.array(reminderRecordSchema),
+    revisions: z.array(revisionRecordSchema),
+    settings: z.array(settingRecordSchema),
+  })
+  .strict();
+
 export const backupDocumentSchema = z
   .object({
     format: z.literal(NOTES_BACKUP_FORMAT),
     formatVersion: z.literal(NOTES_BACKUP_FORMAT_VERSION),
     databaseVersion: z.literal(DATABASE_VERSION),
+    exportedAt: timestampSchema,
+    data: backupDataV2Schema,
+  })
+  .strict();
+
+const legacyBackupDocumentSchema = z
+  .object({
+    format: z.literal(NOTES_BACKUP_FORMAT),
+    formatVersion: z.literal(1),
+    databaseVersion: z.literal(1),
     exportedAt: timestampSchema,
     data: z
       .object({
@@ -62,6 +86,7 @@ export interface BackupStats {
   labels: number;
   noteLabels: number;
   attachments: number;
+  reminders: number;
   revisions: number;
   settings: number;
   totalRecords: number;
@@ -80,6 +105,7 @@ export function backupStats(document: BackupDocument): BackupStats {
     labels: document.data.labels.length,
     noteLabels: document.data.noteLabels.length,
     attachments: document.data.attachments.length,
+    reminders: document.data.reminders.length,
     revisions: document.data.revisions.length,
     settings: document.data.settings.length,
   };
@@ -101,7 +127,7 @@ export async function parseBackupText(text: string): Promise<PreparedBackup> {
 }
 
 export async function prepareBackup(raw: unknown): Promise<PreparedBackup> {
-  const document = backupDocumentSchema.parse(raw);
+  const document = normalizeBackupDocument(raw);
   validateBackupGraph(document);
 
   const attachments = await Promise.all(
@@ -178,13 +204,34 @@ export async function sha256Hex(bytes: Uint8Array): Promise<string> {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
+function normalizeBackupDocument(raw: unknown): BackupDocument {
+  const current = backupDocumentSchema.safeParse(raw);
+  if (current.success) return current.data;
+
+  const legacy = legacyBackupDocumentSchema.parse(raw);
+  return backupDocumentSchema.parse({
+    ...legacy,
+    formatVersion: NOTES_BACKUP_FORMAT_VERSION,
+    databaseVersion: DATABASE_VERSION,
+    data: { ...legacy.data, reminders: [] },
+  });
+}
+
 function ownedArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   return Uint8Array.from(bytes).buffer;
 }
 
 function validateBackupGraph(document: BackupDocument): void {
-  const { notes, checklistItems, labels, noteLabels, attachments, revisions, settings } =
-    document.data;
+  const {
+    notes,
+    checklistItems,
+    labels,
+    noteLabels,
+    attachments,
+    reminders,
+    revisions,
+    settings,
+  } = document.data;
 
   assertUnique(
     notes.map((note) => note.id),
@@ -209,6 +256,14 @@ function validateBackupGraph(document: BackupDocument): void {
   assertUnique(
     attachments.map((attachment) => attachment.id),
     'attachment ID',
+  );
+  assertUnique(
+    reminders.map((reminder) => reminder.id),
+    'reminder ID',
+  );
+  assertUnique(
+    reminders.map((reminder) => reminder.noteId),
+    'reminder note ID',
   );
   assertUnique(
     revisions.map((revision) => revision.id),
@@ -267,6 +322,12 @@ function validateBackupGraph(document: BackupDocument): void {
   for (const attachment of attachments) {
     if (!noteById.has(attachment.noteId)) {
       throw new Error(`Attachment ${attachment.id} references a missing note.`);
+    }
+  }
+
+  for (const reminder of reminders) {
+    if (!noteById.has(reminder.noteId)) {
+      throw new Error(`Reminder ${reminder.id} references a missing note.`);
     }
   }
 
