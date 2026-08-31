@@ -446,7 +446,8 @@
   font-weight: 600;
 }
 
-.note-card-open:has(.note-card-attachment-preview[data-has-attachment='true']) > .note-card-empty {
+.note-card-open:has(.note-card-attachment-preview[data-has-attachment='true'])
+  > .note-card-empty {
   display: none;
 }
 
