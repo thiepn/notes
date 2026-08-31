@@ -46,6 +46,8 @@ The parser is permissive about unknown extra JSON keys so future Takeout additio
 
 A Keep JSON record with `listContent` becomes a Notes checklist. A record without `listContent` becomes a text note.
 
+Historical Takeout JSON commonly uses `isChecked` for checklist state and `mimetype` for attachment MIME metadata. The compatibility layer also accepts `checked`, `childListItems`, and `mimeType` aliases used by current Keep tooling/API-shaped exports, preventing checked state, nested rows, or MIME metadata from being lost when a Takeout has been normalized by another tool.
+
 Checklist rows receive new local UUIDs. Parent relationships are remapped to those local IDs. Notes currently supports one level of checklist nesting. If a Takeout file contains deeper nesting, P13 keeps every row but flattens deeper descendants to the nearest supported root parent and surfaces a preview warning.
 
 Import refuses a note that exceeds the existing Notes data limits instead of silently truncating user data:

@@ -48,6 +48,38 @@ describe('P13 Google Keep Takeout parser', () => {
     expect(note?.attachments[0]?.checksum).toMatch(/^[a-f0-9]{64}$/u);
   });
 
+  it('accepts current Keep compatibility aliases for nested lists and MIME metadata', async () => {
+    const file = takeoutFile({
+      'Takeout/Keep/Compatibility.json': json({
+        color: 'DEFAULT',
+        isPinned: false,
+        isArchived: false,
+        title: 'Compatibility',
+        listContent: [
+          {
+            text: 'Parent',
+            checked: false,
+            childListItems: [{ text: 'Child', checked: true }],
+          },
+        ],
+        createdTimestampUsec: 1_780_000_000_000_000,
+        userEditedTimestampUsec: 1_780_000_100_000_000,
+        attachments: [{ filePath: 'modern.png', mimeType: 'image/png' }],
+      }),
+      'Takeout/Keep/modern.png': strToU8('modern-image-bytes'),
+    });
+
+    const prepared = await prepareGoogleKeepImport([file]);
+    const note = prepared.notes[0];
+
+    expect(note?.items).toEqual([
+      { text: 'Parent', checked: false, parentIndex: null },
+      { text: 'Child', checked: true, parentIndex: 0 },
+    ]);
+    expect(note?.attachments[0]?.mimeType).toBe('image/png');
+    expect(await note?.attachments[0]?.data.text()).toBe('modern-image-bytes');
+  });
+
   it('preserves checklist check state and collapses deeper nesting safely', async () => {
     const file = takeoutFile({
       'Keep/List.json': json({

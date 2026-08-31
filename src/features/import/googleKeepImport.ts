@@ -17,13 +17,16 @@ const keepAttachmentSchema = z
   .object({
     filePath: z.string().min(1),
     mimetype: z.string().optional(),
+    mimeType: z.string().optional(),
   })
   .passthrough();
 const keepListItemSchema = z
   .object({
     text: z.string(),
-    isChecked: z.boolean().optional().default(false),
+    isChecked: z.boolean().optional(),
+    checked: z.boolean().optional(),
     childItems: z.array(z.unknown()).optional(),
+    childListItems: z.array(z.unknown()).optional(),
   })
   .passthrough();
 const keepNoteSchema = z
@@ -317,14 +320,16 @@ async function mapKeepNote(
       continue;
     }
     const checksum = await sha256Hex(resolved.bytes);
+    const mimeType = normalizeMimeType(
+      attachment.mimetype ?? attachment.mimeType,
+      attachment.filePath,
+    );
     attachments.push({
       name: basename(attachment.filePath),
-      mimeType: normalizeMimeType(attachment.mimetype, attachment.filePath),
+      mimeType,
       size: resolved.bytes.byteLength,
       checksum,
-      data: new Blob([ownedArrayBuffer(resolved.bytes)], {
-        type: normalizeMimeType(attachment.mimetype, attachment.filePath),
-      }),
+      data: new Blob([ownedArrayBuffer(resolved.bytes)], { type: mimeType }),
       createdAt,
     });
   }
@@ -375,11 +380,11 @@ function flattenKeepList(
     const effectiveParent = depth === 0 ? null : parentIndex;
     result.push({
       text: parsed.data.text,
-      checked: parsed.data.isChecked,
+      checked: parsed.data.isChecked ?? parsed.data.checked ?? false,
       parentIndex: effectiveParent,
     });
 
-    const children = parsed.data.childItems ?? [];
+    const children = parsed.data.childItems ?? parsed.data.childListItems ?? [];
     if (children.length === 0) return;
     const rootParent = depth === 0 ? currentIndex : parentIndex;
     if (depth >= 1 && !collapsedNestingWarned) {
