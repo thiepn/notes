@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { ImagePlus, ListChecks, NotebookPen } from 'lucide-react';
+import { NotebookPen } from 'lucide-react';
 
 import { AppHeader } from '../components/AppHeader';
 import { AppSidebar, type AppSection } from '../components/AppSidebar';
+import { NotesWorkspace } from '../features/notes/NotesWorkspace';
 
 const MOBILE_QUERY = '(max-width: 767px)';
 
@@ -124,7 +125,7 @@ export function AppShell() {
             </header>
 
             {activeSection === 'notes' ? (
-              <NotesWorkspacePreview />
+              <NotesWorkspace />
             ) : (
               <SectionPlaceholder
                 title={section.emptyTitle}
@@ -135,28 +136,6 @@ export function AppShell() {
         </main>
       </div>
     </div>
-  );
-}
-
-function NotesWorkspacePreview() {
-  return (
-    <>
-      <section className="composer-preview" aria-label="Note composer preview">
-        <span className="composer-placeholder">Take a note…</span>
-        <span className="composer-actions" aria-hidden="true">
-          <ListChecks />
-          <ImagePlus />
-        </span>
-      </section>
-
-      <section className="empty-state" aria-labelledby="empty-notes-title">
-        <span className="empty-state-icon" aria-hidden="true">
-          <NotebookPen />
-        </span>
-        <h2 id="empty-notes-title">Your notes will appear here</h2>
-        <p>Create a note to keep thoughts, lists, and useful details close at hand.</p>
-      </section>
-    </>
   );
 }
 
