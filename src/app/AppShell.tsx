@@ -8,6 +8,7 @@ import { LabelsRepository, notesDatabase, type LabelRecord } from '../db';
 import { CommandPalette, type CommandPaletteItem } from '../features/commands/CommandPalette';
 import { LabelManagerDialog } from '../features/notes/LabelManagerDialog';
 import { NotesWorkspace } from '../features/notes/NotesWorkspace';
+import { RemindersWorkspace } from '../features/reminders/RemindersWorkspace';
 import { SearchWorkspace } from '../features/search/SearchWorkspace';
 import {
   DEFAULT_SEARCH_FILTERS,
@@ -365,6 +366,14 @@ export function AppShell() {
       run: () => handleNavigate('notes'),
     },
     {
+      id: 'open-reminders',
+      label: 'Open Reminders',
+      description: 'Browse upcoming and past reminders',
+      group: 'Navigate',
+      keywords: ['reminder', 'time', 'due', 'snooze'],
+      run: () => handleNavigate('reminders'),
+    },
+    {
       id: 'open-archive',
       label: 'Open Archive',
       description: 'Browse archived notes',
@@ -478,11 +487,11 @@ export function AppShell() {
               />
             ) : activeSection === 'backup' ? (
               <BackupWorkspace onRestored={handleLibraryRestored} onImported={refreshLabels} />
+            ) : activeSection === 'reminders' ? (
+              <RemindersWorkspace labels={labels} />
             ) : lifecycleSection ? (
               <NotesWorkspace
-                mode={
-                  activeLabel ? 'notes' : activeSection === 'reminders' ? 'notes' : activeSection
-                }
+                mode={activeLabel ? 'notes' : activeSection}
                 labels={labels}
                 filterLabelId={activeLabel?.id ?? null}
               />
