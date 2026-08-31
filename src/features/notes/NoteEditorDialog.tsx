@@ -37,24 +37,16 @@ export function NoteEditorDialog({
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const [historyNote, setHistoryNote] = useState<NoteRecord | null>(null);
   const [historyChanged, setHistoryChanged] = useState(false);
-  const {
-    draft,
-    errorMessage,
-    status,
-    setTitle,
-    setContent,
-    saveNow,
-    finishEditing,
-    retrySave,
-  } = useExistingNoteEditor({
-    note,
-    repository,
-    onSaved,
-    beforeClose: async (saved) => {
-      await revisionsRepository.checkpoint(saved.id, 'close');
-    },
-    onClose,
-  });
+  const { draft, errorMessage, status, setTitle, setContent, saveNow, finishEditing, retrySave } =
+    useExistingNoteEditor({
+      note,
+      repository,
+      onSaved,
+      beforeClose: async (saved) => {
+        await revisionsRepository.checkpoint(saved.id, 'close');
+      },
+      onClose,
+    });
 
   useEffect(() => {
     void revisionsRepository.checkpoint(note.id, 'edit').catch(() => {
@@ -163,7 +155,11 @@ export function NoteEditorDialog({
               >
                 <History aria-hidden="true" /> History
               </button>
-              <button className="note-editor-secondary" type="button" onClick={() => void convert()}>
+              <button
+                className="note-editor-secondary"
+                type="button"
+                onClick={() => void convert()}
+              >
                 Convert to checklist
               </button>
               <button

@@ -46,7 +46,9 @@ async function waitForBaselineRevision(page: Page, noteId: string) {
     .toBeGreaterThan(0);
 }
 
-test('text history previews an older version, restores it, and supports Undo restore', async ({ page }) => {
+test('text history previews an older version, restores it, and supports Undo restore', async ({
+  page,
+}) => {
   const card = await createTextNote(page, 'History text', 'Original body');
   const noteId = await card.getAttribute('data-note-id');
   expect(noteId).toBeTruthy();
@@ -58,7 +60,10 @@ test('text history previews an older version, restores it, and supports Undo res
   await editor.getByRole('button', { name: 'Close' }).click();
 
   await page.getByRole('button', { name: 'Open note: History text' }).click();
-  await page.getByRole('dialog', { name: 'Edit note' }).getByRole('button', { name: 'History' }).click();
+  await page
+    .getByRole('dialog', { name: 'Edit note' })
+    .getByRole('button', { name: 'History' })
+    .click();
   const history = page.getByRole('dialog', { name: 'Version history' });
   await expect(history).toBeVisible();
   await expect(history.locator('.revision-history-item')).toHaveCount(2);
@@ -87,7 +92,9 @@ test('text history previews an older version, restores it, and supports Undo res
   await expect(page.locator(`[data-note-id="${noteId}"]`)).toContainText('Revised body');
 });
 
-test('checklist history restores item text, check state, and hierarchy atomically', async ({ page }) => {
+test('checklist history restores item text, check state, and hierarchy atomically', async ({
+  page,
+}) => {
   const card = await createChecklist(page, 'History checklist', ['Parent', 'Child']);
   const noteId = await card.getAttribute('data-note-id');
   expect(noteId).toBeTruthy();
@@ -128,7 +135,9 @@ test('checklist history restores item text, check state, and hierarchy atomicall
   expect(stored[1]?.parentId).toBeNull();
 });
 
-test('copying a historical version creates an active copy and preserves current labels', async ({ page }) => {
+test('copying a historical version creates an active copy and preserves current labels', async ({
+  page,
+}) => {
   const card = await createTextNote(page, 'Copy history', 'Old copy body');
   const noteId = await card.getAttribute('data-note-id');
   expect(noteId).toBeTruthy();
@@ -155,19 +164,26 @@ test('copying a historical version creates an active copy and preserves current 
   await history.getByRole('button', { name: 'Copy as new note' }).click();
   await expect(history.getByRole('status')).toContainText('copied');
 
-  const copies = await page.evaluate(async ({ originalId, expectedLabelId }) => {
-    const dbModule = await import('/notes/src/db/index.ts');
-    const notes = await new dbModule.NotesRepository(dbModule.notesDatabase).listActive();
-    const copy = notes.find((note) => note.id !== originalId && note.title === 'Copy history');
-    if (!copy) return null;
-    const labels = await new dbModule.LabelsRepository(dbModule.notesDatabase).labelIdsForNote(copy.id);
-    return { content: copy.content, labels, expectedLabelId };
-  }, { originalId: noteId!, expectedLabelId: labelId });
+  const copies = await page.evaluate(
+    async ({ originalId, expectedLabelId }) => {
+      const dbModule = await import('/notes/src/db/index.ts');
+      const notes = await new dbModule.NotesRepository(dbModule.notesDatabase).listActive();
+      const copy = notes.find((note) => note.id !== originalId && note.title === 'Copy history');
+      if (!copy) return null;
+      const labels = await new dbModule.LabelsRepository(dbModule.notesDatabase).labelIdsForNote(
+        copy.id,
+      );
+      return { content: copy.content, labels, expectedLabelId };
+    },
+    { originalId: noteId!, expectedLabelId: labelId },
+  );
   expect(copies?.content).toBe('Old copy body');
   expect(copies?.labels).toContain(labelId);
 });
 
-test('revision pruning preserves recent detail and long-term reach while corrupt restore rolls back', async ({ page }) => {
+test('revision pruning preserves recent detail and long-term reach while corrupt restore rolls back', async ({
+  page,
+}) => {
   await page.goto('./');
   await waitForNotesWorkspace(page);
   const result = await page.evaluate(async () => {
@@ -204,9 +220,9 @@ test('revision pruning preserves recent detail and long-term reach while corrupt
     const oldest = entries.at(-1)!;
     const archived = await notes.archive(note.id, afterCorrupt.revision);
     const restored = await revisions.restore(note.id, oldest.record.id, archived.revision);
-    const labelsAfterRestore = await new dbModule.LabelsRepository(dbModule.notesDatabase).labelIdsForNote(
-      note.id,
-    );
+    const labelsAfterRestore = await new dbModule.LabelsRepository(
+      dbModule.notesDatabase,
+    ).labelIdsForNote(note.id);
 
     return {
       count: entries.length,

@@ -137,7 +137,8 @@ export class RevisionsRepository {
         const rawRevision = await this.database.revisions.get(revisionId);
         if (!rawRevision) throw new Error('This revision no longer exists.');
         const revision = revisionRecordSchema.parse(rawRevision);
-        if (revision.noteId !== noteId) throw new Error('This revision belongs to a different note.');
+        if (revision.noteId !== noteId)
+          throw new Error('This revision belongs to a different note.');
         const snapshot = parseRevisionPayload(revision.payload);
 
         const rawCurrent = await this.database.notes.get(noteId);
@@ -236,9 +237,7 @@ export class RevisionsRepository {
   private async snapshotForNote(note: NoteRecord): Promise<RevisionSnapshot> {
     const items =
       note.type === 'checklist'
-        ? (
-            await this.database.checklistItems.where('noteId').equals(note.id).toArray()
-          )
+        ? (await this.database.checklistItems.where('noteId').equals(note.id).toArray())
             .map((item) => checklistItemRecordSchema.parse(item))
             .sort((a, b) => a.position - b.position || a.createdAt - b.createdAt)
             .map((item) => ({
@@ -262,9 +261,11 @@ export class RevisionsRepository {
   private async latestRecord(noteId: string): Promise<RevisionRecord | null> {
     const rows = await this.database.revisions.where('noteId').equals(noteId).toArray();
     if (rows.length === 0) return null;
-    return rows
-      .map((row) => revisionRecordSchema.parse(row))
-      .sort(compareRevisionRecordsDescending)[0] ?? null;
+    return (
+      rows
+        .map((row) => revisionRecordSchema.parse(row))
+        .sort(compareRevisionRecordsDescending)[0] ?? null
+    );
   }
 
   private async addRecord(
@@ -329,7 +330,8 @@ function validateSnapshotRelationships(snapshot: RevisionSnapshot): void {
   const ids = new Set<string>();
   for (const item of snapshot.items) {
     if (ids.has(item.id)) throw new Error(`Revision contains duplicate checklist item ${item.id}.`);
-    if (item.parentId === item.id) throw new Error('Revision contains a self-parent checklist item.');
+    if (item.parentId === item.id)
+      throw new Error('Revision contains a self-parent checklist item.');
     if (item.parentId !== null && !ids.has(item.parentId)) {
       throw new Error('Revision checklist parent must appear before its child.');
     }
@@ -350,8 +352,7 @@ function buildRestoredItems(
   const idMap = remapIds ? new Map(items.map((item) => [item.id, idFactory()])) : null;
   return items.map((item, position) => {
     const id = idMap?.get(item.id) ?? item.id;
-    const parentId =
-      item.parentId === null ? null : (idMap?.get(item.parentId) ?? item.parentId);
+    const parentId = item.parentId === null ? null : (idMap?.get(item.parentId) ?? item.parentId);
     return checklistItemRecordSchema.parse({
       id,
       noteId,
