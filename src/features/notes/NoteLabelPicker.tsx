@@ -1,3 +1,5 @@
+import { useRef, useState } from 'react';
+
 import type { LabelRecord } from '../../db';
 
 interface NoteLabelPickerProps {
@@ -13,7 +15,19 @@ export function NoteLabelPicker({
   selectedLabelIds,
   onChange,
 }: NoteLabelPickerProps) {
-  const selected = new Set(selectedLabelIds);
+  const [localSelectedLabelIds, setLocalSelectedLabelIds] = useState(selectedLabelIds);
+  const selectionRef = useRef(selectedLabelIds);
+  const selected = new Set(localSelectedLabelIds);
+
+  const handleToggle = (labelId: string) => {
+    const current = selectionRef.current;
+    const checked = current.includes(labelId);
+    const next = checked ? current.filter((id) => id !== labelId) : [...current, labelId];
+
+    selectionRef.current = next;
+    setLocalSelectedLabelIds(next);
+    onChange(next);
+  };
 
   return (
     <div
@@ -32,12 +46,7 @@ export function NoteLabelPicker({
                   type="checkbox"
                   checked={checked}
                   aria-label={`${checked ? 'Remove' : 'Add'} label ${label.name}: ${noteLabel}`}
-                  onChange={() => {
-                    const next = checked
-                      ? selectedLabelIds.filter((id) => id !== label.id)
-                      : [...selectedLabelIds, label.id];
-                    onChange(next);
-                  }}
+                  onChange={() => handleToggle(label.id)}
                 />
                 <span>{label.name}</span>
               </label>
