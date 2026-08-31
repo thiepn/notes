@@ -40,7 +40,9 @@ export function LabelManagerDialog({
     try {
       await operation();
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'The label change could not be saved.');
+      setErrorMessage(
+        error instanceof Error ? error.message : 'The label change could not be saved.',
+      );
     } finally {
       setBusy(false);
     }
@@ -71,7 +73,12 @@ export function LabelManagerDialog({
 
   return (
     <div className="label-manager-layer" onPointerDown={handleLayerPointerDown}>
-      <div className="label-manager-dialog" role="dialog" aria-modal="true" aria-labelledby="label-manager-title">
+      <div
+        className="label-manager-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="label-manager-title"
+      >
         <div className="label-manager-heading">
           <div>
             <p className="workspace-kicker">Organization</p>
@@ -160,7 +167,11 @@ export function LabelManagerDialog({
                       >
                         Delete
                       </button>
-                      <button type="button" disabled={busy} onClick={() => setDeleteCandidateId(null)}>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => setDeleteCandidateId(null)}
+                      >
                         Cancel
                       </button>
                     </div>

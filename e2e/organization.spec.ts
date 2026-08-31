@@ -25,14 +25,19 @@ async function hoverCard(page: Page, noteId: string) {
   return card;
 }
 
-test('label manager creates, renames, and deletes labels without deleting notes', async ({ page }) => {
+test('label manager creates, renames, and deletes labels without deleting notes', async ({
+  page,
+}) => {
   const noteId = await seedNote(page, 'Keep this note');
   await page.reload();
   await createLabelInUi(page, 'Study');
 
   let card = await hoverCard(page, noteId);
   await card.getByRole('button', { name: 'Change labels: Keep this note' }).click();
-  await page.getByRole('dialog', { name: 'Note labels' }).getByLabel('Add label Study: Keep this note').check();
+  await page
+    .getByRole('dialog', { name: 'Note labels' })
+    .getByLabel('Add label Study: Keep this note')
+    .check();
   await expect(card.getByText('Study', { exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Edit labels' }).click();
@@ -68,7 +73,9 @@ test('label manager creates, renames, and deletes labels without deleting notes'
   expect(stored.labelIds).toEqual([]);
 });
 
-test('label views persist and new notes created inside them inherit the label', async ({ page }) => {
+test('label views persist and new notes created inside them inherit the label', async ({
+  page,
+}) => {
   const noteId = await seedNote(page, 'Existing labeled note');
   await page.reload();
   await createLabelInUi(page, 'Ideas');
@@ -93,7 +100,9 @@ test('label views persist and new notes created inside them inherit the label', 
   await page.getByLabel('Note text').fill('This note should inherit the current label.');
   await page.getByRole('form', { name: 'New note' }).getByRole('button', { name: 'Close' }).click();
 
-  const createdCard = page.getByRole('button', { name: 'Open note: Created in Ideas' }).locator('..');
+  const createdCard = page
+    .getByRole('button', { name: 'Open note: Created in Ideas' })
+    .locator('..');
   await expect(createdCard.getByText('Ideas', { exact: true })).toBeVisible();
 
   const inherited = await page.evaluate(async () => {
@@ -105,7 +114,11 @@ test('label views persist and new notes created inside them inherit the label', 
     const allLabels = await labels.list();
     const ideas = allLabels.find((label) => label.name === 'Ideas');
     return created && ideas
-      ? { noteId: created.id, labelIds: await labels.labelIdsForNote(created.id), labelId: ideas.id }
+      ? {
+          noteId: created.id,
+          labelIds: await labels.labelIdsForNote(created.id),
+          labelId: ideas.id,
+        }
       : null;
   });
   expect(inherited).not.toBeNull();
@@ -118,9 +131,12 @@ test('note color changes persist across reloads', async ({ page }) => {
 
   let card = await hoverCard(page, noteId);
   await card.getByRole('button', { name: 'Change color: Color note' }).click();
-  await page.getByRole('dialog', { name: 'Note color' }).getByRole('button', {
-    name: 'Set Yellow color: Color note',
-  }).click();
+  await page
+    .getByRole('dialog', { name: 'Note color' })
+    .getByRole('button', {
+      name: 'Set Yellow color: Color note',
+    })
+    .click();
   await expect(card).toHaveAttribute('data-color', 'yellow');
 
   await page.reload();

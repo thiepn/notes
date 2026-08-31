@@ -16,7 +16,11 @@ export function NoteLabelPicker({
   const selected = new Set(selectedLabelIds);
 
   return (
-    <div className="note-organization-popover note-label-picker" role="dialog" aria-label="Note labels">
+    <div
+      className="note-organization-popover note-label-picker"
+      role="dialog"
+      aria-label="Note labels"
+    >
       <span className="note-organization-title">Labels</span>
       {labels.length > 0 ? (
         <div className="note-label-picker-list">

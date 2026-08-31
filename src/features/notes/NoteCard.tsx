@@ -31,13 +31,7 @@ interface NoteCardProps {
 
 type OrganizationPanel = 'color' | 'labels' | null;
 
-export function NoteCard({
-  note,
-  mode,
-  actions,
-  labels,
-  selectedLabelIds,
-}: NoteCardProps) {
+export function NoteCard({ note, mode, actions, labels, selectedLabelIds }: NoteCardProps) {
   const cardRef = useRef<HTMLElement>(null);
   const [openPanel, setOpenPanel] = useState<OrganizationPanel>(null);
   const label = noteLabel(note);

@@ -34,7 +34,10 @@ export class LabelsRepository {
   async create(name: string): Promise<LabelRecord> {
     const displayName = normalizeDisplayName(name);
     const nameNormalized = normalizeLabelName(displayName);
-    const existing = await this.database.labels.where('nameNormalized').equals(nameNormalized).first();
+    const existing = await this.database.labels
+      .where('nameNormalized')
+      .equals(nameNormalized)
+      .first();
     if (existing) throw new Error(`A label named “${displayName}” already exists.`);
 
     const timestamp = this.readClock();
@@ -59,7 +62,10 @@ export class LabelsRepository {
       const current = labelRecordSchema.parse(rawCurrent);
       if (current.name === displayName && current.nameNormalized === nameNormalized) return current;
 
-      const existing = await this.database.labels.where('nameNormalized').equals(nameNormalized).first();
+      const existing = await this.database.labels
+        .where('nameNormalized')
+        .equals(nameNormalized)
+        .first();
       if (existing && existing.id !== id) {
         throw new Error(`A label named “${displayName}” already exists.`);
       }
@@ -76,13 +82,18 @@ export class LabelsRepository {
   }
 
   async delete(id: string): Promise<boolean> {
-    return this.database.transaction('rw', this.database.labels, this.database.noteLabels, async () => {
-      const exists = await this.database.labels.get(id);
-      if (!exists) return false;
-      await this.database.noteLabels.where('labelId').equals(id).delete();
-      await this.database.labels.delete(id);
-      return true;
-    });
+    return this.database.transaction(
+      'rw',
+      this.database.labels,
+      this.database.noteLabels,
+      async () => {
+        const exists = await this.database.labels.get(id);
+        if (!exists) return false;
+        await this.database.noteLabels.where('labelId').equals(id).delete();
+        await this.database.labels.delete(id);
+        return true;
+      },
+    );
   }
 
   async labelIdsForNote(noteId: string): Promise<string[]> {

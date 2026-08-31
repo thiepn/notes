@@ -80,7 +80,9 @@ export function NotesWorkspace({
 
   const refreshCollection = useCallback(async () => {
     const storedNotes = await listNotesForMode(mode, filterLabelId);
-    const labelIdsByNote = await labelsRepository.labelIdsByNote(storedNotes.map((note) => note.id));
+    const labelIdsByNote = await labelsRepository.labelIdsByNote(
+      storedNotes.map((note) => note.id),
+    );
     setCollection({ mode, filterLabelId, notes: storedNotes, labelIdsByNote, loaded: true });
   }, [filterLabelId, mode]);
 
@@ -125,8 +127,7 @@ export function NotesWorkspace({
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  const matchesCollection =
-    collection.mode === mode && collection.filterLabelId === filterLabelId;
+  const matchesCollection = collection.mode === mode && collection.filterLabelId === filterLabelId;
   const notes = matchesCollection ? collection.notes : EMPTY_NOTES;
   const labelIdsByNote = matchesCollection ? collection.labelIdsByNote : EMPTY_LABEL_MAP;
   const loaded = matchesCollection && collection.loaded;

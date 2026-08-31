@@ -21,7 +21,7 @@ P6 uses the existing database-v1 tables:
 
 No database migration is required.
 
-A label has a user-facing `name` and a unique `nameNormalized` key. Names are trimmed, repeated whitespace is collapsed, Unicode compatibility forms are normalized with NFKC, and comparisons are case-insensitive. This prevents labels such as `Study`, ` study `, and `STUDY` from becoming separate labels.
+A label has a user-facing `name` and a unique `nameNormalized` key. Names are trimmed, repeated whitespace is collapsed, Unicode compatibility forms are normalized with NFKC, and comparisons are case-insensitive. This prevents labels such as `Study`, `study`, and `STUDY` from becoming separate labels.
 
 A note can have any number of labels through the compound `[noteId+labelId]` relationship table.
 

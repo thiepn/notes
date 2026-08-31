@@ -134,7 +134,7 @@ export function AppShell() {
   };
 
   const activeLabel = activeLabelId
-    ? labels.find((label) => label.id === activeLabelId) ?? null
+    ? (labels.find((label) => label.id === activeLabelId) ?? null)
     : null;
   const section = activeLabel
     ? {
@@ -189,7 +189,9 @@ export function AppShell() {
 
             {lifecycleSection ? (
               <NotesWorkspace
-                mode={activeLabel ? 'notes' : activeSection === 'reminders' ? 'notes' : activeSection}
+                mode={
+                  activeLabel ? 'notes' : activeSection === 'reminders' ? 'notes' : activeSection
+                }
                 labels={labels}
                 filterLabelId={activeLabel?.id ?? null}
               />

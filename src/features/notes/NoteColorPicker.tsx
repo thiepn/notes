@@ -22,7 +22,11 @@ interface NoteColorPickerProps {
 
 export function NoteColorPicker({ noteLabel, value, onChange }: NoteColorPickerProps) {
   return (
-    <div className="note-organization-popover note-color-picker" role="dialog" aria-label="Note color">
+    <div
+      className="note-organization-popover note-color-picker"
+      role="dialog"
+      aria-label="Note color"
+    >
       <span className="note-organization-title">Color</span>
       <div className="note-color-grid">
         {NOTE_COLORS.map((color) => (
