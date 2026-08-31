@@ -6,9 +6,9 @@ A local-first, zero-friction notes PWA designed to match Google Keep's capture s
 
 ## Status
 
-**P2 — App Shell + Design System is complete.** The app now has a production-style responsive shell, desktop/medium/mobile navigation modes, a tokenized light/dark design system, system-theme persistence without flash, accessible shared controls, and permanent breakpoint regression coverage.
+**P3 — Text Note Capture is complete.** The app now has a one-click text composer, optional titles, no-save-button finishing, serialized 180 ms IndexedDB autosave, synchronous recovery journaling for debounce-window reloads, empty-draft cleanup, keyboard finishing, and real-browser capture persistence tests.
 
-**Next phase:** P3 — Text Note Capture.
+**Next phase:** P4 — Note Cards + Main Grid.
 
 ## V1 scope
 
@@ -38,14 +38,15 @@ V1 explicitly excludes cloud sync, accounts, collaboration, AI, OCR, voice notes
 - Repository-only write access for application features
 - Optimistic per-note revision checks
 - Transaction-safe multi-table operations
+- Serialized text autosave with a synchronous recovery journal
 - Tokenized responsive design system with light/dark/system appearance
 - Vite PWA / service-worker layer
 - Vitest for unit tests
-- Playwright for real-browser IndexedDB, responsive-shell, and end-to-end tests
+- Playwright for real-browser IndexedDB, capture recovery, responsive-shell, and end-to-end tests
 - GitHub Actions for CI and deployment
 - GitHub Pages-compatible build rooted at `/notes/`
 
-See [`docs/DATABASE.md`](docs/DATABASE.md) for database invariants and [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for the shell and styling contract.
+See [`docs/DATABASE.md`](docs/DATABASE.md) for database invariants, [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for the shell and styling contract, and [`docs/CAPTURE.md`](docs/CAPTURE.md) for text-capture and recovery behavior.
 
 ## Principles
 
