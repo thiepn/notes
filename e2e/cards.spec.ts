@@ -64,8 +64,14 @@ test('persists list view and places cards in one column', async ({ page }) => {
   await page.reload();
 
   await page.getByRole('button', { name: 'List view' }).click();
-  await expect(page.getByRole('button', { name: 'List view' })).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.getByRole('list', { name: 'Saved notes' })).toHaveAttribute('data-view', 'list');
+  await expect(page.getByRole('button', { name: 'List view' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(page.getByRole('list', { name: 'Saved notes' })).toHaveAttribute(
+    'data-view',
+    'list',
+  );
 
   const xPositions = await page
     .getByRole('list', { name: 'Saved notes' })
@@ -74,8 +80,14 @@ test('persists list view and places cards in one column', async ({ page }) => {
   expect(new Set(xPositions).size).toBe(1);
 
   await page.reload();
-  await expect(page.getByRole('button', { name: 'List view' })).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.getByRole('list', { name: 'Saved notes' })).toHaveAttribute('data-view', 'list');
+  await expect(page.getByRole('button', { name: 'List view' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(page.getByRole('list', { name: 'Saved notes' })).toHaveAttribute(
+    'data-view',
+    'list',
+  );
 });
 
 test('opens a card editor and recovers an edit across an immediate reload', async ({ page }) => {
