@@ -7,12 +7,14 @@ import {
 } from 'react';
 
 import type {
+  AttachmentsRepository,
   ChecklistDraftItem,
   ChecklistItemRecord,
   ChecklistsRepository,
   NoteRecord,
   NotesRepository,
 } from '../../db';
+import { AttachmentPanel } from './AttachmentPanel';
 import {
   clearChecklistCaptureJournal,
   readChecklistCaptureJournal,
@@ -29,10 +31,12 @@ type ChecklistStatus = 'idle' | 'saving' | 'error';
 interface ChecklistComposerProps {
   repository: ChecklistsRepository;
   notesRepository: NotesRepository;
+  attachmentsRepository: AttachmentsRepository;
   beforeSaved?: ((note: NoteRecord) => Promise<void>) | undefined;
   onSaved(note: NoteRecord, items: ChecklistItemRecord[]): void;
   onRemoved(noteId: string): void;
   onActiveNoteChange(noteId: string | null): void;
+  onAttachmentsChanged(noteId: string): void;
   onFinished(): void;
 }
 
@@ -44,10 +48,12 @@ interface ChecklistDraft {
 export function ChecklistComposer({
   repository,
   notesRepository,
+  attachmentsRepository,
   beforeSaved,
   onSaved,
   onRemoved,
   onActiveNoteChange,
+  onAttachmentsChanged,
   onFinished,
 }: ChecklistComposerProps) {
   const [initial] = useState(() => {
@@ -66,6 +72,8 @@ export function ChecklistComposer({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [hideCompleted, setHideCompleted] = useState(false);
   const [moveCompletedDown, setMoveCompletedDown] = useState(readMoveCompletedPreference);
+  const [attachmentNoteId, setAttachmentNoteId] = useState<string | null>(initial.noteId);
+  const [attachmentRefreshKey, setAttachmentRefreshKey] = useState(0);
 
   const composerRef = useRef<HTMLDivElement>(null);
   const pendingDraftRef = useRef<ChecklistDraft>(initial.draft);
@@ -111,6 +119,7 @@ export function ChecklistComposer({
       onSaved(saved.note, saved.items);
       if (mountedRef.current) {
         setStatus('idle');
+        setAttachmentNoteId(saved.note.id);
         onActiveNoteChange(saved.note.id);
       }
 
@@ -147,6 +156,55 @@ export function ChecklistComposer({
     return guarded;
   }, [beforeSaved, notesRepository, onActiveNoteChange, onSaved, repository]);
 
+  const ensureNoteId = useCallback(async (): Promise<string | null> => {
+    clearTimer();
+    if (isMeaningfulChecklist(pendingDraftRef.current.title, pendingDraftRef.current.items)) {
+      return (await persistLatest())?.note.id ?? null;
+    }
+
+    try {
+      await saveChainRef.current;
+      if (mountedRef.current) {
+        setStatus('saving');
+        setErrorMessage(null);
+      }
+
+      let current = noteRef.current;
+      if (!current && noteIdRef.current) current = (await notesRepository.get(noteIdRef.current)) ?? null;
+      let items: ChecklistItemRecord[] = [];
+      if (!current) {
+        const created = await repository.create('', []);
+        current = created.note;
+        items = created.items;
+        if (beforeSaved) await beforeSaved(current);
+        onSaved(current, items);
+      } else {
+        items = await repository.itemsForNote(current.id);
+      }
+
+      noteRef.current = current;
+      noteIdRef.current = current.id;
+      const pending = pendingDraftRef.current;
+      writeChecklistCaptureJournal({
+        noteId: current.id,
+        title: pending.title,
+        items: pending.items,
+      });
+      if (mountedRef.current) {
+        setAttachmentNoteId(current.id);
+        setStatus('idle');
+        onActiveNoteChange(current.id);
+      }
+      return current.id;
+    } catch (error) {
+      if (mountedRef.current) {
+        setStatus('error');
+        setErrorMessage(toErrorMessage(error));
+      }
+      return null;
+    }
+  }, [beforeSaved, clearTimer, notesRepository, onActiveNoteChange, onSaved, persistLatest, repository]);
+
   const scheduleSave = useCallback(
     (nextDraft: ChecklistDraft) => {
       writeChecklistCaptureJournal({
@@ -175,6 +233,14 @@ export function ChecklistComposer({
     [scheduleSave],
   );
 
+  const markAttachmentsChanged = useCallback(
+    (noteId: string) => {
+      setAttachmentRefreshKey((current) => current + 1);
+      onAttachmentsChanged(noteId);
+    },
+    [onAttachmentsChanged],
+  );
+
   const reset = useCallback(() => {
     clearTimer();
     const empty = { title: '', items: [createChecklistDraftItem()] } satisfies ChecklistDraft;
@@ -183,6 +249,8 @@ export function ChecklistComposer({
     noteIdRef.current = null;
     clearChecklistCaptureJournal();
     setDraft(empty);
+    setAttachmentNoteId(null);
+    setAttachmentRefreshKey(0);
     setStatus('idle');
     setErrorMessage(null);
     onActiveNoteChange(null);
@@ -196,8 +264,11 @@ export function ChecklistComposer({
       const noteId = noteIdRef.current;
       if (noteId) {
         try {
-          await notesRepository.deletePermanently(noteId);
-          onRemoved(noteId);
+          const preserve = await attachmentsRepository.hasAny(noteId);
+          if (!preserve) {
+            await notesRepository.deletePermanently(noteId);
+            onRemoved(noteId);
+          }
         } catch (error) {
           if (mountedRef.current) {
             setStatus('error');
@@ -217,7 +288,7 @@ export function ChecklistComposer({
     } catch {
       return false;
     }
-  }, [clearTimer, notesRepository, onRemoved, persistLatest, reset]);
+  }, [attachmentsRepository, clearTimer, notesRepository, onRemoved, persistLatest, reset]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -232,18 +303,27 @@ export function ChecklistComposer({
     const journal = initial.journal;
     if (!journal) return;
     if (!isMeaningfulChecklist(journal.title, journal.items)) {
-      if (journal.noteId) {
-        void notesRepository
-          .deletePermanently(journal.noteId)
-          .then(() => onRemoved(journal.noteId ?? ''))
-          .finally(clearChecklistCaptureJournal);
-      } else {
+      if (!journal.noteId) {
         clearChecklistCaptureJournal();
+        return;
       }
+      void (async () => {
+        try {
+          const preserve = await attachmentsRepository.hasAny(journal.noteId ?? '');
+          if (!preserve && journal.noteId) {
+            await notesRepository.deletePermanently(journal.noteId);
+            onRemoved(journal.noteId);
+          }
+        } catch {
+          // Leave the note intact when recovery cannot prove it is safe to delete.
+        } finally {
+          reset();
+        }
+      })();
       return;
     }
     void persistLatest();
-  }, [initial.journal, notesRepository, onRemoved, persistLatest]);
+  }, [attachmentsRepository, initial.journal, notesRepository, onRemoved, persistLatest, reset]);
 
   useEffect(() => {
     const handlePointerDown = (event: PointerEvent) => {
@@ -296,6 +376,14 @@ export function ChecklistComposer({
           setMoveCompletedDown(enabled);
           writeMoveCompletedPreference(enabled);
         }}
+      />
+
+      <AttachmentPanel
+        noteId={attachmentNoteId}
+        repository={attachmentsRepository}
+        ensureNoteId={ensureNoteId}
+        refreshKey={attachmentRefreshKey}
+        onChanged={markAttachmentsChanged}
       />
 
       <div className="note-composer-footer">
