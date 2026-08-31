@@ -58,6 +58,7 @@ test('text history previews an older version, restores it, and supports Undo res
   const editor = page.getByRole('dialog', { name: 'Edit note' });
   await editor.getByLabel('Edit note text').fill('Revised body');
   await editor.getByRole('button', { name: 'Close' }).click();
+  await expect(editor).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Open note: History text' }).click();
   await page
@@ -106,6 +107,7 @@ test('checklist history restores item text, check state, and hierarchy atomicall
   await editor.getByLabel('Checklist item 1').fill('Changed parent');
   await editor.getByRole('checkbox', { name: 'Mark item 2 complete' }).check();
   await editor.getByRole('button', { name: 'Close' }).click();
+  await expect(editor).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Open note: History checklist' }).click();
   editor = page.getByRole('dialog', { name: 'Edit checklist' });
@@ -117,6 +119,7 @@ test('checklist history restores item text, check state, and hierarchy atomicall
   await expect(history.getByText('Child', { exact: true })).toBeVisible();
   await history.getByRole('button', { name: 'Restore this version' }).click();
   await history.getByRole('button', { name: 'Close version history' }).click();
+  await expect(page.getByRole('dialog', { name: 'Edit checklist' })).toHaveCount(0);
 
   const stored = await page.evaluate(async (id) => {
     const dbModule = await import('/notes/src/db/index.ts');
@@ -155,6 +158,7 @@ test('copying a historical version creates an active copy and preserves current 
   let editor = page.getByRole('dialog', { name: 'Edit note' });
   await editor.getByLabel('Edit note text').fill('Current copy body');
   await editor.getByRole('button', { name: 'Close' }).click();
+  await expect(editor).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Open note: Copy history' }).click();
   editor = page.getByRole('dialog', { name: 'Edit note' });
@@ -198,6 +202,7 @@ test('revision pruning preserves recent detail and long-term reach while corrupt
     }
 
     const entries = await revisions.list(note.id);
+    const recentContents = entries.slice(0, 30).map((entry) => entry.snapshot.content);
     const corruptId = crypto.randomUUID();
     await dbModule.notesDatabase.revisions.add({
       id: corruptId,
@@ -226,6 +231,7 @@ test('revision pruning preserves recent detail and long-term reach while corrupt
 
     return {
       count: entries.length,
+      recentContents,
       newest: entries[0]?.snapshot.content,
       oldest: entries.at(-1)?.snapshot.content,
       corruptionRejected,
@@ -237,6 +243,9 @@ test('revision pruning preserves recent detail and long-term reach while corrupt
   });
 
   expect(result.count).toBe(50);
+  expect(result.recentContents).toEqual(
+    Array.from({ length: 30 }, (_, index) => `v${80 - index}`),
+  );
   expect(result.newest).toBe('v80');
   expect(result.oldest).toBe('v0');
   expect(result.corruptionRejected).toBe(true);
