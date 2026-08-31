@@ -192,6 +192,7 @@ Real Chromium coverage must prove that:
 - existing normalized labels are reused
 - new labels are created only once
 - text content and checklist checked/parent state survive
+- compatibility aliases preserve `checked`/`childListItems` nesting and `mimeType` metadata
 - Keep color and lifecycle state map correctly
 - source timestamps survive conversion
 - attachment bytes and SHA-256 survive import
