@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, type ReactNode } from 'react';
 
-import type { ChecklistItemRecord, LabelRecord, NoteRecord } from '../../db';
+import type { ChecklistItemRecord, LabelRecord, NoteRecord, ReminderRecord } from '../../db';
 import {
   NoteCard,
   type NoteCardActions,
@@ -18,6 +18,7 @@ interface MasonryGridProps {
   labels: LabelRecord[];
   labelIdsByNote: Record<string, string[]>;
   checklistItemsByNote: Record<string, ChecklistItemRecord[]>;
+  remindersByNote?: Record<string, ReminderRecord>;
   attachmentRefreshByNote?: Record<string, number>;
   selectedNoteIds?: Set<string>;
   selectionActive?: boolean;
@@ -33,6 +34,7 @@ export function MasonryGrid({
   labels,
   labelIdsByNote,
   checklistItemsByNote,
+  remindersByNote = {},
   attachmentRefreshByNote = {},
   selectedNoteIds,
   selectionActive = false,
@@ -49,6 +51,7 @@ export function MasonryGrid({
             labels={labels}
             selectedLabelIds={labelIdsByNote[note.id] ?? []}
             checklistItems={checklistItemsByNote[note.id] ?? []}
+            reminder={remindersByNote[note.id] ?? null}
             attachmentRefreshKey={attachmentRefreshByNote[note.id] ?? 0}
             selection={
               onSelectionIntent
