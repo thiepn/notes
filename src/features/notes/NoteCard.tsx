@@ -34,9 +34,11 @@ export function NoteCard({ note, onOpen }: NoteCardProps) {
 }
 
 function firstMeaningfulLine(content: string): string {
-  return content
-    .split(/\r?\n/u)
-    .map((line) => line.trim())
-    .find(Boolean)
-    ?.slice(0, 80) ?? '';
+  return (
+    content
+      .split(/\r?\n/u)
+      .map((line) => line.trim())
+      .find(Boolean)
+      ?.slice(0, 80) ?? ''
+  );
 }
