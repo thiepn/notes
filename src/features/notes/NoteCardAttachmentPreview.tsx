@@ -88,6 +88,7 @@ export function NoteCardAttachmentPreview({
       data-loaded={loaded}
       data-has-attachment={preview.count > 0}
       data-has-image={hasImage}
+      style={loaded ? undefined : { display: 'block', minHeight: 1 }}
       aria-hidden="true"
     >
       {hasImage ? (
