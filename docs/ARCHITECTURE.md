@@ -15,6 +15,7 @@ The application is local-first. IndexedDB is the source of truth for user data. 
 - Vite 8
 - Dexie 4 over IndexedDB
 - Zod for validation at import/storage boundaries
+- fflate for local ZIP parsing of Google Takeout archives
 - Lucide for icons
 - Radix primitives only where accessible low-level overlays/menus are needed
 - Vite PWA + Workbox for the service-worker layer
@@ -46,4 +47,18 @@ Export reads all seven tables from one Dexie read transaction so the file repres
 
 Restore is deliberately replace-only. A selected file is parsed, schema-validated, graph-validated, and attachment-checksum-validated before any write transaction begins. The UI requires explicit acknowledgement and downloads a fresh current-device safety backup before destructive replacement.
 
-The replacement itself is one seven-table IndexedDB transaction. Table clears and inserts commit together; any write error aborts the transaction and restores the previous local library. External collection merging and Google Keep Takeout semantics are deferred to P13 rather than weakening P12's deterministic disaster-recovery contract.
+The replacement itself is one seven-table IndexedDB transaction. Table clears and inserts commit together; any write error aborts the transaction and restores the previous local library.
+
+## External migration boundary
+
+P13 owns additive migration from Google Keep Takeout. It does not reuse P12 restore semantics and never clears existing Notes data.
+
+The browser accepts one or more Takeout ZIP files directly and uses fflate to inspect them locally. JSON note records are mapped into the existing Notes v1 model before the import button is enabled. Supported mappings include text/checklist content, check state and supported parent relationships, colors, labels, pin/archive/trash state, source timestamps, and attachment bytes. Unsupported collaborator or annotation metadata becomes a preview warning rather than corrupting the durable model.
+
+Keep labels merge through the same normalized identity used by native Notes labels. Imported attachments receive a SHA-256 checksum from their actual bytes. Missing attachments or individually unsupported note records are surfaced before commit; valid notes remain recoverable instead of being silently truncated or discarded with the rest of the archive.
+
+Every imported source note receives a stable source key recorded in the durable `settings` table under the `google-keep-import:v1:` namespace. The ledger is rechecked inside the write transaction, suppresses later duplicate imports, and is automatically preserved by P12 full-library backups. Re-import never overwrites an already imported local note, protecting local edits made after migration.
+
+The migration itself is one read-write transaction spanning all seven durable tables. New notes, checklist items, normalized labels, relationships, attachments, initial P11 `import` revisions, and source-ledger rows commit together. A later write failure aborts the entire transaction and leaves the pre-import local library unchanged.
+
+P14 owns the complete image/attachment viewing and interaction experience; P13 only guarantees correct attachment ingestion and durable preservation during migration.
