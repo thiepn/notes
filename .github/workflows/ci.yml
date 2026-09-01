@@ -28,20 +28,20 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Focused rich-text E2E
+      - name: Full browser regression suite
         run: |
           set +e
-          npx playwright test e2e/rich-text.spec.ts 2>&1 | tee rich-text-e2e.txt
+          npm run e2e 2>&1 | tee v2-2-e2e.txt
           status=${PIPESTATUS[0]}
           exit $status
 
-      - name: Upload rich-text diagnostics
+      - name: Upload V2-2 browser diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: rich-text-e2e-diagnostics
+          name: v2-2-browser-diagnostics
           path: |
-            rich-text-e2e.txt
+            v2-2-e2e.txt
             playwright-report
             test-results
           if-no-files-found: ignore
