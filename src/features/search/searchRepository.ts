@@ -7,6 +7,7 @@ import {
   reminderRecordSchema,
   type NotesDatabase,
 } from '../../db';
+import { parseWikiLinks } from '../links/linkIntelligence';
 import { richTextToPlainText } from '../richText/richText';
 import { normalizeSearchText, type SearchDocument } from './searchEngine';
 
@@ -86,6 +87,7 @@ export class SearchRepository {
       const normalizedBody = normalizeSearchText(plainBody);
       const normalizedChecklist = normalizeSearchText(checklistText);
       const normalizedLabels = normalizeSearchText(labelNames.join(' '));
+      const hasInternalLink = note.type === 'text' && parseWikiLinks(note.content).length > 0;
 
       return {
         note,
@@ -93,7 +95,7 @@ export class SearchRepository {
         labelIds,
         labelNames,
         hasImage: imageNoteIds.has(note.id),
-        hasLink: LINK_PATTERN.test(combinedLinkText),
+        hasLink: hasInternalLink || LINK_PATTERN.test(combinedLinkText),
         hasReminder: reminderNoteIds.has(note.id),
         normalizedTitle,
         normalizedBody,
