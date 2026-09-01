@@ -103,7 +103,7 @@ test('drawing Escape closes only the drawing modal and existing notes can attach
     'aria-pressed',
     'true',
   );
-  await drawing.getByRole('button', { name: 'Pen' }).click();
+  await drawing.getByRole('button', { name: 'Pen', exact: true }).click();
   await drawStroke(page, drawing.getByLabel('Drawing canvas'));
   await drawing.getByRole('button', { name: 'Save drawing' }).click();
   await expect(drawing).toHaveCount(0);
