@@ -334,19 +334,22 @@ export function NoteEditorDialog({
               </div>
 
               <ReminderControl
+                compact
                 noteId={note.id}
                 repository={remindersRepository}
                 onChanged={() => undefined}
               />
 
-              <button
-                className="note-editor-secondary note-editor-attachments-toggle"
-                type="button"
-                aria-pressed={attachmentsOpen}
-                onClick={() => setAttachmentsOpen((open) => !open)}
-              >
-                <Paperclip aria-hidden="true" /> Attachments
-              </button>
+              {attachmentsOpen ? (
+                <button
+                  className="note-editor-secondary note-editor-attachments-toggle"
+                  type="button"
+                  aria-pressed="true"
+                  onClick={() => setAttachmentsOpen(false)}
+                >
+                  <Paperclip aria-hidden="true" /> Attachments
+                </button>
+              ) : null}
             </div>
 
             <div className="note-editor-state" aria-live="polite">
