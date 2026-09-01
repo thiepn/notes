@@ -139,6 +139,11 @@ jobs:
               "  const reminderCard = page.locator('[data-note-card]').filter({ hasText: 'Call tomorrow' });\n  await reminderCard.getByRole('button', { name: 'Move note to trash: Call tomorrow' }).click();",
               "  const reminderCard = page.locator('[data-note-card]').filter({ hasText: 'Call tomorrow' });\n  await reminderCard.hover();\n  await reminderCard.getByRole('button', { name: 'Move note to trash: Call tomorrow' }).click();",
           )
+          replace_once(
+              reminders,
+              "  await page.getByRole('button', { name: 'Trash' }).click();\n  await page.getByRole('button', { name: 'Restore note: Call tomorrow' }).click();",
+              "  await page.getByRole('button', { name: 'Trash' }).click();\n  const trashCard = page.locator('[data-note-card]').filter({ hasText: 'Call tomorrow' });\n  await trashCard.hover();\n  await trashCard.getByRole('button', { name: 'Restore note: Call tomorrow' }).click();",
+          )
           PY
 
           npx prettier --write e2e/backup.spec.ts e2e/reminders.spec.ts
