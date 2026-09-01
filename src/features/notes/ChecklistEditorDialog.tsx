@@ -11,6 +11,7 @@ import { History } from 'lucide-react';
 import {
   RemindersRepository,
   RevisionsRepository,
+  VoiceAttachmentsRepository,
   notesDatabase,
   type AttachmentsRepository,
   type ChecklistDraftItem,
@@ -20,6 +21,7 @@ import {
 } from '../../db';
 import { DrawingAttachmentButton } from '../drawing/DrawingAttachmentButton';
 import { ReminderControl } from '../reminders/ReminderControl';
+import { VoiceAttachmentButton } from '../voice/VoiceAttachmentButton';
 import { AttachmentPanel } from './AttachmentPanel';
 import {
   clearChecklistEditorJournal,
@@ -33,6 +35,7 @@ const AUTOSAVE_DELAY_MS = 180;
 const MOVE_COMPLETED_KEY = 'notes.checklist.move-completed';
 const revisionsRepository = new RevisionsRepository(notesDatabase);
 const remindersRepository = new RemindersRepository(notesDatabase);
+const voiceAttachmentsRepository = new VoiceAttachmentsRepository(notesDatabase);
 
 type EditorStatus = 'idle' | 'saving' | 'error';
 
@@ -330,6 +333,12 @@ export function ChecklistEditorDialog({
             <DrawingAttachmentButton
               noteId={note.id}
               repository={attachmentsRepository}
+              className="note-editor-secondary"
+              onChanged={onAttachmentsChanged}
+            />
+            <VoiceAttachmentButton
+              noteId={note.id}
+              repository={voiceAttachmentsRepository}
               className="note-editor-secondary"
               onChanged={onAttachmentsChanged}
             />
