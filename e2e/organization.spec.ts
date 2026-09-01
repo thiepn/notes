@@ -25,6 +25,13 @@ async function hoverCard(page: Page, noteId: string) {
   return card;
 }
 
+async function openCardLabels(page: Page, noteId: string, label: string) {
+  const card = await hoverCard(page, noteId);
+  await card.getByRole('button', { name: `More actions: ${label}` }).click();
+  await card.getByRole('menuitem', { name: 'Labels', exact: true }).click();
+  return card;
+}
+
 test('label manager creates, renames, and deletes labels without deleting notes', async ({
   page,
 }) => {
@@ -32,8 +39,7 @@ test('label manager creates, renames, and deletes labels without deleting notes'
   await page.reload();
   await createLabelInUi(page, 'Study');
 
-  let card = await hoverCard(page, noteId);
-  await card.getByRole('button', { name: 'Change labels: Keep this note' }).click();
+  let card = await openCardLabels(page, noteId, 'Keep this note');
   await page
     .getByRole('dialog', { name: 'Note labels' })
     .getByLabel('Add label Study: Keep this note')
@@ -80,8 +86,7 @@ test('label views persist and new notes created inside them inherit the label', 
   await page.reload();
   await createLabelInUi(page, 'Ideas');
 
-  const card = await hoverCard(page, noteId);
-  await card.getByRole('button', { name: 'Change labels: Existing labeled note' }).click();
+  await openCardLabels(page, noteId, 'Existing labeled note');
   await page
     .getByRole('dialog', { name: 'Note labels' })
     .getByLabel('Add label Ideas: Existing labeled note')
@@ -154,8 +159,7 @@ test('a note can hold multiple labels', async ({ page }) => {
   });
   await page.reload();
 
-  const card = await hoverCard(page, noteId);
-  await card.getByRole('button', { name: 'Change labels: Multi label' }).click();
+  const card = await openCardLabels(page, noteId, 'Multi label');
   const picker = page.getByRole('dialog', { name: 'Note labels' });
   await picker.getByLabel('Add label Research: Multi label').check();
   await picker.getByLabel('Add label Study: Multi label').check();
