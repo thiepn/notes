@@ -102,7 +102,8 @@ test('converts text notes to checklists and back without losing item text', asyn
   await expect(checklistDialog.getByLabel('Checklist item 1')).toHaveValue('Alpha');
   await expect(checklistDialog.getByLabel('Checklist item 2')).toHaveValue('Beta');
   await expect(checklistDialog.getByLabel('Checklist item 3')).toHaveValue('Gamma');
-  await checklistDialog.getByRole('button', { name: 'Convert to text' }).click();
+  await checklistDialog.getByRole('button', { name: 'More', exact: true }).click();
+  await checklistDialog.getByRole('menuitem', { name: 'Convert to text', exact: true }).click();
 
   await page.getByRole('button', { name: 'Open note: Convert me' }).click();
   await expect(
