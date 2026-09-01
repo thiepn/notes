@@ -194,6 +194,55 @@
   width: 100%;
 }
 
+.rich-text-compact-controls {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.rich-text-compact-button {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-subtle);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+}
+
+.rich-text-compact-button:hover,
+.rich-text-compact-button:focus-visible,
+.rich-text-compact-button[aria-expanded='true'],
+.rich-text-compact-button[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--text) 9%, transparent);
+  color: var(--text);
+}
+
+.rich-text-compact-button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.rich-text-compact-button svg {
+  width: 15px;
+  height: 15px;
+}
+
+.rich-text-editor[data-formatting-open='false'][data-preview='false'] {
+  gap: 2px;
+}
+
+.rich-text-editor[data-formatting-open='false'][data-preview='false'] .rich-text-compact-controls {
+  opacity: 0.72;
+}
+
 /* The ordinary card is content. Actions appear when the card is being acted on. */
 @media (hover: hover) and (pointer: fine) {
   .note-card-actions,
@@ -263,5 +312,9 @@
 
   .note-card-actions {
     gap: 2px;
+  }
+
+  .rich-text-compact-controls {
+    justify-content: flex-start;
   }
 }
