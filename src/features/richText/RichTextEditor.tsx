@@ -12,6 +12,7 @@ import {
   Pencil,
   Quote,
   Strikethrough,
+  Type,
 } from 'lucide-react';
 
 import { applyRichTextCommand, type RichTextCommand } from './richText';
@@ -63,6 +64,7 @@ export function RichTextEditor({
   const internalRef = useRef<HTMLTextAreaElement>(null);
   const activeRef = textareaRef ?? internalRef;
   const [preview, setPreview] = useState(false);
+  const [formattingOpen, setFormattingOpen] = useState(false);
 
   const apply = (command: RichTextCommand) => {
     const textarea = activeRef.current;
@@ -91,25 +93,30 @@ export function RichTextEditor({
     apply(command);
   };
 
+  const handleSelection = () => {
+    const textarea = activeRef.current;
+    if (!textarea || textarea.selectionStart === textarea.selectionEnd) return;
+    setFormattingOpen(true);
+  };
+
   return (
-    <div className="rich-text-editor" data-preview={preview}>
-      <div className="rich-text-toolbar" role="toolbar" aria-label="Text formatting">
-        {COMMANDS.map(({ command, label, shortcut, icon: Icon }) => (
+    <div className="rich-text-editor" data-preview={preview} data-formatting-open={formattingOpen}>
+      <div className="rich-text-compact-controls">
+        {!preview ? (
           <button
-            className="rich-text-toolbar-button"
+            className="rich-text-compact-button"
             type="button"
-            aria-label={shortcut ? `${label} (${shortcut})` : label}
-            title={shortcut ? `${label} (${shortcut})` : label}
-            disabled={preview}
-            key={command}
-            onClick={() => apply(command)}
+            aria-label={formattingOpen ? 'Hide formatting' : 'Show formatting'}
+            aria-expanded={formattingOpen}
+            title="Formatting"
+            onClick={() => setFormattingOpen((current) => !current)}
           >
-            <Icon aria-hidden="true" />
+            <Type aria-hidden="true" />
+            <span>Format</span>
           </button>
-        ))}
-        <span className="rich-text-toolbar-spacer" />
+        ) : null}
         <button
-          className="rich-text-toolbar-button rich-text-preview-toggle"
+          className="rich-text-compact-button rich-text-preview-toggle"
           type="button"
           aria-label={preview ? 'Edit formatted text' : 'Preview formatted text'}
           aria-pressed={preview}
@@ -117,8 +124,26 @@ export function RichTextEditor({
           onClick={() => setPreview((current) => !current)}
         >
           {preview ? <Pencil aria-hidden="true" /> : <Eye aria-hidden="true" />}
+          <span>{preview ? 'Edit' : 'Preview'}</span>
         </button>
       </div>
+
+      {formattingOpen && !preview ? (
+        <div className="rich-text-toolbar" role="toolbar" aria-label="Text formatting">
+          {COMMANDS.map(({ command, label, shortcut, icon: Icon }) => (
+            <button
+              className="rich-text-toolbar-button"
+              type="button"
+              aria-label={shortcut ? `${label} (${shortcut})` : label}
+              title={shortcut ? `${label} (${shortcut})` : label}
+              key={command}
+              onClick={() => apply(command)}
+            >
+              <Icon aria-hidden="true" />
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       {preview ? (
         <div
@@ -147,6 +172,7 @@ export function RichTextEditor({
           autoFocus={autoFocus}
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={handleKeyDown}
+          onSelect={handleSelection}
         />
       )}
     </div>
