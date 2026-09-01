@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { AlertTriangle, ArrowUpRight, Link2, Sparkles } from 'lucide-react';
 
 import type { NoteRecord, NotesRepository } from '../../db';
@@ -84,12 +84,13 @@ export function ConnectionsPanel({
             const resolution = link.resolution;
             const countLabel = link.count > 1 ? ` ×${link.count}` : '';
             if (resolution.status === 'resolved' && resolution.noteId) {
+              const resolvedNoteId = resolution.noteId;
               return (
                 <button
                   className="note-connection-row"
                   type="button"
                   key={resolution.normalizedTitle}
-                  onClick={() => onOpenNote(resolution.noteId as string)}
+                  onClick={() => onOpenNote(resolvedNoteId)}
                 >
                   <span>{link.title}</span>
                   <span className="note-connection-meta">
@@ -185,8 +186,8 @@ function ConnectionGroup({
   children,
 }: {
   title: string;
-  icon?: React.ReactNode;
-  children: React.ReactNode;
+  icon?: ReactNode;
+  children: ReactNode;
 }) {
   return (
     <div className="note-connection-group">
