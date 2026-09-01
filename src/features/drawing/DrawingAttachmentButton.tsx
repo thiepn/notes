@@ -11,6 +11,7 @@ interface DrawingAttachmentButtonProps {
   disabled?: boolean;
   className?: string;
   compact?: boolean;
+  onOpen?: (() => void) | undefined;
   onChanged?: ((noteId: string) => void) | undefined;
 }
 
@@ -21,6 +22,7 @@ export function DrawingAttachmentButton({
   disabled = false,
   className = '',
   compact = false,
+  onOpen,
   onChanged,
 }: DrawingAttachmentButtonProps) {
   const [open, setOpen] = useState(false);
@@ -56,6 +58,7 @@ export function DrawingAttachmentButton({
           disabled={disabled || saving}
           onClick={() => {
             setErrorMessage(null);
+            onOpen?.();
             setOpen(true);
           }}
         >
