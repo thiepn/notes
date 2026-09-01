@@ -1,0 +1,288 @@
+.rich-text-wiki-link {
+  display: inline;
+  padding: 0 0.08em;
+  border: 0;
+  border-bottom: 1px dotted currentColor;
+  background: transparent;
+  color: var(--accent-strong);
+  font: inherit;
+  font-weight: 650;
+  line-height: inherit;
+  text-decoration: none;
+}
+
+button.rich-text-wiki-link {
+  cursor: pointer;
+}
+
+button.rich-text-wiki-link:hover,
+button.rich-text-wiki-link:focus-visible {
+  border-bottom-style: solid;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  outline: none;
+}
+
+.rich-text-wiki-link[data-status='missing'] {
+  color: #b42318;
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.rich-text-wiki-link[data-status='ambiguous'] {
+  color: #b54708;
+  border-bottom-style: dashed;
+}
+
+.rich-text-wiki-link[data-status='unknown'] {
+  color: color-mix(in srgb, var(--accent-strong) 80%, var(--text));
+}
+
+.note-card .rich-text-wiki-link {
+  pointer-events: none;
+}
+
+.note-editor-dialog:has(.note-connections) {
+  overflow-y: auto;
+}
+
+.note-editor-dialog:has(.note-connections) .note-editor-body {
+  max-height: min(42vh, 420px);
+}
+
+.note-connections {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-4);
+  margin-top: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
+}
+
+.note-connections-heading > div {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.note-connections-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-weight: 760;
+}
+
+.note-connections-title svg,
+.note-connection-group h3 svg,
+.note-connection-meta svg,
+.note-connections-warning svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  stroke-width: 1.9;
+}
+
+.note-connections-summary {
+  color: var(--text-subtle);
+  font-size: 0.76rem;
+  text-align: right;
+}
+
+.note-connections-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid color-mix(in srgb, #b54708 35%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, #f79009 9%, transparent);
+  color: color-mix(in srgb, var(--text) 86%, #b54708);
+  font-size: 0.79rem;
+  line-height: 1.45;
+}
+
+.note-connection-group {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.note-connection-group h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--text-subtle);
+  font-size: 0.72rem;
+  font-weight: 760;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.note-connection-list {
+  display: grid;
+  gap: 4px;
+}
+
+.note-connection-row {
+  display: flex;
+  min-width: 0;
+  min-height: 36px;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 7px 9px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+  text-align: left;
+}
+
+button.note-connection-row {
+  cursor: pointer;
+}
+
+button.note-connection-row:hover,
+button.note-connection-row:focus-visible {
+  background: color-mix(in srgb, var(--text) 9%, transparent);
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.note-connection-row > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-connection-row[data-status='missing'] > span:first-child {
+  color: #b42318;
+}
+
+.note-connection-row[data-status='ambiguous'] > span:first-child {
+  color: #b54708;
+}
+
+.note-connection-meta {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-subtle);
+  font-size: 0.72rem;
+}
+
+.note-unlinked-mention {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 8px 9px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+}
+
+.note-unlinked-source {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.note-unlinked-source > span:first-child {
+  overflow: hidden;
+  font-size: 0.81rem;
+  font-weight: 680;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-unlinked-source > span:last-child {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--text-subtle);
+  font-size: 0.73rem;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.note-unlinked-source:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.note-unlinked-link {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+  color: var(--accent-strong);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 720;
+  white-space: nowrap;
+}
+
+.note-unlinked-link:hover,
+.note-unlinked-link:focus-visible {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.note-unlinked-link:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.note-connections-empty,
+.note-connections-error {
+  margin: 0;
+  color: var(--text-subtle);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.note-connections-error {
+  color: #b42318;
+}
+
+@media (max-width: 767px) {
+  .note-editor-dialog:has(.note-connections) .note-editor-body {
+    max-height: none;
+  }
+
+  .note-connections-heading > div {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .note-connections-summary {
+    text-align: left;
+  }
+
+  .note-unlinked-mention {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .note-unlinked-link {
+    justify-self: start;
+  }
+}
