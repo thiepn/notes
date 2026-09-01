@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { searchSignature, summarizeSearch } from './searchHistory';
 import { DEFAULT_SEARCH_FILTERS } from './searchTypes';
 
-// Temporary content-neutral CI trigger; reverted in the next commit.
 describe('search history helpers', () => {
   it('treats color and label selection order as the same saved search', () => {
     const first = searchSignature({
