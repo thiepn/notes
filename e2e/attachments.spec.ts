@@ -166,6 +166,7 @@ test('checklist capture accepts images and keeps the image across editing', asyn
   const composer = page.getByRole('form', { name: 'New checklist' });
   await expect(composer).toBeVisible();
   await composer.getByLabel('Checklist title').fill('Packing photos');
+  await composer.getByRole('button', { name: 'Add attachment' }).click();
   await composer.getByLabel('Choose images').setInputFiles(imageFile('packing.png'));
   await expect(composer.getByRole('button', { name: 'Open image: packing.png' })).toBeVisible();
   await composer.getByRole('button', { name: 'Close' }).click();
