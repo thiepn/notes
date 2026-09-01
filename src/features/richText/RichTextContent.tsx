@@ -10,14 +10,14 @@ export interface WikiLinkRenderResolution {
 interface RichTextContentProps {
   value: string;
   compact?: boolean;
-  resolveWikiLink?: (title: string) => WikiLinkRenderResolution;
-  onWikiLinkOpen?: (noteId: string) => void;
+  resolveWikiLink?: ((title: string) => WikiLinkRenderResolution) | undefined;
+  onWikiLinkOpen?: ((noteId: string) => void) | undefined;
 }
 
 interface InlineRenderContext {
   compact: boolean;
-  resolveWikiLink?: (title: string) => WikiLinkRenderResolution;
-  onWikiLinkOpen?: (noteId: string) => void;
+  resolveWikiLink: ((title: string) => WikiLinkRenderResolution) | undefined;
+  onWikiLinkOpen: ((noteId: string) => void) | undefined;
 }
 
 export function RichTextContent({
@@ -49,7 +49,7 @@ function parseBlocks(value: string): RichTextBlock[] {
   const lines = value.replace(/\r\n?/gu, '\n').split('\n');
   const blocks: RichTextBlock[] = [];
 
-  for (let index = 0; index < lines.length;) {
+  for (let index = 0; index < lines.length; ) {
     const line = lines[index] ?? '';
     if (!line.trim()) {
       index += 1;
