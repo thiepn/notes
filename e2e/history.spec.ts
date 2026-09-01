@@ -51,6 +51,11 @@ async function openTextHistory(editor: Locator) {
   await editor.getByRole('menuitem', { name: 'History', exact: true }).click();
 }
 
+async function openChecklistHistory(editor: Locator) {
+  await editor.getByRole('button', { name: 'More', exact: true }).click();
+  await editor.getByRole('menuitem', { name: 'History', exact: true }).click();
+}
+
 test('text history previews an older version, restores it, and supports Undo restore', async ({
   page,
 }) => {
@@ -113,7 +118,7 @@ test('checklist history restores item text, check state, and hierarchy atomicall
 
   await page.getByRole('button', { name: 'Open note: History checklist' }).click();
   editor = page.getByRole('dialog', { name: 'Edit checklist' });
-  await editor.getByRole('button', { name: 'History' }).click();
+  await openChecklistHistory(editor);
   const history = page.getByRole('dialog', { name: 'Version history' });
   await expect(history.locator('.revision-history-item')).toHaveCount(2);
   await history.locator('.revision-history-item').last().click();
@@ -197,7 +202,8 @@ test('cross-type restore keeps History reversible and surfaces checklist rows im
   await card.getByRole('button', { name: 'Open note: Cross type history' }).click();
   await waitForBaselineRevision(page, noteId!);
   const checklistEditor = page.getByRole('dialog', { name: 'Edit checklist' });
-  await checklistEditor.getByRole('button', { name: 'Convert to text' }).click();
+  await checklistEditor.getByRole('button', { name: 'More', exact: true }).click();
+  await checklistEditor.getByRole('menuitem', { name: 'Convert to text', exact: true }).click();
   await expect(checklistEditor).toHaveCount(0);
 
   const textCard = page.locator(`[data-note-id="${noteId}"][data-note-type="text"]`);
