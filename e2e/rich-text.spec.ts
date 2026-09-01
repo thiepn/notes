@@ -16,6 +16,7 @@ test('rich text formats, previews, persists, renders on cards, and stays searcha
     textarea.focus();
     textarea.setSelectionRange(6, 10);
   });
+  await composer.getByRole('button', { name: 'Show formatting' }).click();
   await composer.getByRole('button', { name: 'Bold (Ctrl+B)' }).click();
   await expect(body).toHaveValue('Alpha **beta**\nSecond line');
 
