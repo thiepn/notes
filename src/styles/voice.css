@@ -320,6 +320,7 @@ html[data-theme='dark'] .voice-dialog-footer .voice-save-button {
 
 .attachment-audio-copy strong {
   overflow: hidden;
+  font-size: var(--text-xs);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -327,11 +328,13 @@ html[data-theme='dark'] .voice-dialog-footer .voice-save-button {
 .attachment-audio-copy small {
   flex: 0 0 auto;
   color: var(--text-subtle);
+  font-size: 0.7rem;
 }
 
 .attachment-audio-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 4px;
 }
 
@@ -346,6 +349,20 @@ html[data-theme='dark'] .voice-dialog-footer .voice-save-button {
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
+  font: inherit;
+}
+
+.attachment-audio-actions button[aria-label^='Confirm remove'],
+.attachment-audio-actions button[aria-label^='Cancel remove'] {
+  width: auto;
+  min-width: 34px;
+  padding: 0 8px;
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+
+.attachment-audio-actions button[aria-label^='Confirm remove'] {
+  color: #b42318;
 }
 
 .attachment-audio-actions button:hover,
@@ -354,6 +371,11 @@ html[data-theme='dark'] .voice-dialog-footer .voice-save-button {
   color: var(--text);
   outline: 2px solid var(--focus);
   outline-offset: 1px;
+}
+
+.attachment-audio-actions button[aria-label^='Confirm remove']:hover,
+.attachment-audio-actions button[aria-label^='Confirm remove']:focus-visible {
+  color: #b42318;
 }
 
 .attachment-audio-actions svg {
@@ -407,6 +429,5 @@ html[data-theme='dark'] .voice-dialog-footer .voice-save-button {
 
   .attachment-audio-actions {
     grid-column: 2;
-    justify-content: flex-end;
   }
 }
