@@ -10,6 +10,7 @@ interface DrawingAttachmentButtonProps {
   ensureNoteId?: (() => Promise<string | null>) | undefined;
   disabled?: boolean;
   className?: string;
+  compact?: boolean;
   onChanged?: ((noteId: string) => void) | undefined;
 }
 
@@ -19,6 +20,7 @@ export function DrawingAttachmentButton({
   ensureNoteId,
   disabled = false,
   className = '',
+  compact = false,
   onChanged,
 }: DrawingAttachmentButtonProps) {
   const [open, setOpen] = useState(false);
@@ -50,6 +52,7 @@ export function DrawingAttachmentButton({
           className={className}
           type="button"
           aria-label="Add drawing"
+          title={compact ? 'New drawing note' : undefined}
           disabled={disabled || saving}
           onClick={() => {
             setErrorMessage(null);
@@ -57,7 +60,7 @@ export function DrawingAttachmentButton({
           }}
         >
           <PencilLine aria-hidden="true" />
-          {saving ? 'Saving…' : 'Draw'}
+          {compact ? null : saving ? 'Saving…' : 'Draw'}
         </button>
         {errorMessage ? (
           <span className="drawing-attachment-error" role="alert">
