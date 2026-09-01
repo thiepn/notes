@@ -112,3 +112,24 @@ test('drawing Escape closes only the drawing modal and existing notes can attach
   expect(attachmentCount).toBe(1);
   await expect(editor.getByRole('region', { name: 'Attachments' })).toContainText('1 attachment');
 });
+
+test('checklist editors expose the same drawing attachment workflow', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Create a checklist' }).click();
+  const form = page.getByRole('form', { name: 'New checklist' });
+  await form.getByLabel('Checklist title').fill('Sketch checklist');
+  await form.getByLabel('Checklist item 1').fill('First item');
+  await form.getByRole('button', { name: 'Close' }).click();
+
+  const card = page.locator('[data-note-type="checklist"]').filter({ hasText: 'Sketch checklist' });
+  await card.getByRole('button', { name: 'Open note: Sketch checklist' }).click();
+  const editor = page.getByRole('dialog', { name: 'Edit checklist' });
+  await editor.getByRole('button', { name: 'Add drawing' }).click();
+
+  const drawing = page.getByRole('dialog', { name: 'Drawing editor' });
+  await drawStroke(page, drawing.getByLabel('Drawing canvas'));
+  await drawing.getByRole('button', { name: 'Save drawing' }).click();
+  await expect(drawing).toHaveCount(0);
+  await expect(editor).toBeVisible();
+  await expect(editor.getByRole('region', { name: 'Attachments' })).toContainText('1 attachment');
+});
