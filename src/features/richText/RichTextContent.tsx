@@ -49,7 +49,7 @@ function parseBlocks(value: string): RichTextBlock[] {
   const lines = value.replace(/\r\n?/gu, '\n').split('\n');
   const blocks: RichTextBlock[] = [];
 
-  for (let index = 0; index < lines.length;) {
+  for (let index = 0; index < lines.length; ) {
     const line = lines[index] ?? '';
     if (!line.trim()) {
       index += 1;
@@ -194,7 +194,7 @@ function renderBlock(block: RichTextBlock, context: InlineRenderContext): ReactN
 function renderInline(value: string, context: InlineRenderContext): ReactNode[] {
   const output: ReactNode[] = [];
   const tokenPattern =
-    /(\[\[[^\[\]\n]+\]\]|\[[^\]\n]+\]\(https?:\/\/[^\s)]+\)|\*\*[^*\n]+\*\*|~~[^~\n]+~~|`[^`\n]+`|\*[^*\n]+\*)/giu;
+    /(\[\[[^\]\n[]+\]\]|\[[^\]\n]+\]\(https?:\/\/[^\s)]+\)|\*\*[^*\n]+\*\*|~~[^~\n]+~~|`[^`\n]+`|\*[^*\n]+\*)/giu;
   let cursor = 0;
   let match: RegExpExecArray | null;
 
