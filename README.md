@@ -6,9 +6,9 @@ A local-first, zero-friction notes PWA designed to match Google Keep's capture s
 
 ## Status
 
-**P15 — PWA + Offline Certification is implemented as the final V1 release gate.** Notes now has a complete installable manifest and icon set, explicit opt-in install/update handling, exact `/notes/` service-worker scope, offline status UX, and a production-build Playwright certification that cold-reloads offline, reads existing IndexedDB notes, writes a new note without network access, and verifies it again after another offline reload.
+**V2-1 — Reminders & Time-Based Notes is implemented as the first V2 feature release.** Notes now supports one local reminder per saved text note or checklist, reminder lifecycle/history, a dedicated Reminders workspace, `has:reminder` search, timezone-aware scheduling with DST-gap rejection, conservative Google Keep reminder migration, backup-format v2 preservation, and best-effort local browser notifications.
 
-The V1 feature roadmap through P15 is implemented. Further work should be release verification, bug fixing, and measured product improvements rather than adding another feature phase by default.
+V1 through P15 remains the stable product foundation. V2-1 preserves the local-first/offline-first architecture: reminder data works without a backend, while closed-app scheduled push delivery is explicitly not promised by a static GitHub Pages PWA.
 
 ## V1 scope
 
@@ -28,6 +28,22 @@ V1 includes:
 - Responsive desktop, tablet, and mobile UX
 
 V1 explicitly excludes cloud sync, accounts, collaboration, AI, OCR, voice notes, drawings, nested folders, databases, project management, and plugin systems.
+
+## V2 scope
+
+V2-1 adds:
+
+- One reminder per saved text note or checklist
+- Local date/time scheduling stored as an absolute UTC instant plus the scheduling IANA timezone
+- Active, completed, dismissed, snoozed, and removed reminder states
+- Overdue, Today, Upcoming, and Completed & dismissed reminder groups
+- Reminder chips on note cards and live `has:reminder` search
+- Archive preservation, Trash suppression/restoration, and transactional permanent-delete cleanup
+- Backup format v2 with reminder round-trip and legacy-v1 restore compatibility
+- Conservative Google Keep absolute-reminder import
+- Optional best-effort browser notifications while Notes is open or returns to the foreground
+
+V2-1 deliberately excludes recurring reminders, location reminders, accounts, server push, cloud scheduling, and reliable alerts while every Notes tab/PWA window is fully closed.
 
 ## Architecture
 
@@ -49,14 +65,17 @@ V1 explicitly excludes cloud sync, accounts, collaboration, AI, OCR, voice notes
 - Responsive attachment grids, local image lightbox, explicit removal confirmation, and imported-file downloads
 - Bounded semantic per-note revision history with validated v1 snapshot payloads and 50-version pruning
 - Transactional reversible history restore that preserves current lifecycle, labels, and attachments across text/checklist type changes
-- Versioned seven-table full-library JSON backups taken from one consistent IndexedDB read transaction
+- Normalized one-reminder-per-note storage in the database-v2 `reminders` table with independent active/completed/dismissed lifecycle
+- Absolute reminder timestamps plus recorded IANA scheduling timezone, including explicit DST-gap rejection
+- Best-effort local notification coordination with due-time de-duplication and no false closed-app push guarantee
+- Versioned eight-table full-library JSON backups taken from one consistent IndexedDB read transaction
 - Base64 attachment preservation with independent SHA-256 backup integrity checks
 - Read-only backup validation and recovery preview before any destructive database write
 - Automatic current-device safety backup before full-library restore
-- Atomic seven-table replacement recovery with IndexedDB rollback on write failure
+- Atomic eight-table replacement recovery with IndexedDB rollback on write failure
 - Direct local parsing of single- or multi-part Google Keep Takeout ZIP archives
 - Read-only Keep import preview before database writes, with recoverable-note warnings instead of silent truncation
-- Non-destructive seven-table Keep migration that never clears or replaces existing Notes data
+- Non-destructive eight-table Keep migration that never clears or replaces existing Notes data
 - Normalized Keep-label merge, source lifecycle/timestamp preservation, and attachment SHA-256 ingestion
 - Durable Google Keep source ledger for repeat-import suppression, preserved automatically by P12 backups
 - Initial P11 `import` revision for every migrated Keep note and atomic rollback of the complete import on failure
@@ -85,7 +104,7 @@ V1 explicitly excludes cloud sync, accounts, collaboration, AI, OCR, voice notes
 - GitHub Actions for CI and deployment
 - GitHub Pages-compatible build rooted at `/notes/`
 
-See [`docs/DATABASE.md`](docs/DATABASE.md) for database invariants, [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for the shell and styling contract, [`docs/CAPTURE.md`](docs/CAPTURE.md) for new-note capture and recovery, [`docs/CARDS_AND_GRID.md`](docs/CARDS_AND_GRID.md) for the P4 card and editor architecture, [`docs/LIFECYCLE.md`](docs/LIFECYCLE.md) for lifecycle state, Undo, Archive, Trash, duplication, and permanent deletion behavior, [`docs/ORGANIZATION.md`](docs/ORGANIZATION.md) for P6 color, label, label-view, and organization behavior, [`docs/CHECKLISTS.md`](docs/CHECKLISTS.md) for P7 checklist storage, interaction, conversion, and recovery behavior, [`docs/SELECTION_AND_BULK.md`](docs/SELECTION_AND_BULK.md) for P8 selection scope, bulk toolbar behavior, transactional batch mutations, and Undo semantics, [`docs/SEARCH.md`](docs/SEARCH.md) for P9 indexing, normalization, ranking, filters, query operators, and performance behavior, [`docs/KEYBOARD.md`](docs/KEYBOARD.md) for P10 command palette, shortcut safety, and focused-card keyboard behavior, [`docs/HISTORY.md`](docs/HISTORY.md) for P11 checkpoint, restore, Undo, copy, pruning, payload-validation, and cross-type recovery semantics, [`docs/BACKUP.md`](docs/BACKUP.md) for P12 full-library backup format, validation, safety snapshot, atomic replacement, and disaster-recovery behavior, [`docs/GOOGLE_KEEP_IMPORT.md`](docs/GOOGLE_KEEP_IMPORT.md) for P13 Takeout parsing, mapping, preview, repeat-import protection, and atomic additive migration behavior, [`docs/IMAGES.md`](docs/IMAGES.md) for P14 native image capture, privacy processing, thumbnails, viewer behavior, imported attachment handling, and storage limits, and [`docs/PWA_OFFLINE.md`](docs/PWA_OFFLINE.md) for P15 installability, service-worker update policy, production offline behavior, and certification requirements.
+See [`docs/DATABASE.md`](docs/DATABASE.md) for database invariants, [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for the shell and styling contract, [`docs/CAPTURE.md`](docs/CAPTURE.md) for new-note capture and recovery, [`docs/CARDS_AND_GRID.md`](docs/CARDS_AND_GRID.md) for the P4 card and editor architecture, [`docs/LIFECYCLE.md`](docs/LIFECYCLE.md) for lifecycle state, Undo, Archive, Trash, duplication, and permanent deletion behavior, [`docs/ORGANIZATION.md`](docs/ORGANIZATION.md) for P6 color, label, label-view, and organization behavior, [`docs/CHECKLISTS.md`](docs/CHECKLISTS.md) for P7 checklist storage, interaction, conversion, and recovery behavior, [`docs/SELECTION_AND_BULK.md`](docs/SELECTION_AND_BULK.md) for P8 selection scope, bulk toolbar behavior, transactional batch mutations, and Undo semantics, [`docs/SEARCH.md`](docs/SEARCH.md) for P9 indexing, normalization, ranking, filters, query operators, and performance behavior, [`docs/KEYBOARD.md`](docs/KEYBOARD.md) for P10 command palette, shortcut safety, and focused-card keyboard behavior, [`docs/HISTORY.md`](docs/HISTORY.md) for P11 checkpoint, restore, Undo, copy, pruning, payload-validation, and cross-type recovery semantics, [`docs/BACKUP.md`](docs/BACKUP.md) for P12 full-library backup format, validation, safety snapshot, atomic replacement, and disaster-recovery behavior, [`docs/GOOGLE_KEEP_IMPORT.md`](docs/GOOGLE_KEEP_IMPORT.md) for P13 Takeout parsing, mapping, preview, repeat-import protection, and atomic additive migration behavior, [`docs/IMAGES.md`](docs/IMAGES.md) for P14 native image capture, privacy processing, thumbnails, viewer behavior, imported attachment handling, and storage limits, [`docs/PWA_OFFLINE.md`](docs/PWA_OFFLINE.md) for P15 installability, service-worker update policy, production offline behavior, and certification requirements, and [`docs/REMINDERS.md`](docs/REMINDERS.md) for V2-1 reminder storage, scheduling, lifecycle, notification limits, backup/import integration, and regression requirements.
 
 ## Principles
 
