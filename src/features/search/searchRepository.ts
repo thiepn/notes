@@ -7,6 +7,7 @@ import {
   reminderRecordSchema,
   type NotesDatabase,
 } from '../../db';
+import { richTextToPlainText } from '../richText/richText';
 import { normalizeSearchText, type SearchDocument } from './searchEngine';
 
 const LINK_PATTERN = /(?:https?:\/\/|www\.)\S+/iu;
@@ -79,9 +80,10 @@ export class SearchRepository {
         .map((labelId) => labelsById.get(labelId)?.name)
         .filter((name): name is string => Boolean(name));
       const checklistText = checklistItems.map((item) => item.text).join('\n');
-      const combinedLinkText = [note.title, note.content, checklistText].join('\n');
+      const plainBody = note.type === 'text' ? richTextToPlainText(note.content) : note.content;
+      const combinedLinkText = [note.title, plainBody, checklistText].join('\n');
       const normalizedTitle = normalizeSearchText(note.title);
-      const normalizedBody = normalizeSearchText(note.content);
+      const normalizedBody = normalizeSearchText(plainBody);
       const normalizedChecklist = normalizeSearchText(checklistText);
       const normalizedLabels = normalizeSearchText(labelNames.join(' '));
 
