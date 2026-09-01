@@ -16,12 +16,14 @@ import {
   FileImage,
   ImagePlus,
   Maximize2,
+  Mic,
   Trash2,
   X,
 } from 'lucide-react';
 
 import {
   isPreviewableImageMimeType,
+  isVoiceAudioMimeType,
   NATIVE_IMAGE_ACCEPT,
   type AttachmentRecord,
   type AttachmentsRepository,
@@ -142,8 +144,13 @@ export function AttachmentPanel({
   const previewImages = attachments.filter((attachment) =>
     isPreviewableImageMimeType(attachment.mimeType),
   );
+  const audioAttachments = attachments.filter((attachment) =>
+    isVoiceAudioMimeType(attachment.mimeType),
+  );
   const otherAttachments = attachments.filter(
-    (attachment) => !isPreviewableImageMimeType(attachment.mimeType),
+    (attachment) =>
+      !isPreviewableImageMimeType(attachment.mimeType) &&
+      !isVoiceAudioMimeType(attachment.mimeType),
   );
   const lightboxIndex = lightboxId
     ? previewImages.findIndex((attachment) => attachment.id === lightboxId)
@@ -242,6 +249,23 @@ export function AttachmentPanel({
               pendingRemove={pendingRemoveId === attachment.id}
               busy={busy}
               onOpen={() => setLightboxId(attachment.id)}
+              onRequestRemove={() => setPendingRemoveId(attachment.id)}
+              onCancelRemove={() => setPendingRemoveId(null)}
+              onConfirmRemove={() => void removeAttachment(attachment.id)}
+            />
+          ))}
+        </div>
+      ) : null}
+
+      {audioAttachments.length > 0 ? (
+        <div className="attachment-audio-list" aria-label="Voice recordings">
+          {audioAttachments.map((attachment) => (
+            <AttachmentAudioRow
+              key={attachment.id}
+              attachment={attachment}
+              editable={editable}
+              pendingRemove={pendingRemoveId === attachment.id}
+              busy={busy}
               onRequestRemove={() => setPendingRemoveId(attachment.id)}
               onCancelRemove={() => setPendingRemoveId(null)}
               onConfirmRemove={() => void removeAttachment(attachment.id)}
@@ -362,6 +386,88 @@ function AttachmentImageTile({
           </button>
         )
       ) : null}
+    </div>
+  );
+}
+
+function AttachmentAudioRow({
+  attachment,
+  editable,
+  pendingRemove,
+  busy,
+  onRequestRemove,
+  onCancelRemove,
+  onConfirmRemove,
+}: {
+  attachment: AttachmentRecord;
+  editable: boolean;
+  pendingRemove: boolean;
+  busy: boolean;
+  onRequestRemove(): void;
+  onCancelRemove(): void;
+  onConfirmRemove(): void;
+}) {
+  const url = useBlobUrl(attachment.data);
+  const name = attachment.name ?? 'Voice recording';
+  return (
+    <div className="attachment-audio-row">
+      <span className="attachment-audio-icon" aria-hidden="true">
+        <Mic />
+      </span>
+      <span className="attachment-audio-main">
+        <span className="attachment-audio-copy">
+          <strong title={name}>{name}</strong>
+          <small>{formatBytes(attachment.size)}</small>
+        </span>
+        {url ? (
+          <audio
+            controls
+            preload="metadata"
+            src={url}
+            aria-label={`Play voice recording: ${name}`}
+          />
+        ) : null}
+      </span>
+      <span className="attachment-audio-actions">
+        <button
+          type="button"
+          aria-label={`Download voice recording: ${name}`}
+          onClick={() => downloadAttachment(attachment)}
+        >
+          <Download aria-hidden="true" />
+        </button>
+        {editable ? (
+          pendingRemove ? (
+            <>
+              <button
+                type="button"
+                aria-label={`Confirm remove voice recording: ${name}`}
+                disabled={busy}
+                onClick={onConfirmRemove}
+              >
+                Remove
+              </button>
+              <button
+                type="button"
+                aria-label={`Cancel remove voice recording: ${name}`}
+                disabled={busy}
+                onClick={onCancelRemove}
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              aria-label={`Remove voice recording: ${name}`}
+              disabled={busy}
+              onClick={onRequestRemove}
+            >
+              <Trash2 aria-hidden="true" />
+            </button>
+          )
+        ) : null}
+      </span>
     </div>
   );
 }

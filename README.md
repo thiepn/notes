@@ -6,9 +6,9 @@ A local-first, zero-friction notes PWA designed to match Google Keep's capture s
 
 ## Status
 
-**V2-4 — Drawing is implemented as the fourth V2 feature release.** Notes now supports fast local sketching with mouse, touch, and stylus input, pen and eraser tools, colors and stroke widths, undo/redo, and portable PNG persistence through the existing attachment system.
+**V2-5 — Voice is implemented as the fifth V2 feature release.** Notes now supports local microphone recording with pause/resume, review-before-save playback, attachment-backed persistence, inline audio playback, and voice-only note capture without requiring a backend or database migration.
 
-V1 through P15 remains the stable product foundation, V2-1 adds reminders, V2-2 adds lightweight formatting, V2-3 adds note-to-note link intelligence, and V2-4 adds drawing without introducing a parallel database or weakening backup/offline portability.
+V1 through P15 remains the stable product foundation, V2-1 adds reminders, V2-2 adds lightweight formatting, V2-3 adds note-to-note link intelligence, V2-4 adds drawing, and V2-5 adds local voice capture while preserving the same attachment, backup, lifecycle, and offline architecture.
 
 ## V1 scope
 
@@ -111,6 +111,29 @@ V2-4 requires **no database migration**. Saved drawings are normal `image/png` a
 
 V2-4 deliberately excludes reopening saved PNGs as editable vector strokes, shape/text/layer tools, handwriting recognition, OCR, collaborative drawing, and cloud-specific drawing synchronization.
 
+## V2-5 scope
+
+V2-5 adds local voice recording through the same attachment architecture:
+
+- In-browser microphone capture through `getUserMedia` and `MediaRecorder`
+- Browser-capability-based WebM/Opus, Ogg/Opus, and MP4 recording-format negotiation
+- Pause, Resume, Stop, and a 30-minute recording-session safety limit
+- Review playback before persistence
+- Record again, Cancel, and explicit Save recording actions
+- Permission-denied, missing-microphone, busy-device, unsupported-browser, and insecure-context error states
+- Quick voice-note capture from the collapsed new-note row
+- Attachment-only voice notes with no phantom blank note when capture is cancelled or permission is denied
+- Voice actions in expanded/new text notes, existing text notes, and checklist editors
+- Dedicated inline voice rows with native playback, download, and remove controls
+- Voice-recording counts on audio-only note cards
+- 50 MB per-recording limit plus the existing 50-attachment and 250 MB per-note safety limits
+- SHA-256 duplicate detection and Trash write protection
+- Existing attachment lifecycle cleanup, backup/restore, and offline/PWA behavior
+
+V2-5 requires **no database migration**. Saved recordings remain ordinary Blob attachments in the established `attachments` table; a separate repository handles audio validation so voice data never enters the image re-encoding pipeline.
+
+V2-5 deliberately excludes speech-to-text/transcription, AI summarization, cloud speech processing, waveform editing, trimming/effects, recording-device selection UI, background recording after Notes closes, collaboration, and a separate voice database.
+
 ## Architecture
 
 - React + TypeScript + Vite
@@ -125,14 +148,17 @@ V2-4 deliberately excludes reopening saved PNGs as editable vector strokes, shap
 - Normalized checklist item rows with stable IDs, ordering, check state, and parent relationships
 - Native attachment repository over the existing IndexedDB attachment table with SHA-256 duplicate suppression
 - Privacy-safe static-image re-encoding, 4096 px bounded processing, and animation-preserving GIF privacy-metadata stripping
-- Picker, drag/drop, clipboard, mobile-camera, and drawing image capture shared by the note attachment model
+- Picker, drag/drop, clipboard, mobile-camera, drawing, and voice capture integrated with the note attachment model
 - Attachment-only capture preservation across close/reload recovery
 - Lazy near-viewport attachment lookup with derived 720 px card thumbnails and masonry remeasurement
-- Responsive attachment grids, local image lightbox, explicit removal confirmation, and imported-file downloads
+- Responsive attachment grids, local image lightbox, inline local-audio playback, explicit removal confirmation, and attachment downloads
 - Fixed-logical-coordinate 1200 × 800 drawing canvas scaled responsively for desktop and mobile
 - Pointer Events drawing path shared by mouse, touch, and stylus input
 - In-session stroke history with pen/eraser compositing, whole-stroke undo/redo, and PNG flattening on save
 - Drawing persistence through ordinary attachment ingestion with no vector-source schema or parallel drawing database
+- MediaRecorder/getUserMedia voice capture with explicit browser-format negotiation and local-only Blob persistence
+- Separate voice-attachment validation over the shared attachment table, with no audio transcoding or voice-specific schema
+- Review-before-save audio object URLs with lifecycle-safe revocation and inline native playback after persistence
 - Bounded semantic per-note revision history with validated v1 snapshot payloads and 50-version pruning
 - Transactional reversible history restore that preserves current lifecycle, labels, and attachments across text/checklist type changes
 - Normalized one-reminder-per-note storage in the database-v2 `reminders` table with independent active/completed/dismissed lifecycle
@@ -178,11 +204,11 @@ V2-4 deliberately excludes reopening saved PNGs as editable vector strokes, shap
 - Informational offline/offline-ready states without disabling local IndexedDB operations
 - Production-only offline certification using `vite preview`, separate from dev-server browser tests
 - Vitest for unit tests
-- Playwright for real-browser IndexedDB, capture recovery, card/grid, lifecycle, organization, checklist, selection/bulk, search, revision-history/recovery, backup/disaster-recovery, Google Keep migration, image/attachment capture and viewing, command/keyboard, rich-text editing/rendering/search, link intelligence/navigation/auto-linking, drawing/pointer/PNG/modal integration, responsive-shell, end-to-end, and production PWA/offline certification
+- Playwright for real-browser IndexedDB, capture recovery, card/grid, lifecycle, organization, checklist, selection/bulk, search, revision-history/recovery, backup/disaster-recovery, Google Keep migration, image/attachment capture and viewing, command/keyboard, rich-text editing/rendering/search, link intelligence/navigation/auto-linking, drawing/pointer/PNG/modal integration, voice/microphone/audio/persistence/permission integration, responsive-shell, end-to-end, and production PWA/offline certification
 - GitHub Actions for CI and deployment
 - GitHub Pages-compatible build rooted at `/notes/`
 
-See [`docs/DATABASE.md`](docs/DATABASE.md) for database invariants, [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for the shell and styling contract, [`docs/CAPTURE.md`](docs/CAPTURE.md) for new-note capture and recovery, [`docs/CARDS_AND_GRID.md`](docs/CARDS_AND_GRID.md) for the P4 card and editor architecture, [`docs/LIFECYCLE.md`](docs/LIFECYCLE.md) for lifecycle state, Undo, Archive, Trash, duplication, and permanent deletion behavior, [`docs/ORGANIZATION.md`](docs/ORGANIZATION.md) for P6 color, label, label-view, and organization behavior, [`docs/CHECKLISTS.md`](docs/CHECKLISTS.md) for P7 checklist storage, interaction, conversion, and recovery behavior, [`docs/SELECTION_AND_BULK.md`](docs/SELECTION_AND_BULK.md) for P8 selection scope, bulk toolbar behavior, transactional batch mutations, and Undo semantics, [`docs/SEARCH.md`](docs/SEARCH.md) for P9 indexing, normalization, ranking, filters, query operators, and performance behavior, [`docs/KEYBOARD.md`](docs/KEYBOARD.md) for P10 command palette, shortcut safety, and focused-card keyboard behavior, [`docs/HISTORY.md`](docs/HISTORY.md) for P11 checkpoint, restore, Undo, copy, pruning, payload-validation, and cross-type recovery semantics, [`docs/BACKUP.md`](docs/BACKUP.md) for P12 full-library backup format, validation, safety snapshot, atomic replacement, and disaster-recovery behavior, [`docs/GOOGLE_KEEP_IMPORT.md`](docs/GOOGLE_KEEP_IMPORT.md) for P13 Takeout parsing, mapping, preview, repeat-import protection, and atomic additive migration behavior, [`docs/IMAGES.md`](docs/IMAGES.md) for P14 native image capture, privacy processing, thumbnails, viewer behavior, imported attachment handling, and storage limits, [`docs/PWA_OFFLINE.md`](docs/PWA_OFFLINE.md) for P15 installability, service-worker update policy, production offline behavior, and certification requirements, [`docs/REMINDERS.md`](docs/REMINDERS.md) for V2-1 reminder storage, scheduling, lifecycle, notification limits, backup/import integration, and regression requirements, [`docs/RICH_TEXT.md`](docs/RICH_TEXT.md) for V2-2 source syntax, editor behavior, rendering safety, search compatibility, scope boundaries, and regression requirements, [`docs/LINK_INTELLIGENCE.md`](docs/LINK_INTELLIGENCE.md) for V2-3 title resolution, WikiLink navigation, backlinks, unlinked mentions, safe auto-linking, and regression requirements, and [`docs/DRAWING.md`](docs/DRAWING.md) for V2-4 drawing input, canvas tools, PNG persistence, modal isolation, capture integration, and regression requirements.
+See [`docs/DATABASE.md`](docs/DATABASE.md) for database invariants, [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for the shell and styling contract, [`docs/CAPTURE.md`](docs/CAPTURE.md) for new-note capture and recovery, [`docs/CARDS_AND_GRID.md`](docs/CARDS_AND_GRID.md) for the P4 card and editor architecture, [`docs/LIFECYCLE.md`](docs/LIFECYCLE.md) for lifecycle state, Undo, Archive, Trash, duplication, and permanent deletion behavior, [`docs/ORGANIZATION.md`](docs/ORGANIZATION.md) for P6 color, label, label-view, and organization behavior, [`docs/CHECKLISTS.md`](docs/CHECKLISTS.md) for P7 checklist storage, interaction, conversion, and recovery behavior, [`docs/SELECTION_AND_BULK.md`](docs/SELECTION_AND_BULK.md) for P8 selection scope, bulk toolbar behavior, transactional batch mutations, and Undo semantics, [`docs/SEARCH.md`](docs/SEARCH.md) for P9 indexing, normalization, ranking, filters, query operators, and performance behavior, [`docs/KEYBOARD.md`](docs/KEYBOARD.md) for P10 command palette, shortcut safety, and focused-card keyboard behavior, [`docs/HISTORY.md`](docs/HISTORY.md) for P11 checkpoint, restore, Undo, copy, pruning, payload-validation, and cross-type recovery semantics, [`docs/BACKUP.md`](docs/BACKUP.md) for P12 full-library backup format, validation, safety snapshot, atomic replacement, and disaster-recovery behavior, [`docs/GOOGLE_KEEP_IMPORT.md`](docs/GOOGLE_KEEP_IMPORT.md) for P13 Takeout parsing, mapping, preview, repeat-import protection, and atomic additive migration behavior, [`docs/IMAGES.md`](docs/IMAGES.md) for P14 native image capture, privacy processing, thumbnails, viewer behavior, imported attachment handling, and storage limits, [`docs/PWA_OFFLINE.md`](docs/PWA_OFFLINE.md) for P15 installability, service-worker update policy, production offline behavior, and certification requirements, [`docs/REMINDERS.md`](docs/REMINDERS.md) for V2-1 reminder storage, scheduling, lifecycle, notification limits, backup/import integration, and regression requirements, [`docs/RICH_TEXT.md`](docs/RICH_TEXT.md) for V2-2 source syntax, editor behavior, rendering safety, search compatibility, scope boundaries, and regression requirements, [`docs/LINK_INTELLIGENCE.md`](docs/LINK_INTELLIGENCE.md) for V2-3 title resolution, WikiLink navigation, backlinks, unlinked mentions, safe auto-linking, and regression requirements, [`docs/DRAWING.md`](docs/DRAWING.md) for V2-4 drawing input, canvas tools, PNG persistence, modal isolation, capture integration, and regression requirements, and [`docs/VOICE.md`](docs/VOICE.md) for V2-5 microphone capture, format negotiation, local persistence, playback, privacy boundaries, and regression requirements.
 
 ## Principles
 

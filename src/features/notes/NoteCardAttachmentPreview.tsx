@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { Image, Paperclip } from 'lucide-react';
+import { Image, Mic, Paperclip } from 'lucide-react';
 
 import {
   AttachmentsRepository,
   isPreviewableImageMimeType,
+  isVoiceAudioMimeType,
   notesDatabase,
   type AttachmentRecord,
 } from '../../db';
@@ -14,6 +15,7 @@ const CARD_THUMBNAIL_MAX_DIMENSION = 720;
 interface PreviewState {
   count: number;
   imageCount: number;
+  audioCount: number;
   firstImage: AttachmentRecord | null;
 }
 
@@ -22,7 +24,7 @@ interface ThumbnailState {
   url: string | null;
 }
 
-const EMPTY_PREVIEW: PreviewState = { count: 0, imageCount: 0, firstImage: null };
+const EMPTY_PREVIEW: PreviewState = { count: 0, imageCount: 0, audioCount: 0, firstImage: null };
 
 export function NoteCardAttachmentPreview({
   noteId,
@@ -68,9 +70,13 @@ export function NoteCardAttachmentPreview({
         const images = attachments.filter((attachment) =>
           isPreviewableImageMimeType(attachment.mimeType),
         );
+        const audioCount = attachments.filter((attachment) =>
+          isVoiceAudioMimeType(attachment.mimeType),
+        ).length;
         setPreview({
           count: attachments.length,
           imageCount: images.length,
+          audioCount,
           firstImage: images[0] ?? null,
         });
         setLoaded(true);
@@ -86,6 +92,7 @@ export function NoteCardAttachmentPreview({
   }, [noteId, refreshKey, shouldLoad]);
 
   const hasImage = Boolean(imageUrl && firstImage && failedImageId !== firstImage.id);
+  const audioOnly = preview.audioCount > 0 && preview.audioCount === preview.count;
   return (
     <span
       ref={rootRef}
@@ -113,6 +120,11 @@ export function NoteCardAttachmentPreview({
               <Paperclip /> {preview.count - preview.imageCount}
             </span>
           ) : null}
+        </span>
+      ) : audioOnly ? (
+        <span className="note-card-file-only note-card-audio-count">
+          <Mic /> {preview.audioCount}{' '}
+          {preview.audioCount === 1 ? 'voice recording' : 'voice recordings'}
         </span>
       ) : preview.count > 0 ? (
         <span className="note-card-file-only">

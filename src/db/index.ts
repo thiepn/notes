@@ -44,6 +44,12 @@ export {
   type RevisionRestoreResult,
   type RevisionSnapshot,
 } from './repositories/revisionsRepository';
+export {
+  isVoiceAudioMimeType,
+  MAX_NATIVE_AUDIO_BYTES,
+  VoiceAttachmentsRepository,
+  type AddVoiceRecordingResult,
+} from './repositories/voiceAttachmentsRepository';
 export type {
   AttachmentRecord,
   ChecklistItemRecord,
