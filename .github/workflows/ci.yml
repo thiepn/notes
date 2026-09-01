@@ -136,6 +136,16 @@ jobs:
           css = "src/styles/notes.css"
           replace_once(
               css,
+              ".note-card {\n  position: relative;",
+              ".note-card {\n  position: relative;\n  isolation: isolate;",
+          )
+          replace_once(
+              css,
+              ".note-card-open {\n  display: block;",
+              ".note-card-open {\n  position: relative;\n  z-index: 0;\n  display: block;",
+          )
+          replace_once(
+              css,
               ".note-card-pin-action {\n  position: absolute;\n  top: 8px;\n  right: 8px;\n}",
               ".note-card-pin-action {\n  position: absolute;\n  z-index: 2;\n  top: 8px;\n  right: 8px;\n}",
           )
