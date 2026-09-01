@@ -6,9 +6,9 @@ A local-first, zero-friction notes PWA designed to match Google Keep's capture s
 
 ## Status
 
-**V2-1 — Reminders & Time-Based Notes is implemented as the first V2 feature release.** Notes now supports one local reminder per saved text note or checklist, reminder lifecycle/history, a dedicated Reminders workspace, `has:reminder` search, timezone-aware scheduling with DST-gap rejection, conservative Google Keep reminder migration, backup-format v2 preservation, and best-effort local browser notifications.
+**V2-2 — Lightweight Rich Text is implemented as the second V2 feature release.** Text notes now support lightweight formatting for bold, italic, strikethrough, inline code, links, headings, bulleted and numbered lists, and block quotes, with selection-aware toolbar actions, Ctrl/Cmd formatting shortcuts, formatted preview, safe card rendering, and formatting-neutral search.
 
-V1 through P15 remains the stable product foundation. V2-1 preserves the local-first/offline-first architecture: reminder data works without a backend, while closed-app scheduled push delivery is explicitly not promised by a static GitHub Pages PWA.
+V1 through P15 remains the stable product foundation, V2-1 adds reminders, and V2-2 adds formatting without replacing the mature textarea autosave/recovery path or introducing opaque HTML storage.
 
 ## V1 scope
 
@@ -45,6 +45,27 @@ V2-1 adds:
 
 V2-1 deliberately excludes recurring reminders, location reminders, accounts, server push, cloud scheduling, and reliable alerts while every Notes tab/PWA window is fully closed.
 
+## V2-2 scope
+
+V2-2 adds lightweight formatting to **text-note bodies** while keeping the existing plain-string storage model:
+
+- Bold, italic, strikethrough, and inline code
+- HTTP/HTTPS links
+- Headings
+- Bulleted and numbered lists
+- Block quotes
+- Fenced code-block rendering for compatible Markdown content
+- Selection-aware formatting toolbar in new-note capture and existing-note editing
+- Ctrl/Cmd+B, Ctrl/Cmd+I, and Ctrl/Cmd+K editor shortcuts
+- Explicit Preview/Edit mode
+- Safe formatted rendering on note cards without arbitrary HTML execution
+- Formatting-stripped accessibility labels and search indexing
+- Source-compatible persistence through autosave, recovery, revision history, backup/restore, Keep import, and exports
+
+V2-2 requires **no database migration**. Formatting remains a constrained Markdown-compatible UTF-8 string in `NoteRecord.content`; Notes never stores arbitrary rich-text HTML or uses `dangerouslySetInnerHTML` for note content.
+
+Checklist item text remains plain in V2-2. Tables, embedded media in the text stream, font-family/font-size controls, text highlighting/colors, nested block editors, collaboration, and a heavy rich-text editor framework are deliberately excluded.
+
 ## Architecture
 
 - React + TypeScript + Vite
@@ -68,6 +89,10 @@ V2-1 deliberately excludes recurring reminders, location reminders, accounts, se
 - Normalized one-reminder-per-note storage in the database-v2 `reminders` table with independent active/completed/dismissed lifecycle
 - Absolute reminder timestamps plus recorded IANA scheduling timezone, including explicit DST-gap rejection
 - Best-effort local notification coordination with due-time de-duplication and no false closed-app push guarantee
+- Constrained Markdown-compatible rich-text source stored in the existing text-note `content` field without a schema migration
+- Selection-aware native-textarea formatting that preserves the existing autosave, cursor, crash-recovery, and history model
+- Safe rich-text parsing into React elements with no arbitrary HTML execution and non-interactive links inside button-based note cards
+- Formatting-neutral search/accessibility text derived from visible rich-text content while preserving URLs for link detection
 - Versioned eight-table full-library JSON backups taken from one consistent IndexedDB read transaction
 - Base64 attachment preservation with independent SHA-256 backup integrity checks
 - Read-only backup validation and recovery preview before any destructive database write
@@ -89,7 +114,7 @@ V2-1 deliberately excludes recurring reminders, location reminders, accounts, se
 - Search filters and query operators for type, status, color, labels, dates, images, and links
 - Searchable command palette with global navigation, creation, organization, view, appearance, backup/recovery, and Google Keep import commands
 - Real DOM card focus for J/K navigation and native Enter activation
-- Shortcut safety guards for editable controls, composers, and modal dialogs
+- Shortcut safety guards for editable controls, composers, and modal dialogs, with editor-local rich-text chords handled before global commands
 - Database-backed Notes, Archive, Trash, and Backup destinations with persisted primary navigation
 - Case-insensitive normalized labels backed by a many-to-many `noteLabels` relationship table
 - Persistent color and label organization with label-filtered views and automatic label inheritance during capture
@@ -100,11 +125,11 @@ V2-1 deliberately excludes recurring reminders, location reminders, accounts, se
 - Informational offline/offline-ready states without disabling local IndexedDB operations
 - Production-only offline certification using `vite preview`, separate from dev-server browser tests
 - Vitest for unit tests
-- Playwright for real-browser IndexedDB, capture recovery, card/grid, lifecycle, organization, checklist, selection/bulk, search, revision-history/recovery, backup/disaster-recovery, Google Keep migration, image/attachment capture and viewing, command/keyboard, responsive-shell, end-to-end, and production PWA/offline certification
+- Playwright for real-browser IndexedDB, capture recovery, card/grid, lifecycle, organization, checklist, selection/bulk, search, revision-history/recovery, backup/disaster-recovery, Google Keep migration, image/attachment capture and viewing, command/keyboard, rich-text editing/rendering/search, responsive-shell, end-to-end, and production PWA/offline certification
 - GitHub Actions for CI and deployment
 - GitHub Pages-compatible build rooted at `/notes/`
 
-See [`docs/DATABASE.md`](docs/DATABASE.md) for database invariants, [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for the shell and styling contract, [`docs/CAPTURE.md`](docs/CAPTURE.md) for new-note capture and recovery, [`docs/CARDS_AND_GRID.md`](docs/CARDS_AND_GRID.md) for the P4 card and editor architecture, [`docs/LIFECYCLE.md`](docs/LIFECYCLE.md) for lifecycle state, Undo, Archive, Trash, duplication, and permanent deletion behavior, [`docs/ORGANIZATION.md`](docs/ORGANIZATION.md) for P6 color, label, label-view, and organization behavior, [`docs/CHECKLISTS.md`](docs/CHECKLISTS.md) for P7 checklist storage, interaction, conversion, and recovery behavior, [`docs/SELECTION_AND_BULK.md`](docs/SELECTION_AND_BULK.md) for P8 selection scope, bulk toolbar behavior, transactional batch mutations, and Undo semantics, [`docs/SEARCH.md`](docs/SEARCH.md) for P9 indexing, normalization, ranking, filters, query operators, and performance behavior, [`docs/KEYBOARD.md`](docs/KEYBOARD.md) for P10 command palette, shortcut safety, and focused-card keyboard behavior, [`docs/HISTORY.md`](docs/HISTORY.md) for P11 checkpoint, restore, Undo, copy, pruning, payload-validation, and cross-type recovery semantics, [`docs/BACKUP.md`](docs/BACKUP.md) for P12 full-library backup format, validation, safety snapshot, atomic replacement, and disaster-recovery behavior, [`docs/GOOGLE_KEEP_IMPORT.md`](docs/GOOGLE_KEEP_IMPORT.md) for P13 Takeout parsing, mapping, preview, repeat-import protection, and atomic additive migration behavior, [`docs/IMAGES.md`](docs/IMAGES.md) for P14 native image capture, privacy processing, thumbnails, viewer behavior, imported attachment handling, and storage limits, [`docs/PWA_OFFLINE.md`](docs/PWA_OFFLINE.md) for P15 installability, service-worker update policy, production offline behavior, and certification requirements, and [`docs/REMINDERS.md`](docs/REMINDERS.md) for V2-1 reminder storage, scheduling, lifecycle, notification limits, backup/import integration, and regression requirements.
+See [`docs/DATABASE.md`](docs/DATABASE.md) for database invariants, [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for the shell and styling contract, [`docs/CAPTURE.md`](docs/CAPTURE.md) for new-note capture and recovery, [`docs/CARDS_AND_GRID.md`](docs/CARDS_AND_GRID.md) for the P4 card and editor architecture, [`docs/LIFECYCLE.md`](docs/LIFECYCLE.md) for lifecycle state, Undo, Archive, Trash, duplication, and permanent deletion behavior, [`docs/ORGANIZATION.md`](docs/ORGANIZATION.md) for P6 color, label, label-view, and organization behavior, [`docs/CHECKLISTS.md`](docs/CHECKLISTS.md) for P7 checklist storage, interaction, conversion, and recovery behavior, [`docs/SELECTION_AND_BULK.md`](docs/SELECTION_AND_BULK.md) for P8 selection scope, bulk toolbar behavior, transactional batch mutations, and Undo semantics, [`docs/SEARCH.md`](docs/SEARCH.md) for P9 indexing, normalization, ranking, filters, query operators, and performance behavior, [`docs/KEYBOARD.md`](docs/KEYBOARD.md) for P10 command palette, shortcut safety, and focused-card keyboard behavior, [`docs/HISTORY.md`](docs/HISTORY.md) for P11 checkpoint, restore, Undo, copy, pruning, payload-validation, and cross-type recovery semantics, [`docs/BACKUP.md`](docs/BACKUP.md) for P12 full-library backup format, validation, safety snapshot, atomic replacement, and disaster-recovery behavior, [`docs/GOOGLE_KEEP_IMPORT.md`](docs/GOOGLE_KEEP_IMPORT.md) for P13 Takeout parsing, mapping, preview, repeat-import protection, and atomic additive migration behavior, [`docs/IMAGES.md`](docs/IMAGES.md) for P14 native image capture, privacy processing, thumbnails, viewer behavior, imported attachment handling, and storage limits, [`docs/PWA_OFFLINE.md`](docs/PWA_OFFLINE.md) for P15 installability, service-worker update policy, production offline behavior, and certification requirements, [`docs/REMINDERS.md`](docs/REMINDERS.md) for V2-1 reminder storage, scheduling, lifecycle, notification limits, backup/import integration, and regression requirements, and [`docs/RICH_TEXT.md`](docs/RICH_TEXT.md) for V2-2 source syntax, editor behavior, rendering safety, search compatibility, scope boundaries, and regression requirements.
 
 ## Principles
 
