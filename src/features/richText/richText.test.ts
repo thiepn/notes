@@ -19,6 +19,14 @@ describe('rich text commands', () => {
     });
   });
 
+  it('creates a WikiLink from the active selection', () => {
+    expect(applyRichTextCommand('Open Project Atlas', 5, 18, 'wikiLink')).toEqual({
+      value: 'Open [[Project Atlas]]',
+      selectionStart: 7,
+      selectionEnd: 20,
+    });
+  });
+
   it('turns selected lines into and out of a bulleted list', () => {
     const applied = applyRichTextCommand('one\ntwo', 0, 7, 'bulletList');
     expect(applied.value).toBe('- one\n- two');
@@ -39,5 +47,9 @@ describe('rich text commands', () => {
         '## Heading\n\n**Bold** and *italic* with [Docs](https://example.com).\n> Quoted\n- Item',
       ),
     ).toBe('Heading\n\nBold and italic with Docs https://example.com.\nQuoted\nItem');
+  });
+
+  it('keeps WikiLink labels searchable without exposing brackets', () => {
+    expect(richTextToPlainText('Read [[Project Atlas]] next.')).toBe('Read Project Atlas next.');
   });
 });
