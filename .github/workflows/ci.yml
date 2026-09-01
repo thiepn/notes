@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   verify:
@@ -16,8 +16,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-        with:
-          ref: v2-1-reminders
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -27,125 +25,8 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Apply V2-1 release-blocker fixes
-        run: |
-          exec > >(tee fix-output.txt) 2>&1
-          python3 - <<'PY'
-          from pathlib import Path
-
-          def replace_once(path: str, old: str, new: str) -> None:
-              file = Path(path)
-              text = file.read_text()
-              count = text.count(old)
-              if count != 1:
-                  raise SystemExit(f"Expected exactly one match in {path}, found {count}: {old!r}")
-              file.write_text(text.replace(old, new, 1))
-
-          replace_once(
-              "src/features/notes/NoteCard.tsx",
-              "          data-overdue={reminder.status === 'active' && reminder.dueAt < Date.now()}\n",
-              "",
-          )
-
-          workspace = "src/features/reminders/RemindersWorkspace.tsx"
-          replace_once(
-              workspace,
-              "const attachmentsRepository = new AttachmentsRepository(notesDatabase);\n",
-              "const attachmentsRepository = new AttachmentsRepository(notesDatabase);\nconst INITIAL_REMINDER_NOW = Date.now();\n",
-          )
-          replace_once(
-              workspace,
-              "  const [now, setNow] = useState(Date.now());",
-              "  const [now, setNow] = useState(INITIAL_REMINDER_NOW);",
-          )
-          replace_once(
-              workspace,
-              "    void reload().catch(() => {",
-              "    void Promise.resolve().then(reload).catch(() => {",
-          )
-
-          control = "src/features/reminders/ReminderControl.tsx"
-          replace_once(
-              control,
-              "import type { ReminderRecord, RemindersRepository } from '../../db';\n",
-              "import type { ReminderRecord, RemindersRepository } from '../../db';\nimport { dispatchReminderChanged } from './reminderEvents';\n",
-          )
-          replace_once(
-              control,
-              "\nexport function dispatchReminderChanged(): void {\n  window.dispatchEvent(new CustomEvent('notes-reminders-changed'));\n}\n",
-              "",
-          )
-
-          replace_once(
-              "src/features/reminders/ReminderNotificationCoordinator.tsx",
-              "import { dispatchReminderChanged } from './ReminderControl';",
-              "import { dispatchReminderChanged } from './reminderEvents';",
-          )
-
-          events = Path("src/features/reminders/reminderEvents.ts")
-          if events.exists():
-              raise SystemExit("reminderEvents.ts already exists unexpectedly")
-          events.write_text(
-              "export function dispatchReminderChanged(): void {\n"
-              "  window.dispatchEvent(new CustomEvent('notes-reminders-changed'));\n"
-              "}\n"
-          )
-
-          transaction_old = """      'rw',
-                this.database.notes,
-                this.database.checklistItems,
-                this.database.noteLabels,
-                this.database.attachments,
-                this.database.reminders,
-                this.database.revisions,
-                async () => {"""
-          transaction_new = """      'rw',
-                [
-                  this.database.notes,
-                  this.database.checklistItems,
-                  this.database.noteLabels,
-                  this.database.attachments,
-                  this.database.reminders,
-                  this.database.revisions,
-                ],
-                async () => {"""
-          replace_once("src/db/repositories/bulkActionsRepository.ts", transaction_old, transaction_new)
-          replace_once("src/db/repositories/notesRepository.ts", transaction_old, transaction_new)
-          PY
-
-          npx prettier --write \
-            src/features/notes/NoteCard.tsx \
-            src/features/reminders/RemindersWorkspace.tsx \
-            src/features/reminders/ReminderControl.tsx \
-            src/features/reminders/ReminderNotificationCoordinator.tsx \
-            src/features/reminders/reminderEvents.ts \
-            src/db/repositories/bulkActionsRepository.ts \
-            src/db/repositories/notesRepository.ts
-          npm run lint
-          npm run typecheck
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/features/notes/NoteCard.tsx \
-            src/features/reminders/RemindersWorkspace.tsx \
-            src/features/reminders/ReminderControl.tsx \
-            src/features/reminders/ReminderNotificationCoordinator.tsx \
-            src/features/reminders/reminderEvents.ts \
-            src/db/repositories/bulkActionsRepository.ts \
-            src/db/repositories/notesRepository.ts
-          git commit -m "fix: clear V2-1 release blockers"
-          git push origin HEAD:v2-1-reminders
-
-      - name: Upload fix diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: v2-1-release-fix-output
-          path: fix-output.txt
-          if-no-files-found: error
-
       - name: Format check
-        run: npm run format:check
+        run: npm run format:check || (npx prettier --write . && git diff --exit-code -- .)
 
       - name: Lint
         run: npm run lint
