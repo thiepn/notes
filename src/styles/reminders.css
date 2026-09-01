@@ -10,7 +10,7 @@
 
 .reminder-control-summary {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
   gap: var(--space-2);
 }
@@ -138,6 +138,56 @@
   font-size: var(--text-xs);
 }
 
+.reminder-control-compact {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.reminder-control-compact .reminder-compact-button {
+  display: inline-flex;
+  width: auto;
+  max-width: 100%;
+  min-height: 36px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.reminder-control-compact .reminder-compact-button:hover,
+.reminder-control-compact .reminder-compact-button:focus-visible {
+  background: color-mix(in srgb, var(--text) 9%, transparent);
+  color: var(--text);
+}
+
+.reminder-compact-button svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.reminder-compact-button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reminder-control-compact-expanded {
+  width: min(100%, 520px);
+  margin-top: 0;
+}
+
+.reminder-control-collapse {
+  color: var(--text-muted) !important;
+}
+
 .note-card-reminder {
   display: inline-flex;
   align-items: center;
@@ -220,6 +270,7 @@
   }
 
   .reminder-control-edit,
+  .reminder-control-collapse,
   .reminder-notification-banner button {
     grid-column: 1 / -1;
     justify-self: stretch;
