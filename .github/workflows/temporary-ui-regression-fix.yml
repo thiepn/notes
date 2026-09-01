@@ -1,0 +1,142 @@
+name: Temporary UI regression fix
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - run: npm ci
+      - name: Apply regression fixes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"Expected one match in {path}, found {count}: {old[:80]!r}")
+              p.write_text(text.replace(old, new, 1))
+
+          # Voice media controls need an opening hook so parent Add menus can close
+          # immediately rather than staying open behind the recorder modal.
+          replace_once(
+              'src/features/voice/VoiceAttachmentButton.tsx',
+              "  compact?: boolean;\n  onChanged?: ((noteId: string) => void) | undefined;",
+              "  compact?: boolean;\n  onOpen?: (() => void) | undefined;\n  onChanged?: ((noteId: string) => void) | undefined;",
+          )
+          replace_once(
+              'src/features/voice/VoiceAttachmentButton.tsx',
+              "  compact = false,\n  onChanged,",
+              "  compact = false,\n  onOpen,\n  onChanged,",
+          )
+          replace_once(
+              'src/features/voice/VoiceAttachmentButton.tsx',
+              "          onClick={() => {\n            setErrorMessage(null);\n            setOpen(true);",
+              "          onClick={() => {\n            setErrorMessage(null);\n            onOpen?.();\n            setOpen(true);",
+          )
+
+          # Close Add menus as soon as drawing/voice modals launch.
+          for path in [
+              'src/features/notes/NoteEditorDialog.tsx',
+              'src/features/notes/ChecklistEditorDialog.tsx',
+          ]:
+              replace_once(
+                  path,
+                  "                      className=\"note-editor-menu-control\"\n                      onChanged=",
+                  "                      className=\"note-editor-menu-control\"\n                      onOpen={() => setAddOpen(false)}\n                      onChanged=",
+              )
+              # Apply to the second media control (voice) after the drawing replacement.
+              replace_once(
+                  path,
+                  "                      className=\"note-editor-menu-control\"\n                      onChanged=",
+                  "                      className=\"note-editor-menu-control\"\n                      onOpen={() => setAddOpen(false)}\n                      onChanged=",
+              )
+
+          # Expanded text capture gets the same immediate menu close behavior.
+          replace_once(
+              'src/features/notes/TextNoteComposer.tsx',
+              "                  className=\"note-composer-menu-control\"\n                  onChanged=",
+              "                  className=\"note-composer-menu-control\"\n                  onOpen={() => setExpandedToolsOpen(false)}\n                  onChanged=",
+          )
+          replace_once(
+              'src/features/notes/TextNoteComposer.tsx',
+              "                  className=\"note-composer-menu-control\"\n                  onChanged=",
+              "                  className=\"note-composer-menu-control\"\n                  onOpen={() => setExpandedToolsOpen(false)}\n                  onChanged=",
+          )
+
+          # Restore paste-to-note while the attachment panel is progressively hidden.
+          replace_once(
+              'src/features/notes/TextNoteComposer.tsx',
+              "  const handleQuickImages = async (files: File[]) => {",
+              "  const handleQuickImages = useCallback(async (files: File[], source: 'picker' | 'paste' = 'picker') => {",
+          )
+          replace_once(
+              'src/features/notes/TextNoteComposer.tsx',
+              "        setQuickAttachmentMessage(\n          `${result.added} ${result.added === 1 ? 'image' : 'images'} added.`,\n        );",
+              "        setQuickAttachmentMessage(\n          source === 'paste'\n            ? `${result.added} ${result.added === 1 ? 'image' : 'images'} pasted.`\n            : `${result.added} ${result.added === 1 ? 'image' : 'images'} added.`,\n        );",
+          )
+          replace_once(
+              'src/features/notes/TextNoteComposer.tsx',
+              "    } catch (error) {\n      setQuickAttachmentError(toErrorMessage(error));\n    }\n  };\n\n  const handleQuickDrawing",
+              "    } catch (error) {\n      setQuickAttachmentError(toErrorMessage(error));\n    }\n  }, [attachmentsRepository, ensureNote, markAttachmentsChanged, openCapture]);\n\n  useEffect(() => {\n    if (!expanded || attachmentsOpen) return;\n    const handlePaste = (event: ClipboardEvent) => {\n      const files = Array.from(event.clipboardData?.files ?? []).filter((file) =>\n        file.type.toLocaleLowerCase().startsWith('image/'),\n      );\n      if (files.length === 0) return;\n      event.preventDefault();\n      void handleQuickImages(files, 'paste');\n    };\n    document.addEventListener('paste', handlePaste);\n    return () => document.removeEventListener('paste', handlePaste);\n  }, [attachmentsOpen, expanded, handleQuickImages]);\n\n  const handleQuickDrawing",
+          )
+
+          # Keyboard hooks are deliberately hidden; programmatic shortcuts must be able to click them.
+          replace_once(
+              'src/app/AppShell.tsx',
+              "  if (!action || action.disabled || action.getClientRects().length === 0) return false;",
+              "  if (!action || action.disabled) return false;",
+          )
+
+          # Keep an open card popover above and interactive even after hover/focus moves into it.
+          replace_once(
+              'src/features/notes/NoteCard.tsx',
+              "      data-selection-active={selectionActive}\n      data-has-reminder={effectiveReminder !== null}",
+              "      data-selection-active={selectionActive}\n      data-panel-open={visiblePanel !== null}\n      data-has-reminder={effectiveReminder !== null}",
+          )
+
+          css = Path('src/styles/ui-simplification.css')
+          text = css.read_text()
+          marker = "/* The ordinary card is content. Actions appear when the card is being acted on. */"
+          insertion = """.note-card[data-panel-open='true'] {\n  z-index: 3;\n}\n\n.note-card[data-panel-open='true'] .note-card-actions,\n.note-card[data-panel-open='true'] .note-card-pin-action {\n  opacity: 1;\n  pointer-events: auto;\n  transform: translateY(0);\n}\n\n"""
+          if marker not in text:
+              raise SystemExit('UI simplification marker not found')
+          css.write_text(text.replace(marker, insertion + marker, 1))
+          PY
+      - name: Format patched files
+        run: >-
+          npx prettier --write
+          src/features/voice/VoiceAttachmentButton.tsx
+          src/features/notes/NoteEditorDialog.tsx
+          src/features/notes/ChecklistEditorDialog.tsx
+          src/features/notes/TextNoteComposer.tsx
+          src/app/AppShell.tsx
+          src/features/notes/NoteCard.tsx
+          src/styles/ui-simplification.css
+      - name: Commit regression fixes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            src/features/voice/VoiceAttachmentButton.tsx \
+            src/features/notes/NoteEditorDialog.tsx \
+            src/features/notes/ChecklistEditorDialog.tsx \
+            src/features/notes/TextNoteComposer.tsx \
+            src/app/AppShell.tsx \
+            src/features/notes/NoteCard.tsx \
+            src/styles/ui-simplification.css
+          git commit -m "Fix simplified Notes UI regressions"
+          git push
