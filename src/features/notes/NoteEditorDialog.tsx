@@ -84,7 +84,10 @@ export function NoteEditorDialog({
   }, [repository]);
 
   useEffect(() => {
-    void refreshLinkLibrary();
+    const timeout = window.setTimeout(() => {
+      void refreshLinkLibrary();
+    }, 0);
+    return () => window.clearTimeout(timeout);
   }, [note.id, note.updatedAt, refreshLinkLibrary]);
 
   const draftNote = useMemo<NoteRecord>(
