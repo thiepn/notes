@@ -1,0 +1,271 @@
+from pathlib import Path
+
+
+def replace_once(path: str, old: str, new: str) -> None:
+    file = Path(path)
+    text = file.read_text()
+    count = text.count(old)
+    if count != 1:
+        raise SystemExit(f"Expected exactly one match in {path}, found {count}: {old!r}")
+    file.write_text(text.replace(old, new, 1))
+
+
+readme = "README.md"
+replace_once(
+    readme,
+    """**P15 — PWA + Offline Certification is implemented as the final V1 release gate.** Notes now has a complete installable manifest and icon set, explicit opt-in install/update handling, exact `/notes/` service-worker scope, offline status UX, and a production-build Playwright certification that cold-reloads offline, reads existing IndexedDB notes, writes a new note without network access, and verifies it again after another offline reload.
+
+The V1 feature roadmap through P15 is implemented. Further work should be release verification, bug fixing, and measured product improvements rather than adding another feature phase by default.""",
+    """**V2-1 — Reminders & Time-Based Notes is implemented as the first V2 feature release.** Notes now supports one local reminder per saved text note or checklist, reminder lifecycle/history, a dedicated Reminders workspace, `has:reminder` search, timezone-aware scheduling with DST-gap rejection, conservative Google Keep reminder migration, backup-format v2 preservation, and best-effort local browser notifications.
+
+V1 through P15 remains the stable product foundation. V2-1 preserves the local-first/offline-first architecture: reminder data works without a backend, while closed-app scheduled push delivery is explicitly not promised by a static GitHub Pages PWA.""",
+)
+replace_once(
+    readme,
+    "V1 explicitly excludes cloud sync, accounts, collaboration, AI, OCR, voice notes, drawings, nested folders, databases, project management, and plugin systems.\n\n## Architecture",
+    """V1 explicitly excludes cloud sync, accounts, collaboration, AI, OCR, voice notes, drawings, nested folders, databases, project management, and plugin systems.
+
+## V2 scope
+
+V2-1 adds:
+
+- One reminder per saved text note or checklist
+- Local date/time scheduling stored as an absolute UTC instant plus the scheduling IANA timezone
+- Active, completed, dismissed, snoozed, and removed reminder states
+- Overdue, Today, Upcoming, and Completed & dismissed reminder groups
+- Reminder chips on note cards and live `has:reminder` search
+- Archive preservation, Trash suppression/restoration, and transactional permanent-delete cleanup
+- Backup format v2 with reminder round-trip and legacy-v1 restore compatibility
+- Conservative Google Keep absolute-reminder import
+- Optional best-effort browser notifications while Notes is open or returns to the foreground
+
+V2-1 deliberately excludes recurring reminders, location reminders, accounts, server push, cloud scheduling, and reliable alerts while every Notes tab/PWA window is fully closed.
+
+## Architecture""",
+)
+for old, new in [
+    ("Versioned seven-table full-library JSON backups", "Versioned eight-table full-library JSON backups"),
+    ("Atomic seven-table replacement recovery", "Atomic eight-table replacement recovery"),
+    ("Non-destructive seven-table Keep migration", "Non-destructive eight-table Keep migration"),
+]:
+    replace_once(readme, old, new)
+replace_once(
+    readme,
+    "- Versioned eight-table full-library JSON backups taken from one consistent IndexedDB read transaction",
+    """- Normalized one-reminder-per-note storage in the database-v2 `reminders` table with independent active/completed/dismissed lifecycle
+- Absolute reminder timestamps plus recorded IANA scheduling timezone, including explicit DST-gap rejection
+- Best-effort local notification coordination with due-time de-duplication and no false closed-app push guarantee
+- Versioned eight-table full-library JSON backups taken from one consistent IndexedDB read transaction""",
+)
+replace_once(
+    readme,
+    "and [`docs/PWA_OFFLINE.md`](docs/PWA_OFFLINE.md) for P15 installability, service-worker update policy, production offline behavior, and certification requirements.",
+    """[`docs/PWA_OFFLINE.md`](docs/PWA_OFFLINE.md) for P15 installability, service-worker update policy, production offline behavior, and certification requirements, and [`docs/REMINDERS.md`](docs/REMINDERS.md) for V2-1 reminder storage, scheduling, lifecycle, notification limits, backup/import integration, and regression requirements.""",
+)
+
+
+database = "docs/DATABASE.md"
+replace_once(
+    database,
+    "P1 establishes one clean IndexedDB schema at database version 1. There is intentionally no artificial pre-release migration history.",
+    """P1 established the clean V1 IndexedDB schema at database version 1 without artificial pre-release migration history.
+
+V2-1 is the first post-V1 schema change and introduces explicit database version 2 for reminders.""",
+)
+replace_once(database, "- Version: `1`", "- Version: `2`")
+replace_once(
+    database,
+    "- Schema definition: `src/db/migrations/v1.ts`",
+    "- Schema definitions: `src/db/migrations/v1.ts` and `src/db/migrations/v2.ts`",
+)
+replace_once(
+    database,
+    """### `revisions`
+
+Stores future note-history snapshots. Revision-history product behavior is implemented later.""",
+    """### `reminders`
+
+Introduced by schema v2. Stores at most one reminder per note using a unique `noteId` index, with absolute due time, scheduling timezone, lifecycle status, and notification de-duplication metadata. Reminder state is intentionally independent from note revision history.
+
+### `revisions`
+
+Stores bounded note-history snapshots used by P11 revision recovery.""",
+)
+replace_once(
+    database,
+    "Permanent note deletion cascades to checklist items, note-label relations, attachments, and revisions in one Dexie transaction.",
+    "Permanent note deletion cascades to checklist items, note-label relations, attachments, reminders, and revisions in one Dexie transaction.",
+)
+replace_once(
+    database,
+    """Until v1.0 ships, all currently known V1 requirements belong in schema version 1. Do not add fake v2/v3 migrations merely because implementation phases happen at different times.
+
+After a public stable schema exists, every schema change must use an explicit forward migration with automated tests against representative older databases.""",
+    """V1 shipped with schema version 1. V2-1 adds schema version 2 as a real forward migration that preserves existing V1 data and adds the `reminders` table.
+
+Every future schema change must continue to use an explicit forward migration with automated tests against representative older databases. Implementation phase numbers alone are not a reason to create a database version.""",
+)
+replace_once(
+    database,
+    "Persistence tests cover reopen, lifecycle transitions, optimistic concurrency, transaction rollback, cascade deletion, and duplication of dependent records.",
+    "Persistence tests cover v1→v2 opening, reopen, lifecycle transitions, optimistic concurrency, transaction rollback, reminder uniqueness/lifecycle, cascade deletion, and duplication of dependent records.",
+)
+
+
+backup = "docs/BACKUP.md"
+replace_once(
+    backup,
+    "P12 adds whole-library disaster recovery for the local-first Notes database. It is intentionally separate from P11 per-note revision history and from P13 external/Google Keep import.",
+    """P12 adds whole-library disaster recovery for the local-first Notes database. It is intentionally separate from P11 per-note revision history and from P13 external/Google Keep import.
+
+V2-1 extends that established recovery contract to database schema v2 and reminder records without changing its replace-restore semantics.""",
+)
+replace_once(backup, "A P12 full backup contains every durable database-v1 table:", "A current full backup contains every durable database-v2 table:")
+replace_once(backup, "- `attachments`\n- `revisions`", "- `attachments`\n- `reminders`\n- `revisions`")
+replace_once(
+    backup,
+    "No database migration is required for P12.",
+    "P12 originally shipped against database v1. V2-1 extends export, validation, safety backup, and restore to database v2 while retaining legacy backup-v1 restore compatibility.",
+)
+replace_once(backup, "- backup format version `1`", "- backup format version `2`")
+replace_once(backup, "- source database version `1`", "- source database version `2`")
+replace_once(backup, "- all seven durable table snapshots", "- all eight durable table snapshots")
+replace_once(backup, "Export reads all seven tables", "Export reads all eight tables")
+replace_once(
+    backup,
+    "- duplicate note/checklist/label/attachment/revision IDs",
+    "- duplicate note/checklist/label/attachment/reminder/revision IDs",
+)
+replace_once(
+    backup,
+    "- attachment note references\n- revision note references",
+    "- attachment note references\n- reminder note references and the one-reminder-per-note invariant\n- revision note references",
+)
+replace_once(
+    backup,
+    "After validation and explicit confirmation, Notes replaces the complete local library with the selected backup. IDs, timestamps, note revisions, lifecycle state, labels, checklist relationships, attachments, revision history, and settings are preserved exactly as stored in the backup.",
+    "After validation and explicit confirmation, Notes replaces the complete local library with the selected backup. IDs, timestamps, note revisions, lifecycle state, labels, checklist relationships, attachments, reminders, revision history, and settings are preserved exactly as stored in the backup.",
+)
+replace_once(backup, "spanning all seven durable tables", "spanning all eight durable tables")
+replace_once(backup, "open one seven-table write transaction", "open one eight-table write transaction")
+replace_once(
+    backup,
+    "- all seven database-v1 tables are represented",
+    "- all eight database-v2 tables are represented",
+)
+replace_once(
+    backup,
+    "- original attachment checksum metadata survives\n- independent backup SHA-256 metadata is present",
+    "- original attachment checksum metadata survives\n- reminder due time, timezone, status, and identity survive\n- independent backup SHA-256 metadata is present",
+)
+replace_once(
+    backup,
+    "Unit-level format validation additionally rejects duplicate checklist positions and child rows ordered before their parent.",
+    """Unit-level format validation additionally rejects duplicate checklist positions, child rows ordered before their parent, dangling reminder references, and multiple reminders for one note.
+
+Legacy backup-format v1/database-v1 files remain valid restore inputs. Validation normalizes them to the current v2 shape with an empty `reminders` table before the replacement transaction begins.""",
+)
+
+
+keep = "docs/GOOGLE_KEEP_IMPORT.md"
+replace_once(
+    keep,
+    "No database migration is required for P13. Import identity is stored in the existing `settings` table so P12 automatically backs it up and restores it with the rest of the library.",
+    "P13 originally required no database migration. Import identity remains stored in the `settings` table, while V2-1 extends the importer to write the database-v2 `reminders` table when a recognized absolute Keep reminder timestamp is available.",
+)
+replace_once(
+    keep,
+    "- attachment file path, MIME type, and bytes",
+    "- attachment file path, MIME type, and bytes\n- recognized absolute reminder timestamps",
+)
+replace_once(
+    keep,
+    """## Labels
+
+Labels are merged""",
+    """## Reminders
+
+V2-1 conservatively extends P13 reminder migration. If known reminder-like fields contain a recognized absolute timestamp, the note receives one active local reminder preserving that instant. Because Takeout may not preserve enough scheduling-zone context to reconstruct the original wall-clock timezone, imported reminder timestamps use `timeZone: \"UTC\"` rather than inventing a local zone.
+
+If reminder-like metadata is present but no recognized timestamp can be extracted, the preview reports a warning and imports the note without a reminder. The importer never guesses a due time.
+
+## Labels
+
+Labels are merged""",
+)
+replace_once(keep, "spanning all seven durable tables:", "spanning all eight durable tables:")
+replace_once(keep, "- `attachments`\n- `revisions`", "- `attachments`\n- `reminders`\n- `revisions`")
+replace_once(
+    keep,
+    "- attachments when enabled and available\n- an initial P11 revision with reason `import`",
+    "- attachments when enabled and available\n- one active reminder when a recognized absolute reminder timestamp exists\n- an initial P11 revision with reason `import`",
+)
+replace_once(
+    keep,
+    "- malformed/unrecoverable Takeout input produces no writes",
+    "- recognized reminder timestamps migrate conservatively and ambiguous reminder metadata warns without guessing\n- malformed/unrecoverable Takeout input produces no writes",
+)
+replace_once(
+    keep,
+    "P14 will make image attachments a complete first-class Notes interaction and viewing experience.",
+    "P14 makes image attachments a complete first-class Notes interaction and viewing experience. V2-1 subsequently extends P13 with conservative reminder migration into the database-v2 reminder model.",
+)
+
+
+standard_ci = "\n".join(
+    [
+        "name: CI",
+        "",
+        "on:",
+        "  push:",
+        "    branches: [main]",
+        "  pull_request:",
+        "    branches: [main]",
+        "",
+        "permissions:",
+        "  contents: read",
+        "",
+        "jobs:",
+        "  verify:",
+        "    runs-on: ubuntu-latest",
+        "",
+        "    steps:",
+        "      - name: Checkout",
+        "        uses: actions/checkout@v6",
+        "",
+        "      - name: Setup Node",
+        "        uses: actions/setup-node@v6",
+        "        with:",
+        "          node-version-file: .nvmrc",
+        "",
+        "      - name: Install dependencies",
+        "        run: npm install --no-audit --no-fund",
+        "",
+        "      - name: Format check",
+        "        run: npm run format:check || (npx prettier --write . && git diff --exit-code -- .)",
+        "",
+        "      - name: Lint",
+        "        run: npm run lint",
+        "",
+        "      - name: Typecheck",
+        "        run: npm run typecheck",
+        "",
+        "      - name: Unit tests",
+        "        run: npm run test",
+        "",
+        "      - name: Build",
+        "        run: npm run build",
+        "",
+        "      - name: Install Playwright Chromium",
+        "        run: npx playwright install --with-deps chromium",
+        "",
+        "      - name: End-to-end regression suite",
+        "        run: npm run e2e",
+        "",
+        "      - name: PWA offline certification",
+        "        run: npm run e2e:pwa",
+        "",
+    ]
+)
+Path(".github/workflows/ci.yml").write_text(standard_ci)
+Path(__file__).unlink()
