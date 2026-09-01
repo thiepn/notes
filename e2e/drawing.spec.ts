@@ -137,7 +137,7 @@ test('checklist editors expose the same drawing attachment workflow', async ({ p
   const card = page.locator('[data-note-type="checklist"]').filter({ hasText: 'Sketch checklist' });
   await card.getByRole('button', { name: 'Open note: Sketch checklist' }).click();
   const editor = page.getByRole('dialog', { name: 'Edit checklist' });
-  await editor.getByRole('button', { name: 'Add drawing' }).click();
+  await startEditorDrawing(editor);
 
   const drawing = page.getByRole('dialog', { name: 'Drawing editor' });
   await drawStroke(page, drawing.getByLabel('Drawing canvas'));
