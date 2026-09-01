@@ -25,12 +25,14 @@ interface AppSidebarProps {
   onManageLabels: () => void;
 }
 
-const NAVIGATION = [
+const PRIMARY_NAVIGATION = [
   { id: 'notes', label: 'Notes', icon: Lightbulb },
   { id: 'reminders', label: 'Reminders', icon: Bell },
+] satisfies Array<{ id: AppSection; label: string; icon: typeof Lightbulb }>;
+
+const LIBRARY_NAVIGATION = [
   { id: 'archive', label: 'Archive', icon: Archive },
   { id: 'trash', label: 'Trash', icon: Trash2 },
-  { id: 'backup', label: 'Backup', icon: DatabaseBackup },
 ] satisfies Array<{ id: AppSection; label: string; icon: typeof Lightbulb }>;
 
 export function AppSidebar({
@@ -56,7 +58,7 @@ export function AppSidebar({
       inert={mobile && !mobileOpen}
     >
       <nav className="sidebar-nav">
-        {NAVIGATION.slice(0, 2).map(({ id, label, icon: Icon }) => {
+        {PRIMARY_NAVIGATION.map(({ id, label, icon: Icon }) => {
           const active = activeSection === id && (id !== 'notes' || activeLabelId === null);
           return (
             <button
@@ -114,22 +116,45 @@ export function AppSidebar({
           )}
         </div>
 
-        {NAVIGATION.slice(2).map(({ id, label, icon: Icon }) => {
-          const active = activeSection === id && activeLabelId === null;
-          return (
-            <button
-              className="nav-item"
-              type="button"
-              data-active={active}
-              aria-current={active ? 'page' : undefined}
-              onClick={() => onNavigate(id)}
-              key={id}
-            >
-              <Icon aria-hidden="true" />
-              <span className="nav-label">{label}</span>
-            </button>
-          );
-        })}
+        <div className="sidebar-section sidebar-library-section">
+          <div className="sidebar-section-heading sidebar-section-heading-static">
+            <Archive aria-hidden="true" />
+            <span>Library</span>
+          </div>
+          {LIBRARY_NAVIGATION.map(({ id, label, icon: Icon }) => {
+            const active = activeSection === id && activeLabelId === null;
+            return (
+              <button
+                className="nav-item"
+                type="button"
+                data-active={active}
+                aria-current={active ? 'page' : undefined}
+                onClick={() => onNavigate(id)}
+                key={id}
+              >
+                <Icon aria-hidden="true" />
+                <span className="nav-label">{label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="sidebar-section sidebar-tools-section">
+          <div className="sidebar-section-heading sidebar-section-heading-static">
+            <DatabaseBackup aria-hidden="true" />
+            <span>Tools</span>
+          </div>
+          <button
+            className="nav-item"
+            type="button"
+            data-active={activeSection === 'backup' && activeLabelId === null}
+            aria-current={activeSection === 'backup' && activeLabelId === null ? 'page' : undefined}
+            onClick={() => onNavigate('backup')}
+          >
+            <DatabaseBackup aria-hidden="true" />
+            <span className="nav-label">Backup & import</span>
+          </button>
+        </div>
       </nav>
 
       <div className="sidebar-footer">
