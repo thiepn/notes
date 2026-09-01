@@ -16,6 +16,44 @@ async function waitForServiceWorkerControl(page: import('@playwright/test').Page
     .toBe(true);
 }
 
+async function readReminderSnapshot(page: import('@playwright/test').Page, title: string) {
+  return page.evaluate(async (noteTitle) => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('thiepn-notes');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+
+    try {
+      const readAll = <T>(storeName: string) =>
+        new Promise<T[]>((resolve, reject) => {
+          const transaction = database.transaction(storeName, 'readonly');
+          const request = transaction.objectStore(storeName).getAll();
+          request.onsuccess = () => resolve(request.result as T[]);
+          request.onerror = () => reject(request.error);
+        });
+
+      const notes = await readAll<{ id: string; title: string }>('notes');
+      const note = notes.find((item) => item.title === noteTitle);
+      if (!note) return null;
+
+      const reminders = await readAll<{
+        id: string;
+        noteId: string;
+        dueAt: number;
+        status: string;
+      }>('reminders');
+      const reminder = reminders.find((item) => item.noteId === note.id);
+
+      return reminder
+        ? { id: reminder.id, dueAt: reminder.dueAt, status: reminder.status }
+        : null;
+    } finally {
+      database.close();
+    }
+  }, title);
+}
+
 test('reminders survive offline cold reloads and can be changed without network access', async ({
   page,
   context,
@@ -43,15 +81,7 @@ test('reminders survive offline cold reloads and can be changed without network 
   await page.getByRole('button', { name: 'Reminders' }).click();
   await expect(page.getByRole('button', { name: 'Open note: Offline reminder' })).toBeVisible();
 
-  const reminderBefore = await page.evaluate(async () => {
-    const db = await import('/notes/src/db/index.ts');
-    const note = (await db.notesDatabase.notes.toArray()).find(
-      (item) => item.title === 'Offline reminder',
-    );
-    if (!note) return null;
-    const reminder = await db.notesDatabase.reminders.where('noteId').equals(note.id).first();
-    return reminder ? { id: reminder.id, dueAt: reminder.dueAt, status: reminder.status } : null;
-  });
+  const reminderBefore = await readReminderSnapshot(page, 'Offline reminder');
   expect(reminderBefore).toEqual(
     expect.objectContaining({
       id: expect.any(String),
@@ -69,15 +99,7 @@ test('reminders survive offline cold reloads and can be changed without network 
   await page.getByRole('button', { name: 'Reminders' }).click();
   await expect(page.getByRole('button', { name: 'Open note: Offline reminder' })).toBeVisible();
 
-  const reminderAfter = await page.evaluate(async () => {
-    const db = await import('/notes/src/db/index.ts');
-    const note = (await db.notesDatabase.notes.toArray()).find(
-      (item) => item.title === 'Offline reminder',
-    );
-    if (!note) return null;
-    const reminder = await db.notesDatabase.reminders.where('noteId').equals(note.id).first();
-    return reminder ? { id: reminder.id, dueAt: reminder.dueAt, status: reminder.status } : null;
-  });
+  const reminderAfter = await readReminderSnapshot(page, 'Offline reminder');
 
   expect(reminderAfter?.id).toBe(reminderBefore?.id);
   expect(reminderAfter?.status).toBe('active');
