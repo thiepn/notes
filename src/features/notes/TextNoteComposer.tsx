@@ -18,6 +18,8 @@ import {
 } from '../../db';
 import { DrawingAttachmentButton } from '../drawing/DrawingAttachmentButton';
 import { DrawingDialog } from '../drawing/DrawingDialog';
+import { appendOcrText } from '../ocr/ocr';
+import { OcrAttachmentControl } from '../ocr/OcrAttachmentControl';
 import { RichTextEditor } from '../richText/RichTextEditor';
 import { VoiceAttachmentButton } from '../voice/VoiceAttachmentButton';
 import { VoiceRecorderDialog } from '../voice/VoiceRecorderDialog';
@@ -87,7 +89,9 @@ export function TextNoteComposer({
       if (composerRef.current?.contains(target)) return;
       if (
         target instanceof Element &&
-        (target.closest('.drawing-dialog-layer') || target.closest('.voice-dialog-layer'))
+        (target.closest('.drawing-dialog-layer') ||
+          target.closest('.voice-dialog-layer') ||
+          target.closest('.ocr-dialog-layer'))
       ) {
         return;
       }
@@ -294,6 +298,13 @@ export function TextNoteComposer({
         ensureNoteId={ensureNoteId}
         refreshKey={attachmentRefreshKey}
         onChanged={markAttachmentsChanged}
+      />
+
+      <OcrAttachmentControl
+        noteId={activeNoteId}
+        repository={attachmentsRepository}
+        refreshKey={attachmentRefreshKey}
+        onAppend={(text) => setContent(appendOcrText(draft.content, text))}
       />
 
       <div className="note-composer-footer">
