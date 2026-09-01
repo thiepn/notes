@@ -35,8 +35,9 @@ jobs:
           def replace_once(path: str, old: str, new: str) -> None:
               file = Path(path)
               text = file.read_text()
-              if old not in text:
-                  raise SystemExit(f"Expected pattern missing in {path}")
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"Expected exactly one match in {path}, found {count}: {old!r}")
               file.write_text(text.replace(old, new, 1))
 
           replace_once(
@@ -48,8 +49,8 @@ jobs:
           workspace = "src/features/reminders/RemindersWorkspace.tsx"
           replace_once(
               workspace,
-              "const attachmentsRepository = new AttachmentsRepository(notesDatabase);\n\ninterface RemindersWorkspaceProps",
-              "const attachmentsRepository = new AttachmentsRepository(notesDatabase);\nconst INITIAL_REMINDER_NOW = Date.now();\n\ninterface RemindersWorkspaceProps",
+              "const attachmentsRepository = new AttachmentsRepository(notesDatabase);\n",
+              "const attachmentsRepository = new AttachmentsRepository(notesDatabase);\nconst INITIAL_REMINDER_NOW = Date.now();\n",
           )
           replace_once(
               workspace,
@@ -58,46 +59,15 @@ jobs:
           )
           replace_once(
               workspace,
-              """  useEffect(() => {
-            let cancelled = false;
-            void reload().catch(() => {
-              if (!cancelled) {
-                setCollection({ ...EMPTY_COLLECTION, loaded: true });
-                showToast('Reminders could not be loaded.');
-              }
-            });
-            const handleChanged = () => void reload();
-            window.addEventListener('notes-reminders-changed', handleChanged);
-            return () => {
-              cancelled = true;
-              window.removeEventListener('notes-reminders-changed', handleChanged);
-            };
-          }, [reload, showToast]);""",
-              """  useEffect(() => {
-            let cancelled = false;
-            const initialLoadTimer = window.setTimeout(() => {
-              void reload().catch(() => {
-                if (!cancelled) {
-                  setCollection({ ...EMPTY_COLLECTION, loaded: true });
-                  showToast('Reminders could not be loaded.');
-                }
-              });
-            }, 0);
-            const handleChanged = () => void reload();
-            window.addEventListener('notes-reminders-changed', handleChanged);
-            return () => {
-              cancelled = true;
-              window.clearTimeout(initialLoadTimer);
-              window.removeEventListener('notes-reminders-changed', handleChanged);
-            };
-          }, [reload, showToast]);""",
+              "    void reload().catch(() => {",
+              "    void Promise.resolve().then(reload).catch(() => {",
           )
 
           control = "src/features/reminders/ReminderControl.tsx"
           replace_once(
               control,
-              "import type { ReminderRecord, RemindersRepository } from '../../db';\nimport {",
-              "import type { ReminderRecord, RemindersRepository } from '../../db';\nimport { dispatchReminderChanged } from './reminderEvents';\nimport {",
+              "import type { ReminderRecord, RemindersRepository } from '../../db';\n",
+              "import type { ReminderRecord, RemindersRepository } from '../../db';\nimport { dispatchReminderChanged } from './reminderEvents';\n",
           )
           replace_once(
               control,
@@ -111,7 +81,10 @@ jobs:
               "import { dispatchReminderChanged } from './reminderEvents';",
           )
 
-          Path("src/features/reminders/reminderEvents.ts").write_text(
+          events = Path("src/features/reminders/reminderEvents.ts")
+          if events.exists():
+              raise SystemExit("reminderEvents.ts already exists unexpectedly")
+          events.write_text(
               "export function dispatchReminderChanged(): void {\n"
               "  window.dispatchEvent(new CustomEvent('notes-reminders-changed'));\n"
               "}\n"
