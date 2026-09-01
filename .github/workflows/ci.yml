@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   verify:
@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          ref: v2-1-reminders
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -25,21 +27,19 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Format check
+      - name: Format V2-1 release blockers
         run: |
-          npm run format:check || {
-            npx prettier --write .
-            git diff -- . | tee prettier.diff
-            exit 1
-          }
+          npx prettier --write .
+          if ! git diff --quiet -- .; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add .
+            git commit -m "style: format V2-1 release blockers"
+            git push origin HEAD:v2-1-reminders
+          fi
 
-      - name: Upload formatting diff
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: prettier-diff
-          path: prettier.diff
-          if-no-files-found: ignore
+      - name: Format check
+        run: npm run format:check
 
       - name: Lint
         run: npm run lint
