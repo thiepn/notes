@@ -25,23 +25,26 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
+      - name: Format check
+        run: npm run format:check || (npx prettier --write . && git diff --exit-code -- .)
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Build
+        run: npm run build
+
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Full browser regression suite
-        run: |
-          set +e
-          npm run e2e 2>&1 | tee v2-2-e2e.txt
-          status=${PIPESTATUS[0]}
-          exit $status
+      - name: End-to-end regression suite
+        run: npm run e2e
 
-      - name: Upload V2-2 browser diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: v2-2-browser-diagnostics
-          path: |
-            v2-2-e2e.txt
-            playwright-report
-            test-results
-          if-no-files-found: ignore
+      - name: PWA offline certification
+        run: npm run e2e:pwa
