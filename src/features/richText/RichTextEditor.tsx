@@ -1,9 +1,4 @@
-import {
-  useRef,
-  useState,
-  type KeyboardEvent as ReactKeyboardEvent,
-  type RefObject,
-} from 'react';
+import { useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from 'react';
 import {
   Bold,
   Code2,
@@ -120,7 +115,11 @@ export function RichTextEditor({
       </div>
 
       {preview ? (
-        <div className={`${className} rich-text-preview`} role="region" aria-label="Formatted preview">
+        <div
+          className={`${className} rich-text-preview`}
+          role="region"
+          aria-label="Formatted preview"
+        >
           {value ? (
             <RichTextContent value={value} />
           ) : (

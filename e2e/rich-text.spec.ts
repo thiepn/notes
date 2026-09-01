@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 
-test('rich text formats, previews, persists, renders on cards, and stays searchable', async ({ page }) => {
+test('rich text formats, previews, persists, renders on cards, and stays searchable', async ({
+  page,
+}) => {
   await page.goto('./');
 
   await page.getByRole('button', { name: 'Create a text note' }).click();
@@ -42,7 +44,9 @@ test('rich text formats, previews, persists, renders on cards, and stays searcha
 
   const stored = await page.evaluate(async () => {
     const db = await import('/notes/src/db/index.ts');
-    const note = (await db.notesDatabase.notes.toArray()).find((item) => item.title === 'Rich text note');
+    const note = (await db.notesDatabase.notes.toArray()).find(
+      (item) => item.title === 'Rich text note',
+    );
     return note?.content ?? null;
   });
   expect(stored).toBe('Alpha **beta**\n- Second line');
@@ -50,7 +54,9 @@ test('rich text formats, previews, persists, renders on cards, and stays searcha
   const search = page.getByRole('searchbox', { name: 'Search notes' });
   await search.fill('beta');
   await expect(page.getByRole('heading', { name: 'Search', level: 1 })).toBeVisible();
-  await expect(page.locator('[data-note-card]').filter({ hasText: 'Rich text note' })).toBeVisible();
+  await expect(
+    page.locator('[data-note-card]').filter({ hasText: 'Rich text note' }),
+  ).toBeVisible();
 });
 
 test('keyboard shortcuts apply inline formatting without closing the editor', async ({ page }) => {
