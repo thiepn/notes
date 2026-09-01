@@ -6,7 +6,7 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
-import { ImagePlus, ListChecks, Mic, PencilLine } from 'lucide-react';
+import { ImagePlus, ListChecks, MoreHorizontal, Paperclip, Plus } from 'lucide-react';
 
 import {
   NATIVE_IMAGE_ACCEPT,
@@ -52,11 +52,15 @@ export function TextNoteComposer({
   const composerRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const quickImageInputRef = useRef<HTMLInputElement>(null);
+  const expandedImageInputRef = useRef<HTMLInputElement>(null);
   const [attachmentRefreshKey, setAttachmentRefreshKey] = useState(0);
   const [quickAttachmentMessage, setQuickAttachmentMessage] = useState<string | null>(null);
   const [quickAttachmentError, setQuickAttachmentError] = useState<string | null>(null);
   const [quickDrawingOpen, setQuickDrawingOpen] = useState(false);
   const [quickVoiceOpen, setQuickVoiceOpen] = useState(false);
+  const [quickToolsOpen, setQuickToolsOpen] = useState(false);
+  const [expandedToolsOpen, setExpandedToolsOpen] = useState(false);
+  const [attachmentsOpen, setAttachmentsOpen] = useState(false);
   const {
     activeNoteId,
     draft,
@@ -101,6 +105,17 @@ export function TextNoteComposer({
     return () => document.removeEventListener('pointerdown', handlePointerDown, true);
   }, [expanded, finishCapture]);
 
+  useEffect(() => {
+    if (!quickToolsOpen && !expandedToolsOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setQuickToolsOpen(false);
+      setExpandedToolsOpen(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [expandedToolsOpen, quickToolsOpen]);
+
   useLayoutEffect(() => {
     const textarea = bodyRef.current;
     if (!textarea || !expanded) return;
@@ -113,6 +128,7 @@ export function TextNoteComposer({
   const markAttachmentsChanged = useCallback(
     (noteId: string) => {
       setAttachmentRefreshKey((current) => current + 1);
+      setAttachmentsOpen(true);
       onAttachmentsChanged(noteId);
     },
     [onAttachmentsChanged],
@@ -121,6 +137,7 @@ export function TextNoteComposer({
   const handleQuickImages = async (files: File[]) => {
     if (files.length === 0) return;
     openCapture();
+    setQuickToolsOpen(false);
     setQuickAttachmentMessage(null);
     setQuickAttachmentError(null);
     try {
@@ -168,6 +185,11 @@ export function TextNoteComposer({
 
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Escape') {
+      if (expandedToolsOpen) {
+        event.preventDefault();
+        setExpandedToolsOpen(false);
+        return;
+      }
       event.preventDefault();
       void finishCapture();
       return;
@@ -199,30 +221,54 @@ export function TextNoteComposer({
         >
           <ListChecks aria-hidden="true" />
         </button>
-        <button
-          className="note-composer-quick-action"
-          type="button"
-          aria-label="Add drawing"
-          title="New drawing note"
-          onClick={() => {
-            openCapture();
-            setQuickDrawingOpen(true);
-          }}
-        >
-          <PencilLine aria-hidden="true" />
-        </button>
-        <button
-          className="note-composer-quick-action"
-          type="button"
-          aria-label="Record voice note"
-          title="New voice note"
-          onClick={() => {
-            openCapture();
-            setQuickVoiceOpen(true);
-          }}
-        >
-          <Mic aria-hidden="true" />
-        </button>
+        <div className="note-composer-menu-slot">
+          <button
+            className="note-composer-quick-action"
+            type="button"
+            aria-label="More capture options"
+            title="More capture options"
+            aria-expanded={quickToolsOpen}
+            onClick={() => setQuickToolsOpen((open) => !open)}
+          >
+            <Plus aria-hidden="true" />
+          </button>
+          {quickToolsOpen ? (
+            <div className="note-composer-tools-menu" role="menu">
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setQuickToolsOpen(false);
+                  quickImageInputRef.current?.click();
+                }}
+              >
+                <ImagePlus aria-hidden="true" /> Image
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setQuickToolsOpen(false);
+                  openCapture();
+                  setQuickDrawingOpen(true);
+                }}
+              >
+                Drawing
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setQuickToolsOpen(false);
+                  openCapture();
+                  setQuickVoiceOpen(true);
+                }}
+              >
+                Voice recording
+              </button>
+            </div>
+          ) : null}
+        </div>
         <input
           ref={quickImageInputRef}
           className="attachment-file-input"
@@ -236,21 +282,12 @@ export function TextNoteComposer({
             void handleQuickImages(files);
           }}
         />
-        <button
-          className="note-composer-quick-action"
-          type="button"
-          aria-label="Add image to new note"
-          title="New image note"
-          onClick={() => quickImageInputRef.current?.click()}
-        >
-          <ImagePlus aria-hidden="true" />
-        </button>
       </div>
     </div>
   ) : (
     <div
       ref={composerRef}
-      className="note-composer"
+      className="note-composer note-composer-simplified"
       role="form"
       aria-label="New note"
       onKeyDown={handleKeyDown}
@@ -275,41 +312,100 @@ export function TextNoteComposer({
         onChange={setContent}
       />
 
-      <div className="drawing-inline-action">
-        <DrawingAttachmentButton
-          noteId={activeNoteId}
-          repository={attachmentsRepository}
-          ensureNoteId={ensureNoteId}
-          className="note-editor-secondary"
-          onChanged={markAttachmentsChanged}
-        />
-        <VoiceAttachmentButton
-          noteId={activeNoteId}
-          repository={voiceAttachmentsRepository}
-          ensureNoteId={ensureNoteId}
-          className="note-editor-secondary"
-          onChanged={markAttachmentsChanged}
-        />
-      </div>
+      {attachmentsOpen ? (
+        <div className="note-composer-secondary-panel">
+          <AttachmentPanel
+            noteId={activeNoteId}
+            repository={attachmentsRepository}
+            ensureNoteId={ensureNoteId}
+            refreshKey={attachmentRefreshKey}
+            onChanged={markAttachmentsChanged}
+          />
+        </div>
+      ) : null}
 
-      <AttachmentPanel
-        noteId={activeNoteId}
-        repository={attachmentsRepository}
-        ensureNoteId={ensureNoteId}
-        refreshKey={attachmentRefreshKey}
-        onChanged={markAttachmentsChanged}
+      <input
+        ref={expandedImageInputRef}
+        className="attachment-file-input"
+        type="file"
+        accept={NATIVE_IMAGE_ACCEPT}
+        multiple
+        aria-label="Choose images for note"
+        onChange={(event) => {
+          const files = Array.from(event.target.files ?? []);
+          event.target.value = '';
+          void handleQuickImages(files);
+        }}
       />
 
-      <OcrAttachmentControl
-        noteId={activeNoteId}
-        repository={attachmentsRepository}
-        refreshKey={attachmentRefreshKey}
-        onAppend={(text) => setContent(appendOcrText(draft.content, text))}
-      />
+      <div className="note-composer-footer note-composer-footer-simplified">
+        <div className="note-composer-primary-actions">
+          <div className="note-composer-menu-slot">
+            <button
+              className="note-editor-secondary note-composer-add-button"
+              type="button"
+              aria-expanded={expandedToolsOpen}
+              onClick={() => setExpandedToolsOpen((open) => !open)}
+            >
+              <Plus aria-hidden="true" /> Add
+            </button>
+            {expandedToolsOpen ? (
+              <div className="note-composer-tools-menu note-composer-tools-menu-expanded" role="menu">
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setExpandedToolsOpen(false);
+                    expandedImageInputRef.current?.click();
+                  }}
+                >
+                  <ImagePlus aria-hidden="true" /> Image
+                </button>
+                <DrawingAttachmentButton
+                  noteId={activeNoteId}
+                  repository={attachmentsRepository}
+                  ensureNoteId={ensureNoteId}
+                  className="note-composer-menu-control"
+                  onChanged={(noteId) => {
+                    setExpandedToolsOpen(false);
+                    markAttachmentsChanged(noteId);
+                  }}
+                />
+                <VoiceAttachmentButton
+                  noteId={activeNoteId}
+                  repository={voiceAttachmentsRepository}
+                  ensureNoteId={ensureNoteId}
+                  className="note-composer-menu-control"
+                  onChanged={(noteId) => {
+                    setExpandedToolsOpen(false);
+                    markAttachmentsChanged(noteId);
+                  }}
+                />
+                <OcrAttachmentControl
+                  noteId={activeNoteId}
+                  repository={attachmentsRepository}
+                  refreshKey={attachmentRefreshKey}
+                  onAppend={(text) => {
+                    setExpandedToolsOpen(false);
+                    setContent(appendOcrText(draft.content, text));
+                  }}
+                />
+              </div>
+            ) : null}
+          </div>
 
-      <div className="note-composer-footer">
+          <button
+            className="note-editor-secondary note-composer-attachments-button"
+            type="button"
+            aria-pressed={attachmentsOpen}
+            onClick={() => setAttachmentsOpen((open) => !open)}
+          >
+            <Paperclip aria-hidden="true" /> Attachments
+          </button>
+        </div>
+
         <div className="note-composer-state" aria-live="polite">
-          {status === 'saving' ? <span>Saving…</span> : null}
+          {status === 'saving' ? <span className="sr-only">Saving…</span> : null}
           {quickAttachmentMessage ? <span>{quickAttachmentMessage}</span> : null}
           {quickAttachmentError ? (
             <span className="note-composer-error" role="alert">
