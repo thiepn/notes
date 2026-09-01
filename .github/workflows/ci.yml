@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   verify:
@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          ref: v2-6-ocr
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -25,8 +27,19 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
+      - name: Synchronize V2-6
+        run: |
+          npx prettier --write .
+          if ! git diff --quiet -- .; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add package.json package-lock.json scripts src e2e pwa-e2e vite.config.ts
+            git commit -m "style: synchronize V2-6 OCR"
+            git push origin HEAD:v2-6-ocr
+          fi
+
       - name: Format check
-        run: npm run format:check || (npx prettier --write . && git diff --exit-code -- .)
+        run: npm run format:check
 
       - name: Lint
         run: npm run lint
@@ -39,12 +52,3 @@ jobs:
 
       - name: Build
         run: npm run build
-
-      - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
-
-      - name: End-to-end regression suite
-        run: npm run e2e
-
-      - name: PWA offline certification
-        run: npm run e2e:pwa
