@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 async function waitForNotesWorkspace(page: Page) {
   await expect(page.getByRole('heading', { name: 'Notes', level: 1 })).toBeVisible();
@@ -46,6 +46,11 @@ async function waitForBaselineRevision(page: Page, noteId: string) {
     .toBeGreaterThan(0);
 }
 
+async function openTextHistory(editor: Locator) {
+  await editor.getByRole('button', { name: 'More', exact: true }).click();
+  await editor.getByRole('menuitem', { name: 'History', exact: true }).click();
+}
+
 test('text history previews an older version, restores it, and supports Undo restore', async ({
   page,
 }) => {
@@ -61,10 +66,7 @@ test('text history previews an older version, restores it, and supports Undo res
   await expect(editor).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Open note: History text' }).click();
-  await page
-    .getByRole('dialog', { name: 'Edit note' })
-    .getByRole('button', { name: 'History' })
-    .click();
+  await openTextHistory(page.getByRole('dialog', { name: 'Edit note' }));
   const history = page.getByRole('dialog', { name: 'Version history' });
   await expect(history).toBeVisible();
   await expect(history.locator('.revision-history-item')).toHaveCount(2);
@@ -162,7 +164,7 @@ test('copying a historical version creates an active copy and preserves current 
 
   await page.getByRole('button', { name: 'Open note: Copy history' }).click();
   editor = page.getByRole('dialog', { name: 'Edit note' });
-  await editor.getByRole('button', { name: 'History' }).click();
+  await openTextHistory(editor);
   const history = page.getByRole('dialog', { name: 'Version history' });
   await history.locator('.revision-history-item').last().click();
   await history.getByRole('button', { name: 'Copy as new note' }).click();
@@ -202,7 +204,7 @@ test('cross-type restore keeps History reversible and surfaces checklist rows im
   await expect(textCard).toBeVisible();
   await textCard.getByRole('button', { name: 'Open note: Cross type history' }).click();
   const textEditor = page.getByRole('dialog', { name: 'Edit note' });
-  await textEditor.getByRole('button', { name: 'History' }).click();
+  await openTextHistory(textEditor);
 
   const history = page.getByRole('dialog', { name: 'Version history' });
   await expect(history.locator('.revision-history-item')).toHaveCount(2);
