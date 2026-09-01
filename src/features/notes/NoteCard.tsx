@@ -10,6 +10,7 @@ import {
   Bell,
   Check,
   Copy,
+  MoreHorizontal,
   Palette,
   Pin,
   PinOff,
@@ -72,7 +73,7 @@ interface NoteCardProps {
   selection?: NoteCardSelection | undefined;
 }
 
-type OrganizationPanel = 'color' | 'labels' | null;
+type OrganizationPanel = 'color' | 'labels' | 'more' | null;
 
 const LONG_PRESS_MS = 480;
 
@@ -178,6 +179,11 @@ export function NoteCard({
     actions.open(note);
   };
 
+  const closeAndRun = (action: () => void) => {
+    setOpenPanel(null);
+    action();
+  };
+
   return (
     <article
       ref={cardRef}
@@ -254,48 +260,26 @@ export function NoteCard({
       {!selectionActive ? (
         <div className="note-card-actions">
           {mode !== 'trash' ? (
-            <>
-              <div className="note-card-action-slot">
-                <IconButton
-                  className="note-card-action"
-                  label={`Change color: ${label}`}
-                  aria-expanded={visiblePanel === 'color'}
-                  onClick={() => setOpenPanel((current) => (current === 'color' ? null : 'color'))}
-                >
-                  <Palette />
-                </IconButton>
-                {visiblePanel === 'color' ? (
-                  <NoteColorPicker
-                    noteLabel={label}
-                    value={note.color}
-                    onChange={(color) => {
-                      setOpenPanel(null);
-                      actions.setColor(note, color);
-                    }}
-                  />
-                ) : null}
-              </div>
-              <div className="note-card-action-slot">
-                <IconButton
-                  className="note-card-action"
-                  label={`Change labels: ${label}`}
-                  aria-expanded={visiblePanel === 'labels'}
-                  onClick={() =>
-                    setOpenPanel((current) => (current === 'labels' ? null : 'labels'))
-                  }
-                >
-                  <Tag />
-                </IconButton>
-                {visiblePanel === 'labels' ? (
-                  <NoteLabelPicker
-                    labels={labels}
-                    noteLabel={label}
-                    selectedLabelIds={selectedLabelIds}
-                    onChange={(labelIds) => actions.setLabels(note, labelIds)}
-                  />
-                ) : null}
-              </div>
-            </>
+            <div className="note-card-action-slot">
+              <IconButton
+                className="note-card-action"
+                label={`Change color: ${label}`}
+                aria-expanded={visiblePanel === 'color'}
+                onClick={() => setOpenPanel((current) => (current === 'color' ? null : 'color'))}
+              >
+                <Palette />
+              </IconButton>
+              {visiblePanel === 'color' ? (
+                <NoteColorPicker
+                  noteLabel={label}
+                  value={note.color}
+                  onChange={(color) => {
+                    setOpenPanel(null);
+                    actions.setColor(note, color);
+                  }}
+                />
+              ) : null}
+            </div>
           ) : null}
 
           {mode === 'notes' ? (
@@ -316,24 +300,7 @@ export function NoteCard({
               <RotateCcw />
             </IconButton>
           ) : null}
-          {mode !== 'trash' ? (
-            <IconButton
-              className="note-card-action"
-              label={`Duplicate note: ${label}`}
-              onClick={() => actions.duplicate(note)}
-            >
-              <Copy />
-            </IconButton>
-          ) : null}
-          {mode !== 'trash' ? (
-            <IconButton
-              className="note-card-action"
-              label={`Move note to trash: ${label}`}
-              onClick={() => actions.trash(note)}
-            >
-              <Trash2 />
-            </IconButton>
-          ) : null}
+
           {mode === 'trash' ? (
             <>
               <IconButton
@@ -351,7 +318,52 @@ export function NoteCard({
                 <Trash2 />
               </IconButton>
             </>
-          ) : null}
+          ) : (
+            <div className="note-card-action-slot">
+              <IconButton
+                className="note-card-action"
+                label={`More actions: ${label}`}
+                aria-expanded={visiblePanel === 'more'}
+                onClick={() => setOpenPanel((current) => (current === 'more' ? null : 'more'))}
+              >
+                <MoreHorizontal />
+              </IconButton>
+              {visiblePanel === 'more' ? (
+                <div className="note-card-more-menu" role="menu">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => setOpenPanel('labels')}
+                  >
+                    <Tag aria-hidden="true" /> Labels
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => closeAndRun(() => actions.duplicate(note))}
+                  >
+                    <Copy aria-hidden="true" /> Duplicate
+                  </button>
+                  <button
+                    className="danger"
+                    type="button"
+                    role="menuitem"
+                    onClick={() => closeAndRun(() => actions.trash(note))}
+                  >
+                    <Trash2 aria-hidden="true" /> Move to trash
+                  </button>
+                </div>
+              ) : null}
+              {visiblePanel === 'labels' ? (
+                <NoteLabelPicker
+                  labels={labels}
+                  noteLabel={label}
+                  selectedLabelIds={selectedLabelIds}
+                  onChange={(labelIds) => actions.setLabels(note, labelIds)}
+                />
+              ) : null}
+            </div>
+          )}
         </div>
       ) : null}
     </article>
