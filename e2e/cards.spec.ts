@@ -32,6 +32,11 @@ async function seedNotes(page: Page, options: { includePinned?: boolean; count?:
   );
 }
 
+async function chooseHeaderView(page: Page, view: 'Grid view' | 'List view') {
+  await page.getByTestId('header-more-toggle').click();
+  await page.getByRole('menuitem', { name: view, exact: true }).click();
+}
+
 test('renders pinned and other notes in a responsive masonry grid', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await seedNotes(page, { includePinned: true, count: 6 });
@@ -63,11 +68,7 @@ test('persists list view and places cards in one column', async ({ page }) => {
   await seedNotes(page, { count: 4 });
   await page.reload();
 
-  await page.getByRole('button', { name: 'List view' }).click();
-  await expect(page.getByRole('button', { name: 'List view' })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
+  await chooseHeaderView(page, 'List view');
   await expect(page.getByRole('list', { name: 'Saved notes' })).toHaveAttribute(
     'data-view',
     'list',
@@ -80,10 +81,6 @@ test('persists list view and places cards in one column', async ({ page }) => {
   expect(new Set(xPositions).size).toBe(1);
 
   await page.reload();
-  await expect(page.getByRole('button', { name: 'List view' })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
   await expect(page.getByRole('list', { name: 'Saved notes' })).toHaveAttribute(
     'data-view',
     'list',
