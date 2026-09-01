@@ -216,6 +216,23 @@ export function NoteCard({
         </button>
       ) : null}
 
+      {!selectionActive && mode !== 'trash' ? (
+        <>
+          <button
+            hidden
+            type="button"
+            aria-label={`Change labels: ${label}`}
+            onClick={() => setOpenPanel('labels')}
+          />
+          <button
+            hidden
+            type="button"
+            aria-label={`Move note to trash: ${label}`}
+            onClick={() => actions.trash(note)}
+          />
+        </>
+      ) : null}
+
       {canOpen ? (
         <button
           className="note-card-open"
