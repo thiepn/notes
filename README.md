@@ -29,7 +29,7 @@ V1 includes:
 
 V1 explicitly excludes cloud sync, accounts, collaboration, AI, OCR, voice notes, drawings, nested folders, databases, project management, and plugin systems.
 
-## V2 scope
+## V2-1 scope
 
 V2-1 adds:
 
