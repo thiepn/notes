@@ -5,6 +5,7 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
+import { Paperclip, Plus } from 'lucide-react';
 
 import type {
   AttachmentsRepository,
@@ -74,6 +75,7 @@ export function ChecklistComposer({
   const [moveCompletedDown, setMoveCompletedDown] = useState(readMoveCompletedPreference);
   const [attachmentNoteId, setAttachmentNoteId] = useState<string | null>(initial.noteId);
   const [attachmentRefreshKey, setAttachmentRefreshKey] = useState(0);
+  const [attachmentsOpen, setAttachmentsOpen] = useState(false);
 
   const composerRef = useRef<HTMLDivElement>(null);
   const pendingDraftRef = useRef<ChecklistDraft>(initial.draft);
@@ -241,6 +243,7 @@ export function ChecklistComposer({
   const markAttachmentsChanged = useCallback(
     (noteId: string) => {
       setAttachmentRefreshKey((current) => current + 1);
+      setAttachmentsOpen(true);
       onAttachmentsChanged(noteId);
     },
     [onAttachmentsChanged],
@@ -256,6 +259,7 @@ export function ChecklistComposer({
     setDraft(empty);
     setAttachmentNoteId(null);
     setAttachmentRefreshKey(0);
+    setAttachmentsOpen(false);
     setStatus('idle');
     setErrorMessage(null);
     onActiveNoteChange(null);
@@ -303,6 +307,18 @@ export function ChecklistComposer({
       clearTimer();
     };
   }, [clearTimer, initial.noteId, onActiveNoteChange]);
+
+  useEffect(() => {
+    const noteId = initial.noteId;
+    if (!noteId) return;
+    let cancelled = false;
+    void attachmentsRepository.hasAny(noteId).then((hasAttachments) => {
+      if (!cancelled && hasAttachments) setAttachmentsOpen(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [attachmentsRepository, initial.noteId]);
 
   useEffect(() => {
     const journal = initial.journal;
@@ -364,7 +380,7 @@ export function ChecklistComposer({
   return (
     <div
       ref={composerRef}
-      className="note-composer checklist-composer"
+      className="note-composer checklist-composer note-composer-simplified"
       role="form"
       aria-label="New checklist"
       onKeyDown={handleKeyDown}
@@ -384,17 +400,40 @@ export function ChecklistComposer({
         }}
       />
 
-      <AttachmentPanel
-        noteId={attachmentNoteId}
-        repository={attachmentsRepository}
-        ensureNoteId={ensureNoteId}
-        refreshKey={attachmentRefreshKey}
-        onChanged={markAttachmentsChanged}
-      />
+      {attachmentsOpen ? (
+        <div className="note-composer-secondary-panel">
+          <AttachmentPanel
+            noteId={attachmentNoteId}
+            repository={attachmentsRepository}
+            ensureNoteId={ensureNoteId}
+            refreshKey={attachmentRefreshKey}
+            onChanged={markAttachmentsChanged}
+          />
+        </div>
+      ) : null}
 
-      <div className="note-composer-footer">
+      <div className="note-composer-footer note-composer-footer-simplified">
+        <div className="note-composer-primary-actions">
+          <button
+            className="note-editor-secondary"
+            type="button"
+            onClick={() => setAttachmentsOpen(true)}
+          >
+            <Plus aria-hidden="true" /> Add attachment
+          </button>
+          {attachmentsOpen ? (
+            <button
+              className="note-editor-secondary"
+              type="button"
+              aria-pressed="true"
+              onClick={() => setAttachmentsOpen(false)}
+            >
+              <Paperclip aria-hidden="true" /> Attachments
+            </button>
+          ) : null}
+        </div>
         <div className="note-composer-state" aria-live="polite">
-          {status === 'saving' ? <span>Saving…</span> : null}
+          {status === 'saving' ? <span className="sr-only">Saving…</span> : null}
           {errorMessage ? (
             <span className="note-composer-error" role="alert">
               {errorMessage}
