@@ -53,7 +53,7 @@ test('Ctrl+K opens a searchable command palette and runs navigation/create comma
   await expect(page.getByRole('form', { name: 'New checklist' })).toBeVisible();
 });
 
-test('C starts text capture while editor typing suppresses global shortcuts and the palette chord', async ({
+test('C starts text capture while editor typing suppresses global shortcuts and keeps Ctrl+K local', async ({
   page,
 }) => {
   await page.goto('./');
@@ -67,7 +67,7 @@ test('C starts text capture while editor typing suppresses global shortcuts and 
   await body.type('pcej#');
   await page.keyboard.press('Control+K');
   await expect(page.getByRole('dialog', { name: 'Command palette' })).toHaveCount(0);
-  await expect(body).toHaveValue('pcej#');
+  await expect(body).toHaveValue('pcej#[link text](https://)');
 
   await composer.getByLabel('Title').fill('Shortcut suppression');
   await composer.getByRole('button', { name: 'Close' }).click();

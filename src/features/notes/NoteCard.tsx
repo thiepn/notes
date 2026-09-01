@@ -29,6 +29,8 @@ import {
   type ReminderRecord,
 } from '../../db';
 import { formatReminderShort } from '../reminders/reminderTime';
+import { RichTextContent } from '../richText/RichTextContent';
+import { richTextToPlainText } from '../richText/richText';
 import { NoteCardAttachmentPreview } from './NoteCardAttachmentPreview';
 import { NoteColorPicker } from './NoteColorPicker';
 import { NoteLabelPicker } from './NoteLabelPicker';
@@ -378,7 +380,9 @@ function NoteCardContent({
       {note.type === 'checklist' ? (
         <ChecklistPreview items={checklistItems} />
       ) : note.content ? (
-        <span className="note-card-body">{note.content}</span>
+        <span className="note-card-body">
+          <RichTextContent value={note.content} compact />
+        </span>
       ) : null}
       {note.type === 'text' && !note.title && !note.content ? (
         <span className="note-card-empty">Empty note</span>
@@ -442,7 +446,7 @@ function noteLabel(note: NoteRecord, checklistItems: ChecklistItemRecord[]): str
 
 function firstMeaningfulLine(content: string): string {
   return (
-    content
+    richTextToPlainText(content)
       .split(/\r?\n/u)
       .map((line) => line.trim())
       .find(Boolean)

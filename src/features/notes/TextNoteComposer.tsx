@@ -14,6 +14,7 @@ import {
   type NoteRecord,
   type NotesRepository,
 } from '../../db';
+import { RichTextEditor } from '../richText/RichTextEditor';
 import { AttachmentPanel } from './AttachmentPanel';
 import { useTextNoteCapture } from './useTextNoteCapture';
 
@@ -195,15 +196,15 @@ export function TextNoteComposer({
         autoComplete="off"
         onChange={(event) => setTitle(event.target.value)}
       />
-      <textarea
-        ref={bodyRef}
+      <RichTextEditor
+        textareaRef={bodyRef}
         className="note-composer-body"
         value={draft.content}
-        aria-label="Note text"
+        ariaLabel="Note text"
         placeholder="Take a note…"
         rows={1}
         autoFocus
-        onChange={(event) => setContent(event.target.value)}
+        onChange={setContent}
       />
 
       <AttachmentPanel
