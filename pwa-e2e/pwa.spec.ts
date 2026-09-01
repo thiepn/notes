@@ -65,6 +65,42 @@ test('production manifest is installable and scoped to /notes/', async ({ page, 
   expect(new URL(scope).pathname).toBe('/notes/');
 });
 
+test('local OCR runtime and language packs remain available offline', async ({ page, context }) => {
+  await page.goto('./');
+  await waitForServiceWorkerControl(page);
+
+  const paths = [
+    '/notes/ocr/worker.min.js',
+    '/notes/ocr/core/tesseract-core-simd-lstm.wasm.js',
+    '/notes/ocr/core/tesseract-core-simd-lstm.wasm',
+    '/notes/ocr/lang/eng.traineddata.gz',
+    '/notes/ocr/lang/deu.traineddata.gz',
+    '/notes/ocr/lang/fra.traineddata.gz',
+  ];
+
+  const online = await page.evaluate(async (assetPaths) => {
+    return Promise.all(
+      assetPaths.map(async (path) => {
+        const response = await fetch(path);
+        return { path, ok: response.ok, size: Number(response.headers.get('content-length') ?? 0) };
+      }),
+    );
+  }, paths);
+  expect(online.every((entry) => entry.ok)).toBe(true);
+
+  await context.setOffline(true);
+  const offline = await page.evaluate(async (assetPaths) => {
+    return Promise.all(
+      assetPaths.map(async (path) => {
+        const response = await fetch(path);
+        return { path, ok: response.ok };
+      }),
+    );
+  }, paths);
+  expect(offline).toEqual(paths.map((path) => ({ path, ok: true })));
+  await context.setOffline(false);
+});
+
 test('cold reload, reading, and writing remain functional with the network disabled', async ({
   page,
   context,

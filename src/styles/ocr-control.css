@@ -1,0 +1,115 @@
+.ocr-attachment-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-subtle);
+}
+
+.ocr-attachment-control > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ocr-attachment-control > div:first-child > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.ocr-attachment-control strong {
+  font-size: var(--text-sm);
+}
+
+.ocr-attachment-control small {
+  overflow: hidden;
+  color: var(--text-subtle);
+  font-size: var(--text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ocr-attachment-control-icon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.ocr-attachment-control-icon svg,
+.ocr-attachment-control button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ocr-attachment-control > div:last-of-type {
+  justify-content: flex-end;
+}
+
+.ocr-attachment-control select,
+.ocr-attachment-control button {
+  min-height: 36px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.ocr-attachment-control select {
+  max-width: 220px;
+  padding: 0 var(--space-2);
+}
+
+.ocr-attachment-control button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 var(--space-3);
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.ocr-attachment-control select:focus-visible,
+.ocr-attachment-control button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.ocr-attachment-control button:hover {
+  background: var(--surface-hover);
+}
+
+.ocr-attachment-control > .ocr-error {
+  grid-column: 1 / -1;
+  font-size: var(--text-xs);
+}
+
+@media (max-width: 640px) {
+  .ocr-attachment-control {
+    grid-template-columns: 1fr;
+  }
+
+  .ocr-attachment-control > div:last-of-type {
+    justify-content: stretch;
+  }
+
+  .ocr-attachment-control select {
+    min-width: 0;
+    max-width: none;
+    flex: 1 1 auto;
+  }
+
+  .ocr-attachment-control button {
+    flex: 0 0 auto;
+  }
+}

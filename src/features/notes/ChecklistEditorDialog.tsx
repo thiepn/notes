@@ -20,6 +20,7 @@ import {
   type NoteRecord,
 } from '../../db';
 import { DrawingAttachmentButton } from '../drawing/DrawingAttachmentButton';
+import { OcrAttachmentControl } from '../ocr/OcrAttachmentControl';
 import { ReminderControl } from '../reminders/ReminderControl';
 import { VoiceAttachmentButton } from '../voice/VoiceAttachmentButton';
 import { AttachmentPanel } from './AttachmentPanel';
@@ -349,6 +350,12 @@ export function ChecklistEditorDialog({
             repository={attachmentsRepository}
             refreshKey={attachmentRefreshKey}
             onChanged={onAttachmentsChanged}
+          />
+
+          <OcrAttachmentControl
+            noteId={note.id}
+            repository={attachmentsRepository}
+            refreshKey={attachmentRefreshKey}
           />
 
           <div className="note-editor-footer">
