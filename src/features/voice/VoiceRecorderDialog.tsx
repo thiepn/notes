@@ -31,6 +31,8 @@ export function VoiceRecorderDialog({ onSave, onClose }: VoiceRecorderDialogProp
   const accumulatedMsRef = useRef(0);
   const closingRef = useRef(false);
   const mountedRef = useRef(true);
+  const recorderFailedRef = useRef(false);
+  const previewUrlRef = useRef<string | null>(null);
   const [phase, setPhase] = useState<RecorderPhase>('requesting');
   const [elapsedMs, setElapsedMs] = useState(0);
   const [recordingBlob, setRecordingBlob] = useState<Blob | null>(null);
@@ -40,6 +42,12 @@ export function VoiceRecorderDialog({ onSave, onClose }: VoiceRecorderDialogProp
   const stopStream = useCallback(() => {
     for (const track of streamRef.current?.getTracks() ?? []) track.stop();
     streamRef.current = null;
+  }, []);
+
+  const clearPreview = useCallback(() => {
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    previewUrlRef.current = null;
+    setPreviewUrl(null);
   }, []);
 
   const currentElapsed = useCallback(() => {
@@ -62,12 +70,14 @@ export function VoiceRecorderDialog({ onSave, onClose }: VoiceRecorderDialogProp
   }, []);
 
   const startRecording = useCallback(async () => {
+    clearPreview();
     setPhase('requesting');
     setErrorMessage(null);
     setRecordingBlob(null);
     chunksRef.current = [];
     accumulatedMsRef.current = 0;
     startedAtRef.current = null;
+    recorderFailedRef.current = false;
 
     try {
       if (!window.isSecureContext) {
@@ -108,16 +118,20 @@ export function VoiceRecorderDialog({ onSave, onClose }: VoiceRecorderDialogProp
         const blob = new Blob(chunksRef.current, { type: mimeType });
         recorderRef.current = null;
         stopStream();
-        if (!mountedRef.current || closingRef.current) return;
+        if (!mountedRef.current || closingRef.current || recorderFailedRef.current) return;
         if (blob.size === 0) {
           setPhase('error');
           setErrorMessage('The microphone did not produce any audio.');
           return;
         }
+        const url = URL.createObjectURL(blob);
+        previewUrlRef.current = url;
+        setPreviewUrl(url);
         setRecordingBlob(blob);
         setPhase('review');
       });
       recorder.addEventListener('error', () => {
+        recorderFailedRef.current = true;
         recorderRef.current = null;
         stopStream();
         if (!mountedRef.current || closingRef.current) return;
@@ -135,19 +149,22 @@ export function VoiceRecorderDialog({ onSave, onClose }: VoiceRecorderDialogProp
       setPhase('error');
       setErrorMessage(voiceCaptureErrorMessage(error));
     }
-  }, [stopStream]);
+  }, [clearPreview, stopStream]);
 
   useEffect(() => {
     mountedRef.current = true;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    void startRecording();
+    const startTimer = window.setTimeout(() => void startRecording(), 0);
     return () => {
+      window.clearTimeout(startTimer);
       mountedRef.current = false;
       closingRef.current = true;
       const recorder = recorderRef.current;
       if (recorder && recorder.state !== 'inactive') recorder.stop();
       stopStream();
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = null;
       document.body.style.overflow = previousOverflow;
     };
   }, [startRecording, stopStream]);
@@ -159,20 +176,9 @@ export function VoiceRecorderDialog({ onSave, onClose }: VoiceRecorderDialogProp
       setElapsedMs(next);
       if (next >= MAX_VOICE_RECORDING_MS) stopRecording();
     };
-    update();
     const interval = window.setInterval(update, 200);
     return () => window.clearInterval(interval);
   }, [currentElapsed, phase, stopRecording]);
-
-  useEffect(() => {
-    if (!recordingBlob) {
-      setPreviewUrl(null);
-      return;
-    }
-    const url = URL.createObjectURL(recordingBlob);
-    setPreviewUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [recordingBlob]);
 
   const pause = () => {
     const recorder = recorderRef.current;
