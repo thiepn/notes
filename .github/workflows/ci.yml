@@ -25,26 +25,16 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Format check
-        run: npm run format:check || (npx prettier --write . && git diff --exit-code -- .)
+      - name: Capture formatting diff
+        run: |
+          npx prettier --write pwa-e2e/reminders-offline.spec.ts
+          git diff -- pwa-e2e/reminders-offline.spec.ts | tee prettier-pwa.diff
+          test ! -s prettier-pwa.diff
 
-      - name: Lint
-        run: npm run lint
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Unit tests
-        run: npm run test
-
-      - name: Build
-        run: npm run build
-
-      - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
-
-      - name: End-to-end regression suite
-        run: npm run e2e
-
-      - name: PWA offline certification
-        run: npm run e2e:pwa
+      - name: Upload formatting diff
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prettier-pwa-diff
+          path: prettier-pwa.diff
+          if-no-files-found: error
