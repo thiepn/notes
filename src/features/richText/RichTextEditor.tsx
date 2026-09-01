@@ -170,6 +170,9 @@ export function RichTextEditor({
           placeholder={placeholder}
           rows={rows}
           autoFocus={autoFocus}
+          autoCapitalize="sentences"
+          autoCorrect="on"
+          spellCheck
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={handleKeyDown}
           onSelect={handleSelection}

@@ -234,7 +234,15 @@ export function NoteEditorDialog({
             aria-label="Edit title"
             placeholder="Title"
             autoComplete="off"
+            autoCapitalize="sentences"
+            autoCorrect="on"
+            enterKeyHint="next"
             onChange={(event) => setTitle(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter') return;
+              event.preventDefault();
+              bodyRef.current?.focus();
+            }}
           />
           <RichTextEditor
             textareaRef={bodyRef}

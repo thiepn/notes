@@ -110,7 +110,16 @@ export function ChecklistEditorFields({
         placeholder="Title"
         maxLength={500}
         autoComplete="off"
+        autoCapitalize="sentences"
+        autoCorrect="on"
+        enterKeyHint="next"
         onChange={(event) => onTitleChange(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key !== 'Enter') return;
+          event.preventDefault();
+          const firstVisible = visibleItems[0] ?? items[0];
+          if (firstVisible) setFocusItemId(firstVisible.id);
+        }}
       />
 
       <div className="checklist-items" role="list" aria-label="Checklist items">
@@ -173,6 +182,9 @@ export function ChecklistEditorFields({
                 aria-label={`Checklist item ${visibleIndex + 1}`}
                 placeholder="List item"
                 autoFocus={autoFocusFirst && absoluteIndex === 0}
+                autoCapitalize="sentences"
+                autoCorrect="on"
+                enterKeyHint="next"
                 onChange={(event) => updateText(item.id, event.target.value)}
                 onKeyDown={(event) => handleItemKeyDown(event, item)}
               />

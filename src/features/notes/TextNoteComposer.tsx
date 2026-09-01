@@ -51,6 +51,7 @@ export function TextNoteComposer({
 }: TextNoteComposerProps) {
   const composerRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const captureTriggerRef = useRef<HTMLButtonElement>(null);
   const quickImageInputRef = useRef<HTMLInputElement>(null);
   const expandedImageInputRef = useRef<HTMLInputElement>(null);
   const [attachmentRefreshKey, setAttachmentRefreshKey] = useState(0);
@@ -202,6 +203,12 @@ export function TextNoteComposer({
     );
   };
 
+  const finishAndRestoreFocus = useCallback(async () => {
+    const finished = await finishCapture();
+    if (!finished) return;
+    window.requestAnimationFrame(() => captureTriggerRef.current?.focus());
+  }, [finishCapture]);
+
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Escape') {
       if (expandedToolsOpen) {
@@ -210,18 +217,19 @@ export function TextNoteComposer({
         return;
       }
       event.preventDefault();
-      void finishCapture();
+      void finishAndRestoreFocus();
       return;
     }
     if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
-      void finishCapture();
+      void finishAndRestoreFocus();
     }
   };
 
   const composer = !expanded ? (
     <div className="note-composer-collapsed" aria-label="Create a note">
       <button
+        ref={captureTriggerRef}
         className="note-composer-main-action"
         type="button"
         aria-label="Create a text note"
@@ -318,7 +326,15 @@ export function TextNoteComposer({
         aria-label="Title"
         placeholder="Title"
         autoComplete="off"
+        autoCapitalize="sentences"
+        autoCorrect="on"
+        enterKeyHint="next"
         onChange={(event) => setTitle(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key !== 'Enter') return;
+          event.preventDefault();
+          bodyRef.current?.focus();
+        }}
       />
       <RichTextEditor
         textareaRef={bodyRef}
@@ -445,7 +461,11 @@ export function TextNoteComposer({
             </span>
           ) : null}
         </div>
-        <button className="note-composer-close" type="button" onClick={() => void finishCapture()}>
+        <button
+          className="note-composer-close"
+          type="button"
+          onClick={() => void finishAndRestoreFocus()}
+        >
           Close
         </button>
       </div>
