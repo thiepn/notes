@@ -58,9 +58,7 @@ export async function augmentGoogleKeepReminders(
 }
 
 type ReminderExtraction =
-  | { kind: 'none' }
-  | { kind: 'unrecognized' }
-  | { kind: 'recognized'; timestamp: number };
+  { kind: 'none' } | { kind: 'unrecognized' } | { kind: 'recognized'; timestamp: number };
 
 function extractReminderTimestamp(raw: unknown): ReminderExtraction {
   if (!isRecord(raw)) return { kind: 'none' };

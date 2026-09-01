@@ -45,13 +45,19 @@ test('reminders survive offline cold reloads and can be changed without network 
 
   const reminderBefore = await page.evaluate(async () => {
     const db = await import('/notes/src/db/index.ts');
-    const note = (await db.notesDatabase.notes.toArray()).find((item) => item.title === 'Offline reminder');
+    const note = (await db.notesDatabase.notes.toArray()).find(
+      (item) => item.title === 'Offline reminder',
+    );
     if (!note) return null;
     const reminder = await db.notesDatabase.reminders.where('noteId').equals(note.id).first();
     return reminder ? { id: reminder.id, dueAt: reminder.dueAt, status: reminder.status } : null;
   });
   expect(reminderBefore).toEqual(
-    expect.objectContaining({ id: expect.any(String), dueAt: expect.any(Number), status: 'active' }),
+    expect.objectContaining({
+      id: expect.any(String),
+      dueAt: expect.any(Number),
+      status: 'active',
+    }),
   );
 
   await page.getByRole('button', { name: 'Open note: Offline reminder' }).click();
@@ -65,7 +71,9 @@ test('reminders survive offline cold reloads and can be changed without network 
 
   const reminderAfter = await page.evaluate(async () => {
     const db = await import('/notes/src/db/index.ts');
-    const note = (await db.notesDatabase.notes.toArray()).find((item) => item.title === 'Offline reminder');
+    const note = (await db.notesDatabase.notes.toArray()).find(
+      (item) => item.title === 'Offline reminder',
+    );
     if (!note) return null;
     const reminder = await db.notesDatabase.reminders.where('noteId').equals(note.id).first();
     return reminder ? { id: reminder.id, dueAt: reminder.dueAt, status: reminder.status } : null;

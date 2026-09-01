@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 
-test('reminder editing remains usable at the minimum supported mobile viewport', async ({ page }) => {
+test('reminder editing remains usable at the minimum supported mobile viewport', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 320, height: 720 });
   await page.goto('./');
 
