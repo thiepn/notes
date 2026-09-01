@@ -99,7 +99,10 @@ test('drawing Escape closes only the drawing modal and existing notes can attach
   await editor.getByRole('button', { name: 'Add drawing' }).click();
   const drawing = page.getByRole('dialog', { name: 'Drawing editor' });
   await drawing.getByRole('button', { name: 'Eraser' }).click();
-  await expect(drawing.getByRole('button', { name: 'Eraser' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(drawing.getByRole('button', { name: 'Eraser' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
   await drawing.getByRole('button', { name: 'Pen' }).click();
   await drawStroke(page, drawing.getByLabel('Drawing canvas'));
   await drawing.getByRole('button', { name: 'Save drawing' }).click();

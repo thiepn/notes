@@ -8,16 +8,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
-import {
-  Eraser,
-  Pencil,
-  Redo2,
-  RotateCcw,
-  Save,
-  Trash2,
-  Undo2,
-  X,
-} from 'lucide-react';
+import { Eraser, Pencil, Redo2, RotateCcw, Save, Trash2, Undo2, X } from 'lucide-react';
 
 const CANVAS_WIDTH = 1200;
 const CANVAS_HEIGHT = 800;
@@ -307,12 +298,7 @@ export function DrawingDialog({ onSave, onClose }: DrawingDialogProps) {
             ) : null}
           </div>
           <div>
-            <button
-              type="button"
-              className="drawing-cancel"
-              disabled={saving}
-              onClick={onClose}
-            >
+            <button type="button" className="drawing-cancel" disabled={saving} onClick={onClose}>
               Cancel
             </button>
             <button
