@@ -1,0 +1,287 @@
+.drawing-dialog-layer {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-dialog) + 40);
+  display: grid;
+  place-items: center;
+  padding: var(--space-5);
+  background: var(--scrim);
+}
+
+.drawing-dialog {
+  display: grid;
+  width: min(1080px, 100%);
+  max-height: min(94vh, 900px);
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  box-shadow: 0 28px 90px rgb(15 18 24 / 34%);
+}
+
+.drawing-dialog-header,
+.drawing-dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+}
+
+.drawing-dialog-header {
+  border-bottom: 1px solid var(--border);
+}
+
+.drawing-dialog-header > div {
+  display: grid;
+  gap: 2px;
+}
+
+.drawing-dialog-header strong {
+  font-size: var(--text-lg);
+}
+
+.drawing-dialog-header span,
+.drawing-dialog-footer > div:first-child {
+  color: var(--text-subtle);
+  font-size: var(--text-sm);
+}
+
+.drawing-dialog-header button,
+.drawing-toolbar button,
+.drawing-dialog-footer button {
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+}
+
+.drawing-dialog-header button {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  padding: 0;
+}
+
+.drawing-dialog-header button:hover,
+.drawing-dialog-header button:focus-visible,
+.drawing-toolbar button:hover,
+.drawing-toolbar button:focus-visible {
+  background: var(--surface-hover);
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.drawing-toolbar {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+  padding: var(--space-2) var(--space-4);
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+  scrollbar-width: thin;
+}
+
+.drawing-toolbar > button {
+  display: inline-flex;
+  min-height: 34px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  padding: 0 9px;
+}
+
+.drawing-toolbar > button[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--accent) 13%, transparent);
+  color: var(--accent-strong);
+}
+
+.drawing-toolbar button:disabled,
+.drawing-dialog-header button:disabled,
+.drawing-dialog-footer button:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+
+.drawing-toolbar svg,
+.drawing-dialog-header svg,
+.drawing-dialog-footer svg {
+  width: 17px;
+  height: 17px;
+  stroke-width: 1.9;
+}
+
+.drawing-toolbar-divider {
+  width: 1px;
+  height: 24px;
+  flex: 0 0 1px;
+  margin: 0 4px;
+  background: var(--border);
+}
+
+.drawing-toolbar-spacer {
+  flex: 1 1 24px;
+}
+
+.drawing-colors,
+.drawing-widths {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+}
+
+.drawing-colors .drawing-color {
+  width: 28px;
+  height: 28px;
+  padding: 5px;
+  border-radius: 50%;
+}
+
+.drawing-color::before {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 1px solid rgb(0 0 0 / 16%);
+  border-radius: 50%;
+  background: var(--drawing-color);
+  content: '';
+}
+
+.drawing-color[aria-pressed='true'] {
+  box-shadow: inset 0 0 0 2px var(--accent-strong);
+}
+
+.drawing-widths button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  padding: 0;
+}
+
+.drawing-widths button span {
+  max-width: 15px;
+  max-height: 15px;
+  border-radius: 50%;
+  background: var(--text);
+}
+
+.drawing-widths button[aria-pressed='true'] {
+  background: var(--surface-hover);
+  box-shadow: inset 0 0 0 1px var(--accent-strong);
+}
+
+.drawing-canvas-wrap {
+  min-height: 0;
+  padding: var(--space-4);
+  overflow: auto;
+  background: color-mix(in srgb, var(--bg) 88%, var(--surface));
+}
+
+.drawing-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 2;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: #ffffff;
+  box-shadow: var(--shadow-sm);
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.drawing-dialog-footer {
+  border-top: 1px solid var(--border);
+}
+
+.drawing-dialog-footer > div:last-child {
+  display: flex;
+  flex: 0 0 auto;
+  gap: var(--space-2);
+}
+
+.drawing-dialog-footer button {
+  min-height: 38px;
+  padding: 0 var(--space-4);
+  font-weight: 680;
+}
+
+.drawing-cancel:hover,
+.drawing-cancel:focus-visible {
+  background: var(--surface-hover);
+}
+
+.drawing-dialog-footer .drawing-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--accent);
+  color: var(--accent-contrast, #ffffff);
+}
+
+.drawing-dialog-footer .drawing-save:hover,
+.drawing-dialog-footer .drawing-save:focus-visible {
+  background: var(--accent-strong);
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.drawing-error {
+  color: #b42318;
+}
+
+.attachment-drawing-button svg {
+  width: 17px;
+  height: 17px;
+}
+
+@media (max-width: 767px) {
+  .drawing-dialog-layer {
+    place-items: stretch;
+    padding: 0;
+  }
+
+  .drawing-dialog {
+    width: 100%;
+    max-height: none;
+    min-height: 100vh;
+    min-height: 100dvh;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .drawing-dialog-header {
+    padding-top: calc(var(--space-4) + env(safe-area-inset-top));
+  }
+
+  .drawing-toolbar {
+    overscroll-behavior-inline: contain;
+  }
+
+  .drawing-canvas-wrap {
+    display: grid;
+    min-height: 0;
+    place-items: center;
+    padding: var(--space-2);
+  }
+
+  .drawing-canvas {
+    max-height: calc(100dvh - 230px);
+  }
+
+  .drawing-dialog-footer {
+    align-items: stretch;
+    padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+    flex-direction: column;
+  }
+
+  .drawing-dialog-footer > div:last-child {
+    justify-content: flex-end;
+  }
+}
