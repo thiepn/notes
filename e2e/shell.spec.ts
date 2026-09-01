@@ -60,8 +60,8 @@ test('desktop navigation can collapse without hiding the workspace', async ({ pa
 test('appearance preference persists across reloads', async ({ page }) => {
   await page.goto('./');
 
-  const themeToggle = page.getByTestId('theme-toggle');
-  await themeToggle.click();
+  await page.getByTestId('header-more-toggle').click();
+  await page.getByRole('menuitem', { name: /System appearance/u }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await expect
     .poll(() => page.evaluate(() => window.localStorage.getItem('notes.theme')))
@@ -70,6 +70,7 @@ test('appearance preference persists across reloads', async ({ page }) => {
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 
-  await page.getByTestId('theme-toggle').click();
+  await page.getByTestId('header-more-toggle').click();
+  await page.getByRole('menuitem', { name: /Light appearance/u }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 });
