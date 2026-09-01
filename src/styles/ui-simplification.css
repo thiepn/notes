@@ -1,0 +1,267 @@
+/* Progressive disclosure layer: keep advanced Notes features available without
+   letting them compete with capture, reading, and editing by default. */
+
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.header-actions,
+.note-composer-menu-slot,
+.note-editor-menu-slot,
+.note-card-action-slot {
+  position: relative;
+}
+
+.header-more-menu,
+.note-composer-tools-menu,
+.note-editor-tools-menu,
+.note-editor-more-menu,
+.note-card-more-menu {
+  position: absolute;
+  z-index: 40;
+  display: grid;
+  min-width: 210px;
+  gap: 3px;
+  padding: 7px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
+
+.header-more-menu {
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 230px;
+}
+
+.note-composer-tools-menu {
+  top: calc(100% + 8px);
+  right: 0;
+}
+
+.note-composer-tools-menu-expanded,
+.note-editor-tools-menu,
+.note-editor-more-menu {
+  top: auto;
+  bottom: calc(100% + 8px);
+  left: 0;
+  right: auto;
+}
+
+.note-editor-more-menu {
+  left: auto;
+  right: 0;
+}
+
+.note-card-more-menu {
+  right: 0;
+  bottom: calc(100% + 8px);
+}
+
+.header-more-menu button,
+.note-composer-tools-menu button,
+.note-editor-tools-menu button,
+.note-editor-more-menu button,
+.note-card-more-menu button {
+  display: flex;
+  width: 100%;
+  min-height: 38px;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-start;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.header-more-menu button:hover,
+.note-composer-tools-menu button:hover,
+.note-editor-tools-menu button:hover,
+.note-editor-more-menu button:hover,
+.note-card-more-menu button:hover {
+  background: var(--surface-hover);
+}
+
+.header-more-menu button svg,
+.note-composer-tools-menu button svg,
+.note-editor-tools-menu button svg,
+.note-editor-more-menu button svg,
+.note-card-more-menu button svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+.header-more-menu button span {
+  flex: 1;
+}
+
+.header-more-menu kbd,
+.header-more-menu small {
+  color: var(--text-subtle);
+  font-size: 0.72rem;
+}
+
+.sidebar-library-section,
+.sidebar-tools-section {
+  margin-top: var(--space-4);
+}
+
+.sidebar-section-heading-static {
+  margin-bottom: var(--space-2);
+}
+
+/* Keep the global surface quiet. Grid/list remains available from the header
+   More menu and command palette. */
+.notes-toolbar .notes-view-toggle {
+  display: none;
+}
+
+.note-composer-simplified,
+.note-editor-dialog-simplified {
+  overflow: visible;
+}
+
+.note-composer-secondary-panel,
+.note-editor-secondary-panel {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.note-composer-footer-simplified,
+.note-editor-footer-simplified {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.note-composer-primary-actions,
+.note-editor-primary-actions,
+.note-editor-footer-actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.note-composer-primary-actions,
+.note-editor-primary-actions {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.note-composer-footer-simplified > .note-composer-state,
+.note-editor-footer-simplified > .note-editor-state {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  min-height: 0;
+}
+
+.note-composer-footer-simplified > .note-composer-close,
+.note-editor-footer-simplified > .note-editor-footer-actions {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.note-composer-add-button,
+.note-composer-attachments-button,
+.note-editor-primary-actions .note-editor-secondary,
+.note-editor-footer-simplified .note-editor-secondary {
+  min-height: 36px;
+}
+
+.note-composer-menu-control,
+.note-editor-menu-control {
+  width: 100%;
+}
+
+/* The ordinary card is content. Actions appear when the card is being acted on. */
+@media (hover: hover) and (pointer: fine) {
+  .note-card-actions,
+  .note-card-pin-action {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--motion-fast) var(--ease-standard);
+  }
+
+  .note-card:hover .note-card-actions,
+  .note-card:focus-within .note-card-actions,
+  .note-card:hover .note-card-pin-action,
+  .note-card:focus-within .note-card-pin-action,
+  .note-card[data-pinned='true'] .note-card-pin-action {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+@media (max-width: 767px) {
+  .header-more-menu {
+    position: fixed;
+    top: calc(var(--header-height) - 4px);
+    right: 8px;
+    width: min(280px, calc(100vw - 16px));
+  }
+
+  .note-composer-tools-menu {
+    right: 0;
+    min-width: 190px;
+  }
+
+  .note-composer-footer-simplified,
+  .note-editor-footer-simplified {
+    grid-template-columns: 1fr;
+  }
+
+  .note-composer-primary-actions,
+  .note-editor-primary-actions,
+  .note-composer-footer-simplified > .note-composer-close,
+  .note-editor-footer-simplified > .note-editor-footer-actions {
+    grid-column: 1;
+  }
+
+  .note-composer-primary-actions,
+  .note-editor-primary-actions {
+    grid-row: 2;
+  }
+
+  .note-composer-footer-simplified > .note-composer-close,
+  .note-editor-footer-simplified > .note-editor-footer-actions {
+    grid-row: 3;
+    justify-self: end;
+  }
+
+  .note-editor-tools-menu,
+  .note-editor-more-menu,
+  .note-composer-tools-menu-expanded {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: 76px;
+    width: auto;
+    max-height: min(60vh, 420px);
+    overflow: auto;
+  }
+
+  .note-card-actions {
+    gap: 2px;
+  }
+}
