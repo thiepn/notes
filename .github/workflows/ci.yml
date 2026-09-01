@@ -133,38 +133,23 @@ jobs:
               "  expect(restored.attachmentChecksum).toBe('source-checksum');\n  expect(restored.reminder).toEqual({\n    id: ids.reminderId,\n    noteId: ids.textId,\n    dueAt: ids.reminderDueAt,\n    timeZone: 'Europe/Berlin',\n    status: 'active',\n  });\n  expect(restored.revisionNoteIds).toContain(ids.textId);",
           )
 
-          css = "src/styles/notes.css"
+          reminders = "e2e/reminders.spec.ts"
           replace_once(
-              css,
-              ".note-card {\n  position: relative;",
-              ".note-card {\n  position: relative;\n  isolation: isolate;",
-          )
-          replace_once(
-              css,
-              ".note-card-open {\n  display: block;",
-              ".note-card-open {\n  position: relative;\n  z-index: 0;\n  display: block;",
-          )
-          replace_once(
-              css,
-              ".note-card-pin-action {\n  position: absolute;\n  top: 8px;\n  right: 8px;\n}",
-              ".note-card-pin-action {\n  position: absolute;\n  z-index: 2;\n  top: 8px;\n  right: 8px;\n}",
-          )
-          replace_once(
-              css,
-              ".note-card-actions {\n  position: absolute;\n  right: 8px;",
-              ".note-card-actions {\n  position: absolute;\n  z-index: 2;\n  right: 8px;",
+              reminders,
+              "  const reminderCard = page.locator('[data-note-card]').filter({ hasText: 'Call tomorrow' });\n  await reminderCard.getByRole('button', { name: 'Move note to trash: Call tomorrow' }).click();",
+              "  const reminderCard = page.locator('[data-note-card]').filter({ hasText: 'Call tomorrow' });\n  await reminderCard.hover();\n  await reminderCard.getByRole('button', { name: 'Move note to trash: Call tomorrow' }).click();",
           )
           PY
 
-          npx prettier --write e2e/backup.spec.ts src/styles/notes.css
+          npx prettier --write e2e/backup.spec.ts e2e/reminders.spec.ts
           npm run lint
           npm run typecheck
           npx playwright test e2e/backup.spec.ts e2e/reminders.spec.ts
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add e2e/backup.spec.ts src/styles/notes.css
-          git commit -m "fix: clear V2-1 browser regression blockers"
+          git add e2e/backup.spec.ts e2e/reminders.spec.ts
+          git commit -m "test: align V2-1 browser regressions with release behavior"
           git push origin HEAD:v2-1-reminders
 
       - name: Upload focused fix diagnostics
