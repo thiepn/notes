@@ -1,0 +1,92 @@
+name: Temporary media menu fix
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - run: npm ci
+      - name: Fix media menu lifecycle
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_exact(path, old, new, expected=1):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != expected:
+                  raise SystemExit(
+                      f"Expected {expected} matches in {path}, found {count}: {old[:90]!r}"
+                  )
+              p.write_text(text.replace(old, new))
+
+          for path, dialog in [
+              ('src/features/drawing/DrawingAttachmentButton.tsx', 'DrawingDialog'),
+              ('src/features/voice/VoiceAttachmentButton.tsx', 'VoiceRecorderDialog'),
+          ]:
+              replace_exact(
+                  path,
+                  "  onOpen?: (() => void) | undefined;\n  onChanged?: ((noteId: string) => void) | undefined;",
+                  "  onOpen?: (() => void) | undefined;\n  onDialogClose?: (() => void) | undefined;\n  onChanged?: ((noteId: string) => void) | undefined;",
+              )
+              replace_exact(
+                  path,
+                  "  onOpen,\n  onChanged,",
+                  "  onOpen,\n  onDialogClose,\n  onChanged,",
+              )
+              replace_exact(
+                  path,
+                  f"{{open ? <{dialog} onSave={{save}} onClose={{() => setOpen(false)}} /> : null}}",
+                  f"{{open ? (\n        <{dialog}\n          onSave={{save}}\n          onClose={{() => {{\n            setOpen(false);\n            onDialogClose?.();\n          }}}}\n        />\n      ) : null}}",
+              )
+
+          for path in [
+              'src/features/notes/NoteEditorDialog.tsx',
+              'src/features/notes/ChecklistEditorDialog.tsx',
+          ]:
+              replace_exact(
+                  path,
+                  "                      onOpen={() => setAddOpen(false)}",
+                  "                      onDialogClose={() => setAddOpen(false)}",
+                  expected=2,
+              )
+
+          replace_exact(
+              'src/features/notes/TextNoteComposer.tsx',
+              "                  onOpen={() => setExpandedToolsOpen(false)}",
+              "                  onDialogClose={() => setExpandedToolsOpen(false)}",
+              expected=2,
+          )
+          PY
+      - name: Format patched files
+        run: >-
+          npx prettier --write
+          src/features/drawing/DrawingAttachmentButton.tsx
+          src/features/voice/VoiceAttachmentButton.tsx
+          src/features/notes/NoteEditorDialog.tsx
+          src/features/notes/ChecklistEditorDialog.tsx
+          src/features/notes/TextNoteComposer.tsx
+      - name: Commit lifecycle fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            src/features/drawing/DrawingAttachmentButton.tsx \
+            src/features/voice/VoiceAttachmentButton.tsx \
+            src/features/notes/NoteEditorDialog.tsx \
+            src/features/notes/ChecklistEditorDialog.tsx \
+            src/features/notes/TextNoteComposer.tsx
+          git commit -m "Fix media Add menu lifecycle"
+          git push
