@@ -6,9 +6,9 @@ A local-first, zero-friction notes PWA designed to match Google Keep's capture s
 
 ## Status
 
-**V2-6 — OCR is implemented as the sixth V2 feature release.** Notes now supports private on-device text extraction from image attachments with English, German, and French recognition, editable review, copy, text-note insertion, and offline-packaged OCR assets without requiring a backend or database migration.
+**V2-7 — Advanced Search is implemented as the seventh V2 feature release.** Notes now adds bounded typo tolerance, stronger field-aware relevance, attachment-filename and committed-OCR search, backed-up saved searches, and device-local recent search history while keeping the existing dependency-free local index.
 
-V1 through P15 remains the stable product foundation, V2-1 adds reminders, V2-2 adds lightweight formatting, V2-3 adds note-to-note link intelligence, V2-4 adds drawing, V2-5 adds local voice capture, and V2-6 adds local OCR while preserving the same attachment, note-content, backup, lifecycle, and offline architecture.
+V1 through P15 remains the stable product foundation, V2-1 adds reminders, V2-2 adds lightweight formatting, V2-3 adds note-to-note link intelligence, V2-4 adds drawing, V2-5 adds local voice capture, V2-6 adds local OCR, and V2-7 upgrades local search without adding a backend or parallel persistent note index.
 
 ## V1 scope
 
@@ -158,6 +158,29 @@ V2-6 requires **no database migration**. OCR results are transient unless the us
 
 V2-6 deliberately excludes cloud OCR, PDF OCR, handwriting recognition, automatic OCR during attachment import, bulk/background OCR, document-layout reconstruction, bounding-box overlays, table/form reconstruction, and AI correction, summarization, translation, or classification.
 
+## V2-7 scope
+
+V2-7 upgrades the existing local search engine without introducing a server or a second note index:
+
+- Bounded fuzzy matching for plausible spelling mistakes
+- Exact prefix/substring matching remains the fast path and short terms are not fuzzed
+- Stronger relevance scoring across title, labels, attachment filenames, committed OCR, checklist text, and body text
+- Search across attachment filenames for every attachment type
+- Dedicated recognition of reviewed V2-6 `## Extracted text` sections
+- No silent persistence of transient OCR results merely for search
+- Saved searches containing query plus type/status/color/label/date filters
+- Saved searches stored in the existing backed-up `settings` table
+- Up to 20 canonicalized, deduplicated saved searches
+- Device-local recent search history capped at eight entries
+- Empty-search picker for saved and recent searches
+- Header action to save the current query/filter snapshot
+- Existing query operators, archive visibility, Trash exclusion, and filters preserved
+- Existing 10,000-note performance certification preserved: <100 ms matching and <3 s index build on CI
+
+V2-7 requires **no database migration**. Saved searches use the existing settings table; recent searches are disposable `localStorage` UI history. The note/checklist/label/attachment/reminder tables remain authoritative and the searchable document index remains derived in memory.
+
+V2-7 deliberately excludes cloud search, semantic/vector/embedding search, AI query expansion, PDF/Office content extraction, a parallel durable search-index database, silently indexing transient OCR, and collaborative/shared saved searches.
+
 ## Architecture
 
 - React + TypeScript + Vite
@@ -218,8 +241,12 @@ V2-6 deliberately excludes cloud OCR, PDF OCR, handwriting recognition, automati
 - Context-scoped card selection with modifier, range, explicit-control, and touch long-press entry
 - Transactional bulk lifecycle/color/label mutations with field-scoped Undo snapshots
 - Dependency-free in-memory search over a normalized IndexedDB-derived document index
-- Accent-insensitive multilingual normalization with title/label/checklist/body relevance weighting
-- Search filters and query operators for type, status, color, labels, dates, images, and links
+- Accent-insensitive multilingual normalization plus bounded candidate-pruned Levenshtein typo matching
+- Field-aware relevance weighting across title, labels, attachment filenames, committed OCR, checklist text, and body text
+- Attachment-filename indexing without parsing or duplicating attachment Blob contents
+- V2-6 committed `## Extracted text` recognition without persisting transient OCR output
+- Backed-up saved-search snapshots in the existing settings table plus capped device-local recent search history
+- Search filters and query operators for type, status, color, labels, dates, images, links, and reminders
 - Searchable command palette with global navigation, creation, organization, view, appearance, backup/recovery, and Google Keep import commands
 - Real DOM card focus for J/K navigation and native Enter activation
 - Shortcut safety guards for editable controls, composers, and modal dialogs, with editor-local rich-text chords handled before global commands
@@ -233,11 +260,11 @@ V2-6 deliberately excludes cloud OCR, PDF OCR, handwriting recognition, automati
 - Informational offline/offline-ready states without disabling local IndexedDB operations
 - Production-only offline certification using `vite preview`, separate from dev-server browser tests
 - Vitest for unit tests
-- Playwright for real-browser IndexedDB, capture recovery, card/grid, lifecycle, organization, checklist, selection/bulk, search, revision-history/recovery, backup/disaster-recovery, Google Keep migration, image/attachment capture and viewing, command/keyboard, rich-text editing/rendering/search, link intelligence/navigation/auto-linking, drawing/pointer/PNG/modal integration, voice/microphone/audio/persistence/permission integration, real local OCR recognition/text insertion, responsive-shell, end-to-end, and production PWA/offline/OCR-asset certification
+- Playwright for real-browser IndexedDB, capture recovery, card/grid, lifecycle, organization, checklist, selection/bulk, advanced fuzzy/saved/recent/filename/OCR search, revision-history/recovery, backup/disaster-recovery, Google Keep migration, image/attachment capture and viewing, command/keyboard, rich-text editing/rendering/search, link intelligence/navigation/auto-linking, drawing/pointer/PNG/modal integration, voice/microphone/audio/persistence/permission integration, real local OCR recognition/text insertion, responsive-shell, end-to-end, and production PWA/offline/OCR-asset certification
 - GitHub Actions for CI and deployment
 - GitHub Pages-compatible build rooted at `/notes/`
 
-See [`docs/DATABASE.md`](docs/DATABASE.md) for database invariants, [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for the shell and styling contract, [`docs/CAPTURE.md`](docs/CAPTURE.md) for new-note capture and recovery, [`docs/CARDS_AND_GRID.md`](docs/CARDS_AND_GRID.md) for the P4 card and editor architecture, [`docs/LIFECYCLE.md`](docs/LIFECYCLE.md) for lifecycle state, Undo, Archive, Trash, duplication, and permanent deletion behavior, [`docs/ORGANIZATION.md`](docs/ORGANIZATION.md) for P6 color, label, label-view, and organization behavior, [`docs/CHECKLISTS.md`](docs/CHECKLISTS.md) for P7 checklist storage, interaction, conversion, and recovery behavior, [`docs/SELECTION_AND_BULK.md`](docs/SELECTION_AND_BULK.md) for P8 selection scope, bulk toolbar behavior, transactional batch mutations, and Undo semantics, [`docs/SEARCH.md`](docs/SEARCH.md) for P9 indexing, normalization, ranking, filters, query operators, and performance behavior, [`docs/KEYBOARD.md`](docs/KEYBOARD.md) for P10 command palette, shortcut safety, and focused-card keyboard behavior, [`docs/HISTORY.md`](docs/HISTORY.md) for P11 checkpoint, restore, Undo, copy, pruning, payload-validation, and cross-type recovery semantics, [`docs/BACKUP.md`](docs/BACKUP.md) for P12 full-library backup format, validation, safety snapshot, atomic replacement, and disaster-recovery behavior, [`docs/GOOGLE_KEEP_IMPORT.md`](docs/GOOGLE_KEEP_IMPORT.md) for P13 Takeout parsing, mapping, preview, repeat-import protection, and atomic additive migration behavior, [`docs/IMAGES.md`](docs/IMAGES.md) for P14 native image capture, privacy processing, thumbnails, viewer behavior, imported attachment handling, and storage limits, [`docs/PWA_OFFLINE.md`](docs/PWA_OFFLINE.md) for P15 installability, service-worker update policy, production offline behavior, and certification requirements, [`docs/REMINDERS.md`](docs/REMINDERS.md) for V2-1 reminder storage, scheduling, lifecycle, notification limits, backup/import integration, and regression requirements, [`docs/RICH_TEXT.md`](docs/RICH_TEXT.md) for V2-2 source syntax, editor behavior, rendering safety, search compatibility, scope boundaries, and regression requirements, [`docs/LINK_INTELLIGENCE.md`](docs/LINK_INTELLIGENCE.md) for V2-3 title resolution, WikiLink navigation, backlinks, unlinked mentions, safe auto-linking, and regression requirements, [`docs/DRAWING.md`](docs/DRAWING.md) for V2-4 drawing input, canvas tools, PNG persistence, modal isolation, capture integration, and regression requirements, [`docs/VOICE.md`](docs/VOICE.md) for V2-5 microphone capture, format negotiation, local persistence, playback, privacy boundaries, and regression requirements, and [`docs/OCR.md`](docs/OCR.md) for V2-6 local recognition, offline runtime packaging, text insertion, privacy boundaries, limitations, and regression requirements.
+See [`docs/DATABASE.md`](docs/DATABASE.md) for database invariants, [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for the shell and styling contract, [`docs/CAPTURE.md`](docs/CAPTURE.md) for new-note capture and recovery, [`docs/CARDS_AND_GRID.md`](docs/CARDS_AND_GRID.md) for the P4 card and editor architecture, [`docs/LIFECYCLE.md`](docs/LIFECYCLE.md) for lifecycle state, Undo, Archive, Trash, duplication, and permanent deletion behavior, [`docs/ORGANIZATION.md`](docs/ORGANIZATION.md) for P6 color, label, label-view, and organization behavior, [`docs/CHECKLISTS.md`](docs/CHECKLISTS.md) for P7 checklist storage, interaction, conversion, and recovery behavior, [`docs/SELECTION_AND_BULK.md`](docs/SELECTION_AND_BULK.md) for P8 selection scope, bulk toolbar behavior, transactional batch mutations, and Undo semantics, [`docs/SEARCH.md`](docs/SEARCH.md) for P9/V2-7 indexing, normalization, fuzzy matching, relevance scoring, filename/OCR discovery, saved/recent searches, query operators, and performance behavior, [`docs/KEYBOARD.md`](docs/KEYBOARD.md) for P10 command palette, shortcut safety, and focused-card keyboard behavior, [`docs/HISTORY.md`](docs/HISTORY.md) for P11 checkpoint, restore, Undo, copy, pruning, payload-validation, and cross-type recovery semantics, [`docs/BACKUP.md`](docs/BACKUP.md) for P12 full-library backup format, validation, safety snapshot, atomic replacement, and disaster-recovery behavior, [`docs/GOOGLE_KEEP_IMPORT.md`](docs/GOOGLE_KEEP_IMPORT.md) for P13 Takeout parsing, mapping, preview, repeat-import protection, and atomic additive migration behavior, [`docs/IMAGES.md`](docs/IMAGES.md) for P14 native image capture, privacy processing, thumbnails, viewer behavior, imported attachment handling, and storage limits, [`docs/PWA_OFFLINE.md`](docs/PWA_OFFLINE.md) for P15 installability, service-worker update policy, production offline behavior, and certification requirements, [`docs/REMINDERS.md`](docs/REMINDERS.md) for V2-1 reminder storage, scheduling, lifecycle, notification limits, backup/import integration, and regression requirements, [`docs/RICH_TEXT.md`](docs/RICH_TEXT.md) for V2-2 source syntax, editor behavior, rendering safety, search compatibility, scope boundaries, and regression requirements, [`docs/LINK_INTELLIGENCE.md`](docs/LINK_INTELLIGENCE.md) for V2-3 title resolution, WikiLink navigation, backlinks, unlinked mentions, safe auto-linking, and regression requirements, [`docs/DRAWING.md`](docs/DRAWING.md) for V2-4 drawing input, canvas tools, PNG persistence, modal isolation, capture integration, and regression requirements, [`docs/VOICE.md`](docs/VOICE.md) for V2-5 microphone capture, format negotiation, local persistence, playback, privacy boundaries, and regression requirements, and [`docs/OCR.md`](docs/OCR.md) for V2-6 local recognition, offline runtime packaging, text insertion, privacy boundaries, limitations, and regression requirements.
 
 ## Principles
 

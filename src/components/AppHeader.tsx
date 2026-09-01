@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
+  BookmarkCheck,
+  BookmarkPlus,
   Command,
   LayoutGrid,
   List,
@@ -14,43 +16,94 @@ import {
   X,
 } from 'lucide-react';
 
-import { IconButton } from './ui/IconButton';
+import { notesDatabase } from '../db';
+import { SearchHistoryPopover } from '../features/search/SearchHistoryPopover';
+import {
+  clearRecentSearches,
+  readRecentSearches,
+  rememberRecentSearch,
+  searchSignature,
+  SearchHistoryRepository,
+  type RecentSearch,
+  type SavedSearch,
+  type SearchSnapshot,
+} from '../features/search/searchHistory';
+import { hasSearchFilters, type SearchFilters } from '../features/search/searchTypes';
 import { useTheme } from '../theme/ThemeContext';
 import { nextThemePreference, type ThemePreference } from '../theme/theme';
+import { IconButton } from './ui/IconButton';
 
 const THEME_LABELS: Record<ThemePreference, string> = {
   system: 'System',
   light: 'Light',
   dark: 'Dark',
 };
+const searchHistoryRepository = new SearchHistoryRepository(notesDatabase);
 
 interface AppHeaderProps {
   onMenu(): void;
   onCommandPalette(): void;
   searchQuery: string;
+  searchFilters: SearchFilters;
   filtersOpen: boolean;
   filtersActive: boolean;
   onSearchQueryChange(query: string): void;
   onToggleFilters(): void;
   onClearSearch(): void;
+  onApplySearch(snapshot: SearchSnapshot): void;
 }
 
 export function AppHeader({
   onMenu,
   onCommandPalette,
   searchQuery,
+  searchFilters,
   filtersOpen,
   filtersActive,
   onSearchQueryChange,
   onToggleFilters,
   onClearSearch,
+  onApplySearch,
 }: AppHeaderProps) {
   const { preference, cyclePreference } = useTheme();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [searchHistoryOpen, setSearchHistoryOpen] = useState(false);
+  const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
+  const [recentSearches, setRecentSearches] = useState<RecentSearch[]>(readRecentSearches);
   const nextPreference = nextThemePreference(preference);
   const ThemeIcon = preference === 'system' ? Monitor : preference === 'light' ? Sun : Moon;
+  const currentSnapshot: SearchSnapshot = { query: searchQuery, filters: searchFilters };
+  const currentSignature = searchSignature(currentSnapshot);
+  const currentCanBeSaved = Boolean(searchQuery.trim()) || filtersActive;
+  const currentIsSaved = savedSearches.some(
+    (search) => searchSignature(search) === currentSignature,
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    const reloadSaved = () => {
+      void searchHistoryRepository.listSaved().then((searches) => {
+        if (!cancelled) setSavedSearches(searches);
+      });
+    };
+    reloadSaved();
+    window.addEventListener('notes-search-history-changed', reloadSaved);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('notes-search-history-changed', reloadSaved);
+    };
+  }, []);
+
+  useEffect(() => {
+    const hasQuery = searchQuery.trim().length >= 2;
+    if (!hasQuery && !hasSearchFilters(searchFilters)) return;
+    const timer = window.setTimeout(() => {
+      setRecentSearches(rememberRecentSearch({ query: searchQuery, filters: searchFilters }));
+    }, 1_200);
+    return () => window.clearTimeout(timer);
+  }, [searchFilters, searchQuery]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -97,6 +150,15 @@ export function AppHeader({
     setMoreOpen(false);
   };
 
+  const removeSavedSearch = async (id: string) => {
+    setSavedSearches(await searchHistoryRepository.remove(id));
+  };
+
+  const saveCurrentSearch = async () => {
+    if (!currentCanBeSaved || currentIsSaved) return;
+    setSavedSearches(await searchHistoryRepository.save(currentSnapshot));
+  };
+
   return (
     <header className="app-header">
       <div className="header-leading">
@@ -118,7 +180,17 @@ export function AppHeader({
         </div>
       </div>
 
-      <div className="search-shell" role="search">
+      <div
+        className="search-shell"
+        role="search"
+        onFocusCapture={() => setSearchHistoryOpen(true)}
+        onBlurCapture={(event) => {
+          const next = event.relatedTarget;
+          if (!(next instanceof Node) || !event.currentTarget.contains(next)) {
+            setSearchHistoryOpen(false);
+          }
+        }}
+      >
         <Search aria-hidden="true" />
         <input
           ref={searchInputRef}
@@ -155,10 +227,36 @@ export function AppHeader({
         >
           <SlidersHorizontal />
         </button>
+        {currentCanBeSaved ? (
+          <button
+            className="search-inline-action"
+            type="button"
+            aria-label={currentIsSaved ? 'Search saved' : 'Save search'}
+            aria-pressed={currentIsSaved}
+            data-active={currentIsSaved}
+            disabled={currentIsSaved}
+            onClick={() => void saveCurrentSearch()}
+          >
+            {currentIsSaved ? <BookmarkCheck /> : <BookmarkPlus />}
+          </button>
+        ) : null}
         {searchQuery || filtersActive ? (
           <button className="search-reset" type="button" onClick={onClearSearch}>
             Reset
           </button>
+        ) : null}
+
+        {searchHistoryOpen && !searchQuery.trim() && !filtersActive && !filtersOpen ? (
+          <SearchHistoryPopover
+            saved={savedSearches}
+            recent={recentSearches}
+            onApply={(snapshot) => {
+              onApplySearch(snapshot);
+              setSearchHistoryOpen(false);
+            }}
+            onRemoveSaved={(id) => void removeSavedSearch(id)}
+            onClearRecent={() => setRecentSearches(clearRecentSearches())}
+          />
         ) : null}
       </div>
 
