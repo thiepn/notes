@@ -6,9 +6,9 @@ A local-first, zero-friction notes PWA designed to match Google Keep's capture s
 
 ## Status
 
-**V2-2 — Lightweight Rich Text is implemented as the second V2 feature release.** Text notes now support lightweight formatting for bold, italic, strikethrough, inline code, links, headings, bulleted and numbered lists, and block quotes, with selection-aware toolbar actions, Ctrl/Cmd formatting shortcuts, formatted preview, safe card rendering, and formatting-neutral search.
+**V2-3 — Link Intelligence is implemented as the third V2 feature release.** Text notes now support title-resolved `[[WikiLinks]]`, internal-note navigation, derived backlinks, duplicate/missing-target states, unlinked-mention discovery, and safe one-click conversion of plain-text mentions into WikiLinks.
 
-V1 through P15 remains the stable product foundation, V2-1 adds reminders, and V2-2 adds formatting without replacing the mature textarea autosave/recovery path or introducing opaque HTML storage.
+V1 through P15 remains the stable product foundation, V2-1 adds reminders, V2-2 adds lightweight formatting, and V2-3 makes note-to-note relationships useful without adding a second graph database or changing the IndexedDB schema.
 
 ## V1 scope
 
@@ -66,6 +66,29 @@ V2-2 requires **no database migration**. Formatting remains a constrained Markdo
 
 Checklist item text remains plain in V2-2. Tables, embedded media in the text stream, font-family/font-size controls, text highlighting/colors, nested block editors, collaboration, and a heavy rich-text editor framework are deliberately excluded.
 
+## V2-3 scope
+
+V2-3 adds note-to-note link intelligence while continuing to store WikiLinks as ordinary source text:
+
+- `[[Note title]]` WikiLink authoring from the text-note formatting toolbar
+- Unicode-normalized, whitespace-normalized, case-insensitive exact-title resolution
+- Accent-sensitive title identity
+- Resolved, missing, and ambiguous target states
+- Direct navigation to active or archived resolved targets
+- Derived outgoing-link summaries and backlinks
+- Unlinked-mention discovery across active and archived text notes
+- Unicode-aware whole-mention matching rather than unsafe substring replacement
+- One-click conversion of all safe mentions in a source note
+- Protection for existing WikiLinks, HTTP/HTTPS Markdown links, inline code, and fenced code blocks
+- Duplicate-title safeguards that disable ambiguous navigation and auto-linking
+- Clean card/preview rendering without exposing raw `[[` and `]]` markers
+- `has:link` search support for both internal WikiLinks and external URL links
+- Immediate workspace synchronization after auto-link writes
+
+V2-3 requires **no database migration** and stores no persistent edge table. Outgoing links, backlinks, collisions, and unlinked mentions are derived from current note content and titles, so backup/restore, import, revisions, and plain-text portability remain authoritative automatically.
+
+V2-3 deliberately excludes graph visualization, block/section transclusion, checklist-item WikiLinks, aliases, automatic target creation, and automatic rename propagation.
+
 ## Architecture
 
 - React + TypeScript + Vite
@@ -93,6 +116,10 @@ Checklist item text remains plain in V2-2. Tables, embedded media in the text st
 - Selection-aware native-textarea formatting that preserves the existing autosave, cursor, crash-recovery, and history model
 - Safe rich-text parsing into React elements with no arbitrary HTML execution and non-interactive links inside button-based note cards
 - Formatting-neutral search/accessibility text derived from visible rich-text content while preserving URLs for link detection
+- Derived WikiLink relationship analysis with no persistent graph/edge table
+- Deterministic unique-title link resolution with explicit missing/ambiguous states instead of arbitrary target selection
+- Unicode-aware unlinked-mention scanning with syntax-protected ranges and optimistic repository writes
+- Internal-link navigation that reuses the existing Notes/Archive workspace and card-opening behavior
 - Versioned eight-table full-library JSON backups taken from one consistent IndexedDB read transaction
 - Base64 attachment preservation with independent SHA-256 backup integrity checks
 - Read-only backup validation and recovery preview before any destructive database write
@@ -125,11 +152,11 @@ Checklist item text remains plain in V2-2. Tables, embedded media in the text st
 - Informational offline/offline-ready states without disabling local IndexedDB operations
 - Production-only offline certification using `vite preview`, separate from dev-server browser tests
 - Vitest for unit tests
-- Playwright for real-browser IndexedDB, capture recovery, card/grid, lifecycle, organization, checklist, selection/bulk, search, revision-history/recovery, backup/disaster-recovery, Google Keep migration, image/attachment capture and viewing, command/keyboard, rich-text editing/rendering/search, responsive-shell, end-to-end, and production PWA/offline certification
+- Playwright for real-browser IndexedDB, capture recovery, card/grid, lifecycle, organization, checklist, selection/bulk, search, revision-history/recovery, backup/disaster-recovery, Google Keep migration, image/attachment capture and viewing, command/keyboard, rich-text editing/rendering/search, link intelligence/navigation/auto-linking, responsive-shell, end-to-end, and production PWA/offline certification
 - GitHub Actions for CI and deployment
 - GitHub Pages-compatible build rooted at `/notes/`
 
-See [`docs/DATABASE.md`](docs/DATABASE.md) for database invariants, [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for the shell and styling contract, [`docs/CAPTURE.md`](docs/CAPTURE.md) for new-note capture and recovery, [`docs/CARDS_AND_GRID.md`](docs/CARDS_AND_GRID.md) for the P4 card and editor architecture, [`docs/LIFECYCLE.md`](docs/LIFECYCLE.md) for lifecycle state, Undo, Archive, Trash, duplication, and permanent deletion behavior, [`docs/ORGANIZATION.md`](docs/ORGANIZATION.md) for P6 color, label, label-view, and organization behavior, [`docs/CHECKLISTS.md`](docs/CHECKLISTS.md) for P7 checklist storage, interaction, conversion, and recovery behavior, [`docs/SELECTION_AND_BULK.md`](docs/SELECTION_AND_BULK.md) for P8 selection scope, bulk toolbar behavior, transactional batch mutations, and Undo semantics, [`docs/SEARCH.md`](docs/SEARCH.md) for P9 indexing, normalization, ranking, filters, query operators, and performance behavior, [`docs/KEYBOARD.md`](docs/KEYBOARD.md) for P10 command palette, shortcut safety, and focused-card keyboard behavior, [`docs/HISTORY.md`](docs/HISTORY.md) for P11 checkpoint, restore, Undo, copy, pruning, payload-validation, and cross-type recovery semantics, [`docs/BACKUP.md`](docs/BACKUP.md) for P12 full-library backup format, validation, safety snapshot, atomic replacement, and disaster-recovery behavior, [`docs/GOOGLE_KEEP_IMPORT.md`](docs/GOOGLE_KEEP_IMPORT.md) for P13 Takeout parsing, mapping, preview, repeat-import protection, and atomic additive migration behavior, [`docs/IMAGES.md`](docs/IMAGES.md) for P14 native image capture, privacy processing, thumbnails, viewer behavior, imported attachment handling, and storage limits, [`docs/PWA_OFFLINE.md`](docs/PWA_OFFLINE.md) for P15 installability, service-worker update policy, production offline behavior, and certification requirements, [`docs/REMINDERS.md`](docs/REMINDERS.md) for V2-1 reminder storage, scheduling, lifecycle, notification limits, backup/import integration, and regression requirements, and [`docs/RICH_TEXT.md`](docs/RICH_TEXT.md) for V2-2 source syntax, editor behavior, rendering safety, search compatibility, scope boundaries, and regression requirements.
+See [`docs/DATABASE.md`](docs/DATABASE.md) for database invariants, [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for the shell and styling contract, [`docs/CAPTURE.md`](docs/CAPTURE.md) for new-note capture and recovery, [`docs/CARDS_AND_GRID.md`](docs/CARDS_AND_GRID.md) for the P4 card and editor architecture, [`docs/LIFECYCLE.md`](docs/LIFECYCLE.md) for lifecycle state, Undo, Archive, Trash, duplication, and permanent deletion behavior, [`docs/ORGANIZATION.md`](docs/ORGANIZATION.md) for P6 color, label, label-view, and organization behavior, [`docs/CHECKLISTS.md`](docs/CHECKLISTS.md) for P7 checklist storage, interaction, conversion, and recovery behavior, [`docs/SELECTION_AND_BULK.md`](docs/SELECTION_AND_BULK.md) for P8 selection scope, bulk toolbar behavior, transactional batch mutations, and Undo semantics, [`docs/SEARCH.md`](docs/SEARCH.md) for P9 indexing, normalization, ranking, filters, query operators, and performance behavior, [`docs/KEYBOARD.md`](docs/KEYBOARD.md) for P10 command palette, shortcut safety, and focused-card keyboard behavior, [`docs/HISTORY.md`](docs/HISTORY.md) for P11 checkpoint, restore, Undo, copy, pruning, payload-validation, and cross-type recovery semantics, [`docs/BACKUP.md`](docs/BACKUP.md) for P12 full-library backup format, validation, safety snapshot, atomic replacement, and disaster-recovery behavior, [`docs/GOOGLE_KEEP_IMPORT.md`](docs/GOOGLE_KEEP_IMPORT.md) for P13 Takeout parsing, mapping, preview, repeat-import protection, and atomic additive migration behavior, [`docs/IMAGES.md`](docs/IMAGES.md) for P14 native image capture, privacy processing, thumbnails, viewer behavior, imported attachment handling, and storage limits, [`docs/PWA_OFFLINE.md`](docs/PWA_OFFLINE.md) for P15 installability, service-worker update policy, production offline behavior, and certification requirements, [`docs/REMINDERS.md`](docs/REMINDERS.md) for V2-1 reminder storage, scheduling, lifecycle, notification limits, backup/import integration, and regression requirements, [`docs/RICH_TEXT.md`](docs/RICH_TEXT.md) for V2-2 source syntax, editor behavior, rendering safety, search compatibility, scope boundaries, and regression requirements, and [`docs/LINK_INTELLIGENCE.md`](docs/LINK_INTELLIGENCE.md) for V2-3 title resolution, WikiLink navigation, backlinks, unlinked mentions, safe auto-linking, and regression requirements.
 
 ## Principles
 
