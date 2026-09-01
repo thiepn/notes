@@ -12,6 +12,7 @@ interface VoiceAttachmentButtonProps {
   className?: string;
   compact?: boolean;
   onOpen?: (() => void) | undefined;
+  onDialogClose?: (() => void) | undefined;
   onChanged?: ((noteId: string) => void) | undefined;
 }
 
@@ -23,6 +24,7 @@ export function VoiceAttachmentButton({
   className = '',
   compact = false,
   onOpen,
+  onDialogClose,
   onChanged,
 }: VoiceAttachmentButtonProps) {
   const [open, setOpen] = useState(false);
@@ -73,7 +75,15 @@ export function VoiceAttachmentButton({
         ) : null}
       </span>
 
-      {open ? <VoiceRecorderDialog onSave={save} onClose={() => setOpen(false)} /> : null}
+      {open ? (
+        <VoiceRecorderDialog
+          onSave={save}
+          onClose={() => {
+            setOpen(false);
+            onDialogClose?.();
+          }}
+        />
+      ) : null}
     </>
   );
 }

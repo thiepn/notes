@@ -388,7 +388,7 @@ export function TextNoteComposer({
                   repository={attachmentsRepository}
                   ensureNoteId={ensureNoteId}
                   className="note-composer-menu-control"
-                  onOpen={() => setExpandedToolsOpen(false)}
+                  onDialogClose={() => setExpandedToolsOpen(false)}
                   onChanged={(noteId) => {
                     setExpandedToolsOpen(false);
                     markAttachmentsChanged(noteId);
@@ -399,7 +399,7 @@ export function TextNoteComposer({
                   repository={voiceAttachmentsRepository}
                   ensureNoteId={ensureNoteId}
                   className="note-composer-menu-control"
-                  onOpen={() => setExpandedToolsOpen(false)}
+                  onDialogClose={() => setExpandedToolsOpen(false)}
                   onChanged={(noteId) => {
                     setExpandedToolsOpen(false);
                     markAttachmentsChanged(noteId);

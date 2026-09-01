@@ -304,7 +304,7 @@ export function NoteEditorDialog({
                       noteId={note.id}
                       repository={attachmentsRepository}
                       className="note-editor-menu-control"
-                      onOpen={() => setAddOpen(false)}
+                      onDialogClose={() => setAddOpen(false)}
                       onChanged={(noteId) => {
                         setAddOpen(false);
                         setAttachmentsOpen(true);
@@ -315,7 +315,7 @@ export function NoteEditorDialog({
                       noteId={note.id}
                       repository={voiceAttachmentsRepository}
                       className="note-editor-menu-control"
-                      onOpen={() => setAddOpen(false)}
+                      onDialogClose={() => setAddOpen(false)}
                       onChanged={(noteId) => {
                         setAddOpen(false);
                         setAttachmentsOpen(true);

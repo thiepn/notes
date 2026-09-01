@@ -12,6 +12,7 @@ interface DrawingAttachmentButtonProps {
   className?: string;
   compact?: boolean;
   onOpen?: (() => void) | undefined;
+  onDialogClose?: (() => void) | undefined;
   onChanged?: ((noteId: string) => void) | undefined;
 }
 
@@ -23,6 +24,7 @@ export function DrawingAttachmentButton({
   className = '',
   compact = false,
   onOpen,
+  onDialogClose,
   onChanged,
 }: DrawingAttachmentButtonProps) {
   const [open, setOpen] = useState(false);
@@ -72,7 +74,15 @@ export function DrawingAttachmentButton({
         ) : null}
       </span>
 
-      {open ? <DrawingDialog onSave={save} onClose={() => setOpen(false)} /> : null}
+      {open ? (
+        <DrawingDialog
+          onSave={save}
+          onClose={() => {
+            setOpen(false);
+            onDialogClose?.();
+          }}
+        />
+      ) : null}
     </>
   );
 }
