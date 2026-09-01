@@ -18,6 +18,7 @@ import {
   type NotesRepository,
 } from '../../db';
 import { ReminderControl } from '../reminders/ReminderControl';
+import { RichTextEditor } from '../richText/RichTextEditor';
 import { AttachmentPanel } from './AttachmentPanel';
 import { RevisionHistoryDialog } from './RevisionHistoryDialog';
 import { useExistingNoteEditor } from './useExistingNoteEditor';
@@ -166,15 +167,15 @@ export function NoteEditorDialog({
             autoComplete="off"
             onChange={(event) => setTitle(event.target.value)}
           />
-          <textarea
-            ref={bodyRef}
+          <RichTextEditor
+            textareaRef={bodyRef}
             className="note-editor-body"
             value={draft.content}
-            aria-label="Edit note text"
+            ariaLabel="Edit note text"
             placeholder="Take a note…"
             rows={1}
             autoFocus
-            onChange={(event) => setContent(event.target.value)}
+            onChange={setContent}
           />
 
           <ReminderControl
