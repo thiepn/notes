@@ -26,7 +26,20 @@ jobs:
         run: npm install --no-audit --no-fund
 
       - name: Format check
-        run: npm run format:check || (npx prettier --write . && git diff --exit-code -- .)
+        run: |
+          npm run format:check || {
+            npx prettier --write .
+            git diff -- . | tee prettier.diff
+            exit 1
+          }
+
+      - name: Upload formatting diff
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prettier-diff
+          path: prettier.diff
+          if-no-files-found: ignore
 
       - name: Lint
         run: npm run lint
