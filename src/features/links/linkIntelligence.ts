@@ -53,7 +53,7 @@ export function normalizeWikiTitle(value: string): string {
 export function parseWikiLinks(value: string): WikiLinkToken[] {
   const excluded = collectCodeRanges(value);
   const tokens: WikiLinkToken[] = [];
-  const pattern = /\[\[([^\[\]\n]{1,200})\]\]/gu;
+  const pattern = /\[\[([^\]\n[]{1,200})\]\]/gu;
   let match: RegExpExecArray | null;
 
   while ((match = pattern.exec(value)) !== null) {
@@ -130,7 +130,10 @@ export function getBacklinks(target: NoteRecord, notes: NoteRecord[]): Backlink[
   return backlinks.sort((a, b) => b.note.updatedAt - a.note.updatedAt);
 }
 
-export function findUnlinkedMentions(target: NoteRecord, notes: NoteRecord[]): UnlinkedMention[] {
+export function findUnlinkedMentions(
+  target: NoteRecord,
+  notes: NoteRecord[],
+): UnlinkedMention[] {
   const title = target.title.trim();
   if (title.length < 3 || titleCollisionCount(target, notes) !== 1) return [];
 
@@ -183,7 +186,10 @@ export function titleCollisionCount(target: NoteRecord, notes: NoteRecord[]): nu
 function findUnlinkedMentionRanges(content: string, title: string): TextRange[] {
   const excluded = collectExcludedMentionRanges(content);
   const escapedTitle = escapeRegExp(title).replace(/\s+/gu, '\\s+');
-  const pattern = new RegExp(`(^|[^\\p{L}\\p{N}_])(${escapedTitle})(?=$|[^\\p{L}\\p{N}_])`, 'giu');
+  const pattern = new RegExp(
+    `(^|[^\\p{L}\\p{N}_])(${escapedTitle})(?=$|[^\\p{L}\\p{N}_])`,
+    'giu',
+  );
   const ranges: TextRange[] = [];
   let match: RegExpExecArray | null;
 
