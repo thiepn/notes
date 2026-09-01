@@ -56,7 +56,10 @@ export class VoiceAttachmentsRepository {
     if (!note) throw new NoteNotFoundError(noteId);
     const parsedNote = noteRecordSchema.parse(note);
     if (parsedNote.trashedAt !== null) {
-      throw new InvalidNoteStateError(noteId, 'Voice recordings cannot be added to a trashed note.');
+      throw new InvalidNoteStateError(
+        noteId,
+        'Voice recordings cannot be added to a trashed note.',
+      );
     }
 
     const prepared = await prepareAudio(file);

@@ -149,7 +149,8 @@ export function AttachmentPanel({
   );
   const otherAttachments = attachments.filter(
     (attachment) =>
-      !isPreviewableImageMimeType(attachment.mimeType) && !isVoiceAudioMimeType(attachment.mimeType),
+      !isPreviewableImageMimeType(attachment.mimeType) &&
+      !isVoiceAudioMimeType(attachment.mimeType),
   );
   const lightboxIndex = lightboxId
     ? previewImages.findIndex((attachment) => attachment.id === lightboxId)
@@ -418,7 +419,14 @@ function AttachmentAudioRow({
           <strong title={name}>{name}</strong>
           <small>{formatBytes(attachment.size)}</small>
         </span>
-        {url ? <audio controls preload="metadata" src={url} aria-label={`Play voice recording: ${name}`} /> : null}
+        {url ? (
+          <audio
+            controls
+            preload="metadata"
+            src={url}
+            aria-label={`Play voice recording: ${name}`}
+          />
+        ) : null}
       </span>
       <span className="attachment-audio-actions">
         <button
@@ -431,10 +439,20 @@ function AttachmentAudioRow({
         {editable ? (
           pendingRemove ? (
             <>
-              <button type="button" aria-label={`Confirm remove voice recording: ${name}`} disabled={busy} onClick={onConfirmRemove}>
+              <button
+                type="button"
+                aria-label={`Confirm remove voice recording: ${name}`}
+                disabled={busy}
+                onClick={onConfirmRemove}
+              >
                 Remove
               </button>
-              <button type="button" aria-label={`Cancel remove voice recording: ${name}`} disabled={busy} onClick={onCancelRemove}>
+              <button
+                type="button"
+                aria-label={`Cancel remove voice recording: ${name}`}
+                disabled={busy}
+                onClick={onCancelRemove}
+              >
                 Cancel
               </button>
             </>

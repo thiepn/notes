@@ -6,16 +6,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
-import {
-  CircleStop,
-  Mic,
-  Pause,
-  Play,
-  RotateCcw,
-  Save,
-  Trash2,
-  X,
-} from 'lucide-react';
+import { CircleStop, Mic, Pause, Play, RotateCcw, Save, Trash2, X } from 'lucide-react';
 
 import {
   createVoiceRecordingFile,
@@ -228,7 +219,9 @@ export function VoiceRecorderDialog({ onSave, onClose }: VoiceRecorderDialogProp
     } catch (error) {
       if (!mountedRef.current) return;
       setPhase('review');
-      setErrorMessage(error instanceof Error ? error.message : 'The voice recording could not be saved.');
+      setErrorMessage(
+        error instanceof Error ? error.message : 'The voice recording could not be saved.',
+      );
     }
   };
 
@@ -258,7 +251,12 @@ export function VoiceRecorderDialog({ onSave, onClose }: VoiceRecorderDialogProp
             <strong>Voice recording</strong>
             <span>Stored only in this Notes library</span>
           </div>
-          <button type="button" aria-label="Close voice recorder" disabled={phase === 'saving'} onClick={close}>
+          <button
+            type="button"
+            aria-label="Close voice recorder"
+            disabled={phase === 'saving'}
+            onClick={close}
+          >
             <X aria-hidden="true" />
           </button>
         </header>
@@ -280,7 +278,10 @@ export function VoiceRecorderDialog({ onSave, onClose }: VoiceRecorderDialogProp
                 <Mic aria-hidden="true" />
               </span>
               <strong>{phase === 'recording' ? 'Recording' : 'Paused'}</strong>
-              <span className="voice-recorder-timer" aria-label={`Recording time ${formatVoiceDuration(elapsedMs)}`}>
+              <span
+                className="voice-recorder-timer"
+                aria-label={`Recording time ${formatVoiceDuration(elapsedMs)}`}
+              >
                 {formatVoiceDuration(elapsedMs)}
               </span>
               <span className="voice-recorder-limit">Maximum recording length: 30 minutes</span>
@@ -307,7 +308,14 @@ export function VoiceRecorderDialog({ onSave, onClose }: VoiceRecorderDialogProp
                 <strong>Recording ready</strong>
                 <span>{formatVoiceDuration(elapsedMs)}</span>
               </div>
-              {previewUrl ? <audio controls preload="metadata" src={previewUrl} aria-label="Voice recording preview" /> : null}
+              {previewUrl ? (
+                <audio
+                  controls
+                  preload="metadata"
+                  src={previewUrl}
+                  aria-label="Voice recording preview"
+                />
+              ) : null}
               {errorMessage ? (
                 <span className="voice-error" role="alert">
                   {errorMessage}

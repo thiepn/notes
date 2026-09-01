@@ -82,7 +82,9 @@ async function stopAndSaveRecording(page: Page) {
   await expect(recorder).toHaveCount(0);
 }
 
-test('quick voice capture creates an attachment-only note with inline playback', async ({ page }) => {
+test('quick voice capture creates an attachment-only note with inline playback', async ({
+  page,
+}) => {
   await installFakeMicrophone(page);
   await page.goto('./');
 

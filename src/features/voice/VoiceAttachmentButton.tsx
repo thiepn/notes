@@ -37,7 +37,8 @@ export function VoiceAttachmentButton({
       await repository.addRecording(target, file);
       onChanged?.(target);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'The voice recording could not be attached.';
+      const message =
+        error instanceof Error ? error.message : 'The voice recording could not be attached.';
       setErrorMessage(message);
       throw error;
     } finally {

@@ -156,7 +156,9 @@ export function TextNoteComposer({
     const result = await voiceAttachmentsRepository.addRecording(note.id, file);
     markAttachmentsChanged(note.id);
     setQuickAttachmentMessage(
-      result.skippedDuplicate ? 'That voice recording is already attached.' : 'Voice recording added.',
+      result.skippedDuplicate
+        ? 'That voice recording is already attached.'
+        : 'Voice recording added.',
     );
   };
 
