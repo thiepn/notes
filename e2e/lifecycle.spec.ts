@@ -48,6 +48,13 @@ async function hoverCard(page: Page, noteId: string) {
   return card;
 }
 
+async function chooseCardMoreAction(page: Page, noteId: string, label: string, action: string) {
+  const card = await hoverCard(page, noteId);
+  await card.getByRole('button', { name: `More actions: ${label}` }).click();
+  await card.getByRole('menuitem', { name: action, exact: true }).click();
+  return card;
+}
+
 test('pinning works and archive undo restores the prior pinned state', async ({ page }) => {
   const noteId = await createNote(page, { title: 'Pinned lifecycle' });
   await page.reload();
@@ -96,8 +103,7 @@ test('undoing trash from Archive restores the note to Archive', async ({ page })
   await page.reload();
   await page.getByRole('button', { name: 'Archive', exact: true }).click();
 
-  const card = await hoverCard(page, noteId);
-  await card.getByRole('button', { name: 'Move note to trash: Archive trash undo' }).click();
+  await chooseCardMoreAction(page, noteId, 'Archive trash undo', 'Move to trash');
   await expect(page.locator(`[data-note-id="${noteId}"]`)).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Undo' }).click();
@@ -118,8 +124,7 @@ test('trash restore and permanent deletion use the correct lifecycle gates', asy
   await expect(page.locator(`[data-note-id="${noteId}"]`)).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Notes', exact: true }).click();
-  card = await hoverCard(page, noteId);
-  await card.getByRole('button', { name: 'Move note to trash: Trash lifecycle' }).click();
+  await chooseCardMoreAction(page, noteId, 'Trash lifecycle', 'Move to trash');
 
   await page.getByRole('button', { name: 'Trash', exact: true }).click();
   card = await hoverCard(page, noteId);
@@ -137,8 +142,7 @@ test('duplicate creates an active copy and undo removes only the copy', async ({
   const noteId = await createNote(page, { title: 'Duplicate lifecycle' });
   await page.reload();
 
-  const card = await hoverCard(page, noteId);
-  await card.getByRole('button', { name: 'Duplicate note: Duplicate lifecycle' }).click();
+  await chooseCardMoreAction(page, noteId, 'Duplicate lifecycle', 'Duplicate');
   await expect(page.locator('[data-note-card]')).toHaveCount(2);
 
   await page.getByRole('button', { name: 'Undo' }).click();
