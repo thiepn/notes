@@ -28,6 +28,7 @@ interface OcrDialogProps {
 
 export function OcrDialog({ attachment, onAppend, onClose }: OcrDialogProps) {
   const [language, setLanguage] = useState<OcrLanguage>(readOcrLanguage);
+  const initialLanguageRef = useRef(language);
   const [phase, setPhase] = useState<OcrPhase>('running');
   const [progress, setProgress] = useState<OcrProgress>({ status: 'Preparing OCR', progress: null });
   const [text, setText] = useState('');
@@ -37,6 +38,7 @@ export function OcrDialog({ attachment, onAppend, onClose }: OcrDialogProps) {
   const [imageUrl] = useState(() => URL.createObjectURL(attachment.data));
   const abortRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
+  const closedRef = useRef(false);
 
   const run = useCallback(
     async (nextLanguage: OcrLanguage) => {
@@ -76,18 +78,20 @@ export function OcrDialog({ attachment, onAppend, onClose }: OcrDialogProps) {
     mountedRef.current = true;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    const timer = window.setTimeout(() => void run(language), 0);
+    const timer = window.setTimeout(() => void run(initialLanguageRef.current), 0);
     return () => {
       window.clearTimeout(timer);
       mountedRef.current = false;
       abortRef.current?.abort();
-      URL.revokeObjectURL(imageUrl);
       document.body.style.overflow = previousOverflow;
     };
-  }, [imageUrl, language, run]);
+  }, [run]);
 
   const close = () => {
+    if (closedRef.current) return;
+    closedRef.current = true;
     abortRef.current?.abort();
+    URL.revokeObjectURL(imageUrl);
     onClose();
   };
 
@@ -109,9 +113,11 @@ export function OcrDialog({ attachment, onAppend, onClose }: OcrDialogProps) {
     setErrorMessage(null);
     try {
       await onAppend(text);
-      onClose();
+      close();
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'The extracted text could not be added.');
+      setErrorMessage(
+        error instanceof Error ? error.message : 'The extracted text could not be added.',
+      );
     }
   };
 
@@ -235,7 +241,9 @@ export function OcrDialog({ attachment, onAppend, onClose }: OcrDialogProps) {
         <footer className="ocr-dialog-footer">
           <div aria-live="polite">
             {statusMessage ? <span>{statusMessage}</span> : null}
-            {phase === 'result' && errorMessage ? <span className="ocr-error">{errorMessage}</span> : null}
+            {phase === 'result' && errorMessage ? (
+              <span className="ocr-error">{errorMessage}</span>
+            ) : null}
           </div>
           <div>
             {phase !== 'running' ? (
