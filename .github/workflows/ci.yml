@@ -25,26 +25,26 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
+      - name: Format check
+        run: npm run format:check || (npx prettier --write . && git diff --exit-code -- .)
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test
+
       - name: Build
         run: npm run build
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: PWA offline certification
-        run: |
-          set +e
-          npm run e2e:pwa 2>&1 | tee pwa-output.txt
-          status=${PIPESTATUS[0]}
-          exit $status
+      - name: End-to-end regression suite
+        run: npm run e2e
 
-      - name: Upload PWA diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: v2-1-pwa-diagnostics
-          path: |
-            pwa-output.txt
-            playwright-report
-            test-results
-          if-no-files-found: ignore
+      - name: PWA offline certification
+        run: npm run e2e:pwa
