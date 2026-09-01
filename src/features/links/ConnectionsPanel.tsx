@@ -4,14 +4,13 @@ import { AlertTriangle, ArrowUpRight, Link2, Sparkles } from 'lucide-react';
 import type { NoteRecord, NotesRepository } from '../../db';
 import { analyzeNoteConnections, linkUnlinkedMentions } from './linkIntelligence';
 
-export const NOTES_LIBRARY_CHANGED_EVENT = 'notes-library-changed';
-
 interface ConnectionsPanelProps {
   note: NoteRecord;
   library: NoteRecord[];
   repository: NotesRepository;
   beforeLinking(): Promise<NoteRecord | null>;
   onOpenNote(noteId: string): void;
+  onSourceSaved(note: NoteRecord): void;
   onLibraryChanged(): Promise<void>;
 }
 
@@ -21,6 +20,7 @@ export function ConnectionsPanel({
   repository,
   beforeLinking,
   onOpenNote,
+  onSourceSaved,
   onLibraryChanged,
 }: ConnectionsPanelProps) {
   const connections = useMemo(() => analyzeNoteConnections(note, library), [library, note]);
@@ -39,8 +39,12 @@ export function ConnectionsPanel({
       if (source.type !== 'text' || source.trashedAt !== null) return;
       const nextContent = linkUnlinkedMentions(source.content, savedTarget.title);
       if (nextContent === source.content) return;
-      await repository.update(source.id, { content: nextContent }, source.revision);
-      window.dispatchEvent(new Event(NOTES_LIBRARY_CHANGED_EVENT));
+      const savedSource = await repository.update(
+        source.id,
+        { content: nextContent },
+        source.revision,
+      );
+      onSourceSaved(savedSource);
       await onLibraryChanged();
     } catch {
       setErrorMessage('That mention could not be linked. The source note may have changed.');
