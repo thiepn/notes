@@ -13,6 +13,7 @@ import { History } from 'lucide-react';
 import {
   RemindersRepository,
   RevisionsRepository,
+  VoiceAttachmentsRepository,
   notesDatabase,
   type AttachmentsRepository,
   type ChecklistItemRecord,
@@ -25,12 +26,14 @@ import { resolveWikiLink } from '../links/linkIntelligence';
 import { requestLinkedNoteOpen } from '../links/navigation';
 import { ReminderControl } from '../reminders/ReminderControl';
 import { RichTextEditor } from '../richText/RichTextEditor';
+import { VoiceAttachmentButton } from '../voice/VoiceAttachmentButton';
 import { AttachmentPanel } from './AttachmentPanel';
 import { RevisionHistoryDialog } from './RevisionHistoryDialog';
 import { useExistingNoteEditor } from './useExistingNoteEditor';
 
 const revisionsRepository = new RevisionsRepository(notesDatabase);
 const remindersRepository = new RemindersRepository(notesDatabase);
+const voiceAttachmentsRepository = new VoiceAttachmentsRepository(notesDatabase);
 
 interface HistoricalResult {
   note: NoteRecord;
@@ -233,6 +236,12 @@ export function NoteEditorDialog({
             <DrawingAttachmentButton
               noteId={note.id}
               repository={attachmentsRepository}
+              className="note-editor-secondary"
+              onChanged={onAttachmentsChanged}
+            />
+            <VoiceAttachmentButton
+              noteId={note.id}
+              repository={voiceAttachmentsRepository}
               className="note-editor-secondary"
               onChanged={onAttachmentsChanged}
             />
