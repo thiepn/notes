@@ -76,7 +76,10 @@ export function NoteEditorDialog({
     });
 
   const refreshLinkLibrary = useCallback(async () => {
-    const [active, archived] = await Promise.all([repository.listActive(), repository.listArchived()]);
+    const [active, archived] = await Promise.all([
+      repository.listActive(),
+      repository.listArchived(),
+    ]);
     setLinkLibrary([...active, ...archived]);
   }, [repository]);
 

@@ -15,10 +15,7 @@ import {
 } from 'lucide-react';
 
 import { applyRichTextCommand, type RichTextCommand } from './richText';
-import {
-  RichTextContent,
-  type WikiLinkRenderResolution,
-} from './RichTextContent';
+import { RichTextContent, type WikiLinkRenderResolution } from './RichTextContent';
 
 interface RichTextEditorProps {
   value: string;

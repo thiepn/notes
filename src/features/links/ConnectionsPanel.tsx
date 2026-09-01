@@ -76,8 +76,8 @@ export function ConnectionsPanel({
         <div className="note-connections-warning" role="status">
           <AlertTriangle aria-hidden="true" />
           <span>
-            {connections.titleCollisionCount} notes use the title “{title}”. WikiLinks to this title are
-            ambiguous until the titles are unique.
+            {connections.titleCollisionCount} notes use the title “{title}”. WikiLinks to this title
+            are ambiguous until the titles are unique.
           </span>
         </div>
       ) : null}

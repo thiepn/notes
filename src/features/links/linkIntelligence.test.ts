@@ -40,9 +40,9 @@ describe('V2-3 link intelligence', () => {
   });
 
   it('parses wiki links but ignores code', () => {
-    expect(parseWikiLinks('Read [[Project Atlas]] and `[[literal]]`.\n```\n[[blocked]]\n```')).toEqual([
-      { title: 'Project Atlas', start: 5, end: 22 },
-    ]);
+    expect(
+      parseWikiLinks('Read [[Project Atlas]] and `[[literal]]`.\n```\n[[blocked]]\n```'),
+    ).toEqual([{ title: 'Project Atlas', start: 5, end: 22 }]);
   });
 
   it('resolves unique titles and exposes missing and duplicate targets explicitly', () => {

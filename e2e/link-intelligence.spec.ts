@@ -5,7 +5,10 @@ async function seedLinkLibrary(page: Page) {
   const ids = await page.evaluate(async () => {
     const db = await import('/notes/src/db/index.ts');
     const notes = new db.NotesRepository(db.notesDatabase);
-    const target = await notes.create({ title: 'Project Atlas', content: 'Canonical project note.' });
+    const target = await notes.create({
+      title: 'Project Atlas',
+      content: 'Canonical project note.',
+    });
     const explicit = await notes.create({
       title: 'Meeting Notes',
       content: 'Review [[Project Atlas]] before Friday.',
@@ -49,7 +52,9 @@ test('connections derive backlinks and convert unlinked mentions without stored 
   await expect(connections.getByRole('button', { name: /Research Notes/ })).toBeVisible();
 
   await connections.getByRole('button', { name: 'Link 2 mentions' }).click();
-  await expect(connections.getByText('No links or unlinked mentions found for this note yet')).toHaveCount(0);
+  await expect(
+    connections.getByText('No links or unlinked mentions found for this note yet'),
+  ).toHaveCount(0);
   await expect(connections).toContainText('2 linked notes');
   await expect(connections).toContainText('0 unlinked mentions');
 
@@ -84,7 +89,9 @@ test('resolved WikiLinks navigate directly while missing targets remain non-inte
   await expect(missingEditor.locator('.rich-text-wiki-link[data-status="missing"]')).toHaveText(
     'Missing Target',
   );
-  await expect(missingEditor.getByRole('button', { name: 'Open note: Missing Target' })).toHaveCount(0);
+  await expect(
+    missingEditor.getByRole('button', { name: 'Open note: Missing Target' }),
+  ).toHaveCount(0);
 });
 
 test('duplicate titles stay ambiguous and internal links render/search without raw brackets', async ({
