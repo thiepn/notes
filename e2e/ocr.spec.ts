@@ -95,5 +95,6 @@ test('OCR is copy-only for checklist notes', async ({ page }) => {
   await page.reload();
   await page.locator(`[data-note-id="${noteId}"] .note-card-open`).click();
   const editor = page.getByRole('dialog', { name: 'Edit checklist' });
+  await editor.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(editor.getByRole('region', { name: 'Image text recognition' })).toBeVisible();
 });
