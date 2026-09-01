@@ -48,9 +48,19 @@ Outside editable controls and dialogs:
 
 `J` and `K` wrap at the first/last visible card and work with normal collection cards as well as search result cards. Trash cards are read-only and are not part of open-card keyboard navigation.
 
+## V2-2 editor-local formatting shortcuts
+
+V2-2 intentionally reuses several familiar chords **inside a text-note body editor**:
+
+- `Ctrl/⌘+B` — bold the selection,
+- `Ctrl/⌘+I` — italicize the selection,
+- `Ctrl/⌘+K` — insert/edit a Markdown-compatible link around the selection.
+
+These are local editor commands, not global application commands. In particular, when focus is inside a text-note body, `Ctrl/⌘+K` belongs to rich-text link insertion and **must not open the command palette**. Outside editable surfaces, the same chord retains its P10 command-palette behavior.
+
 ## Safety suppression
 
-Single-key commands and the palette chord are ignored while interaction belongs to:
+Global single-key commands and the global palette action are suppressed while interaction belongs to:
 
 - `<input>`,
 - `<textarea>`,
@@ -61,6 +71,8 @@ Single-key commands and the palette chord are ignored while interaction belongs 
 - label-manager dialogs,
 - confirmation dialogs,
 - the command palette itself.
+
+V2-2 editor-local formatting chords are the explicit exception: they are handled by the rich-text editor itself after the global command layer has yielded to the editable control.
 
 This prevents ordinary typing such as `p`, `e`, `c`, `j`, `k`, `#`, or `Delete` from invoking application commands while the user is editing text or operating a modal surface.
 
@@ -86,4 +98,4 @@ Card focus is real DOM focus, not an invisible internal cursor. This provides:
 
 ## Phase boundary
 
-P10 owns the command palette and the global desktop keyboard command contract. P11 owns revision-history UI and recovery history; P12 owns backup/export, at which point its real export command can be registered in the palette.
+P10 owns the command palette and the global desktop keyboard command contract. V2-2 adds editor-local formatting chords without changing that global contract. P11 owns revision-history UI and recovery history; P12 owns backup/export, at which point its real export command can be registered in the palette.
