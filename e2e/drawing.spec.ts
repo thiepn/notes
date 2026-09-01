@@ -10,10 +10,20 @@ async function drawStroke(page: Page, canvas: Locator) {
   await page.mouse.up();
 }
 
+async function startQuickDrawing(page: Page) {
+  await page.getByRole('button', { name: 'More capture options' }).click();
+  await page.getByRole('menuitem', { name: 'Drawing', exact: true }).click();
+}
+
+async function startEditorDrawing(editor: Locator) {
+  await editor.getByRole('button', { name: 'Add', exact: true }).click();
+  await editor.getByRole('button', { name: 'Add drawing' }).click();
+}
+
 test('quick drawing creates an attachment-only note and persists a PNG', async ({ page }) => {
   await page.goto('./');
 
-  await page.getByRole('button', { name: 'Add drawing' }).click();
+  await startQuickDrawing(page);
   const dialog = page.getByRole('dialog', { name: 'Drawing editor' });
   await expect(dialog).toBeVisible();
   await expect(page.getByRole('form', { name: 'New note' })).toBeVisible();
@@ -90,13 +100,13 @@ test('drawing Escape closes only the drawing modal and existing notes can attach
   const editor = page.getByRole('dialog', { name: 'Edit note' });
   await expect(editor).toBeVisible();
 
-  await editor.getByRole('button', { name: 'Add drawing' }).click();
+  await startEditorDrawing(editor);
   await expect(page.getByRole('dialog', { name: 'Drawing editor' })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog', { name: 'Drawing editor' })).toHaveCount(0);
   await expect(editor).toBeVisible();
 
-  await editor.getByRole('button', { name: 'Add drawing' }).click();
+  await startEditorDrawing(editor);
   const drawing = page.getByRole('dialog', { name: 'Drawing editor' });
   await drawing.getByRole('button', { name: 'Eraser' }).click();
   await expect(drawing.getByRole('button', { name: 'Eraser' })).toHaveAttribute(
