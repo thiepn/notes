@@ -16,6 +16,7 @@ interface ReminderControlProps {
   noteId: string;
   repository: RemindersRepository;
   reminder?: ReminderRecord | null;
+  compact?: boolean;
   onChanged(reminder: ReminderRecord | null): void;
 }
 
@@ -23,6 +24,7 @@ export function ReminderControl({
   noteId,
   repository,
   reminder: controlledReminder,
+  compact = false,
   onChanged,
 }: ReminderControlProps) {
   const [loadedReminder, setLoadedReminder] = useState<ReminderRecord | null>(
@@ -85,6 +87,36 @@ export function ReminderControl({
       setBusy(false);
     }
   };
+
+  if (compact && !editing) {
+    const label = reminder
+      ? reminder.status === 'active'
+        ? formatReminderDateTime(reminder.dueAt)
+        : reminder.status === 'completed'
+          ? 'Reminder completed'
+          : 'Reminder dismissed'
+      : 'Add reminder';
+
+    return (
+      <section className="reminder-control reminder-control-compact" aria-label="Reminder">
+        <button
+          className="reminder-compact-button"
+          type="button"
+          aria-label={reminder ? `Change reminder: ${label}` : 'Add reminder'}
+          onClick={openEditor}
+          disabled={busy}
+        >
+          <Bell aria-hidden="true" />
+          <span>{label}</span>
+        </button>
+        {errorMessage ? (
+          <p className="reminder-error" role="alert">
+            {errorMessage}
+          </p>
+        ) : null}
+      </section>
+    );
+  }
 
   return (
     <section className="reminder-control" aria-label="Reminder">
