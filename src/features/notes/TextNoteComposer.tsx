@@ -14,6 +14,7 @@ import {
   type NoteRecord,
   type NotesRepository,
 } from '../../db';
+import { DrawingAttachmentButton } from '../drawing/DrawingAttachmentButton';
 import { RichTextEditor } from '../richText/RichTextEditor';
 import { AttachmentPanel } from './AttachmentPanel';
 import { useTextNoteCapture } from './useTextNoteCapture';
@@ -75,6 +76,7 @@ export function TextNoteComposer({
       const target = event.target;
       if (!(target instanceof Node)) return;
       if (composerRef.current?.contains(target)) return;
+      if (target instanceof Element && target.closest('.drawing-dialog-layer')) return;
       void finishCapture();
     };
     document.addEventListener('pointerdown', handlePointerDown, true);
@@ -152,6 +154,15 @@ export function TextNoteComposer({
           >
             <ListChecks aria-hidden="true" />
           </button>
+          <DrawingAttachmentButton
+            noteId={activeNoteId}
+            repository={attachmentsRepository}
+            ensureNoteId={ensureNoteId}
+            className="note-composer-quick-action"
+            compact
+            onOpen={openCapture}
+            onChanged={markAttachmentsChanged}
+          />
           <input
             ref={quickImageInputRef}
             className="attachment-file-input"
@@ -206,6 +217,16 @@ export function TextNoteComposer({
         autoFocus
         onChange={setContent}
       />
+
+      <div className="drawing-inline-action">
+        <DrawingAttachmentButton
+          noteId={activeNoteId}
+          repository={attachmentsRepository}
+          ensureNoteId={ensureNoteId}
+          className="note-editor-secondary"
+          onChanged={markAttachmentsChanged}
+        />
+      </div>
 
       <AttachmentPanel
         noteId={activeNoteId}
