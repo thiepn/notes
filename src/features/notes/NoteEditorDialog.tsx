@@ -100,6 +100,16 @@ export function NoteEditorDialog({
     return () => window.clearTimeout(timeout);
   }, [note.id, note.updatedAt, refreshLinkLibrary]);
 
+  useEffect(() => {
+    let cancelled = false;
+    void attachmentsRepository.hasAny(note.id).then((hasAttachments) => {
+      if (!cancelled && hasAttachments) setAttachmentsOpen(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [attachmentsRepository, note.id]);
+
   const draftNote = useMemo<NoteRecord>(
     () => ({ ...note, title: draft.title, content: draft.content }),
     [draft.content, draft.title, note],
