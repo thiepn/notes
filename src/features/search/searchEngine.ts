@@ -6,6 +6,8 @@ export interface SearchDocument {
   checklistItems: ChecklistItemRecord[];
   labelIds: string[];
   labelNames: string[];
+  attachmentNames: string[];
+  ocrText: string;
   hasImage: boolean;
   hasLink: boolean;
   hasReminder: boolean;
@@ -13,7 +15,16 @@ export interface SearchDocument {
   normalizedBody: string;
   normalizedChecklist: string;
   normalizedLabels: string;
+  normalizedAttachments: string;
+  normalizedOcr: string;
   normalizedAll: string;
+  titleTokens: string[];
+  bodyTokens: string[];
+  checklistTokens: string[];
+  labelTokens: string[];
+  attachmentTokens: string[];
+  ocrTokens: string[];
+  allTokens: string[];
 }
 
 export interface ParsedSearchQuery {
@@ -34,6 +45,20 @@ export interface SearchResult {
   score: number;
 }
 
+interface FieldWeights {
+  exact: number;
+  prefix: number;
+  substring: number;
+  fuzzy: number;
+}
+
+const TITLE_WEIGHTS: FieldWeights = { exact: 110, prefix: 100, substring: 88, fuzzy: 70 };
+const LABEL_WEIGHTS: FieldWeights = { exact: 76, prefix: 70, substring: 62, fuzzy: 48 };
+const ATTACHMENT_WEIGHTS: FieldWeights = { exact: 68, prefix: 62, substring: 54, fuzzy: 42 };
+const OCR_WEIGHTS: FieldWeights = { exact: 58, prefix: 52, substring: 46, fuzzy: 36 };
+const CHECKLIST_WEIGHTS: FieldWeights = { exact: 50, prefix: 45, substring: 40, fuzzy: 30 };
+const BODY_WEIGHTS: FieldWeights = { exact: 42, prefix: 38, substring: 34, fuzzy: 24 };
+
 export function normalizeSearchText(value: string): string {
   return value
     .normalize('NFKD')
@@ -44,6 +69,35 @@ export function normalizeSearchText(value: string): string {
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
     .trim()
     .replace(/\s+/gu, ' ');
+}
+
+export function tokenizeNormalizedSearchText(value: string): string[] {
+  if (!value) return [];
+  return [...new Set(value.split(' ').filter(Boolean))];
+}
+
+export function extractIndexedOcrText(content: string): string {
+  const lines = content.replace(/\r\n?/gu, '\n').split('\n');
+  const extracted: string[] = [];
+  let capturing = false;
+
+  for (const line of lines) {
+    const heading = /^(#{1,6})\s+(.+?)\s*$/u.exec(line.trim());
+    if (heading) {
+      const level = heading[1]?.length ?? 0;
+      const title = normalizeSearchText(heading[2] ?? '');
+      if (level === 2 && title === 'extracted text') {
+        if (extracted.length > 0 && extracted.at(-1) !== '') extracted.push('');
+        capturing = true;
+        continue;
+      }
+      if (capturing && level <= 2) capturing = false;
+    }
+
+    if (capturing) extracted.push(line);
+  }
+
+  return extracted.join('\n').trim();
 }
 
 export function parseSearchQuery(input: string): ParsedSearchQuery {
@@ -130,6 +184,7 @@ export function searchDocuments(
   const before = minNullable(parsed.before, parseLocalDate(filters.before));
   const selectedColors = new Set(filters.colors);
   const selectedLabelIds = new Set(filters.labelIds);
+  const normalizedFreeQuery = parsed.terms.join(' ');
 
   const results: SearchResult[] = [];
   for (const document of documents) {
@@ -153,9 +208,10 @@ export function searchDocuments(
     if (parsed.requireReminder && !document.hasReminder) continue;
     if (after !== null && note.updatedAt < after) continue;
     if (before !== null && note.updatedAt >= before) continue;
-    if (parsed.terms.some((term) => !document.normalizedAll.includes(term))) continue;
 
-    results.push({ document, score: scoreDocument(document, parsed.terms) });
+    const score = scoreDocument(document, parsed.terms, normalizedFreeQuery);
+    if (score === null) continue;
+    results.push({ document, score });
   }
 
   return results.sort((a, b) => {
@@ -167,16 +223,110 @@ export function searchDocuments(
   });
 }
 
-function scoreDocument(document: SearchDocument, terms: string[]): number {
+function scoreDocument(
+  document: SearchDocument,
+  terms: string[],
+  normalizedFreeQuery: string,
+): number | null {
   if (terms.length === 0) return 0;
   let score = 0;
+
   for (const term of terms) {
-    if (document.normalizedTitle.includes(term)) score += 8;
-    if (document.normalizedLabels.includes(term)) score += 5;
-    if (document.normalizedChecklist.includes(term)) score += 3;
-    if (document.normalizedBody.includes(term)) score += 2;
+    const termScore = Math.max(
+      scoreField(term, document.normalizedTitle, document.titleTokens, TITLE_WEIGHTS),
+      scoreField(term, document.normalizedLabels, document.labelTokens, LABEL_WEIGHTS),
+      scoreField(
+        term,
+        document.normalizedAttachments,
+        document.attachmentTokens,
+        ATTACHMENT_WEIGHTS,
+      ),
+      scoreField(term, document.normalizedOcr, document.ocrTokens, OCR_WEIGHTS),
+      scoreField(term, document.normalizedChecklist, document.checklistTokens, CHECKLIST_WEIGHTS),
+      scoreField(term, document.normalizedBody, document.bodyTokens, BODY_WEIGHTS),
+    );
+    if (termScore === 0) return null;
+    score += termScore;
   }
+
+  if (normalizedFreeQuery) {
+    if (document.normalizedTitle === normalizedFreeQuery) score += 160;
+    else if (document.normalizedTitle.startsWith(normalizedFreeQuery)) score += 80;
+    else if (document.normalizedTitle.includes(normalizedFreeQuery)) score += 40;
+
+    if (document.normalizedLabels === normalizedFreeQuery) score += 36;
+    if (document.normalizedAttachments === normalizedFreeQuery) score += 28;
+  }
+
   return score;
+}
+
+function scoreField(
+  term: string,
+  normalizedField: string,
+  tokens: string[],
+  weights: FieldWeights,
+): number {
+  if (!term || !normalizedField) return 0;
+  if (normalizedField === term) return weights.exact;
+  if (normalizedField.startsWith(term)) return weights.prefix;
+  if (normalizedField.includes(term)) return weights.substring;
+  if (term.includes(' ') || term.length < 4) return 0;
+
+  const maxDistance = fuzzyDistanceLimit(term.length);
+  const bestDistance = bestFuzzyDistance(term, tokens, maxDistance);
+  if (bestDistance === null) return 0;
+  return Math.max(1, weights.fuzzy - bestDistance * 6);
+}
+
+function fuzzyDistanceLimit(length: number): number {
+  return length <= 5 ? 1 : 2;
+}
+
+function bestFuzzyDistance(term: string, tokens: string[], maxDistance: number): number | null {
+  let best = maxDistance + 1;
+  const termFirst = term[0];
+  const termLast = term.at(-1);
+
+  for (const token of tokens) {
+    if (Math.abs(token.length - term.length) > maxDistance) continue;
+    if (termFirst !== token[0] && termLast !== token.at(-1)) continue;
+    const distance = boundedLevenshtein(term, token, Math.min(maxDistance, best - 1));
+    if (distance < best) {
+      best = distance;
+      if (best === 1) break;
+    }
+  }
+
+  return best <= maxDistance ? best : null;
+}
+
+function boundedLevenshtein(a: string, b: string, maxDistance: number): number {
+  if (a === b) return 0;
+  if (Math.abs(a.length - b.length) > maxDistance) return maxDistance + 1;
+
+  let previous = Array.from({ length: b.length + 1 }, (_, index) => index);
+  for (let row = 1; row <= a.length; row += 1) {
+    const current = new Array<number>(b.length + 1);
+    current[0] = row;
+    let rowMinimum = row;
+
+    for (let column = 1; column <= b.length; column += 1) {
+      const substitutionCost = a[row - 1] === b[column - 1] ? 0 : 1;
+      const value = Math.min(
+        (previous[column] ?? maxDistance + 1) + 1,
+        (current[column - 1] ?? maxDistance + 1) + 1,
+        (previous[column - 1] ?? maxDistance + 1) + substitutionCost,
+      );
+      current[column] = value;
+      rowMinimum = Math.min(rowMinimum, value);
+    }
+
+    if (rowMinimum > maxDistance) return maxDistance + 1;
+    previous = current;
+  }
+
+  return previous[b.length] ?? maxDistance + 1;
 }
 
 function matchesStatus(note: NoteRecord, status: SearchStatusFilter): boolean {

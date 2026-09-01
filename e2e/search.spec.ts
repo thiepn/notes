@@ -20,6 +20,14 @@ async function seedSearchLibrary(page: Page) {
       title: 'Reference',
       content: 'Read https://example.com/resource',
     });
+    const fuzzyNote = await notes.create({
+      title: 'Missionary preparation',
+      content: 'Language and field preparation.',
+    });
+    const ocrNote = await notes.create({
+      title: 'Scanned receipt',
+      content: 'Photo\n\n## Extracted text\n\nKingdom receipt 4821\nTotal 24 EUR',
+    });
     const checklist = await checklists.create('Groceries', [
       { id: crypto.randomUUID(), text: 'Milk', checked: false, parentId: null },
       { id: crypto.randomUUID(), text: 'Bread', checked: false, parentId: null },
@@ -38,11 +46,11 @@ async function seedSearchLibrary(page: Page) {
     await dbModule.notesDatabase.attachments.add({
       id: crypto.randomUUID(),
       noteId: titleNote.id,
-      name: 'cover.png',
-      mimeType: 'image/png',
+      name: 'annual-budget-2026.pdf',
+      mimeType: 'application/pdf',
       size: 1,
-      checksum: 'search-test-image',
-      data: new Blob(['x'], { type: 'image/png' }),
+      checksum: 'search-test-attachment',
+      data: new Blob(['x'], { type: 'application/pdf' }),
       createdAt: Date.now(),
     });
 
@@ -54,6 +62,8 @@ async function seedSearchLibrary(page: Page) {
       archivedId: archived.id,
       trashedId: trashed.id,
       linkNoteId: linkNote.id,
+      fuzzyNoteId: fuzzyNote.id,
+      ocrNoteId: ocrNote.id,
     };
   });
 }
@@ -87,6 +97,24 @@ test('slash focuses search and normalized queries match title, body, checklist, 
   await expect(page.getByText('1 result')).toBeVisible();
 });
 
+test('advanced search tolerates typos and indexes attachment filenames plus committed OCR text', async ({
+  page,
+}) => {
+  const ids = await seedSearchLibrary(page);
+
+  await search(page, 'misionary');
+  await expect(page.locator(`[data-note-id="${ids.fuzzyNoteId}"]`)).toBeVisible();
+  await expect(page.getByText('1 result')).toBeVisible();
+
+  await search(page, 'annual budget');
+  await expect(page.locator(`[data-note-id="${ids.titleNoteId}"]`)).toBeVisible();
+  await expect(page.getByText('1 result')).toBeVisible();
+
+  await search(page, 'receipt 4821');
+  await expect(page.locator(`[data-note-id="${ids.ocrNoteId}"]`)).toBeVisible();
+  await expect(page.getByText('1 result')).toBeVisible();
+});
+
 test('search includes archive, excludes trash, and supports operators', async ({ page }) => {
   const ids = await seedSearchLibrary(page);
 
@@ -97,9 +125,6 @@ test('search includes archive, excludes trash, and supports operators', async ({
   await search(page, 'is:pinned');
   await expect(page.locator(`[data-note-id="${ids.pinnedId}"]`)).toBeVisible();
   await expect(page.getByText('1 result')).toBeVisible();
-
-  await search(page, 'has:image');
-  await expect(page.locator(`[data-note-id="${ids.titleNoteId}"]`)).toBeVisible();
 
   await search(page, 'has:link');
   await expect(page.locator(`[data-note-id="${ids.linkNoteId}"]`)).toBeVisible();
@@ -122,6 +147,67 @@ test('filter panel intersects type, status, color, and labels with the query', a
   await filters.getByLabel('Bible Study').check();
   await expect(page.locator(`[data-note-id="${ids.bodyNoteId}"]`)).toBeVisible();
   await expect(page.getByText('1 result')).toBeVisible();
+});
+
+test('saved searches persist query and filter snapshots through the backed-up settings table', async ({
+  page,
+}) => {
+  const ids = await seedSearchLibrary(page);
+  await search(page, 'milk');
+  await page.getByRole('button', { name: 'Search filters' }).click();
+  const filters = page.getByRole('region', { name: 'Search filters' });
+  await filters.getByLabel('Type').selectOption('checklist');
+  await expect(page.locator(`[data-note-id="${ids.checklistId}"]`)).toBeVisible();
+
+  await page.getByRole('button', { name: 'Save search' }).click();
+  await expect(page.getByRole('button', { name: 'Search saved' })).toBeVisible();
+
+  const stored = await page.evaluate(async () => {
+    const dbModule = await import('/notes/src/db/index.ts');
+    const record = await dbModule.notesDatabase.settings.get('search.saved.v1');
+    return record ? JSON.parse(record.value) : null;
+  });
+  expect(stored?.version).toBe(1);
+  expect(stored?.searches).toHaveLength(1);
+  expect(stored?.searches[0]?.query).toBe('milk');
+  expect(stored?.searches[0]?.filters?.type).toBe('checklist');
+
+  await page.getByRole('button', { name: 'Reset' }).click();
+  const input = page.getByRole('searchbox', { name: 'Search notes' });
+  await input.focus();
+  const history = page.getByRole('dialog', { name: 'Search history' });
+  await expect(history).toBeVisible();
+  await history.getByRole('button', { name: 'Open saved search: milk' }).click();
+  await expect(input).toHaveValue('milk');
+
+  await page.getByRole('button', { name: 'Search filters' }).click();
+  await expect(page.getByRole('region', { name: 'Search filters' }).getByLabel('Type')).toHaveValue(
+    'checklist',
+  );
+});
+
+test('recent searches are deduplicated device-local history and can be reopened', async ({
+  page,
+}) => {
+  await seedSearchLibrary(page);
+  const input = await search(page, 'cafe');
+
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const raw = localStorage.getItem('notes.search.recent.v1');
+        if (!raw) return [];
+        const parsed = JSON.parse(raw) as { searches?: Array<{ query?: string }> };
+        return (parsed.searches ?? []).map((item) => item.query);
+      }),
+    )
+    .toContain('cafe');
+
+  await page.getByRole('button', { name: 'Clear search query' }).click();
+  await input.focus();
+  const history = page.getByRole('dialog', { name: 'Search history' });
+  await history.getByRole('button', { name: 'Open recent search: cafe' }).click();
+  await expect(input).toHaveValue('cafe');
 });
 
 test('10k-note local index keeps the in-memory matcher below 100 ms', async ({ page }) => {

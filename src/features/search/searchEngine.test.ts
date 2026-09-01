@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import type { NoteRecord } from '../../db';
 import {
+  extractIndexedOcrText,
   normalizeSearchText,
   parseSearchQuery,
   searchDocuments,
+  tokenizeNormalizedSearchText,
   type SearchDocument,
 } from './searchEngine';
 import { DEFAULT_SEARCH_FILTERS } from './searchTypes';
@@ -35,21 +37,43 @@ function document(
     checklist?: string;
     labelNames?: string[];
     labelIds?: string[];
+    attachmentNames?: string[];
     hasImage?: boolean;
     hasLink?: boolean;
     hasReminder?: boolean;
   } = {},
 ): SearchDocument {
   const record = input.note ?? note({ title: input.title ?? '', content: input.body ?? '' });
+  const attachmentNames = input.attachmentNames ?? [];
+  const ocrText = extractIndexedOcrText(record.content);
   const normalizedTitle = normalizeSearchText(record.title);
   const normalizedBody = normalizeSearchText(record.content);
   const normalizedChecklist = normalizeSearchText(input.checklist ?? '');
   const normalizedLabels = normalizeSearchText((input.labelNames ?? []).join(' '));
+  const normalizedAttachments = normalizeSearchText(attachmentNames.join(' '));
+  const normalizedOcr = normalizeSearchText(ocrText);
+  const titleTokens = tokenizeNormalizedSearchText(normalizedTitle);
+  const bodyTokens = tokenizeNormalizedSearchText(normalizedBody);
+  const checklistTokens = tokenizeNormalizedSearchText(normalizedChecklist);
+  const labelTokens = tokenizeNormalizedSearchText(normalizedLabels);
+  const attachmentTokens = tokenizeNormalizedSearchText(normalizedAttachments);
+  const ocrTokens = tokenizeNormalizedSearchText(normalizedOcr);
+  const normalizedAll = [
+    normalizedTitle,
+    normalizedBody,
+    normalizedChecklist,
+    normalizedLabels,
+    normalizedAttachments,
+  ]
+    .filter(Boolean)
+    .join(' ');
   return {
     note: record,
     checklistItems: [],
     labelIds: input.labelIds ?? [],
     labelNames: input.labelNames ?? [],
+    attachmentNames,
+    ocrText,
     hasImage: input.hasImage ?? false,
     hasLink: input.hasLink ?? false,
     hasReminder: input.hasReminder ?? false,
@@ -57,9 +81,24 @@ function document(
     normalizedBody,
     normalizedChecklist,
     normalizedLabels,
-    normalizedAll: [normalizedTitle, normalizedBody, normalizedChecklist, normalizedLabels]
-      .filter(Boolean)
-      .join(' '),
+    normalizedAttachments,
+    normalizedOcr,
+    normalizedAll,
+    titleTokens,
+    bodyTokens,
+    checklistTokens,
+    labelTokens,
+    attachmentTokens,
+    ocrTokens,
+    allTokens: [
+      ...new Set([
+        ...titleTokens,
+        ...bodyTokens,
+        ...checklistTokens,
+        ...labelTokens,
+        ...attachmentTokens,
+      ]),
+    ],
   };
 }
 
@@ -70,6 +109,16 @@ describe('normalizeSearchText', () => {
 
   it('preserves non-Latin letters for multilingual matching', () => {
     expect(normalizeSearchText('성경 공부 / 日本語')).toBe('성경 공부 日本語');
+  });
+});
+
+describe('OCR indexing', () => {
+  it('extracts V2-6 OCR sections without indexing later peer headings as OCR', () => {
+    expect(
+      extractIndexedOcrText(
+        'Intro\n\n## Extracted text\n\nReceipt 4821\nSecond line\n\n## Notes\n\nManual note',
+      ),
+    ).toBe('Receipt 4821\nSecond line');
   });
 });
 
@@ -105,6 +154,42 @@ describe('searchDocuments', () => {
     expect(searchDocuments(documents, 'uberblick', DEFAULT_SEARCH_FILTERS)).toHaveLength(1);
     expect(searchDocuments(documents, 'cafe', DEFAULT_SEARCH_FILTERS)).toHaveLength(1);
     expect(searchDocuments(documents, '성경', DEFAULT_SEARCH_FILTERS)).toHaveLength(1);
+  });
+
+  it('tolerates bounded spelling mistakes without making short terms fuzzy', () => {
+    const missionary = document({ title: 'Missionary preparation' });
+    const unrelated = document({ title: 'Weekly groceries' });
+    expect(
+      searchDocuments([missionary, unrelated], 'misionary', DEFAULT_SEARCH_FILTERS).map(
+        (result) => result.document.note.id,
+      ),
+    ).toEqual([missionary.note.id]);
+    expect(searchDocuments([missionary], 'mis', DEFAULT_SEARCH_FILTERS)).toHaveLength(1);
+    expect(searchDocuments([missionary], 'mss', DEFAULT_SEARCH_FILTERS)).toEqual([]);
+  });
+
+  it('ranks title matches above lower-value body matches', () => {
+    const titleMatch = document({ title: 'Missionary planning', body: 'General notes' });
+    const bodyMatch = document({ title: 'General notes', body: 'Missionary planning' });
+    const results = searchDocuments([bodyMatch, titleMatch], 'missionary', DEFAULT_SEARCH_FILTERS);
+    expect(results.map((result) => result.document.note.id)).toEqual([
+      titleMatch.note.id,
+      bodyMatch.note.id,
+    ]);
+    expect(results[0]?.score).toBeGreaterThan(results[1]?.score ?? 0);
+  });
+
+  it('searches attachment filenames and committed OCR text', () => {
+    const attachment = document({ attachmentNames: ['annual-budget-2026.pdf'] });
+    const ocr = document({
+      note: note({ content: 'Photo\n\n## Extracted text\n\nKingdom receipt 4821' }),
+    });
+    expect(searchDocuments([attachment, ocr], 'annual budget', DEFAULT_SEARCH_FILTERS)).toEqual([
+      expect.objectContaining({ document: attachment }),
+    ]);
+    expect(searchDocuments([attachment, ocr], 'receipt 4821', DEFAULT_SEARCH_FILTERS)).toEqual([
+      expect.objectContaining({ document: ocr }),
+    ]);
   });
 
   it('intersects query operators with UI filters', () => {

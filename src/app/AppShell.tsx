@@ -437,11 +437,21 @@ export function AppShell() {
         onMenu={handleMenu}
         onCommandPalette={() => setCommandPaletteOpen(true)}
         searchQuery={searchQuery}
+        searchFilters={searchFilters}
         filtersOpen={searchFiltersOpen}
         filtersActive={searchFiltersActive}
         onSearchQueryChange={setSearchQuery}
         onToggleFilters={() => setSearchFiltersOpen((open) => !open)}
         onClearSearch={clearSearch}
+        onApplySearch={(snapshot) => {
+          setSearchQuery(snapshot.query);
+          setSearchFilters({
+            ...snapshot.filters,
+            colors: [...snapshot.filters.colors],
+            labelIds: [...snapshot.filters.labelIds],
+          });
+          setSearchFiltersOpen(false);
+        }}
       />
 
       <div className="app-body">

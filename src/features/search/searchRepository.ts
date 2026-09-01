@@ -9,7 +9,12 @@ import {
 } from '../../db';
 import { parseWikiLinks } from '../links/linkIntelligence';
 import { richTextToPlainText } from '../richText/richText';
-import { normalizeSearchText, type SearchDocument } from './searchEngine';
+import {
+  extractIndexedOcrText,
+  normalizeSearchText,
+  tokenizeNormalizedSearchText,
+  type SearchDocument,
+} from './searchEngine';
 
 const LINK_PATTERN = /(?:https?:\/\/|www\.)\S+/iu;
 
@@ -59,11 +64,16 @@ export class SearchRepository {
     }
 
     const imageNoteIds = new Set<string>();
+    const attachmentNamesByNote = new Map<string, string[]>();
     for (const rawAttachment of rawAttachments) {
       const attachment = attachmentRecordSchema.parse(rawAttachment);
-      if (noteIds.has(attachment.noteId) && attachment.mimeType.startsWith('image/')) {
-        imageNoteIds.add(attachment.noteId);
-      }
+      if (!noteIds.has(attachment.noteId)) continue;
+      if (attachment.mimeType.startsWith('image/')) imageNoteIds.add(attachment.noteId);
+      const name = attachment.name?.trim();
+      if (!name) continue;
+      const names = attachmentNamesByNote.get(attachment.noteId) ?? [];
+      names.push(name);
+      attachmentNamesByNote.set(attachment.noteId, names);
     }
 
     const reminderNoteIds = new Set<string>();
@@ -80,20 +90,41 @@ export class SearchRepository {
       const labelNames = labelIds
         .map((labelId) => labelsById.get(labelId)?.name)
         .filter((name): name is string => Boolean(name));
+      const attachmentNames = attachmentNamesByNote.get(note.id) ?? [];
       const checklistText = checklistItems.map((item) => item.text).join('\n');
       const plainBody = note.type === 'text' ? richTextToPlainText(note.content) : note.content;
+      const ocrText = note.type === 'text' ? extractIndexedOcrText(note.content) : '';
       const combinedLinkText = [note.title, plainBody, checklistText].join('\n');
       const normalizedTitle = normalizeSearchText(note.title);
       const normalizedBody = normalizeSearchText(plainBody);
       const normalizedChecklist = normalizeSearchText(checklistText);
       const normalizedLabels = normalizeSearchText(labelNames.join(' '));
+      const normalizedAttachments = normalizeSearchText(attachmentNames.join(' '));
+      const normalizedOcr = normalizeSearchText(ocrText);
       const hasInternalLink = note.type === 'text' && parseWikiLinks(note.content).length > 0;
+      const titleTokens = tokenizeNormalizedSearchText(normalizedTitle);
+      const bodyTokens = tokenizeNormalizedSearchText(normalizedBody);
+      const checklistTokens = tokenizeNormalizedSearchText(normalizedChecklist);
+      const labelTokens = tokenizeNormalizedSearchText(normalizedLabels);
+      const attachmentTokens = tokenizeNormalizedSearchText(normalizedAttachments);
+      const ocrTokens = tokenizeNormalizedSearchText(normalizedOcr);
+      const normalizedAll = [
+        normalizedTitle,
+        normalizedBody,
+        normalizedChecklist,
+        normalizedLabels,
+        normalizedAttachments,
+      ]
+        .filter(Boolean)
+        .join(' ');
 
       return {
         note,
         checklistItems,
         labelIds,
         labelNames,
+        attachmentNames,
+        ocrText,
         hasImage: imageNoteIds.has(note.id),
         hasLink: hasInternalLink || LINK_PATTERN.test(combinedLinkText),
         hasReminder: reminderNoteIds.has(note.id),
@@ -101,9 +132,24 @@ export class SearchRepository {
         normalizedBody,
         normalizedChecklist,
         normalizedLabels,
-        normalizedAll: [normalizedTitle, normalizedBody, normalizedChecklist, normalizedLabels]
-          .filter(Boolean)
-          .join(' '),
+        normalizedAttachments,
+        normalizedOcr,
+        normalizedAll,
+        titleTokens,
+        bodyTokens,
+        checklistTokens,
+        labelTokens,
+        attachmentTokens,
+        ocrTokens,
+        allTokens: [
+          ...new Set([
+            ...titleTokens,
+            ...bodyTokens,
+            ...checklistTokens,
+            ...labelTokens,
+            ...attachmentTokens,
+          ]),
+        ],
       };
     });
   }
