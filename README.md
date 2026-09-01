@@ -6,9 +6,9 @@ A local-first, zero-friction notes PWA designed to match Google Keep's capture s
 
 ## Status
 
-**V2-5 — Voice is implemented as the fifth V2 feature release.** Notes now supports local microphone recording with pause/resume, review-before-save playback, attachment-backed persistence, inline audio playback, and voice-only note capture without requiring a backend or database migration.
+**V2-6 — OCR is implemented as the sixth V2 feature release.** Notes now supports private on-device text extraction from image attachments with English, German, and French recognition, editable review, copy, text-note insertion, and offline-packaged OCR assets without requiring a backend or database migration.
 
-V1 through P15 remains the stable product foundation, V2-1 adds reminders, V2-2 adds lightweight formatting, V2-3 adds note-to-note link intelligence, V2-4 adds drawing, and V2-5 adds local voice capture while preserving the same attachment, backup, lifecycle, and offline architecture.
+V1 through P15 remains the stable product foundation, V2-1 adds reminders, V2-2 adds lightweight formatting, V2-3 adds note-to-note link intelligence, V2-4 adds drawing, V2-5 adds local voice capture, and V2-6 adds local OCR while preserving the same attachment, note-content, backup, lifecycle, and offline architecture.
 
 ## V1 scope
 
@@ -134,6 +134,30 @@ V2-5 requires **no database migration**. Saved recordings remain ordinary Blob a
 
 V2-5 deliberately excludes speech-to-text/transcription, AI summarization, cloud speech processing, waveform editing, trimming/effects, recording-device selection UI, background recording after Notes closes, collaboration, and a separate voice database.
 
+## V2-6 scope
+
+V2-6 adds local OCR for existing image attachments without creating a second persistence model:
+
+- On-device OCR through Tesseract.js
+- English, German, and French recognition packs bundled with Notes
+- Local worker, WebAssembly core, and trained-language assets served from `/notes/ocr/`
+- Dynamic OCR-engine loading only when recognition is requested
+- PWA precaching of OCR runtime assets for offline recognition
+- Recognition progress, Cancel, Run again, and language switching
+- Confidence display when available
+- Editable extracted-text review before any note mutation
+- Copy extracted text without changing the note
+- Text-note **Add to note** action that appends a deterministic `## Extracted text` section
+- Checklist OCR exposed as copy-only rather than guessing checklist structure
+- Conservative line-ending, trailing-whitespace, blank-line, and outer-whitespace normalization
+- Nested modal focus and Escape isolation
+- Real-browser OCR regression coverage against a generated image
+- Production offline certification for the OCR worker, WASM core, and all three language packs
+
+V2-6 requires **no database migration**. OCR results are transient unless the user copies them or explicitly appends reviewed output to a text note. Appended text becomes ordinary `NoteRecord.content`, so the existing autosave, recovery, revision history, search, backup/restore, export, and offline models remain authoritative.
+
+V2-6 deliberately excludes cloud OCR, PDF OCR, handwriting recognition, automatic OCR during attachment import, bulk/background OCR, document-layout reconstruction, bounding-box overlays, table/form reconstruction, and AI correction, summarization, translation, or classification.
+
 ## Architecture
 
 - React + TypeScript + Vite
@@ -159,6 +183,11 @@ V2-5 deliberately excludes speech-to-text/transcription, AI summarization, cloud
 - MediaRecorder/getUserMedia voice capture with explicit browser-format negotiation and local-only Blob persistence
 - Separate voice-attachment validation over the shared attachment table, with no audio transcoding or voice-specific schema
 - Review-before-save audio object URLs with lifecycle-safe revocation and inline native playback after persistence
+- Tesseract.js OCR dynamically imported only for user-triggered recognition
+- Build-time local packaging of OCR worker, Tesseract WebAssembly core variants, and English/German/French trained data
+- Service-worker precaching of OCR JavaScript, WASM, and compressed language assets for offline recognition
+- Transient OCR review with explicit copy or text-note append, avoiding an OCR side table or persistent recognition cache
+- OCR text-note insertion through ordinary Markdown-compatible `content`, inheriting existing autosave/history/search/backup behavior
 - Bounded semantic per-note revision history with validated v1 snapshot payloads and 50-version pruning
 - Transactional reversible history restore that preserves current lifecycle, labels, and attachments across text/checklist type changes
 - Normalized one-reminder-per-note storage in the database-v2 `reminders` table with independent active/completed/dismissed lifecycle
@@ -204,11 +233,11 @@ V2-5 deliberately excludes speech-to-text/transcription, AI summarization, cloud
 - Informational offline/offline-ready states without disabling local IndexedDB operations
 - Production-only offline certification using `vite preview`, separate from dev-server browser tests
 - Vitest for unit tests
-- Playwright for real-browser IndexedDB, capture recovery, card/grid, lifecycle, organization, checklist, selection/bulk, search, revision-history/recovery, backup/disaster-recovery, Google Keep migration, image/attachment capture and viewing, command/keyboard, rich-text editing/rendering/search, link intelligence/navigation/auto-linking, drawing/pointer/PNG/modal integration, voice/microphone/audio/persistence/permission integration, responsive-shell, end-to-end, and production PWA/offline certification
+- Playwright for real-browser IndexedDB, capture recovery, card/grid, lifecycle, organization, checklist, selection/bulk, search, revision-history/recovery, backup/disaster-recovery, Google Keep migration, image/attachment capture and viewing, command/keyboard, rich-text editing/rendering/search, link intelligence/navigation/auto-linking, drawing/pointer/PNG/modal integration, voice/microphone/audio/persistence/permission integration, real local OCR recognition/text insertion, responsive-shell, end-to-end, and production PWA/offline/OCR-asset certification
 - GitHub Actions for CI and deployment
 - GitHub Pages-compatible build rooted at `/notes/`
 
-See [`docs/DATABASE.md`](docs/DATABASE.md) for database invariants, [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for the shell and styling contract, [`docs/CAPTURE.md`](docs/CAPTURE.md) for new-note capture and recovery, [`docs/CARDS_AND_GRID.md`](docs/CARDS_AND_GRID.md) for the P4 card and editor architecture, [`docs/LIFECYCLE.md`](docs/LIFECYCLE.md) for lifecycle state, Undo, Archive, Trash, duplication, and permanent deletion behavior, [`docs/ORGANIZATION.md`](docs/ORGANIZATION.md) for P6 color, label, label-view, and organization behavior, [`docs/CHECKLISTS.md`](docs/CHECKLISTS.md) for P7 checklist storage, interaction, conversion, and recovery behavior, [`docs/SELECTION_AND_BULK.md`](docs/SELECTION_AND_BULK.md) for P8 selection scope, bulk toolbar behavior, transactional batch mutations, and Undo semantics, [`docs/SEARCH.md`](docs/SEARCH.md) for P9 indexing, normalization, ranking, filters, query operators, and performance behavior, [`docs/KEYBOARD.md`](docs/KEYBOARD.md) for P10 command palette, shortcut safety, and focused-card keyboard behavior, [`docs/HISTORY.md`](docs/HISTORY.md) for P11 checkpoint, restore, Undo, copy, pruning, payload-validation, and cross-type recovery semantics, [`docs/BACKUP.md`](docs/BACKUP.md) for P12 full-library backup format, validation, safety snapshot, atomic replacement, and disaster-recovery behavior, [`docs/GOOGLE_KEEP_IMPORT.md`](docs/GOOGLE_KEEP_IMPORT.md) for P13 Takeout parsing, mapping, preview, repeat-import protection, and atomic additive migration behavior, [`docs/IMAGES.md`](docs/IMAGES.md) for P14 native image capture, privacy processing, thumbnails, viewer behavior, imported attachment handling, and storage limits, [`docs/PWA_OFFLINE.md`](docs/PWA_OFFLINE.md) for P15 installability, service-worker update policy, production offline behavior, and certification requirements, [`docs/REMINDERS.md`](docs/REMINDERS.md) for V2-1 reminder storage, scheduling, lifecycle, notification limits, backup/import integration, and regression requirements, [`docs/RICH_TEXT.md`](docs/RICH_TEXT.md) for V2-2 source syntax, editor behavior, rendering safety, search compatibility, scope boundaries, and regression requirements, [`docs/LINK_INTELLIGENCE.md`](docs/LINK_INTELLIGENCE.md) for V2-3 title resolution, WikiLink navigation, backlinks, unlinked mentions, safe auto-linking, and regression requirements, [`docs/DRAWING.md`](docs/DRAWING.md) for V2-4 drawing input, canvas tools, PNG persistence, modal isolation, capture integration, and regression requirements, and [`docs/VOICE.md`](docs/VOICE.md) for V2-5 microphone capture, format negotiation, local persistence, playback, privacy boundaries, and regression requirements.
+See [`docs/DATABASE.md`](docs/DATABASE.md) for database invariants, [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for the shell and styling contract, [`docs/CAPTURE.md`](docs/CAPTURE.md) for new-note capture and recovery, [`docs/CARDS_AND_GRID.md`](docs/CARDS_AND_GRID.md) for the P4 card and editor architecture, [`docs/LIFECYCLE.md`](docs/LIFECYCLE.md) for lifecycle state, Undo, Archive, Trash, duplication, and permanent deletion behavior, [`docs/ORGANIZATION.md`](docs/ORGANIZATION.md) for P6 color, label, label-view, and organization behavior, [`docs/CHECKLISTS.md`](docs/CHECKLISTS.md) for P7 checklist storage, interaction, conversion, and recovery behavior, [`docs/SELECTION_AND_BULK.md`](docs/SELECTION_AND_BULK.md) for P8 selection scope, bulk toolbar behavior, transactional batch mutations, and Undo semantics, [`docs/SEARCH.md`](docs/SEARCH.md) for P9 indexing, normalization, ranking, filters, query operators, and performance behavior, [`docs/KEYBOARD.md`](docs/KEYBOARD.md) for P10 command palette, shortcut safety, and focused-card keyboard behavior, [`docs/HISTORY.md`](docs/HISTORY.md) for P11 checkpoint, restore, Undo, copy, pruning, payload-validation, and cross-type recovery semantics, [`docs/BACKUP.md`](docs/BACKUP.md) for P12 full-library backup format, validation, safety snapshot, atomic replacement, and disaster-recovery behavior, [`docs/GOOGLE_KEEP_IMPORT.md`](docs/GOOGLE_KEEP_IMPORT.md) for P13 Takeout parsing, mapping, preview, repeat-import protection, and atomic additive migration behavior, [`docs/IMAGES.md`](docs/IMAGES.md) for P14 native image capture, privacy processing, thumbnails, viewer behavior, imported attachment handling, and storage limits, [`docs/PWA_OFFLINE.md`](docs/PWA_OFFLINE.md) for P15 installability, service-worker update policy, production offline behavior, and certification requirements, [`docs/REMINDERS.md`](docs/REMINDERS.md) for V2-1 reminder storage, scheduling, lifecycle, notification limits, backup/import integration, and regression requirements, [`docs/RICH_TEXT.md`](docs/RICH_TEXT.md) for V2-2 source syntax, editor behavior, rendering safety, search compatibility, scope boundaries, and regression requirements, [`docs/LINK_INTELLIGENCE.md`](docs/LINK_INTELLIGENCE.md) for V2-3 title resolution, WikiLink navigation, backlinks, unlinked mentions, safe auto-linking, and regression requirements, [`docs/DRAWING.md`](docs/DRAWING.md) for V2-4 drawing input, canvas tools, PNG persistence, modal isolation, capture integration, and regression requirements, [`docs/VOICE.md`](docs/VOICE.md) for V2-5 microphone capture, format negotiation, local persistence, playback, privacy boundaries, and regression requirements, and [`docs/OCR.md`](docs/OCR.md) for V2-6 local recognition, offline runtime packaging, text insertion, privacy boundaries, limitations, and regression requirements.
 
 ## Principles
 
@@ -233,7 +262,7 @@ npm run build
 npm run e2e:pwa
 ```
 
-`npm run e2e` uses the development server for the ordinary browser regression suite. `npm run e2e:pwa` must run after `npm run build`; it uses the production preview server so the generated service worker and manifest are the same artifacts that ship.
+`npm run e2e` uses the development server for the ordinary browser regression suite. `npm run e2e:pwa` must run after `npm run build`; it uses the production preview server so the generated service worker and manifest are the same artifacts that ship. `npm run dev` and `npm run build` prepare the local OCR runtime assets automatically.
 
 ## License
 
