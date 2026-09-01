@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 async function seedLinkLibrary(page: Page) {
   await page.goto('./');
@@ -39,12 +39,19 @@ async function openCard(page: Page, noteId: string) {
   await expect(page.getByRole('dialog', { name: 'Edit note' })).toBeVisible();
 }
 
+async function openConnections(editor: Locator) {
+  await editor.getByRole('button', { name: 'More', exact: true }).click();
+  await editor.getByRole('menuitem', { name: 'Connections', exact: true }).click();
+}
+
 test('connections derive backlinks and convert unlinked mentions without stored edge rows', async ({
   page,
 }) => {
   const ids = await seedLinkLibrary(page);
   await openCard(page, ids.targetId);
 
+  const editor = page.getByRole('dialog', { name: 'Edit note' });
+  await openConnections(editor);
   const connections = page.getByRole('region', { name: 'Connections' });
   await expect(connections).toContainText('1 linked note');
   await expect(connections).toContainText('1 unlinked mention');
@@ -114,6 +121,7 @@ test('duplicate titles stay ambiguous and internal links render/search without r
   await card.locator('.note-card-open').click();
 
   const editor = page.getByRole('dialog', { name: 'Edit note' });
+  await openConnections(editor);
   const connections = page.getByRole('region', { name: 'Connections' });
   await expect(connections).toContainText('Ambiguous target');
   await editor.getByRole('button', { name: 'Preview formatted text' }).click();
