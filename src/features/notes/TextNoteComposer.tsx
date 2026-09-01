@@ -6,7 +6,7 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
-import { ImagePlus, ListChecks, MoreHorizontal, Paperclip, Plus } from 'lucide-react';
+import { ImagePlus, ListChecks, Mic, Paperclip, PencilLine, Plus } from 'lucide-react';
 
 import {
   NATIVE_IMAGE_ACCEPT,
@@ -253,7 +253,7 @@ export function TextNoteComposer({
                   setQuickDrawingOpen(true);
                 }}
               >
-                Drawing
+                <PencilLine aria-hidden="true" /> Drawing
               </button>
               <button
                 type="button"
@@ -264,7 +264,7 @@ export function TextNoteComposer({
                   setQuickVoiceOpen(true);
                 }}
               >
-                Voice recording
+                <Mic aria-hidden="true" /> Voice recording
               </button>
             </div>
           ) : null}
