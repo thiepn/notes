@@ -11,6 +11,7 @@ interface VoiceAttachmentButtonProps {
   disabled?: boolean;
   className?: string;
   compact?: boolean;
+  onOpen?: (() => void) | undefined;
   onChanged?: ((noteId: string) => void) | undefined;
 }
 
@@ -21,6 +22,7 @@ export function VoiceAttachmentButton({
   disabled = false,
   className = '',
   compact = false,
+  onOpen,
   onChanged,
 }: VoiceAttachmentButtonProps) {
   const [open, setOpen] = useState(false);
@@ -57,6 +59,7 @@ export function VoiceAttachmentButton({
           disabled={disabled || saving}
           onClick={() => {
             setErrorMessage(null);
+            onOpen?.();
             setOpen(true);
           }}
         >

@@ -195,6 +195,7 @@ export function NoteCard({
       data-pinned={note.pinnedAt !== null}
       data-selected={selectionSelected}
       data-selection-active={selectionActive}
+      data-panel-open={visiblePanel !== null}
       data-has-reminder={effectiveReminder !== null}
       onPointerDown={handlePointerDown}
       onPointerUp={clearLongPress}

@@ -134,28 +134,47 @@ export function TextNoteComposer({
     [onAttachmentsChanged],
   );
 
-  const handleQuickImages = async (files: File[]) => {
-    if (files.length === 0) return;
-    openCapture();
-    setQuickToolsOpen(false);
-    setQuickAttachmentMessage(null);
-    setQuickAttachmentError(null);
-    try {
-      const note = await ensureNote();
-      if (!note) throw new Error('The note could not be created for this image.');
-      const result = await attachmentsRepository.addImages(note.id, files);
-      markAttachmentsChanged(note.id);
-      if (result.added > 0) {
-        setQuickAttachmentMessage(
-          `${result.added} ${result.added === 1 ? 'image' : 'images'} added.`,
-        );
-      } else if (result.skippedDuplicates > 0) {
-        setQuickAttachmentMessage('That image is already attached to this note.');
+  const handleQuickImages = useCallback(
+    async (files: File[], source: 'picker' | 'paste' = 'picker') => {
+      if (files.length === 0) return;
+      openCapture();
+      setQuickToolsOpen(false);
+      setQuickAttachmentMessage(null);
+      setQuickAttachmentError(null);
+      try {
+        const note = await ensureNote();
+        if (!note) throw new Error('The note could not be created for this image.');
+        const result = await attachmentsRepository.addImages(note.id, files);
+        markAttachmentsChanged(note.id);
+        if (result.added > 0) {
+          setQuickAttachmentMessage(
+            source === 'paste'
+              ? `${result.added} ${result.added === 1 ? 'image' : 'images'} pasted.`
+              : `${result.added} ${result.added === 1 ? 'image' : 'images'} added.`,
+          );
+        } else if (result.skippedDuplicates > 0) {
+          setQuickAttachmentMessage('That image is already attached to this note.');
+        }
+      } catch (error) {
+        setQuickAttachmentError(toErrorMessage(error));
       }
-    } catch (error) {
-      setQuickAttachmentError(toErrorMessage(error));
-    }
-  };
+    },
+    [attachmentsRepository, ensureNote, markAttachmentsChanged, openCapture],
+  );
+
+  useEffect(() => {
+    if (!expanded || attachmentsOpen) return;
+    const handlePaste = (event: ClipboardEvent) => {
+      const files = Array.from(event.clipboardData?.files ?? []).filter((file) =>
+        file.type.toLocaleLowerCase().startsWith('image/'),
+      );
+      if (files.length === 0) return;
+      event.preventDefault();
+      void handleQuickImages(files, 'paste');
+    };
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, [attachmentsOpen, expanded, handleQuickImages]);
 
   const handleQuickDrawing = async (file: File) => {
     setQuickAttachmentMessage(null);
@@ -369,6 +388,7 @@ export function TextNoteComposer({
                   repository={attachmentsRepository}
                   ensureNoteId={ensureNoteId}
                   className="note-composer-menu-control"
+                  onOpen={() => setExpandedToolsOpen(false)}
                   onChanged={(noteId) => {
                     setExpandedToolsOpen(false);
                     markAttachmentsChanged(noteId);
@@ -379,6 +399,7 @@ export function TextNoteComposer({
                   repository={voiceAttachmentsRepository}
                   ensureNoteId={ensureNoteId}
                   className="note-composer-menu-control"
+                  onOpen={() => setExpandedToolsOpen(false)}
                   onChanged={(noteId) => {
                     setExpandedToolsOpen(false);
                     markAttachmentsChanged(noteId);

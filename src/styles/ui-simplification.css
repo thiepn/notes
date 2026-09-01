@@ -243,6 +243,17 @@
   opacity: 0.72;
 }
 
+.note-card[data-panel-open='true'] {
+  z-index: 3;
+}
+
+.note-card[data-panel-open='true'] .note-card-actions,
+.note-card[data-panel-open='true'] .note-card-pin-action {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
 /* The ordinary card is content. Actions appear when the card is being acted on. */
 @media (hover: hover) and (pointer: fine) {
   .note-card-actions,

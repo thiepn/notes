@@ -390,6 +390,7 @@ export function ChecklistEditorDialog({
                       noteId={note.id}
                       repository={attachmentsRepository}
                       className="note-editor-menu-control"
+                      onOpen={() => setAddOpen(false)}
                       onChanged={(noteId) => {
                         setAddOpen(false);
                         setAttachmentsOpen(true);
@@ -400,6 +401,7 @@ export function ChecklistEditorDialog({
                       noteId={note.id}
                       repository={voiceAttachmentsRepository}
                       className="note-editor-menu-control"
+                      onOpen={() => setAddOpen(false)}
                       onChanged={(noteId) => {
                         setAddOpen(false);
                         setAttachmentsOpen(true);

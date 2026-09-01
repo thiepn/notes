@@ -580,7 +580,7 @@ function clickFocusedCardAction(prefixes: string[]): boolean {
     const label = button.getAttribute('aria-label') ?? '';
     return prefixes.some((prefix) => label.startsWith(prefix));
   });
-  if (!action || action.disabled || action.getClientRects().length === 0) return false;
+  if (!action || action.disabled) return false;
   action.click();
   return true;
 }
