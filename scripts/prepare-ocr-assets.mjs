@@ -32,5 +32,3 @@ for (const language of languages) {
     join(languageOutputDir, `${language}.traineddata.gz`),
   );
 }
-
-console.log(`Prepared local OCR assets for: ${languages.join(', ')}`);
