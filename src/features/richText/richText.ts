@@ -54,7 +54,7 @@ export function richTextToPlainText(value: string): string {
     .replace(/^>\s?/gmu, '')
     .replace(/^\s*[-+]\s+/gmu, '')
     .replace(/^\s*\d+\.\s+/gmu, '')
-    .replace(/\[\[([^\[\]\n]+)\]\]/gu, '$1')
+    .replace(/\[\[([^\]\n[]+)\]\]/gu, '$1')
     .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/giu, '$1 $2')
     .replace(/\*\*([^*\n]+)\*\*/gu, '$1')
     .replace(/~~([^~\n]+)~~/gu, '$1')
