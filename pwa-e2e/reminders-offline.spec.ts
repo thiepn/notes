@@ -16,10 +16,7 @@ async function waitForServiceWorkerControl(page: import('@playwright/test').Page
     .toBe(true);
 }
 
-async function readReminderSnapshot(
-  page: import('@playwright/test').Page,
-  title: string,
-) {
+async function readReminderSnapshot(page: import('@playwright/test').Page, title: string) {
   return page.evaluate(async (noteTitle) => {
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
       const request = indexedDB.open('thiepn-notes');
@@ -48,9 +45,7 @@ async function readReminderSnapshot(
       }>('reminders');
       const reminder = reminders.find((item) => item.noteId === note.id);
 
-      return reminder
-        ? { id: reminder.id, dueAt: reminder.dueAt, status: reminder.status }
-        : null;
+      return reminder ? { id: reminder.id, dueAt: reminder.dueAt, status: reminder.status } : null;
     } finally {
       database.close();
     }
