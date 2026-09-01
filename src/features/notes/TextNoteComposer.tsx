@@ -6,7 +6,7 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
-import { ImagePlus, ListChecks } from 'lucide-react';
+import { ImagePlus, ListChecks, PencilLine } from 'lucide-react';
 
 import {
   NATIVE_IMAGE_ACCEPT,
@@ -15,6 +15,7 @@ import {
   type NotesRepository,
 } from '../../db';
 import { DrawingAttachmentButton } from '../drawing/DrawingAttachmentButton';
+import { DrawingDialog } from '../drawing/DrawingDialog';
 import { RichTextEditor } from '../richText/RichTextEditor';
 import { AttachmentPanel } from './AttachmentPanel';
 import { useTextNoteCapture } from './useTextNoteCapture';
@@ -46,6 +47,7 @@ export function TextNoteComposer({
   const [attachmentRefreshKey, setAttachmentRefreshKey] = useState(0);
   const [quickImageMessage, setQuickImageMessage] = useState<string | null>(null);
   const [quickImageError, setQuickImageError] = useState<string | null>(null);
+  const [quickDrawingOpen, setQuickDrawingOpen] = useState(false);
   const {
     activeNoteId,
     draft,
@@ -120,6 +122,17 @@ export function TextNoteComposer({
     }
   };
 
+  const handleQuickDrawing = async (file: File) => {
+    setQuickImageMessage(null);
+    setQuickImageError(null);
+    const note = await ensureNote();
+    if (!note) throw new Error('The note could not be created for this drawing.');
+    const result = await attachmentsRepository.addImages(note.id, [file]);
+    markAttachmentsChanged(note.id);
+    if (result.added > 0) setQuickImageMessage('Drawing added.');
+    else if (result.skippedDuplicates > 0) setQuickImageMessage('That drawing is already attached.');
+  };
+
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Escape') {
       event.preventDefault();
@@ -132,65 +145,64 @@ export function TextNoteComposer({
     }
   };
 
-  if (!expanded) {
-    return (
-      <div className="note-composer-collapsed" aria-label="Create a note">
+  const composer = !expanded ? (
+    <div className="note-composer-collapsed" aria-label="Create a note">
+      <button
+        className="note-composer-main-action"
+        type="button"
+        aria-label="Create a text note"
+        aria-expanded="false"
+        onClick={openCapture}
+      >
+        Take a note…
+      </button>
+      <div className="note-composer-hints">
         <button
-          className="note-composer-main-action"
+          className="note-composer-quick-action"
           type="button"
-          aria-label="Create a text note"
-          aria-expanded="false"
-          onClick={openCapture}
+          aria-label="Create a checklist"
+          title="New checklist"
+          onClick={onChecklistRequested}
         >
-          Take a note…
+          <ListChecks aria-hidden="true" />
         </button>
-        <div className="note-composer-hints">
-          <button
-            className="note-composer-quick-action"
-            type="button"
-            aria-label="Create a checklist"
-            title="New checklist"
-            onClick={onChecklistRequested}
-          >
-            <ListChecks aria-hidden="true" />
-          </button>
-          <DrawingAttachmentButton
-            noteId={activeNoteId}
-            repository={attachmentsRepository}
-            ensureNoteId={ensureNoteId}
-            className="note-composer-quick-action"
-            compact
-            onOpen={openCapture}
-            onChanged={markAttachmentsChanged}
-          />
-          <input
-            ref={quickImageInputRef}
-            className="attachment-file-input"
-            type="file"
-            accept={NATIVE_IMAGE_ACCEPT}
-            multiple
-            aria-label="Choose images for new note"
-            onChange={(event) => {
-              const files = Array.from(event.target.files ?? []);
-              event.target.value = '';
-              void handleQuickImages(files);
-            }}
-          />
-          <button
-            className="note-composer-quick-action"
-            type="button"
-            aria-label="Add image to new note"
-            title="New image note"
-            onClick={() => quickImageInputRef.current?.click()}
-          >
-            <ImagePlus aria-hidden="true" />
-          </button>
-        </div>
+        <button
+          className="note-composer-quick-action"
+          type="button"
+          aria-label="Add drawing"
+          title="New drawing note"
+          onClick={() => {
+            openCapture();
+            setQuickDrawingOpen(true);
+          }}
+        >
+          <PencilLine aria-hidden="true" />
+        </button>
+        <input
+          ref={quickImageInputRef}
+          className="attachment-file-input"
+          type="file"
+          accept={NATIVE_IMAGE_ACCEPT}
+          multiple
+          aria-label="Choose images for new note"
+          onChange={(event) => {
+            const files = Array.from(event.target.files ?? []);
+            event.target.value = '';
+            void handleQuickImages(files);
+          }}
+        />
+        <button
+          className="note-composer-quick-action"
+          type="button"
+          aria-label="Add image to new note"
+          title="New image note"
+          onClick={() => quickImageInputRef.current?.click()}
+        >
+          <ImagePlus aria-hidden="true" />
+        </button>
       </div>
-    );
-  }
-
-  return (
+    </div>
+  ) : (
     <div
       ref={composerRef}
       className="note-composer"
@@ -214,7 +226,7 @@ export function TextNoteComposer({
         ariaLabel="Note text"
         placeholder="Take a note…"
         rows={1}
-        autoFocus
+        autoFocus={!quickDrawingOpen}
         onChange={setContent}
       />
 
@@ -259,6 +271,15 @@ export function TextNoteComposer({
         </button>
       </div>
     </div>
+  );
+
+  return (
+    <>
+      {composer}
+      {quickDrawingOpen ? (
+        <DrawingDialog onSave={handleQuickDrawing} onClose={() => setQuickDrawingOpen(false)} />
+      ) : null}
+    </>
   );
 }
 
