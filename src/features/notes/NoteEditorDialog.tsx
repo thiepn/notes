@@ -19,6 +19,7 @@ import {
   type NoteRecord,
   type NotesRepository,
 } from '../../db';
+import { DrawingAttachmentButton } from '../drawing/DrawingAttachmentButton';
 import { ConnectionsPanel } from '../links/ConnectionsPanel';
 import { resolveWikiLink } from '../links/linkIntelligence';
 import { requestLinkedNoteOpen } from '../links/navigation';
@@ -227,6 +228,15 @@ export function NoteEditorDialog({
             repository={remindersRepository}
             onChanged={() => undefined}
           />
+
+          <div className="drawing-inline-action">
+            <DrawingAttachmentButton
+              noteId={note.id}
+              repository={attachmentsRepository}
+              className="note-editor-secondary"
+              onChanged={onAttachmentsChanged}
+            />
+          </div>
 
           <AttachmentPanel
             noteId={note.id}

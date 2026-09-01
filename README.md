@@ -6,9 +6,9 @@ A local-first, zero-friction notes PWA designed to match Google Keep's capture s
 
 ## Status
 
-**V2-3 — Link Intelligence is implemented as the third V2 feature release.** Text notes now support title-resolved `[[WikiLinks]]`, internal-note navigation, derived backlinks, duplicate/missing-target states, unlinked-mention discovery, and safe one-click conversion of plain-text mentions into WikiLinks.
+**V2-4 — Drawing is implemented as the fourth V2 feature release.** Notes now supports fast local sketching with mouse, touch, and stylus input, pen and eraser tools, colors and stroke widths, undo/redo, and portable PNG persistence through the existing attachment system.
 
-V1 through P15 remains the stable product foundation, V2-1 adds reminders, V2-2 adds lightweight formatting, and V2-3 makes note-to-note relationships useful without adding a second graph database or changing the IndexedDB schema.
+V1 through P15 remains the stable product foundation, V2-1 adds reminders, V2-2 adds lightweight formatting, V2-3 adds note-to-note link intelligence, and V2-4 adds drawing without introducing a parallel database or weakening backup/offline portability.
 
 ## V1 scope
 
@@ -89,6 +89,28 @@ V2-3 requires **no database migration** and stores no persistent edge table. Out
 
 V2-3 deliberately excludes graph visualization, block/section transclusion, checklist-item WikiLinks, aliases, automatic target creation, and automatic rename propagation.
 
+## V2-4 scope
+
+V2-4 adds local drawing and sketch capture through the existing attachment architecture:
+
+- Responsive 1200 × 800 drawing canvas
+- Mouse, touch, and stylus input through Pointer Events
+- Pen and eraser tools
+- Five pen colors and three stroke widths
+- Whole-stroke Undo and Redo
+- Clear, Cancel, and explicit Save drawing actions
+- Quick drawing capture from the collapsed new-note row
+- Attachment-only drawing notes without blank-note clutter when a sketch is cancelled
+- Drawing actions in expanded/new text notes, existing text notes, and checklist editors
+- Opaque white-background PNG export
+- Immediate attachment-panel and card-thumbnail refresh after save
+- Modal isolation so Escape closes Drawing without closing its parent note/checklist editor
+- Existing attachment limits, SHA-256 duplicate detection, privacy processing, lifecycle cleanup, backup/restore, and offline/PWA behavior
+
+V2-4 requires **no database migration**. Saved drawings are normal `image/png` attachments, so the established attachment table remains the single persisted source of truth.
+
+V2-4 deliberately excludes reopening saved PNGs as editable vector strokes, shape/text/layer tools, handwriting recognition, OCR, collaborative drawing, and cloud-specific drawing synchronization.
+
 ## Architecture
 
 - React + TypeScript + Vite
@@ -103,10 +125,14 @@ V2-3 deliberately excludes graph visualization, block/section transclusion, chec
 - Normalized checklist item rows with stable IDs, ordering, check state, and parent relationships
 - Native attachment repository over the existing IndexedDB attachment table with SHA-256 duplicate suppression
 - Privacy-safe static-image re-encoding, 4096 px bounded processing, and animation-preserving GIF privacy-metadata stripping
-- Picker, drag/drop, clipboard, and mobile-camera image capture shared by text and checklist notes
+- Picker, drag/drop, clipboard, mobile-camera, and drawing image capture shared by the note attachment model
 - Attachment-only capture preservation across close/reload recovery
 - Lazy near-viewport attachment lookup with derived 720 px card thumbnails and masonry remeasurement
 - Responsive attachment grids, local image lightbox, explicit removal confirmation, and imported-file downloads
+- Fixed-logical-coordinate 1200 × 800 drawing canvas scaled responsively for desktop and mobile
+- Pointer Events drawing path shared by mouse, touch, and stylus input
+- In-session stroke history with pen/eraser compositing, whole-stroke undo/redo, and PNG flattening on save
+- Drawing persistence through ordinary attachment ingestion with no vector-source schema or parallel drawing database
 - Bounded semantic per-note revision history with validated v1 snapshot payloads and 50-version pruning
 - Transactional reversible history restore that preserves current lifecycle, labels, and attachments across text/checklist type changes
 - Normalized one-reminder-per-note storage in the database-v2 `reminders` table with independent active/completed/dismissed lifecycle
@@ -152,11 +178,11 @@ V2-3 deliberately excludes graph visualization, block/section transclusion, chec
 - Informational offline/offline-ready states without disabling local IndexedDB operations
 - Production-only offline certification using `vite preview`, separate from dev-server browser tests
 - Vitest for unit tests
-- Playwright for real-browser IndexedDB, capture recovery, card/grid, lifecycle, organization, checklist, selection/bulk, search, revision-history/recovery, backup/disaster-recovery, Google Keep migration, image/attachment capture and viewing, command/keyboard, rich-text editing/rendering/search, link intelligence/navigation/auto-linking, responsive-shell, end-to-end, and production PWA/offline certification
+- Playwright for real-browser IndexedDB, capture recovery, card/grid, lifecycle, organization, checklist, selection/bulk, search, revision-history/recovery, backup/disaster-recovery, Google Keep migration, image/attachment capture and viewing, command/keyboard, rich-text editing/rendering/search, link intelligence/navigation/auto-linking, drawing/pointer/PNG/modal integration, responsive-shell, end-to-end, and production PWA/offline certification
 - GitHub Actions for CI and deployment
 - GitHub Pages-compatible build rooted at `/notes/`
 
-See [`docs/DATABASE.md`](docs/DATABASE.md) for database invariants, [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for the shell and styling contract, [`docs/CAPTURE.md`](docs/CAPTURE.md) for new-note capture and recovery, [`docs/CARDS_AND_GRID.md`](docs/CARDS_AND_GRID.md) for the P4 card and editor architecture, [`docs/LIFECYCLE.md`](docs/LIFECYCLE.md) for lifecycle state, Undo, Archive, Trash, duplication, and permanent deletion behavior, [`docs/ORGANIZATION.md`](docs/ORGANIZATION.md) for P6 color, label, label-view, and organization behavior, [`docs/CHECKLISTS.md`](docs/CHECKLISTS.md) for P7 checklist storage, interaction, conversion, and recovery behavior, [`docs/SELECTION_AND_BULK.md`](docs/SELECTION_AND_BULK.md) for P8 selection scope, bulk toolbar behavior, transactional batch mutations, and Undo semantics, [`docs/SEARCH.md`](docs/SEARCH.md) for P9 indexing, normalization, ranking, filters, query operators, and performance behavior, [`docs/KEYBOARD.md`](docs/KEYBOARD.md) for P10 command palette, shortcut safety, and focused-card keyboard behavior, [`docs/HISTORY.md`](docs/HISTORY.md) for P11 checkpoint, restore, Undo, copy, pruning, payload-validation, and cross-type recovery semantics, [`docs/BACKUP.md`](docs/BACKUP.md) for P12 full-library backup format, validation, safety snapshot, atomic replacement, and disaster-recovery behavior, [`docs/GOOGLE_KEEP_IMPORT.md`](docs/GOOGLE_KEEP_IMPORT.md) for P13 Takeout parsing, mapping, preview, repeat-import protection, and atomic additive migration behavior, [`docs/IMAGES.md`](docs/IMAGES.md) for P14 native image capture, privacy processing, thumbnails, viewer behavior, imported attachment handling, and storage limits, [`docs/PWA_OFFLINE.md`](docs/PWA_OFFLINE.md) for P15 installability, service-worker update policy, production offline behavior, and certification requirements, [`docs/REMINDERS.md`](docs/REMINDERS.md) for V2-1 reminder storage, scheduling, lifecycle, notification limits, backup/import integration, and regression requirements, [`docs/RICH_TEXT.md`](docs/RICH_TEXT.md) for V2-2 source syntax, editor behavior, rendering safety, search compatibility, scope boundaries, and regression requirements, and [`docs/LINK_INTELLIGENCE.md`](docs/LINK_INTELLIGENCE.md) for V2-3 title resolution, WikiLink navigation, backlinks, unlinked mentions, safe auto-linking, and regression requirements.
+See [`docs/DATABASE.md`](docs/DATABASE.md) for database invariants, [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for the shell and styling contract, [`docs/CAPTURE.md`](docs/CAPTURE.md) for new-note capture and recovery, [`docs/CARDS_AND_GRID.md`](docs/CARDS_AND_GRID.md) for the P4 card and editor architecture, [`docs/LIFECYCLE.md`](docs/LIFECYCLE.md) for lifecycle state, Undo, Archive, Trash, duplication, and permanent deletion behavior, [`docs/ORGANIZATION.md`](docs/ORGANIZATION.md) for P6 color, label, label-view, and organization behavior, [`docs/CHECKLISTS.md`](docs/CHECKLISTS.md) for P7 checklist storage, interaction, conversion, and recovery behavior, [`docs/SELECTION_AND_BULK.md`](docs/SELECTION_AND_BULK.md) for P8 selection scope, bulk toolbar behavior, transactional batch mutations, and Undo semantics, [`docs/SEARCH.md`](docs/SEARCH.md) for P9 indexing, normalization, ranking, filters, query operators, and performance behavior, [`docs/KEYBOARD.md`](docs/KEYBOARD.md) for P10 command palette, shortcut safety, and focused-card keyboard behavior, [`docs/HISTORY.md`](docs/HISTORY.md) for P11 checkpoint, restore, Undo, copy, pruning, payload-validation, and cross-type recovery semantics, [`docs/BACKUP.md`](docs/BACKUP.md) for P12 full-library backup format, validation, safety snapshot, atomic replacement, and disaster-recovery behavior, [`docs/GOOGLE_KEEP_IMPORT.md`](docs/GOOGLE_KEEP_IMPORT.md) for P13 Takeout parsing, mapping, preview, repeat-import protection, and atomic additive migration behavior, [`docs/IMAGES.md`](docs/IMAGES.md) for P14 native image capture, privacy processing, thumbnails, viewer behavior, imported attachment handling, and storage limits, [`docs/PWA_OFFLINE.md`](docs/PWA_OFFLINE.md) for P15 installability, service-worker update policy, production offline behavior, and certification requirements, [`docs/REMINDERS.md`](docs/REMINDERS.md) for V2-1 reminder storage, scheduling, lifecycle, notification limits, backup/import integration, and regression requirements, [`docs/RICH_TEXT.md`](docs/RICH_TEXT.md) for V2-2 source syntax, editor behavior, rendering safety, search compatibility, scope boundaries, and regression requirements, [`docs/LINK_INTELLIGENCE.md`](docs/LINK_INTELLIGENCE.md) for V2-3 title resolution, WikiLink navigation, backlinks, unlinked mentions, safe auto-linking, and regression requirements, and [`docs/DRAWING.md`](docs/DRAWING.md) for V2-4 drawing input, canvas tools, PNG persistence, modal isolation, capture integration, and regression requirements.
 
 ## Principles
 

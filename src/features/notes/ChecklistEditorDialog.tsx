@@ -18,6 +18,7 @@ import {
   type ChecklistsRepository,
   type NoteRecord,
 } from '../../db';
+import { DrawingAttachmentButton } from '../drawing/DrawingAttachmentButton';
 import { ReminderControl } from '../reminders/ReminderControl';
 import { AttachmentPanel } from './AttachmentPanel';
 import {
@@ -324,6 +325,15 @@ export function ChecklistEditorDialog({
             repository={remindersRepository}
             onChanged={() => undefined}
           />
+
+          <div className="drawing-inline-action">
+            <DrawingAttachmentButton
+              noteId={note.id}
+              repository={attachmentsRepository}
+              className="note-editor-secondary"
+              onChanged={onAttachmentsChanged}
+            />
+          </div>
 
           <AttachmentPanel
             noteId={note.id}
