@@ -343,7 +343,11 @@ export function NoteCard({
                       role="menuitem"
                       onClick={() => closeAndRun(() => actions.togglePin(note))}
                     >
-                      {note.pinnedAt !== null ? <PinOff aria-hidden="true" /> : <Pin aria-hidden="true" />}
+                      {note.pinnedAt !== null ? (
+                        <PinOff aria-hidden="true" />
+                      ) : (
+                        <Pin aria-hidden="true" />
+                      )}
                       {note.pinnedAt !== null ? 'Unpin' : 'Pin'}
                     </button>
                   ) : null}
