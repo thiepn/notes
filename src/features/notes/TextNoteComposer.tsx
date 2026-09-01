@@ -350,7 +350,10 @@ export function TextNoteComposer({
               <Plus aria-hidden="true" /> Add
             </button>
             {expandedToolsOpen ? (
-              <div className="note-composer-tools-menu note-composer-tools-menu-expanded" role="menu">
+              <div
+                className="note-composer-tools-menu note-composer-tools-menu-expanded"
+                role="menu"
+              >
                 <button
                   type="button"
                   role="menuitem"
