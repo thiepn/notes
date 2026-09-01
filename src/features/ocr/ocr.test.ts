@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { appendOcrText, humanizeOcrStatus, normalizeOcrText } from './ocr';
 
 describe('OCR helpers', () => {
-  it('normalizes line endings, trailing whitespace, and excessive blank lines', () => {
+  it('normalizes line endings, outer whitespace, trailing whitespace, and excessive blank lines', () => {
     expect(normalizeOcrText('  First line  \r\n\r\n\r\nSecond line\t\r\n')).toBe(
-      '  First line\n\nSecond line',
+      'First line\n\nSecond line',
     );
   });
 
