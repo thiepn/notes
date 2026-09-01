@@ -33,6 +33,7 @@ test('local OCR recognizes an attached image and appends reviewed text to a text
   await page.reload();
   await page.locator(`[data-note-id="${noteId}"] .note-card-open`).click();
   const editor = page.getByRole('dialog', { name: 'Edit note' });
+  await editor.getByRole('button', { name: 'Add', exact: true }).click();
   const ocr = editor.getByRole('region', { name: 'Image text recognition' });
   await expect(ocr).toBeVisible();
   await ocr.getByRole('button', { name: 'Extract text' }).click();
