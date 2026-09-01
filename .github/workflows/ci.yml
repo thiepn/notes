@@ -32,6 +32,7 @@ jobs:
 
       - name: Fix V2-1 E2E release blockers
         run: |
+          exec > >(tee e2e-fix-output.txt) 2>&1
           python3 - <<'PY'
           from pathlib import Path
 
@@ -155,3 +156,14 @@ jobs:
           git add e2e/backup.spec.ts src/styles/notes.css
           git commit -m "fix: clear V2-1 browser regression blockers"
           git push origin HEAD:v2-1-reminders
+
+      - name: Upload focused fix diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-1-e2e-fix-output
+          path: |
+            e2e-fix-output.txt
+            playwright-report
+            test-results
+          if-no-files-found: ignore
