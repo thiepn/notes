@@ -1,6 +1,8 @@
 import {
+  useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -17,6 +19,9 @@ import {
   type NoteRecord,
   type NotesRepository,
 } from '../../db';
+import { ConnectionsPanel } from '../links/ConnectionsPanel';
+import { resolveWikiLink } from '../links/linkIntelligence';
+import { requestLinkedNoteOpen } from '../links/navigation';
 import { ReminderControl } from '../reminders/ReminderControl';
 import { RichTextEditor } from '../richText/RichTextEditor';
 import { AttachmentPanel } from './AttachmentPanel';
@@ -58,6 +63,7 @@ export function NoteEditorDialog({
   const [historyNote, setHistoryNote] = useState<NoteRecord | null>(null);
   const [pendingHistoryResult, setPendingHistoryResult] = useState<HistoricalResult | null>(null);
   const [pendingHistoryCopies, setPendingHistoryCopies] = useState<HistoricalResult[]>([]);
+  const [linkLibrary, setLinkLibrary] = useState<NoteRecord[]>([]);
   const { draft, errorMessage, status, setTitle, setContent, saveNow, finishEditing, retrySave } =
     useExistingNoteEditor({
       note,
@@ -68,6 +74,28 @@ export function NoteEditorDialog({
       },
       onClose,
     });
+
+  const refreshLinkLibrary = useCallback(async () => {
+    const [active, archived] = await Promise.all([repository.listActive(), repository.listArchived()]);
+    setLinkLibrary([...active, ...archived]);
+  }, [repository]);
+
+  useEffect(() => {
+    void refreshLinkLibrary();
+  }, [note.id, note.updatedAt, refreshLinkLibrary]);
+
+  const draftNote = useMemo<NoteRecord>(
+    () => ({ ...note, title: draft.title, content: draft.content }),
+    [draft.content, draft.title, note],
+  );
+  const effectiveLinkLibrary = useMemo(
+    () => [draftNote, ...linkLibrary.filter((candidate) => candidate.id !== note.id)],
+    [draftNote, linkLibrary, note.id],
+  );
+  const resolveEditorWikiLink = useCallback(
+    (title: string) => resolveWikiLink(title, effectiveLinkLibrary),
+    [effectiveLinkLibrary],
+  );
 
   useEffect(() => {
     void revisionsRepository.checkpoint(note.id, 'edit').catch(() => {
@@ -106,6 +134,14 @@ export function NoteEditorDialog({
   const handleLayerPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (historyNote || event.target !== event.currentTarget) return;
     void finishEditing();
+  };
+
+  const openLinkedNote = async (noteId: string) => {
+    const saved = await saveNow();
+    if (!saved) return;
+    await revisionsRepository.checkpoint(saved.id, 'close').catch(() => undefined);
+    onClose();
+    await requestLinkedNoteOpen(noteId);
   };
 
   const convert = async () => {
@@ -175,6 +211,8 @@ export function NoteEditorDialog({
             placeholder="Take a note…"
             rows={1}
             autoFocus
+            resolveWikiLink={resolveEditorWikiLink}
+            onWikiLinkOpen={(noteId) => void openLinkedNote(noteId)}
             onChange={setContent}
           />
 
@@ -189,6 +227,15 @@ export function NoteEditorDialog({
             repository={attachmentsRepository}
             refreshKey={attachmentRefreshKey}
             onChanged={onAttachmentsChanged}
+          />
+
+          <ConnectionsPanel
+            note={draftNote}
+            library={effectiveLinkLibrary}
+            repository={repository}
+            beforeLinking={saveNow}
+            onOpenNote={(noteId) => void openLinkedNote(noteId)}
+            onLibraryChanged={refreshLinkLibrary}
           />
 
           <div className="note-editor-footer">
