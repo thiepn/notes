@@ -263,7 +263,7 @@ export function NoteCard({
       )}
 
       {!selectionActive && mode === 'notes' ? (
-        <div className="note-card-pin-action">
+        <div className="note-card-pin-action note-card-direct-secondary">
           <IconButton
             className="note-card-action"
             label={`${note.pinnedAt !== null ? 'Unpin' : 'Pin'} note: ${label}`}
@@ -277,7 +277,7 @@ export function NoteCard({
       {!selectionActive ? (
         <div className="note-card-actions">
           {mode !== 'trash' ? (
-            <div className="note-card-action-slot">
+            <div className="note-card-action-slot note-card-direct-secondary">
               <IconButton
                 className="note-card-action"
                 label={`Change color: ${label}`}
@@ -286,22 +286,12 @@ export function NoteCard({
               >
                 <Palette />
               </IconButton>
-              {visiblePanel === 'color' ? (
-                <NoteColorPicker
-                  noteLabel={label}
-                  value={note.color}
-                  onChange={(color) => {
-                    setOpenPanel(null);
-                    actions.setColor(note, color);
-                  }}
-                />
-              ) : null}
             </div>
           ) : null}
 
           {mode === 'notes' ? (
             <IconButton
-              className="note-card-action"
+              className="note-card-action note-card-direct-secondary"
               label={`Archive note: ${label}`}
               onClick={() => actions.archive(note)}
             >
@@ -310,7 +300,7 @@ export function NoteCard({
           ) : null}
           {mode === 'archive' ? (
             <IconButton
-              className="note-card-action"
+              className="note-card-action note-card-direct-secondary"
               label={`Unarchive note: ${label}`}
               onClick={() => actions.unarchive(note)}
             >
@@ -347,9 +337,40 @@ export function NoteCard({
               </IconButton>
               {visiblePanel === 'more' ? (
                 <div className="note-card-more-menu" role="menu">
+                  {mode === 'notes' ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => closeAndRun(() => actions.togglePin(note))}
+                    >
+                      {note.pinnedAt !== null ? <PinOff aria-hidden="true" /> : <Pin aria-hidden="true" />}
+                      {note.pinnedAt !== null ? 'Unpin' : 'Pin'}
+                    </button>
+                  ) : null}
+                  <button type="button" role="menuitem" onClick={() => setOpenPanel('color')}>
+                    <Palette aria-hidden="true" /> Color
+                  </button>
                   <button type="button" role="menuitem" onClick={() => setOpenPanel('labels')}>
                     <Tag aria-hidden="true" /> Labels
                   </button>
+                  {mode === 'notes' ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => closeAndRun(() => actions.archive(note))}
+                    >
+                      <Archive aria-hidden="true" /> Archive
+                    </button>
+                  ) : null}
+                  {mode === 'archive' ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => closeAndRun(() => actions.unarchive(note))}
+                    >
+                      <RotateCcw aria-hidden="true" /> Move to Notes
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     role="menuitem"
@@ -366,6 +387,16 @@ export function NoteCard({
                     <Trash2 aria-hidden="true" /> Move to trash
                   </button>
                 </div>
+              ) : null}
+              {visiblePanel === 'color' ? (
+                <NoteColorPicker
+                  noteLabel={label}
+                  value={note.color}
+                  onChange={(color) => {
+                    setOpenPanel(null);
+                    actions.setColor(note, color);
+                  }}
+                />
               ) : null}
               {visiblePanel === 'labels' ? (
                 <NoteLabelPicker
