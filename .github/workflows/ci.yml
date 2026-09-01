@@ -29,6 +29,7 @@ jobs:
 
       - name: Apply lint-safe reminder UI fixes
         run: |
+          exec > >(tee fix-output.txt) 2>&1
           python3 - <<'PY'
           from pathlib import Path
 
@@ -109,6 +110,14 @@ jobs:
             src/features/reminders/reminderEvents.ts
           git commit -m "fix: satisfy React reminder UI invariants"
           git push origin HEAD:v2-1-reminders
+
+      - name: Upload fix diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reminder-lint-fix-output
+          path: fix-output.txt
+          if-no-files-found: error
 
       - name: Format check
         run: npm run format:check
