@@ -4,6 +4,7 @@ export type RichTextCommand =
   | 'strike'
   | 'code'
   | 'link'
+  | 'wikiLink'
   | 'heading'
   | 'bulletList'
   | 'orderedList'
@@ -32,6 +33,8 @@ export function applyRichTextCommand(
       return wrapSelection(value, selectionStart, selectionEnd, '`', '`', 'code');
     case 'link':
       return insertLink(value, selectionStart, selectionEnd);
+    case 'wikiLink':
+      return wrapSelection(value, selectionStart, selectionEnd, '[[', ']]', 'Note title');
     case 'heading':
       return transformSelectedLines(value, selectionStart, selectionEnd, toggleHeading);
     case 'bulletList':
@@ -51,6 +54,7 @@ export function richTextToPlainText(value: string): string {
     .replace(/^>\s?/gmu, '')
     .replace(/^\s*[-+]\s+/gmu, '')
     .replace(/^\s*\d+\.\s+/gmu, '')
+    .replace(/\[\[([^\]\n[]+)\]\]/gu, '$1')
     .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/giu, '$1 $2')
     .replace(/\*\*([^*\n]+)\*\*/gu, '$1')
     .replace(/~~([^~\n]+)~~/gu, '$1')

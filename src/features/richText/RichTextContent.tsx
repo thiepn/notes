@@ -1,16 +1,37 @@
 import { Fragment, type ReactNode } from 'react';
 
+export type WikiLinkRenderStatus = 'resolved' | 'missing' | 'ambiguous' | 'unknown';
+
+export interface WikiLinkRenderResolution {
+  status: WikiLinkRenderStatus;
+  noteId?: string;
+}
+
 interface RichTextContentProps {
   value: string;
   compact?: boolean;
+  resolveWikiLink?: ((title: string) => WikiLinkRenderResolution) | undefined;
+  onWikiLinkOpen?: ((noteId: string) => void) | undefined;
 }
 
-export function RichTextContent({ value, compact = false }: RichTextContentProps) {
+interface InlineRenderContext {
+  compact: boolean;
+  resolveWikiLink: ((title: string) => WikiLinkRenderResolution) | undefined;
+  onWikiLinkOpen: ((noteId: string) => void) | undefined;
+}
+
+export function RichTextContent({
+  value,
+  compact = false,
+  resolveWikiLink,
+  onWikiLinkOpen,
+}: RichTextContentProps) {
   const blocks = parseBlocks(value);
+  const context: InlineRenderContext = { compact, resolveWikiLink, onWikiLinkOpen };
   return (
     <span className="rich-text-content" data-compact={compact || undefined}>
       {blocks.map((block, index) => (
-        <Fragment key={`${block.type}-${index}`}>{renderBlock(block, compact)}</Fragment>
+        <Fragment key={`${block.type}-${index}`}>{renderBlock(block, context)}</Fragment>
       ))}
     </span>
   );
@@ -109,12 +130,12 @@ function isBlockStart(line: string): boolean {
   return /^(?:```|#{2,3}\s+|>\s?|-\s+|\d+\.\s+)/u.test(line);
 }
 
-function renderBlock(block: RichTextBlock, compact: boolean): ReactNode {
+function renderBlock(block: RichTextBlock, context: InlineRenderContext): ReactNode {
   switch (block.type) {
     case 'heading':
       return (
         <span className="rich-text-heading" data-level={block.level}>
-          {renderInline(block.text, compact)}
+          {renderInline(block.text, context)}
         </span>
       );
     case 'paragraph':
@@ -123,7 +144,7 @@ function renderBlock(block: RichTextBlock, compact: boolean): ReactNode {
           {block.lines.map((line, index) => (
             <Fragment key={index}>
               {index > 0 ? <br /> : null}
-              {renderInline(line, compact)}
+              {renderInline(line, context)}
             </Fragment>
           ))}
         </span>
@@ -134,7 +155,7 @@ function renderBlock(block: RichTextBlock, compact: boolean): ReactNode {
           {block.lines.map((line, index) => (
             <Fragment key={index}>
               {index > 0 ? <br /> : null}
-              {renderInline(line, compact)}
+              {renderInline(line, context)}
             </Fragment>
           ))}
         </span>
@@ -147,7 +168,7 @@ function renderBlock(block: RichTextBlock, compact: boolean): ReactNode {
               <span className="rich-text-list-marker" aria-hidden="true">
                 •
               </span>
-              <span>{renderInline(item, compact)}</span>
+              <span>{renderInline(item, context)}</span>
             </span>
           ))}
         </span>
@@ -160,7 +181,7 @@ function renderBlock(block: RichTextBlock, compact: boolean): ReactNode {
               <span className="rich-text-list-marker" aria-hidden="true">
                 {index + 1}.
               </span>
-              <span>{renderInline(item, compact)}</span>
+              <span>{renderInline(item, context)}</span>
             </span>
           ))}
         </span>
@@ -170,17 +191,17 @@ function renderBlock(block: RichTextBlock, compact: boolean): ReactNode {
   }
 }
 
-function renderInline(value: string, compact: boolean): ReactNode[] {
+function renderInline(value: string, context: InlineRenderContext): ReactNode[] {
   const output: ReactNode[] = [];
   const tokenPattern =
-    /(\[[^\]\n]+\]\(https?:\/\/[^\s)]+\)|\*\*[^*\n]+\*\*|~~[^~\n]+~~|`[^`\n]+`|\*[^*\n]+\*)/giu;
+    /(\[\[[^\]\n[]+\]\]|\[[^\]\n]+\]\(https?:\/\/[^\s)]+\)|\*\*[^*\n]+\*\*|~~[^~\n]+~~|`[^`\n]+`|\*[^*\n]+\*)/giu;
   let cursor = 0;
   let match: RegExpExecArray | null;
 
   while ((match = tokenPattern.exec(value)) !== null) {
     if (match.index > cursor) output.push(value.slice(cursor, match.index));
     const token = match[0];
-    output.push(renderInlineToken(token, compact, output.length));
+    output.push(renderInlineToken(token, context, output.length));
     cursor = match.index + token.length;
   }
 
@@ -188,25 +209,63 @@ function renderInline(value: string, compact: boolean): ReactNode[] {
   return output;
 }
 
-function renderInlineToken(token: string, compact: boolean, key: number): ReactNode {
+function renderInlineToken(token: string, context: InlineRenderContext, key: number): ReactNode {
+  if (token.startsWith('[[') && token.endsWith(']]')) {
+    const title = token.slice(2, -2).trim();
+    const resolution = context.resolveWikiLink?.(title) ?? { status: 'unknown' as const };
+    const resolvedNoteId = resolution.status === 'resolved' ? resolution.noteId : undefined;
+    const tooltip =
+      resolution.status === 'missing'
+        ? `No note titled “${title}”`
+        : resolution.status === 'ambiguous'
+          ? `Multiple notes are titled “${title}”`
+          : undefined;
+
+    if (!context.compact && resolvedNoteId && context.onWikiLinkOpen) {
+      return (
+        <button
+          className="rich-text-wiki-link"
+          data-status="resolved"
+          type="button"
+          key={key}
+          aria-label={`Open note: ${title}`}
+          onClick={() => context.onWikiLinkOpen?.(resolvedNoteId)}
+        >
+          {title}
+        </button>
+      );
+    }
+
+    return (
+      <span
+        className="rich-text-wiki-link"
+        data-status={resolution.status}
+        key={key}
+        title={tooltip}
+      >
+        {title}
+      </span>
+    );
+  }
+
   if (token.startsWith('**') && token.endsWith('**')) {
-    return <strong key={key}>{renderInline(token.slice(2, -2), compact)}</strong>;
+    return <strong key={key}>{renderInline(token.slice(2, -2), context)}</strong>;
   }
   if (token.startsWith('~~') && token.endsWith('~~')) {
-    return <s key={key}>{renderInline(token.slice(2, -2), compact)}</s>;
+    return <s key={key}>{renderInline(token.slice(2, -2), context)}</s>;
   }
   if (token.startsWith('`') && token.endsWith('`')) {
     return <code key={key}>{token.slice(1, -1)}</code>;
   }
   if (token.startsWith('*') && token.endsWith('*')) {
-    return <em key={key}>{renderInline(token.slice(1, -1), compact)}</em>;
+    return <em key={key}>{renderInline(token.slice(1, -1), context)}</em>;
   }
 
   const link = /^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/iu.exec(token);
   if (link) {
     const label = link[1] ?? '';
     const href = link[2] ?? '';
-    if (compact) {
+    if (context.compact) {
       return (
         <span className="rich-text-link" key={key}>
           {label}
