@@ -25,7 +25,9 @@ jobs:
         run: npm install --no-audit --no-fund
 
       - name: Apply V3.1
-        run: python scripts/v3-1-apply.py
+        run: |
+          python scripts/v3-1-apply.py
+          python scripts/v3-1-refine.py
 
       - name: Format V3.1 files
         run: >-
