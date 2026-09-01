@@ -130,7 +130,8 @@ export function TextNoteComposer({
     const result = await attachmentsRepository.addImages(note.id, [file]);
     markAttachmentsChanged(note.id);
     if (result.added > 0) setQuickImageMessage('Drawing added.');
-    else if (result.skippedDuplicates > 0) setQuickImageMessage('That drawing is already attached.');
+    else if (result.skippedDuplicates > 0)
+      setQuickImageMessage('That drawing is already attached.');
   };
 
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
