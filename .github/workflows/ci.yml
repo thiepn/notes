@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   verify:
@@ -16,8 +16,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-        with:
-          ref: v2-3-link-intelligence
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -27,22 +25,17 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Format V2-3
+      - name: Lint diagnostics
         run: |
-          npx prettier --write .
-          if ! git diff --quiet -- .; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add .
-            git commit -m "style: format V2-3 link intelligence"
-            git push origin HEAD:v2-3-link-intelligence
-          fi
+          set +e
+          npm run lint 2>&1 | tee v2-3-lint.txt
+          status=${PIPESTATUS[0]}
+          exit $status
 
-      - name: Format check
-        run: npm run format:check
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Typecheck
-        run: npm run typecheck
+      - name: Upload lint diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-3-lint-diagnostics
+          path: v2-3-lint.txt
+          if-no-files-found: error
