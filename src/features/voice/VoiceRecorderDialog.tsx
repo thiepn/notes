@@ -262,6 +262,7 @@ export function VoiceRecorderDialog({ onSave, onClose }: VoiceRecorderDialogProp
           <button
             type="button"
             aria-label="Close voice recorder"
+            autoFocus
             disabled={phase === 'saving'}
             onClick={close}
           >
