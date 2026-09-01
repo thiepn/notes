@@ -1,9 +1,12 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Command,
+  LayoutGrid,
+  List,
   Menu,
   Monitor,
   Moon,
+  MoreHorizontal,
   Search,
   SlidersHorizontal,
   StickyNote,
@@ -44,6 +47,8 @@ export function AppHeader({
 }: AppHeaderProps) {
   const { preference, cyclePreference } = useTheme();
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
   const nextPreference = nextThemePreference(preference);
   const ThemeIcon = preference === 'system' ? Monitor : preference === 'light' ? Sun : Moon;
 
@@ -66,6 +71,31 @@ export function AppHeader({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  useEffect(() => {
+    if (!moreOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node) || menuRef.current?.contains(target)) return;
+      setMoreOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMoreOpen(false);
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown, true);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown, true);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [moreOpen]);
+
+  const clickViewButton = (label: 'Grid view' | 'List view') => {
+    document.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)?.click();
+    setMoreOpen(false);
+  };
 
   return (
     <header className="app-header">
@@ -132,24 +162,52 @@ export function AppHeader({
         ) : null}
       </div>
 
-      <div className="header-actions">
+      <div className="header-actions" ref={menuRef}>
         <IconButton
-          label="Command palette"
-          tooltip="Command palette · Ctrl/⌘ K"
-          aria-keyshortcuts="Control+K Meta+K"
-          onClick={onCommandPalette}
-          data-testid="command-palette-toggle"
+          label="More options"
+          tooltip="More options"
+          aria-expanded={moreOpen}
+          onClick={() => setMoreOpen((open) => !open)}
+          data-testid="header-more-toggle"
         >
-          <Command />
+          <MoreHorizontal />
         </IconButton>
-        <IconButton
-          label={`Appearance: ${THEME_LABELS[preference]}`}
-          tooltip={`${THEME_LABELS[preference]} appearance · switch to ${THEME_LABELS[nextPreference]}`}
-          onClick={cyclePreference}
-          data-testid="theme-toggle"
-        >
-          <ThemeIcon />
-        </IconButton>
+        {moreOpen ? (
+          <div className="header-more-menu" role="menu">
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMoreOpen(false);
+                onCommandPalette();
+              }}
+            >
+              <Command aria-hidden="true" />
+              <span>Command palette</span>
+              <kbd>Ctrl K</kbd>
+            </button>
+            <button type="button" role="menuitem" onClick={() => clickViewButton('Grid view')}>
+              <LayoutGrid aria-hidden="true" />
+              <span>Grid view</span>
+            </button>
+            <button type="button" role="menuitem" onClick={() => clickViewButton('List view')}>
+              <List aria-hidden="true" />
+              <span>List view</span>
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                cyclePreference();
+                setMoreOpen(false);
+              }}
+            >
+              <ThemeIcon aria-hidden="true" />
+              <span>{THEME_LABELS[preference]} appearance</span>
+              <small>Next: {THEME_LABELS[nextPreference]}</small>
+            </button>
+          </div>
+        ) : null}
       </div>
     </header>
   );
