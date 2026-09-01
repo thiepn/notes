@@ -1,0 +1,25 @@
+name: V2-7 Re-certify Current Main
+
+on:
+  push:
+    branches: [v2-7-recertify-helper]
+
+permissions:
+  contents: write
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout V2-7 release branch
+        uses: actions/checkout@v6
+        with:
+          ref: v2-7-advanced-search
+          fetch-depth: 0
+
+      - name: Create content-neutral certification commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit --allow-empty -m "ci: recertify V2-7 against current main"
+          git push origin HEAD:v2-7-advanced-search
