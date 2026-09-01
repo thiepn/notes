@@ -187,12 +187,14 @@ export class BulkActionsRepository {
 
     return this.database.transaction(
       'rw',
-      this.database.notes,
-      this.database.checklistItems,
-      this.database.noteLabels,
-      this.database.attachments,
-      this.database.reminders,
-      this.database.revisions,
+      [
+        this.database.notes,
+        this.database.checklistItems,
+        this.database.noteLabels,
+        this.database.attachments,
+        this.database.reminders,
+        this.database.revisions,
+      ],
       async () => {
         const rawNotes = await this.database.notes.bulkGet(uniqueNoteIds);
         const notes = rawNotes.map((rawNote, index) => {

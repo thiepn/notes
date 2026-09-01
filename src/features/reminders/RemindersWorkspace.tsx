@@ -29,6 +29,7 @@ const remindersRepository = new RemindersRepository(notesDatabase);
 const labelsRepository = new LabelsRepository(notesDatabase);
 const checklistsRepository = new ChecklistsRepository(notesDatabase);
 const attachmentsRepository = new AttachmentsRepository(notesDatabase);
+const INITIAL_REMINDER_NOW = Date.now();
 
 interface RemindersWorkspaceProps {
   labels: LabelRecord[];
@@ -58,7 +59,7 @@ export function RemindersWorkspace({ labels }: RemindersWorkspaceProps) {
     {},
   );
   const [toast, setToast] = useState<LifecycleToastState | null>(null);
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(INITIAL_REMINDER_NOW);
 
   const showToast = useCallback((message: string, undo?: () => Promise<void>) => {
     const id = crypto.randomUUID();
@@ -84,12 +85,14 @@ export function RemindersWorkspace({ labels }: RemindersWorkspaceProps) {
 
   useEffect(() => {
     let cancelled = false;
-    void reload().catch(() => {
-      if (!cancelled) {
-        setCollection({ ...EMPTY_COLLECTION, loaded: true });
-        showToast('Reminders could not be loaded.');
-      }
-    });
+    void Promise.resolve()
+      .then(reload)
+      .catch(() => {
+        if (!cancelled) {
+          setCollection({ ...EMPTY_COLLECTION, loaded: true });
+          showToast('Reminders could not be loaded.');
+        }
+      });
     const handleChanged = () => void reload();
     window.addEventListener('notes-reminders-changed', handleChanged);
     return () => {

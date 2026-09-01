@@ -270,12 +270,14 @@ export class NotesRepository {
   async deletePermanently(id: string): Promise<boolean> {
     return this.database.transaction(
       'rw',
-      this.database.notes,
-      this.database.checklistItems,
-      this.database.noteLabels,
-      this.database.attachments,
-      this.database.reminders,
-      this.database.revisions,
+      [
+        this.database.notes,
+        this.database.checklistItems,
+        this.database.noteLabels,
+        this.database.attachments,
+        this.database.reminders,
+        this.database.revisions,
+      ],
       async () => {
         const note = await this.database.notes.get(id);
         if (!note) {

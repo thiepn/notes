@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 
 import { NotesRepository, RemindersRepository, notesDatabase } from '../../db';
-import { dispatchReminderChanged } from './ReminderControl';
+import { dispatchReminderChanged } from './reminderEvents';
 
 const remindersRepository = new RemindersRepository(notesDatabase);
 const notesRepository = new NotesRepository(notesDatabase);

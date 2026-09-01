@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Bell, BellOff, CheckCircle2, Clock3, X } from 'lucide-react';
 
 import type { ReminderRecord, RemindersRepository } from '../../db';
+import { dispatchReminderChanged } from './reminderEvents';
 import {
   applyReminderDatePreset,
   currentTimeZone,
@@ -212,10 +213,6 @@ export function ReminderControl({
       ) : null}
     </section>
   );
-}
-
-export function dispatchReminderChanged(): void {
-  window.dispatchEvent(new CustomEvent('notes-reminders-changed'));
 }
 
 function toErrorMessage(error: unknown): string {

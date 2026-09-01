@@ -384,11 +384,7 @@ function NoteCardContent({
         <span className="note-card-empty">Empty note</span>
       ) : null}
       {reminder && (reminder.status === 'active' || mode === 'reminders') ? (
-        <span
-          className="note-card-reminder"
-          data-status={reminder.status}
-          data-overdue={reminder.status === 'active' && reminder.dueAt < Date.now()}
-        >
+        <span className="note-card-reminder" data-status={reminder.status}>
           <Bell aria-hidden="true" />
           {reminder.status === 'active'
             ? formatReminderShort(reminder.dueAt)
