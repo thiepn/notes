@@ -77,6 +77,7 @@ test('reminders can be scheduled, viewed, completed, and restored with their not
   await expect(page.getByRole('heading', { name: 'Upcoming', level: 2 })).toBeVisible();
 
   const reminderCard = page.locator('[data-note-card]').filter({ hasText: 'Call tomorrow' });
+  await reminderCard.hover();
   await reminderCard.getByRole('button', { name: 'Move note to trash: Call tomorrow' }).click();
   await expect(page.getByRole('button', { name: 'Open note: Call tomorrow' })).not.toBeVisible();
 
@@ -87,7 +88,9 @@ test('reminders can be scheduled, viewed, completed, and restored with their not
   expect(reminderStillStored).toBe(1);
 
   await page.getByRole('button', { name: 'Trash' }).click();
-  await page.getByRole('button', { name: 'Restore note: Call tomorrow' }).click();
+  const trashCard = page.locator('[data-note-card]').filter({ hasText: 'Call tomorrow' });
+  await trashCard.hover();
+  await trashCard.getByRole('button', { name: 'Restore note: Call tomorrow' }).click();
   await page.getByRole('button', { name: 'Reminders' }).click();
   await expect(page.getByRole('button', { name: 'Open note: Call tomorrow' })).toBeVisible();
 });
