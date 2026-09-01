@@ -83,7 +83,8 @@ export function VoiceRecorderDialog({ onSave, onClose }: VoiceRecorderDialogProp
       if (!window.isSecureContext) {
         throw new Error('Voice recording requires a secure HTTPS connection.');
       }
-      if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      const MediaRecorderClass = window.MediaRecorder;
+      if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorderClass === 'undefined') {
         throw new Error('Voice recording is not supported by this browser.');
       }
 
@@ -102,11 +103,11 @@ export function VoiceRecorderDialog({ onSave, onClose }: VoiceRecorderDialogProp
       streamRef.current = stream;
 
       const preferredMimeType = selectVoiceRecordingMimeType((mimeType) =>
-        MediaRecorder.isTypeSupported(mimeType),
+        MediaRecorderClass.isTypeSupported(mimeType),
       );
       const recorder = preferredMimeType
-        ? new MediaRecorder(stream, { mimeType: preferredMimeType })
-        : new MediaRecorder(stream);
+        ? new MediaRecorderClass(stream, { mimeType: preferredMimeType })
+        : new MediaRecorderClass(stream);
       recorderRef.current = recorder;
       chunksRef.current = [];
 
@@ -153,6 +154,7 @@ export function VoiceRecorderDialog({ onSave, onClose }: VoiceRecorderDialogProp
 
   useEffect(() => {
     mountedRef.current = true;
+    closingRef.current = false;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const startTimer = window.setTimeout(() => void startRecording(), 0);
@@ -245,7 +247,7 @@ export function VoiceRecorderDialog({ onSave, onClose }: VoiceRecorderDialogProp
       role="dialog"
       aria-modal="true"
       aria-label="Voice recorder"
-      onKeyDown={handleKeyDown}
+      onKeyDownCapture={handleKeyDown}
       onPointerDown={(event: ReactPointerEvent<HTMLDivElement>) => {
         event.stopPropagation();
         if (event.target === event.currentTarget) close();
