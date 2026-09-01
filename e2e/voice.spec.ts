@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 async function installFakeMicrophone(page: Page, options: { denied?: boolean } = {}) {
   await page.addInitScript(({ denied }) => {
@@ -82,13 +82,23 @@ async function stopAndSaveRecording(page: Page) {
   await expect(recorder).toHaveCount(0);
 }
 
+async function startQuickVoice(page: Page) {
+  await page.getByRole('button', { name: 'More capture options' }).click();
+  await page.getByRole('menuitem', { name: 'Voice recording', exact: true }).click();
+}
+
+async function startEditorVoice(editor: Locator) {
+  await editor.getByRole('button', { name: 'Add', exact: true }).click();
+  await editor.getByRole('button', { name: 'Record voice note' }).click();
+}
+
 test('quick voice capture creates an attachment-only note with inline playback', async ({
   page,
 }) => {
   await installFakeMicrophone(page);
   await page.goto('./');
 
-  await page.getByRole('button', { name: 'Record voice note' }).click();
+  await startQuickVoice(page);
   const recorder = page.getByRole('dialog', { name: 'Voice recorder' });
   await expect(recorder).toBeVisible();
   await expect(page.getByRole('form', { name: 'New note' })).toBeVisible();
@@ -148,13 +158,13 @@ test('Escape closes only the voice recorder and existing text notes can save rec
 
   await page.locator(`[data-note-id="${noteId}"] .note-card-open`).click();
   const editor = page.getByRole('dialog', { name: 'Edit note' });
-  await editor.getByRole('button', { name: 'Record voice note' }).click();
+  await startEditorVoice(editor);
   await expect(page.getByRole('dialog', { name: 'Voice recorder' })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog', { name: 'Voice recorder' })).toHaveCount(0);
   await expect(editor).toBeVisible();
 
-  await editor.getByRole('button', { name: 'Record voice note' }).click();
+  await startEditorVoice(editor);
   await stopAndSaveRecording(page);
   await expect(editor).toBeVisible();
   await expect(editor.getByLabel('Voice recordings')).toBeVisible();
@@ -190,7 +200,7 @@ test('microphone denial is explained without creating a note or attachment', asy
   await installFakeMicrophone(page, { denied: true });
   await page.goto('./');
 
-  await page.getByRole('button', { name: 'Record voice note' }).click();
+  await startQuickVoice(page);
   const recorder = page.getByRole('dialog', { name: 'Voice recorder' });
   await expect(recorder.getByText('Microphone unavailable')).toBeVisible();
   await expect(recorder.getByRole('alert')).toContainText('Microphone access was blocked');
