@@ -1,6 +1,7 @@
 import { useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from 'react';
 import {
   Bold,
+  BookOpen,
   Code2,
   Eye,
   Heading2,
@@ -14,7 +15,10 @@ import {
 } from 'lucide-react';
 
 import { applyRichTextCommand, type RichTextCommand } from './richText';
-import { RichTextContent } from './RichTextContent';
+import {
+  RichTextContent,
+  type WikiLinkRenderResolution,
+} from './RichTextContent';
 
 interface RichTextEditorProps {
   value: string;
@@ -25,6 +29,8 @@ interface RichTextEditorProps {
   placeholder: string;
   rows?: number;
   autoFocus?: boolean;
+  resolveWikiLink?: (title: string) => WikiLinkRenderResolution;
+  onWikiLinkOpen?: (noteId: string) => void;
 }
 
 const COMMANDS: Array<{
@@ -38,6 +44,7 @@ const COMMANDS: Array<{
   { command: 'strike', label: 'Strikethrough', icon: Strikethrough },
   { command: 'code', label: 'Inline code', icon: Code2 },
   { command: 'link', label: 'Link', shortcut: 'Ctrl+K', icon: Link2 },
+  { command: 'wikiLink', label: 'Wiki link', icon: BookOpen },
   { command: 'heading', label: 'Heading', icon: Heading2 },
   { command: 'bulletList', label: 'Bulleted list', icon: List },
   { command: 'orderedList', label: 'Numbered list', icon: ListOrdered },
@@ -53,6 +60,8 @@ export function RichTextEditor({
   placeholder,
   rows = 1,
   autoFocus = false,
+  resolveWikiLink,
+  onWikiLinkOpen,
 }: RichTextEditorProps) {
   const internalRef = useRef<HTMLTextAreaElement>(null);
   const activeRef = textareaRef ?? internalRef;
@@ -121,7 +130,11 @@ export function RichTextEditor({
           aria-label="Formatted preview"
         >
           {value ? (
-            <RichTextContent value={value} />
+            <RichTextContent
+              value={value}
+              resolveWikiLink={resolveWikiLink}
+              onWikiLinkOpen={onWikiLinkOpen}
+            />
           ) : (
             <span className="rich-text-preview-empty">{placeholder}</span>
           )}
