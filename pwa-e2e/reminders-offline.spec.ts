@@ -16,7 +16,10 @@ async function waitForServiceWorkerControl(page: import('@playwright/test').Page
     .toBe(true);
 }
 
-async function readReminderSnapshot(page: import('@playwright/test').Page, title: string) {
+async function readReminderSnapshot(
+  page: import('@playwright/test').Page,
+  title: string,
+) {
   return page.evaluate(async (noteTitle) => {
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
       const request = indexedDB.open('thiepn-notes');
