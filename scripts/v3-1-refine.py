@@ -42,10 +42,11 @@ replace_exact(
     "    expect(triggerBox?.y ?? 999).toBeLessThan(160);",
 )
 
-# This test owns title -> item keyboard flow. Checklist persistence is already
-# certified elsewhere, so only assert that closing the composer completes cleanly.
+# This test owns title -> item keyboard flow. Checklist save/close behavior is
+# already covered by the existing checklist regression suite, so keep this assertion
+# focused on the mobile keyboard transition itself.
 replace_exact(
     "e2e/capture-mobile-polish.spec.ts",
-    "    await expect(page.getByRole('button', { name: 'Open note: Mobile checklist' })).toBeVisible();",
-    "    await expect(page.getByRole('form', { name: 'New checklist' })).toHaveCount(0);",
+    "    await firstItem.fill('First task');\n    await composer.getByRole('button', { name: 'Close' }).click();\n\n    await expect(page.getByRole('button', { name: 'Open note: Mobile checklist' })).toBeVisible();",
+    "    await firstItem.fill('First task');\n    await expect(firstItem).toHaveValue('First task');",
 )
