@@ -235,6 +235,7 @@ export function NoteEditorDialog({
             repository={repository}
             beforeLinking={saveNow}
             onOpenNote={(noteId) => void openLinkedNote(noteId)}
+            onSourceSaved={onSaved}
             onLibraryChanged={refreshLinkLibrary}
           />
 
