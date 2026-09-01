@@ -189,7 +189,7 @@ test('checklist editors share the voice-recording attachment workflow', async ({
   const card = page.locator('[data-note-type="checklist"]').filter({ hasText: 'Voice checklist' });
   await card.getByRole('button', { name: 'Open note: Voice checklist' }).click();
   const editor = page.getByRole('dialog', { name: 'Edit checklist' });
-  await editor.getByRole('button', { name: 'Record voice note' }).click();
+  await startEditorVoice(editor);
   await stopAndSaveRecording(page);
 
   await expect(editor).toBeVisible();
