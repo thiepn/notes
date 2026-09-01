@@ -330,11 +330,7 @@ export function NoteCard({
               </IconButton>
               {visiblePanel === 'more' ? (
                 <div className="note-card-more-menu" role="menu">
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => setOpenPanel('labels')}
-                  >
+                  <button type="button" role="menuitem" onClick={() => setOpenPanel('labels')}>
                     <Tag aria-hidden="true" /> Labels
                   </button>
                   <button
