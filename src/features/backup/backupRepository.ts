@@ -1,9 +1,11 @@
 import {
+  DATABASE_VERSION,
   attachmentRecordSchema,
   checklistItemRecordSchema,
   labelRecordSchema,
   noteLabelRecordSchema,
   noteRecordSchema,
+  reminderRecordSchema,
   revisionRecordSchema,
   settingRecordSchema,
   type NotesDatabase,
@@ -41,28 +43,47 @@ export class BackupRepository {
         this.database.labels,
         this.database.noteLabels,
         this.database.attachments,
+        this.database.reminders,
         this.database.revisions,
         this.database.settings,
       ],
       async () => {
-        const [notes, checklistItems, labels, noteLabels, attachments, revisions, settings] =
-          await Promise.all([
-            this.database.notes.toArray(),
-            this.database.checklistItems.toArray(),
-            this.database.labels.toArray(),
-            this.database.noteLabels.toArray(),
-            this.database.attachments.toArray(),
-            this.database.revisions.toArray(),
-            this.database.settings.toArray(),
-          ]);
-        return { notes, checklistItems, labels, noteLabels, attachments, revisions, settings };
+        const [
+          notes,
+          checklistItems,
+          labels,
+          noteLabels,
+          attachments,
+          reminders,
+          revisions,
+          settings,
+        ] = await Promise.all([
+          this.database.notes.toArray(),
+          this.database.checklistItems.toArray(),
+          this.database.labels.toArray(),
+          this.database.noteLabels.toArray(),
+          this.database.attachments.toArray(),
+          this.database.reminders.toArray(),
+          this.database.revisions.toArray(),
+          this.database.settings.toArray(),
+        ]);
+        return {
+          notes,
+          checklistItems,
+          labels,
+          noteLabels,
+          attachments,
+          reminders,
+          revisions,
+          settings,
+        };
       },
     );
 
     const document = backupDocumentSchema.parse({
       format: NOTES_BACKUP_FORMAT,
       formatVersion: NOTES_BACKUP_FORMAT_VERSION,
-      databaseVersion: 1,
+      databaseVersion: DATABASE_VERSION,
       exportedAt,
       data: {
         notes: snapshot.notes.map((record) => noteRecordSchema.parse(record)),
@@ -76,6 +97,7 @@ export class BackupRepository {
             attachmentToBackup(attachmentRecordSchema.parse(record)),
           ),
         ),
+        reminders: snapshot.reminders.map((record) => reminderRecordSchema.parse(record)),
         revisions: snapshot.revisions.map((record) => revisionRecordSchema.parse(record)),
         settings: snapshot.settings.map((record) => settingRecordSchema.parse(record)),
       },
@@ -106,6 +128,7 @@ export class BackupRepository {
         this.database.labels,
         this.database.noteLabels,
         this.database.attachments,
+        this.database.reminders,
         this.database.revisions,
         this.database.settings,
       ],
@@ -114,6 +137,7 @@ export class BackupRepository {
           this.database.noteLabels.clear(),
           this.database.checklistItems.clear(),
           this.database.attachments.clear(),
+          this.database.reminders.clear(),
           this.database.revisions.clear(),
           this.database.labels.clear(),
           this.database.settings.clear(),
@@ -129,6 +153,7 @@ export class BackupRepository {
         if (verified.attachments.length > 0) {
           await this.database.attachments.bulkAdd(verified.attachments);
         }
+        if (data.reminders.length > 0) await this.database.reminders.bulkAdd(data.reminders);
         if (data.revisions.length > 0) await this.database.revisions.bulkAdd(data.revisions);
         if (data.settings.length > 0) await this.database.settings.bulkAdd(data.settings);
       },

@@ -6,6 +6,7 @@ import {
   normalizeLabelName,
   noteLabelRecordSchema,
   noteRecordSchema,
+  reminderRecordSchema,
   revisionRecordSchema,
   serializeRevisionSnapshot,
   settingRecordSchema,
@@ -14,6 +15,7 @@ import {
   type LabelRecord,
   type NoteLabelRecord,
   type NoteRecord,
+  type ReminderRecord,
   type RevisionRecord,
   type SettingRecord,
 } from '../../db';
@@ -24,6 +26,11 @@ import {
   type PreparedKeepImport,
   type PreparedKeepNote,
 } from './googleKeepImport';
+import {
+  augmentGoogleKeepReminders,
+  type PreparedKeepImportWithReminders,
+  type PreparedKeepNoteWithReminder,
+} from './googleKeepReminderImport';
 
 export interface GoogleKeepImportSelection {
   active: boolean;
@@ -52,6 +59,7 @@ export interface GoogleKeepImportResult {
   skippedBySelection: number;
   createdLabels: number;
   importedAttachments: number;
+  importedReminders: number;
 }
 
 interface GoogleKeepImportRepositoryOptions {
@@ -74,9 +82,10 @@ export class GoogleKeepImportRepository {
   async inspect(
     files: File[],
     onProgress?: (progress: KeepImportProgress) => void,
-  ): Promise<PreparedKeepImport> {
+  ): Promise<PreparedKeepImportWithReminders> {
     const existingSourceKeys = await this.importedSourceKeys();
-    return prepareGoogleKeepImport(files, existingSourceKeys, onProgress);
+    const prepared = await prepareGoogleKeepImport(files, existingSourceKeys, onProgress);
+    return augmentGoogleKeepReminders(files, prepared);
   }
 
   async importPrepared(
@@ -84,8 +93,11 @@ export class GoogleKeepImportRepository {
     selection: GoogleKeepImportSelection = DEFAULT_GOOGLE_KEEP_IMPORT_SELECTION,
     onProgress?: (progress: GoogleKeepCommitProgress) => void,
   ): Promise<GoogleKeepImportResult> {
-    const selectedNotes = prepared.notes.filter((note) => shouldImportNote(note, selection));
-    const skippedBySelection = prepared.notes.length - selectedNotes.length;
+    const reminderPrepared = prepared as PreparedKeepImportWithReminders;
+    const selectedNotes = reminderPrepared.notes.filter((note) =>
+      shouldImportNote(note, selection),
+    );
+    const skippedBySelection = reminderPrepared.notes.length - selectedNotes.length;
 
     return this.database.transaction(
       'rw',
@@ -95,6 +107,7 @@ export class GoogleKeepImportRepository {
         this.database.labels,
         this.database.noteLabels,
         this.database.attachments,
+        this.database.reminders,
         this.database.revisions,
         this.database.settings,
       ],
@@ -112,6 +125,7 @@ export class GoogleKeepImportRepository {
             skippedBySelection,
             createdLabels: 0,
             importedAttachments: 0,
+            importedReminders: 0,
           };
         }
 
@@ -132,6 +146,7 @@ export class GoogleKeepImportRepository {
         const checklistItems: ChecklistItemRecord[] = [];
         const noteLabels: NoteLabelRecord[] = [];
         const attachments: AttachmentRecord[] = [];
+        const reminders: ReminderRecord[] = [];
         const revisions: RevisionRecord[] = [];
         const settings: SettingRecord[] = [];
 
@@ -145,6 +160,7 @@ export class GoogleKeepImportRepository {
           notes.push(built.note);
           checklistItems.push(...built.items);
           attachments.push(...built.attachments);
+          if (built.reminder) reminders.push(built.reminder);
           revisions.push(built.revision);
 
           for (const labelName of sourceNote.labels) {
@@ -194,6 +210,7 @@ export class GoogleKeepImportRepository {
         if (checklistItems.length > 0) await this.database.checklistItems.bulkAdd(checklistItems);
         if (noteLabels.length > 0) await this.database.noteLabels.bulkAdd(noteLabels);
         if (attachments.length > 0) await this.database.attachments.bulkAdd(attachments);
+        if (reminders.length > 0) await this.database.reminders.bulkAdd(reminders);
         if (revisions.length > 0) await this.database.revisions.bulkAdd(revisions);
         await this.database.settings.bulkPut(settings);
 
@@ -209,13 +226,14 @@ export class GoogleKeepImportRepository {
           skippedBySelection,
           createdLabels: newLabels.length,
           importedAttachments: attachments.length,
+          importedReminders: reminders.length,
         };
       },
     );
   }
 
   private buildImportedNote(
-    source: PreparedKeepNote,
+    source: PreparedKeepNoteWithReminder,
     position: number,
     importedAt: number,
     includeAttachments: boolean,
@@ -275,6 +293,23 @@ export class GoogleKeepImportRepository {
         )
       : [];
 
+    const reminderAt = source.reminderAt ?? null;
+    const reminder =
+      reminderAt === null
+        ? null
+        : reminderRecordSchema.parse({
+            id: this.idFactory(),
+            noteId,
+            dueAt: reminderAt,
+            timeZone: 'UTC',
+            status: 'active',
+            createdAt: importedAt,
+            updatedAt: importedAt,
+            completedAt: null,
+            dismissedAt: null,
+            lastNotifiedAt: null,
+          });
+
     const revision = revisionRecordSchema.parse({
       id: this.idFactory(),
       noteId,
@@ -296,7 +331,7 @@ export class GoogleKeepImportRepository {
       createdAt: Math.max(source.updatedAt, importedAt),
     });
 
-    return { note, items, attachments, revision };
+    return { note, items, attachments, reminder, revision };
   }
 
   private async importedSourceKeys(): Promise<Set<string>> {

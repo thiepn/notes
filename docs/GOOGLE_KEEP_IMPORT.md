@@ -5,7 +5,7 @@ P13 adds non-destructive Google Keep migration to Notes. It is deliberately sepa
 - **P12 restore** replaces the complete Notes library with a trusted Notes backup.
 - **P13 import** adds Google Keep Takeout notes to the existing Notes library without clearing or replacing local data.
 
-No database migration is required for P13. Import identity is stored in the existing `settings` table so P12 automatically backs it up and restores it with the rest of the library.
+P13 originally required no database migration. Import identity remains stored in the `settings` table, while V2-1 extends the importer to write the database-v2 `reminders` table when a recognized absolute Keep reminder timestamp is available.
 
 ## Input
 
@@ -45,6 +45,7 @@ P13 maps the durable Keep fields that fit the Notes v1 model:
 - created timestamp
 - last-edited timestamp
 - attachment file path, MIME type, and bytes
+- recognized absolute reminder timestamps
 
 The parser is permissive about unknown extra JSON keys so future Takeout additions do not automatically make otherwise valid notes unreadable.
 
@@ -101,6 +102,12 @@ P13 preserves the strongest durable Keep lifecycle state while respecting Notes 
 The Keep last-edited timestamp is used for the corresponding pin/archive/trash timestamp. Created and updated timestamps are converted from Takeout microseconds to Notes milliseconds.
 
 Malformed or impossible source timestamps no longer discard an otherwise usable note. P13 falls back to the remaining valid source time or the import time and reports a warning.
+
+## Reminders
+
+V2-1 conservatively extends P13 reminder migration. If known reminder-like fields contain a recognized absolute timestamp, the note receives one active local reminder preserving that instant. Because Takeout may not preserve enough scheduling-zone context to reconstruct the original wall-clock timezone, imported reminder timestamps use `timeZone: "UTC"` rather than inventing a local zone.
+
+If reminder-like metadata is present but no recognized timestamp can be extracted, the preview reports a warning and imports the note without a reminder. The importer never guesses a due time.
 
 ## Labels
 
@@ -173,13 +180,14 @@ Because the ledger lives in the durable `settings` table, P12 full backups prese
 
 ## Commit safety
 
-Import uses one Dexie read-write transaction spanning all seven durable tables:
+Import uses one Dexie read-write transaction spanning all eight durable tables:
 
 - `notes`
 - `checklistItems`
 - `labels`
 - `noteLabels`
 - `attachments`
+- `reminders`
 - `revisions`
 - `settings`
 
@@ -191,6 +199,7 @@ For each new source note the transaction creates:
 - checklist rows when needed
 - missing normalized labels and note-label relationships
 - attachments when enabled and available
+- one active reminder when a recognized absolute reminder timestamp exists
 - an initial P11 revision with reason `import`
 - one repeat-import ledger setting
 
@@ -223,6 +232,7 @@ Automated coverage must prove that:
 - stronger fingerprints distinguish notes that share a creation timestamp
 - legacy ledger aliases still prevent duplicate upgrades
 - selecting the same Takeout again produces no duplicate notes
+- recognized reminder timestamps migrate conservatively and ambiguous reminder metadata warns without guessing
 - malformed/unrecoverable Takeout input produces no writes
 - a forced write failure rolls back every imported table mutation
 
@@ -232,4 +242,4 @@ P12 answers: “How do I restore or move a complete Notes library?”
 
 P13 answers: “How do I migrate my Google Keep Takeout into my existing Notes library safely?”
 
-P14 will make image attachments a complete first-class Notes interaction and viewing experience.
+P14 makes image attachments a complete first-class Notes interaction and viewing experience. V2-1 subsequently extends P13 with conservative reminder migration into the database-v2 reminder model.

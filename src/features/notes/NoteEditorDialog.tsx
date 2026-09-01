@@ -9,6 +9,7 @@ import {
 import { History } from 'lucide-react';
 
 import {
+  RemindersRepository,
   RevisionsRepository,
   notesDatabase,
   type AttachmentsRepository,
@@ -16,11 +17,13 @@ import {
   type NoteRecord,
   type NotesRepository,
 } from '../../db';
+import { ReminderControl } from '../reminders/ReminderControl';
 import { AttachmentPanel } from './AttachmentPanel';
 import { RevisionHistoryDialog } from './RevisionHistoryDialog';
 import { useExistingNoteEditor } from './useExistingNoteEditor';
 
 const revisionsRepository = new RevisionsRepository(notesDatabase);
+const remindersRepository = new RemindersRepository(notesDatabase);
 
 interface HistoricalResult {
   note: NoteRecord;
@@ -172,6 +175,12 @@ export function NoteEditorDialog({
             rows={1}
             autoFocus
             onChange={(event) => setContent(event.target.value)}
+          />
+
+          <ReminderControl
+            noteId={note.id}
+            repository={remindersRepository}
+            onChanged={() => undefined}
           />
 
           <AttachmentPanel

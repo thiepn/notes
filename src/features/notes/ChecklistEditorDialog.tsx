@@ -9,6 +9,7 @@ import {
 import { History } from 'lucide-react';
 
 import {
+  RemindersRepository,
   RevisionsRepository,
   notesDatabase,
   type AttachmentsRepository,
@@ -17,6 +18,7 @@ import {
   type ChecklistsRepository,
   type NoteRecord,
 } from '../../db';
+import { ReminderControl } from '../reminders/ReminderControl';
 import { AttachmentPanel } from './AttachmentPanel';
 import {
   clearChecklistEditorJournal,
@@ -29,6 +31,7 @@ import { RevisionHistoryDialog } from './RevisionHistoryDialog';
 const AUTOSAVE_DELAY_MS = 180;
 const MOVE_COMPLETED_KEY = 'notes.checklist.move-completed';
 const revisionsRepository = new RevisionsRepository(notesDatabase);
+const remindersRepository = new RemindersRepository(notesDatabase);
 
 type EditorStatus = 'idle' | 'saving' | 'error';
 
@@ -314,6 +317,12 @@ export function ChecklistEditorDialog({
               setMoveCompletedDown(enabled);
               writeMoveCompletedPreference(enabled);
             }}
+          />
+
+          <ReminderControl
+            noteId={note.id}
+            repository={remindersRepository}
+            onChanged={() => undefined}
           />
 
           <AttachmentPanel

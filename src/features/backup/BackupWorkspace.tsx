@@ -43,7 +43,7 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
       const backup = await backupRepository.exportBackup();
       triggerJsonDownload(backup.json, backup.filename);
       setStatusMessage(
-        `Full backup created with ${backup.stats.notes} notes and ${backup.stats.revisions} saved versions.`,
+        `Full backup created with ${backup.stats.notes} notes, ${backup.stats.reminders} reminders, and ${backup.stats.revisions} saved versions.`,
       );
     } catch (error) {
       setErrorMessage(toErrorMessage(error));
@@ -90,7 +90,9 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
         backupFilename(safety.document.exportedAt, 'notes-before-restore'),
       );
       const stats = await backupRepository.restorePrepared(selected.prepared);
-      setStatusMessage(`Restore complete. ${stats.notes} notes recovered.`);
+      setStatusMessage(
+        `Restore complete. ${stats.notes} notes and ${stats.reminders} reminders recovered.`,
+      );
       await onRestored();
     } catch (error) {
       setErrorMessage(toErrorMessage(error));
@@ -109,8 +111,8 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
           <p className="backup-eyebrow">Full local backup</p>
           <h2 id="backup-download-title">Back up this device</h2>
           <p>
-            Export every note, checklist row, label relationship, attachment, saved version, and
-            database setting into one versioned JSON file.
+            Export every note, checklist row, label relationship, attachment, reminder, saved
+            version, and database setting into one versioned JSON file.
           </p>
           <div className="backup-assurance">
             <ShieldCheck aria-hidden="true" />
@@ -178,6 +180,7 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
               <BackupStat label="Checklist rows" value={selected.prepared.stats.checklistItems} />
               <BackupStat label="Labels" value={selected.prepared.stats.labels} />
               <BackupStat label="Attachments" value={selected.prepared.stats.attachments} />
+              <BackupStat label="Reminders" value={selected.prepared.stats.reminders} />
               <BackupStat label="Saved versions" value={selected.prepared.stats.revisions} />
               <BackupStat
                 label="Exported"
@@ -232,10 +235,10 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
       <section className="backup-details" aria-labelledby="backup-details-title">
         <h2 id="backup-details-title">Portability and recovery</h2>
         <p>
-          P12 backups replace and recover the complete local Notes library. P13 Google Keep import
-          is intentionally different: it adds validated Takeout notes to the existing library,
-          merges labels by normalized name, preserves source state and attachments, and records
-          imported sources so the same Keep export is not duplicated later.
+          Full backups replace and recover the complete local Notes library, including reminders.
+          Google Keep import is intentionally different: it adds validated Takeout notes to the
+          existing library, merges labels by normalized name, preserves recognized source state and
+          attachments, and records imported sources so the same Keep export is not duplicated later.
         </p>
       </section>
     </div>

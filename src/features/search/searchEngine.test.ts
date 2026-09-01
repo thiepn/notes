@@ -37,6 +37,7 @@ function document(
     labelIds?: string[];
     hasImage?: boolean;
     hasLink?: boolean;
+    hasReminder?: boolean;
   } = {},
 ): SearchDocument {
   const record = input.note ?? note({ title: input.title ?? '', content: input.body ?? '' });
@@ -51,6 +52,7 @@ function document(
     labelNames: input.labelNames ?? [],
     hasImage: input.hasImage ?? false,
     hasLink: input.hasLink ?? false,
+    hasReminder: input.hasReminder ?? false,
     normalizedTitle,
     normalizedBody,
     normalizedChecklist,
@@ -74,7 +76,7 @@ describe('normalizeSearchText', () => {
 describe('parseSearchQuery', () => {
   it('parses operators and quoted label values', () => {
     const parsed = parseSearchQuery(
-      'mission label:"Bible Study" is:pinned is:checklist has:image has:link before:2026-09-01 after:2026-08-01',
+      'mission label:"Bible Study" is:pinned is:checklist has:image has:link has:reminder before:2026-09-01 after:2026-08-01',
     );
     expect(parsed.terms).toEqual(['mission']);
     expect(parsed.labelNames).toEqual(['bible study']);
@@ -82,6 +84,7 @@ describe('parseSearchQuery', () => {
     expect(parsed.types).toEqual(['checklist']);
     expect(parsed.requireImage).toBe(true);
     expect(parsed.requireLink).toBe(true);
+    expect(parsed.requireReminder).toBe(true);
     expect(parsed.before).not.toBeNull();
     expect(parsed.after).not.toBeNull();
     expect(parsed.errors).toEqual([]);
@@ -110,6 +113,7 @@ describe('searchDocuments', () => {
       labelNames: ['Study'],
       labelIds: ['study-id'],
       hasImage: true,
+      hasReminder: true,
     });
     const archived = document({
       note: note({ archivedAt: 250, color: 'yellow', updatedAt: 300 }),
@@ -125,8 +129,20 @@ describe('searchDocuments', () => {
       colors: ['yellow' as const],
       labelIds: ['study-id'],
     };
-    const results = searchDocuments([activePinned, archived], 'label:study has:image', filters);
+    const results = searchDocuments(
+      [activePinned, archived],
+      'label:study has:image has:reminder',
+      filters,
+    );
     expect(results.map((result) => result.document.note.id)).toEqual([activePinned.note.id]);
+  });
+
+  it('matches only active reminder documents with has:reminder', () => {
+    const reminded = document({ title: 'Call mom', hasReminder: true });
+    const normal = document({ title: 'Buy milk' });
+    expect(searchDocuments([reminded, normal], 'has:reminder', DEFAULT_SEARCH_FILTERS)).toEqual([
+      expect.objectContaining({ document: reminded }),
+    ]);
   });
 
   it('excludes trash from every search', () => {

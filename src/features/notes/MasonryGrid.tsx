@@ -1,10 +1,10 @@
 import { useLayoutEffect, useRef, type ReactNode } from 'react';
 
-import type { ChecklistItemRecord, LabelRecord, NoteRecord } from '../../db';
+import type { ChecklistItemRecord, LabelRecord, NoteRecord, ReminderRecord } from '../../db';
 import {
   NoteCard,
   type NoteCardActions,
-  type NoteCollectionMode,
+  type NoteCardMode,
   type NoteSelectionIntent,
 } from './NoteCard';
 import type { NotesViewMode } from './viewMode';
@@ -13,11 +13,12 @@ interface MasonryGridProps {
   notes: NoteRecord[];
   viewMode: NotesViewMode;
   ariaLabel: string;
-  mode: NoteCollectionMode;
+  mode: NoteCardMode;
   actions: NoteCardActions;
   labels: LabelRecord[];
   labelIdsByNote: Record<string, string[]>;
   checklistItemsByNote: Record<string, ChecklistItemRecord[]>;
+  remindersByNote?: Record<string, ReminderRecord>;
   attachmentRefreshByNote?: Record<string, number>;
   selectedNoteIds?: Set<string>;
   selectionActive?: boolean;
@@ -33,6 +34,7 @@ export function MasonryGrid({
   labels,
   labelIdsByNote,
   checklistItemsByNote,
+  remindersByNote,
   attachmentRefreshByNote = {},
   selectedNoteIds,
   selectionActive = false,
@@ -40,28 +42,32 @@ export function MasonryGrid({
 }: MasonryGridProps) {
   return (
     <div className="note-grid" data-view={viewMode} role="list" aria-label={ariaLabel}>
-      {notes.map((note) => (
-        <MasonryItem key={note.id} viewMode={viewMode}>
-          <NoteCard
-            note={note}
-            mode={mode}
-            actions={actions}
-            labels={labels}
-            selectedLabelIds={labelIdsByNote[note.id] ?? []}
-            checklistItems={checklistItemsByNote[note.id] ?? []}
-            attachmentRefreshKey={attachmentRefreshByNote[note.id] ?? 0}
-            selection={
-              onSelectionIntent
-                ? {
-                    active: selectionActive,
-                    selected: selectedNoteIds?.has(note.id) ?? false,
-                    onIntent: onSelectionIntent,
-                  }
-                : undefined
-            }
-          />
-        </MasonryItem>
-      ))}
+      {notes.map((note) => {
+        const reminderProps = remindersByNote ? { reminder: remindersByNote[note.id] ?? null } : {};
+        return (
+          <MasonryItem key={note.id} viewMode={viewMode}>
+            <NoteCard
+              note={note}
+              mode={mode}
+              actions={actions}
+              labels={labels}
+              selectedLabelIds={labelIdsByNote[note.id] ?? []}
+              checklistItems={checklistItemsByNote[note.id] ?? []}
+              {...reminderProps}
+              attachmentRefreshKey={attachmentRefreshByNote[note.id] ?? 0}
+              selection={
+                onSelectionIntent
+                  ? {
+                      active: selectionActive,
+                      selected: selectedNoteIds?.has(note.id) ?? false,
+                      onIntent: onSelectionIntent,
+                    }
+                  : undefined
+              }
+            />
+          </MasonryItem>
+        );
+      })}
     </div>
   );
 }

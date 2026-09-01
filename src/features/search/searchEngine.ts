@@ -8,6 +8,7 @@ export interface SearchDocument {
   labelNames: string[];
   hasImage: boolean;
   hasLink: boolean;
+  hasReminder: boolean;
   normalizedTitle: string;
   normalizedBody: string;
   normalizedChecklist: string;
@@ -22,6 +23,7 @@ export interface ParsedSearchQuery {
   types: Exclude<SearchTypeFilter, 'any'>[];
   requireImage: boolean;
   requireLink: boolean;
+  requireReminder: boolean;
   after: number | null;
   before: number | null;
   errors: string[];
@@ -52,6 +54,7 @@ export function parseSearchQuery(input: string): ParsedSearchQuery {
     types: [],
     requireImage: false,
     requireLink: false,
+    requireReminder: false,
     after: null,
     before: null,
     errors: [],
@@ -91,6 +94,10 @@ export function parseSearchQuery(input: string): ParsedSearchQuery {
     }
     if (operator === 'has' && value === 'link') {
       parsed.requireLink = true;
+      continue;
+    }
+    if (operator === 'has' && value === 'reminder') {
+      parsed.requireReminder = true;
       continue;
     }
 
@@ -143,6 +150,7 @@ export function searchDocuments(
     }
     if (parsed.requireImage && !document.hasImage) continue;
     if (parsed.requireLink && !document.hasLink) continue;
+    if (parsed.requireReminder && !document.hasReminder) continue;
     if (after !== null && note.updatedAt < after) continue;
     if (before !== null && note.updatedAt >= before) continue;
     if (parsed.terms.some((term) => !document.normalizedAll.includes(term))) continue;

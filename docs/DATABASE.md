@@ -1,6 +1,8 @@
 # Database Architecture
 
-P1 establishes one clean IndexedDB schema at database version 1. There is intentionally no artificial pre-release migration history.
+P1 established the clean V1 IndexedDB schema at database version 1 without artificial pre-release migration history.
+
+V2-1 is the first post-V1 schema change and introduces explicit database version 2 for reminders.
 
 ## Source of truth
 
@@ -9,8 +11,8 @@ The browser's IndexedDB database is the source of truth for user data. Dexie is 
 ## Database
 
 - Name: `thiepn-notes`
-- Version: `1`
-- Schema definition: `src/db/migrations/v1.ts`
+- Version: `2`
+- Schema definitions: `src/db/migrations/v1.ts` and `src/db/migrations/v2.ts`
 - Runtime database: `src/db/database.ts`
 
 ## Tables
@@ -35,9 +37,13 @@ Many-to-many join table with compound primary key `[noteId+labelId]`.
 
 Stores local attachment metadata and Blob payloads. Attachment behavior is implemented in a later phase, but the v1 schema reserves the final table now so pre-release builds do not manufacture migration history.
 
+### `reminders`
+
+Introduced by schema v2. Stores at most one reminder per note using a unique `noteId` index, with absolute due time, scheduling timezone, lifecycle status, and notification de-duplication metadata. Reminder state is intentionally independent from note revision history.
+
 ### `revisions`
 
-Stores future note-history snapshots. Revision-history product behavior is implemented later.
+Stores bounded note-history snapshots used by P11 revision recovery.
 
 ### `settings`
 
@@ -51,7 +57,7 @@ Simple string-keyed local settings table. Complex values are serialized explicit
 4. `updatedAt` is strictly monotonic per note, even when two writes occur within the same millisecond.
 5. Archive and trash are lifecycle state, not separate copies of a note.
 6. Trashing a note removes archive and pin state; restoring returns it to active notes.
-7. Permanent note deletion cascades to checklist items, note-label relations, attachments, and revisions in one Dexie transaction. Labels themselves survive.
+7. Permanent note deletion cascades to checklist items, note-label relations, attachments, reminders, and revisions in one Dexie transaction. Labels themselves survive.
 8. Multi-table operations are transactional and must roll back completely on failure.
 9. Repository reads validate persisted records so corrupt data fails loudly rather than silently propagating.
 10. UI code must not bypass repositories for writes.
@@ -64,12 +70,12 @@ This is sufficient for a single-device local-first application and also leaves a
 
 ## Migration policy
 
-Until v1.0 ships, all currently known V1 requirements belong in schema version 1. Do not add fake v2/v3 migrations merely because implementation phases happen at different times.
+V1 shipped with schema version 1. V2-1 adds schema version 2 as a real forward migration that preserves existing V1 data and adds the `reminders` table.
 
-After a public stable schema exists, every schema change must use an explicit forward migration with automated tests against representative older databases.
+Every future schema change must continue to use an explicit forward migration with automated tests against representative older databases. Implementation phase numbers alone are not a reason to create a database version.
 
 ## Testing
 
 - Vitest validates record schemas and pure timestamp invariants.
 - Playwright runs the real repository code against Chromium IndexedDB.
-- Persistence tests cover reopen, lifecycle transitions, optimistic concurrency, transaction rollback, cascade deletion, and duplication of dependent records.
+- Persistence tests cover v1→v2 opening, reopen, lifecycle transitions, optimistic concurrency, transaction rollback, reminder uniqueness/lifecycle, cascade deletion, and duplication of dependent records.

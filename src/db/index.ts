@@ -6,7 +6,8 @@ export {
   notesDatabase,
 } from './database';
 export { InvalidNoteStateError, NoteConflictError, NoteNotFoundError } from './errors';
-export { DATABASE_SCHEMA_V1, DATABASE_VERSION } from './migrations/v1';
+export { DATABASE_SCHEMA_V1 } from './migrations/v1';
+export { DATABASE_SCHEMA_V2, DATABASE_VERSION } from './migrations/v2';
 export {
   AttachmentsRepository,
   isPreviewableImageMimeType,
@@ -31,6 +32,7 @@ export {
 } from './repositories/checklistsRepository';
 export { LabelsRepository, normalizeLabelName } from './repositories/labelsRepository';
 export { NotesRepository } from './repositories/notesRepository';
+export { RemindersRepository, type SetReminderInput } from './repositories/remindersRepository';
 export {
   RevisionsRepository,
   parseRevisionPayload,
@@ -50,11 +52,13 @@ export type {
   NoteLabelRecord,
   NoteRecord,
   NoteType,
+  ReminderRecord,
+  ReminderStatus,
   RevisionReason,
   RevisionRecord,
   SettingRecord,
 } from './types';
-export { NOTE_COLORS, REVISION_REASONS } from './types';
+export { NOTE_COLORS, REMINDER_STATUSES, REVISION_REASONS } from './types';
 export {
   attachmentRecordSchema,
   checklistItemRecordSchema,
@@ -62,6 +66,7 @@ export {
   labelRecordSchema,
   noteLabelRecordSchema,
   noteRecordSchema,
+  reminderRecordSchema,
   revisionRecordSchema,
   settingRecordSchema,
   updateNoteInputSchema,

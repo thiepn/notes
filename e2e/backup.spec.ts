@@ -13,6 +13,7 @@ async function seedCompleteLibrary(page: Page) {
     const checklists = new dbModule.ChecklistsRepository(dbModule.notesDatabase);
     const labels = new dbModule.LabelsRepository(dbModule.notesDatabase);
     const revisions = new dbModule.RevisionsRepository(dbModule.notesDatabase);
+    const reminders = new dbModule.RemindersRepository(dbModule.notesDatabase);
 
     let text = await notes.create({
       title: 'Backup text',
@@ -23,6 +24,11 @@ async function seedCompleteLibrary(page: Page) {
     await labels.assign(text.id, label.id);
     await revisions.checkpoint(text.id, 'edit');
     text = await notes.archive(text.id, text.revision);
+    const reminderDueAt = Date.now() + 60 * 60 * 1000;
+    const reminder = await reminders.set(text.id, {
+      dueAt: reminderDueAt,
+      timeZone: 'Europe/Berlin',
+    });
 
     const parentId = crypto.randomUUID();
     const childId = crypto.randomUUID();
@@ -57,11 +63,13 @@ async function seedCompleteLibrary(page: Page) {
       childId,
       labelId: label.id,
       attachmentId,
+      reminderId: reminder.id,
+      reminderDueAt,
     };
   });
 }
 
-test('full backup round-trips every v1 table and downloads a pre-restore safety backup', async ({
+test('full backup round-trips every v2 table and downloads a pre-restore safety backup', async ({
   page,
 }) => {
   await page.goto('./');
@@ -89,18 +97,35 @@ test('full backup round-trips every v1 table and downloads a pre-restore safety 
         dataBase64: string;
         dataSha256: string;
       }>;
+      reminders: Array<{
+        id: string;
+        noteId: string;
+        dueAt: number;
+        timeZone: string;
+        status: string;
+      }>;
       revisions: Array<{ noteId: string; payload: string }>;
       settings: Array<{ key: string; value: string }>;
     };
   };
 
   expect(exported.format).toBe('thiepn.notes.backup');
-  expect(exported.formatVersion).toBe(1);
+  expect(exported.formatVersion).toBe(2);
   expect(exported.data.notes).toHaveLength(2);
   expect(exported.data.checklistItems).toHaveLength(2);
   expect(exported.data.labels).toHaveLength(1);
   expect(exported.data.noteLabels).toHaveLength(1);
   expect(exported.data.attachments).toHaveLength(1);
+  expect(exported.data.reminders).toHaveLength(1);
+  expect(exported.data.reminders[0]).toEqual(
+    expect.objectContaining({
+      id: ids.reminderId,
+      noteId: ids.textId,
+      dueAt: ids.reminderDueAt,
+      timeZone: 'Europe/Berlin',
+      status: 'active',
+    }),
+  );
   expect(exported.data.revisions.length).toBeGreaterThanOrEqual(2);
   expect(exported.data.settings).toContainEqual(
     expect.objectContaining({ key: 'backup-test-setting', value: 'preserve-me' }),
@@ -112,17 +137,21 @@ test('full backup round-trips every v1 table and downloads a pre-restore safety 
     const dbModule = await import('/notes/src/db/index.ts');
     await dbModule.notesDatabase.transaction(
       'rw',
-      dbModule.notesDatabase.notes,
-      dbModule.notesDatabase.checklistItems,
-      dbModule.notesDatabase.labels,
-      dbModule.notesDatabase.noteLabels,
-      dbModule.notesDatabase.attachments,
-      dbModule.notesDatabase.revisions,
-      dbModule.notesDatabase.settings,
+      [
+        dbModule.notesDatabase.notes,
+        dbModule.notesDatabase.checklistItems,
+        dbModule.notesDatabase.labels,
+        dbModule.notesDatabase.noteLabels,
+        dbModule.notesDatabase.attachments,
+        dbModule.notesDatabase.reminders,
+        dbModule.notesDatabase.revisions,
+        dbModule.notesDatabase.settings,
+      ],
       async () => {
         await dbModule.notesDatabase.noteLabels.clear();
         await dbModule.notesDatabase.checklistItems.clear();
         await dbModule.notesDatabase.attachments.clear();
+        await dbModule.notesDatabase.reminders.clear();
         await dbModule.notesDatabase.revisions.clear();
         await dbModule.notesDatabase.labels.clear();
         await dbModule.notesDatabase.settings.clear();
@@ -155,16 +184,19 @@ test('full backup round-trips every v1 table and downloads a pre-restore safety 
   await waitForNotes(page);
   const restored = await page.evaluate(async (expected) => {
     const dbModule = await import('/notes/src/db/index.ts');
-    const [notes, items, labels, relations, attachments, revisions, settings] = await Promise.all([
-      dbModule.notesDatabase.notes.toArray(),
-      dbModule.notesDatabase.checklistItems.toArray(),
-      dbModule.notesDatabase.labels.toArray(),
-      dbModule.notesDatabase.noteLabels.toArray(),
-      dbModule.notesDatabase.attachments.toArray(),
-      dbModule.notesDatabase.revisions.toArray(),
-      dbModule.notesDatabase.settings.toArray(),
-    ]);
+    const [notes, items, labels, relations, attachments, reminders, revisions, settings] =
+      await Promise.all([
+        dbModule.notesDatabase.notes.toArray(),
+        dbModule.notesDatabase.checklistItems.toArray(),
+        dbModule.notesDatabase.labels.toArray(),
+        dbModule.notesDatabase.noteLabels.toArray(),
+        dbModule.notesDatabase.attachments.toArray(),
+        dbModule.notesDatabase.reminders.toArray(),
+        dbModule.notesDatabase.revisions.toArray(),
+        dbModule.notesDatabase.settings.toArray(),
+      ]);
     const attachment = attachments.find((record) => record.id === expected.attachmentId);
+    const reminder = reminders.find((record) => record.id === expected.reminderId);
     return {
       noteIds: notes.map((note) => note.id),
       intruderPresent: notes.some((note) => note.title === 'Intruder after backup'),
@@ -174,6 +206,15 @@ test('full backup round-trips every v1 table and downloads a pre-restore safety 
       relations: relations.map((relation) => `${relation.noteId}:${relation.labelId}`),
       attachmentText: attachment ? await attachment.data.text() : null,
       attachmentChecksum: attachment?.checksum ?? null,
+      reminder: reminder
+        ? {
+            id: reminder.id,
+            noteId: reminder.noteId,
+            dueAt: reminder.dueAt,
+            timeZone: reminder.timeZone,
+            status: reminder.status,
+          }
+        : null,
       revisionNoteIds: revisions.map((revision) => revision.noteId),
       settingValue:
         settings.find((setting) => setting.key === 'backup-test-setting')?.value ?? null,
@@ -190,6 +231,13 @@ test('full backup round-trips every v1 table and downloads a pre-restore safety 
   expect(restored.relations).toContain(`${ids.textId}:${ids.labelId}`);
   expect(restored.attachmentText).toBe('attachment payload');
   expect(restored.attachmentChecksum).toBe('source-checksum');
+  expect(restored.reminder).toEqual({
+    id: ids.reminderId,
+    noteId: ids.textId,
+    dueAt: ids.reminderDueAt,
+    timeZone: 'Europe/Berlin',
+    status: 'active',
+  });
   expect(restored.revisionNoteIds).toContain(ids.textId);
   expect(restored.revisionNoteIds).toContain(ids.checklistId);
   expect(restored.settingValue).toBe('preserve-me');

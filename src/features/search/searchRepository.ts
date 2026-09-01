@@ -4,6 +4,7 @@ import {
   labelRecordSchema,
   noteLabelRecordSchema,
   noteRecordSchema,
+  reminderRecordSchema,
   type NotesDatabase,
 } from '../../db';
 import { normalizeSearchText, type SearchDocument } from './searchEngine';
@@ -14,13 +15,15 @@ export class SearchRepository {
   constructor(private readonly database: NotesDatabase) {}
 
   async loadIndex(): Promise<SearchDocument[]> {
-    const [rawNotes, rawItems, rawLabels, rawLinks, rawAttachments] = await Promise.all([
-      this.database.notes.toArray(),
-      this.database.checklistItems.toArray(),
-      this.database.labels.toArray(),
-      this.database.noteLabels.toArray(),
-      this.database.attachments.toArray(),
-    ]);
+    const [rawNotes, rawItems, rawLabels, rawLinks, rawAttachments, rawReminders] =
+      await Promise.all([
+        this.database.notes.toArray(),
+        this.database.checklistItems.toArray(),
+        this.database.labels.toArray(),
+        this.database.noteLabels.toArray(),
+        this.database.attachments.toArray(),
+        this.database.reminders.toArray(),
+      ]);
 
     const notes = rawNotes
       .map((note) => noteRecordSchema.parse(note))
@@ -61,6 +64,14 @@ export class SearchRepository {
       }
     }
 
+    const reminderNoteIds = new Set<string>();
+    for (const rawReminder of rawReminders) {
+      const reminder = reminderRecordSchema.parse(rawReminder);
+      if (noteIds.has(reminder.noteId) && reminder.status === 'active') {
+        reminderNoteIds.add(reminder.noteId);
+      }
+    }
+
     return notes.map((note) => {
       const checklistItems = itemsByNote.get(note.id) ?? [];
       const labelIds = labelIdsByNote.get(note.id) ?? [];
@@ -81,6 +92,7 @@ export class SearchRepository {
         labelNames,
         hasImage: imageNoteIds.has(note.id),
         hasLink: LINK_PATTERN.test(combinedLinkText),
+        hasReminder: reminderNoteIds.has(note.id),
         normalizedTitle,
         normalizedBody,
         normalizedChecklist,

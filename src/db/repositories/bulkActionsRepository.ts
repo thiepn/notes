@@ -187,11 +187,14 @@ export class BulkActionsRepository {
 
     return this.database.transaction(
       'rw',
-      this.database.notes,
-      this.database.checklistItems,
-      this.database.noteLabels,
-      this.database.attachments,
-      this.database.revisions,
+      [
+        this.database.notes,
+        this.database.checklistItems,
+        this.database.noteLabels,
+        this.database.attachments,
+        this.database.reminders,
+        this.database.revisions,
+      ],
       async () => {
         const rawNotes = await this.database.notes.bulkGet(uniqueNoteIds);
         const notes = rawNotes.map((rawNote, index) => {
@@ -210,6 +213,7 @@ export class BulkActionsRepository {
           this.database.checklistItems.where('noteId').anyOf(uniqueNoteIds).delete(),
           this.database.noteLabels.where('noteId').anyOf(uniqueNoteIds).delete(),
           this.database.attachments.where('noteId').anyOf(uniqueNoteIds).delete(),
+          this.database.reminders.where('noteId').anyOf(uniqueNoteIds).delete(),
           this.database.revisions.where('noteId').anyOf(uniqueNoteIds).delete(),
         ]);
         await this.database.notes.bulkDelete(uniqueNoteIds);

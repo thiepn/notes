@@ -9,13 +9,14 @@ const LABEL_ID = '10000000-0000-4000-8000-000000000004';
 const ATTACHMENT_ID = '10000000-0000-4000-8000-000000000005';
 const REVISION_ID = '10000000-0000-4000-8000-000000000006';
 const SECOND_ITEM_ID = '10000000-0000-4000-8000-000000000007';
+const REMINDER_ID = '10000000-0000-4000-8000-000000000008';
 
 async function validBackup(): Promise<BackupDocument> {
   const bytes = new TextEncoder().encode('attachment bytes');
   return {
     format: 'thiepn.notes.backup',
-    formatVersion: 1,
-    databaseVersion: 1,
+    formatVersion: 2,
+    databaseVersion: 2,
     exportedAt: 123,
     data: {
       notes: [
@@ -83,6 +84,20 @@ async function validBackup(): Promise<BackupDocument> {
           createdAt: 2,
         },
       ],
+      reminders: [
+        {
+          id: REMINDER_ID,
+          noteId: NOTE_ID,
+          dueAt: 1_800_000,
+          timeZone: 'Europe/Berlin',
+          status: 'active',
+          createdAt: 2,
+          updatedAt: 2,
+          completedAt: null,
+          dismissedAt: null,
+          lastNotifiedAt: null,
+        },
+      ],
       revisions: [
         {
           id: REVISION_ID,
@@ -98,8 +113,8 @@ async function validBackup(): Promise<BackupDocument> {
   };
 }
 
-describe('P12 backup format', () => {
-  it('prepares every table and reconstructs attachment blobs losslessly', async () => {
+describe('backup format', () => {
+  it('prepares every table, reminders included, and reconstructs attachment blobs losslessly', async () => {
     const backup = await validBackup();
     const prepared = await prepareBackup(backup);
 
@@ -109,12 +124,54 @@ describe('P12 backup format', () => {
       labels: 1,
       noteLabels: 1,
       attachments: 1,
+      reminders: 1,
       revisions: 1,
       settings: 1,
-      totalRecords: 8,
+      totalRecords: 9,
     });
+    expect(prepared.document.data.reminders[0]).toEqual(backup.data.reminders[0]);
     expect(await prepared.attachments[0]?.data.text()).toBe('attachment bytes');
     expect(prepared.attachments[0]?.checksum).toBe('legacy-checksum');
+  });
+
+  it('accepts a legacy V1 backup and upgrades it with an empty reminder table', async () => {
+    const current = await validBackup();
+    const legacy = {
+      format: current.format,
+      formatVersion: 1,
+      databaseVersion: 1,
+      exportedAt: current.exportedAt,
+      data: {
+        notes: current.data.notes,
+        checklistItems: current.data.checklistItems,
+        labels: current.data.labels,
+        noteLabels: current.data.noteLabels,
+        attachments: current.data.attachments,
+        revisions: current.data.revisions,
+        settings: current.data.settings,
+      },
+    };
+
+    const prepared = await prepareBackup(legacy);
+    expect(prepared.document.formatVersion).toBe(2);
+    expect(prepared.document.databaseVersion).toBe(2);
+    expect(prepared.document.data.reminders).toEqual([]);
+    expect(prepared.stats.reminders).toBe(0);
+  });
+
+  it('rejects a reminder that references a missing note', async () => {
+    const backup = await validBackup();
+    backup.data.reminders[0]!.noteId = '10000000-0000-4000-8000-000000000099';
+    await expect(prepareBackup(backup)).rejects.toThrow('Reminder');
+  });
+
+  it('rejects more than one reminder for the same note', async () => {
+    const backup = await validBackup();
+    backup.data.reminders.push({
+      ...backup.data.reminders[0]!,
+      id: '10000000-0000-4000-8000-000000000099',
+    });
+    await expect(prepareBackup(backup)).rejects.toThrow('duplicate reminder note ID');
   });
 
   it('rejects attachment bytes that do not match the backup SHA-256', async () => {
