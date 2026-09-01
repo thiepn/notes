@@ -30,7 +30,10 @@ export function OcrDialog({ attachment, onAppend, onClose }: OcrDialogProps) {
   const [language, setLanguage] = useState<OcrLanguage>(readOcrLanguage);
   const initialLanguageRef = useRef(language);
   const [phase, setPhase] = useState<OcrPhase>('running');
-  const [progress, setProgress] = useState<OcrProgress>({ status: 'Preparing OCR', progress: null });
+  const [progress, setProgress] = useState<OcrProgress>({
+    status: 'Preparing OCR',
+    progress: null,
+  });
   const [text, setText] = useState('');
   const [confidence, setConfidence] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -216,7 +219,9 @@ export function OcrDialog({ attachment, onAppend, onClose }: OcrDialogProps) {
                   spellCheck
                   onChange={(event) => setText(event.target.value)}
                 />
-                <span className="ocr-result-hint">Review and correct the text before adding it.</span>
+                <span className="ocr-result-hint">
+                  Review and correct the text before adding it.
+                </span>
               </div>
             ) : null}
 
