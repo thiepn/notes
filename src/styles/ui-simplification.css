@@ -314,6 +314,10 @@
     gap: 2px;
   }
 
+  .note-card-direct-secondary {
+    display: none !important;
+  }
+
   .rich-text-compact-controls {
     justify-content: flex-start;
   }
