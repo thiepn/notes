@@ -27,7 +27,7 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Apply lint-safe reminder UI fixes
+      - name: Apply V2-1 release-blocker fixes
         run: |
           exec > >(tee fix-output.txt) 2>&1
           python3 - <<'PY'
@@ -90,6 +90,27 @@ jobs:
               "  window.dispatchEvent(new CustomEvent('notes-reminders-changed'));\n"
               "}\n"
           )
+
+          transaction_old = """      'rw',
+                this.database.notes,
+                this.database.checklistItems,
+                this.database.noteLabels,
+                this.database.attachments,
+                this.database.reminders,
+                this.database.revisions,
+                async () => {"""
+          transaction_new = """      'rw',
+                [
+                  this.database.notes,
+                  this.database.checklistItems,
+                  this.database.noteLabels,
+                  this.database.attachments,
+                  this.database.reminders,
+                  this.database.revisions,
+                ],
+                async () => {"""
+          replace_once("src/db/repositories/bulkActionsRepository.ts", transaction_old, transaction_new)
+          replace_once("src/db/repositories/notesRepository.ts", transaction_old, transaction_new)
           PY
 
           npx prettier --write \
@@ -97,7 +118,9 @@ jobs:
             src/features/reminders/RemindersWorkspace.tsx \
             src/features/reminders/ReminderControl.tsx \
             src/features/reminders/ReminderNotificationCoordinator.tsx \
-            src/features/reminders/reminderEvents.ts
+            src/features/reminders/reminderEvents.ts \
+            src/db/repositories/bulkActionsRepository.ts \
+            src/db/repositories/notesRepository.ts
           npm run lint
           npm run typecheck
 
@@ -107,15 +130,17 @@ jobs:
             src/features/reminders/RemindersWorkspace.tsx \
             src/features/reminders/ReminderControl.tsx \
             src/features/reminders/ReminderNotificationCoordinator.tsx \
-            src/features/reminders/reminderEvents.ts
-          git commit -m "fix: satisfy React reminder UI invariants"
+            src/features/reminders/reminderEvents.ts \
+            src/db/repositories/bulkActionsRepository.ts \
+            src/db/repositories/notesRepository.ts
+          git commit -m "fix: clear V2-1 release blockers"
           git push origin HEAD:v2-1-reminders
 
       - name: Upload fix diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: reminder-lint-fix-output
+          name: v2-1-release-fix-output
           path: fix-output.txt
           if-no-files-found: error
 
