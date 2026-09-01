@@ -90,6 +90,7 @@ test('reminders survive offline cold reloads and can be changed without network 
 
   await page.getByRole('button', { name: 'Open note: Offline reminder' }).click();
   const offlineEditor = page.getByRole('dialog', { name: 'Edit note' });
+  const snoozeStartedAt = await page.evaluate(() => Date.now());
   await offlineEditor.getByRole('button', { name: 'Snooze 1 hour' }).click();
   await offlineEditor.getByRole('button', { name: 'Close' }).click();
 
@@ -101,7 +102,9 @@ test('reminders survive offline cold reloads and can be changed without network 
 
   expect(reminderAfter?.id).toBe(reminderBefore?.id);
   expect(reminderAfter?.status).toBe('active');
-  expect(reminderAfter?.dueAt).toBeGreaterThan(reminderBefore?.dueAt ?? 0);
+  expect(reminderAfter?.dueAt).not.toBe(reminderBefore?.dueAt);
+  expect(reminderAfter?.dueAt).toBeGreaterThanOrEqual(snoozeStartedAt + 59 * 60 * 1000);
+  expect(reminderAfter?.dueAt).toBeLessThanOrEqual(snoozeStartedAt + 61 * 60 * 1000);
 
   await context.setOffline(false);
 });
