@@ -8,7 +8,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
-import { History } from 'lucide-react';
+import { History, ListChecks, MoreHorizontal, Paperclip, Plus, Workflow } from 'lucide-react';
 
 import {
   RemindersRepository,
@@ -70,6 +70,10 @@ export function NoteEditorDialog({
   const [pendingHistoryResult, setPendingHistoryResult] = useState<HistoricalResult | null>(null);
   const [pendingHistoryCopies, setPendingHistoryCopies] = useState<HistoricalResult[]>([]);
   const [linkLibrary, setLinkLibrary] = useState<NoteRecord[]>([]);
+  const [addOpen, setAddOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [attachmentsOpen, setAttachmentsOpen] = useState(false);
+  const [connectionsOpen, setConnectionsOpen] = useState(false);
   const { draft, errorMessage, status, setTitle, setContent, saveNow, finishEditing, retrySave } =
     useExistingNoteEditor({
       note,
@@ -133,6 +137,12 @@ export function NoteEditorDialog({
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (historyNote) return;
     if (event.key === 'Escape') {
+      if (addOpen || moreOpen) {
+        event.preventDefault();
+        setAddOpen(false);
+        setMoreOpen(false);
+        return;
+      }
       event.preventDefault();
       void finishEditing();
       return;
@@ -175,6 +185,7 @@ export function NoteEditorDialog({
   };
 
   const openHistory = async () => {
+    setMoreOpen(false);
     const saved = await saveNow();
     if (!saved) return;
     await revisionsRepository.checkpoint(saved.id, 'close');
@@ -199,7 +210,7 @@ export function NoteEditorDialog({
     <>
       <div className="note-editor-layer" onPointerDown={handleLayerPointerDown}>
         <div
-          className="note-editor-dialog"
+          className="note-editor-dialog note-editor-dialog-simplified"
           data-color={note.color}
           role="dialog"
           aria-modal="true"
@@ -228,54 +239,108 @@ export function NoteEditorDialog({
             onChange={setContent}
           />
 
-          <ReminderControl
-            noteId={note.id}
-            repository={remindersRepository}
-            onChanged={() => undefined}
-          />
+          {attachmentsOpen ? (
+            <div className="note-editor-secondary-panel">
+              <AttachmentPanel
+                noteId={note.id}
+                repository={attachmentsRepository}
+                refreshKey={attachmentRefreshKey}
+                onChanged={onAttachmentsChanged}
+              />
+            </div>
+          ) : null}
 
-          <div className="drawing-inline-action">
-            <DrawingAttachmentButton
-              noteId={note.id}
-              repository={attachmentsRepository}
-              className="note-editor-secondary"
-              onChanged={onAttachmentsChanged}
-            />
-            <VoiceAttachmentButton
-              noteId={note.id}
-              repository={voiceAttachmentsRepository}
-              className="note-editor-secondary"
-              onChanged={onAttachmentsChanged}
-            />
-          </div>
+          {connectionsOpen ? (
+            <div className="note-editor-secondary-panel">
+              <ConnectionsPanel
+                note={draftNote}
+                library={effectiveLinkLibrary}
+                repository={repository}
+                beforeLinking={saveNow}
+                onOpenNote={(noteId) => void openLinkedNote(noteId)}
+                onSourceSaved={onSaved}
+                onLibraryChanged={refreshLinkLibrary}
+              />
+            </div>
+          ) : null}
 
-          <AttachmentPanel
-            noteId={note.id}
-            repository={attachmentsRepository}
-            refreshKey={attachmentRefreshKey}
-            onChanged={onAttachmentsChanged}
-          />
+          <div className="note-editor-footer note-editor-footer-simplified">
+            <div className="note-editor-primary-actions">
+              <div className="note-editor-menu-slot">
+                <button
+                  className="note-editor-secondary"
+                  type="button"
+                  aria-expanded={addOpen}
+                  onClick={() => {
+                    setMoreOpen(false);
+                    setAddOpen((open) => !open);
+                  }}
+                >
+                  <Plus aria-hidden="true" /> Add
+                </button>
+                {addOpen ? (
+                  <div className="note-editor-tools-menu" role="menu">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setAddOpen(false);
+                        setAttachmentsOpen(true);
+                      }}
+                    >
+                      <Paperclip aria-hidden="true" /> Image / attachment
+                    </button>
+                    <DrawingAttachmentButton
+                      noteId={note.id}
+                      repository={attachmentsRepository}
+                      className="note-editor-menu-control"
+                      onChanged={(noteId) => {
+                        setAddOpen(false);
+                        setAttachmentsOpen(true);
+                        onAttachmentsChanged(noteId);
+                      }}
+                    />
+                    <VoiceAttachmentButton
+                      noteId={note.id}
+                      repository={voiceAttachmentsRepository}
+                      className="note-editor-menu-control"
+                      onChanged={(noteId) => {
+                        setAddOpen(false);
+                        setAttachmentsOpen(true);
+                        onAttachmentsChanged(noteId);
+                      }}
+                    />
+                    <OcrAttachmentControl
+                      noteId={note.id}
+                      repository={attachmentsRepository}
+                      refreshKey={attachmentRefreshKey}
+                      onAppend={(text) => {
+                        setAddOpen(false);
+                        setContent(appendOcrText(draft.content, text));
+                      }}
+                    />
+                  </div>
+                ) : null}
+              </div>
 
-          <OcrAttachmentControl
-            noteId={note.id}
-            repository={attachmentsRepository}
-            refreshKey={attachmentRefreshKey}
-            onAppend={(text) => setContent(appendOcrText(draft.content, text))}
-          />
+              <ReminderControl
+                noteId={note.id}
+                repository={remindersRepository}
+                onChanged={() => undefined}
+              />
 
-          <ConnectionsPanel
-            note={draftNote}
-            library={effectiveLinkLibrary}
-            repository={repository}
-            beforeLinking={saveNow}
-            onOpenNote={(noteId) => void openLinkedNote(noteId)}
-            onSourceSaved={onSaved}
-            onLibraryChanged={refreshLinkLibrary}
-          />
+              <button
+                className="note-editor-secondary note-editor-attachments-toggle"
+                type="button"
+                aria-pressed={attachmentsOpen}
+                onClick={() => setAttachmentsOpen((open) => !open)}
+              >
+                <Paperclip aria-hidden="true" /> Attachments
+              </button>
+            </div>
 
-          <div className="note-editor-footer">
             <div className="note-editor-state" aria-live="polite">
-              {status === 'saving' ? <span>Saving…</span> : null}
+              {status === 'saving' ? <span className="sr-only">Saving…</span> : null}
               {errorMessage ? (
                 <span className="note-editor-error" role="alert">
                   {errorMessage}
@@ -285,21 +350,48 @@ export function NoteEditorDialog({
                 </span>
               ) : null}
             </div>
+
             <div className="note-editor-footer-actions">
-              <button
-                className="note-editor-secondary"
-                type="button"
-                onClick={() => void openHistory()}
-              >
-                <History aria-hidden="true" /> History
-              </button>
-              <button
-                className="note-editor-secondary"
-                type="button"
-                onClick={() => void convert()}
-              >
-                Convert to checklist
-              </button>
+              <div className="note-editor-menu-slot">
+                <button
+                  className="note-editor-secondary"
+                  type="button"
+                  aria-expanded={moreOpen}
+                  onClick={() => {
+                    setAddOpen(false);
+                    setMoreOpen((open) => !open);
+                  }}
+                >
+                  <MoreHorizontal aria-hidden="true" /> More
+                </button>
+                {moreOpen ? (
+                  <div className="note-editor-more-menu" role="menu">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setMoreOpen(false);
+                        setConnectionsOpen((open) => !open);
+                      }}
+                    >
+                      <Workflow aria-hidden="true" /> Connections
+                    </button>
+                    <button type="button" role="menuitem" onClick={() => void openHistory()}>
+                      <History aria-hidden="true" /> History
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setMoreOpen(false);
+                        void convert();
+                      }}
+                    >
+                      <ListChecks aria-hidden="true" /> Convert to checklist
+                    </button>
+                  </div>
+                ) : null}
+              </div>
               <button
                 className="note-editor-close"
                 type="button"
