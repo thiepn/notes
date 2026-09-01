@@ -32,6 +32,7 @@ export function ReminderControl({
   );
   const reminder = controlledReminder === undefined ? loadedReminder : controlledReminder;
   const [editing, setEditing] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [draft, setDraft] = useState(() =>
     localInputFromTimestamp(reminder?.dueAt ?? defaultReminderTimestamp()),
   );
@@ -52,7 +53,22 @@ export function ReminderControl({
   const openEditor = () => {
     setDraft(localInputFromTimestamp(reminder?.dueAt ?? defaultReminderTimestamp()));
     setErrorMessage(null);
+    setExpanded(true);
     setEditing(true);
+  };
+
+  const openCompact = () => {
+    if (!reminder) {
+      openEditor();
+      return;
+    }
+    setErrorMessage(null);
+    setExpanded(true);
+  };
+
+  const cancelEditing = () => {
+    setEditing(false);
+    if (compact && !reminder) setExpanded(false);
   };
 
   const save = async () => {
@@ -64,6 +80,7 @@ export function ReminderControl({
       setLoadedReminder(saved);
       onChanged(saved);
       setEditing(false);
+      if (compact) setExpanded(false);
       dispatchReminderChanged();
     } catch (error) {
       setErrorMessage(toErrorMessage(error));
@@ -80,6 +97,8 @@ export function ReminderControl({
       const next = remove ? null : (result as ReminderRecord);
       setLoadedReminder(next);
       onChanged(next);
+      setEditing(false);
+      if (compact) setExpanded(false);
       dispatchReminderChanged();
     } catch (error) {
       setErrorMessage(toErrorMessage(error));
@@ -88,7 +107,7 @@ export function ReminderControl({
     }
   };
 
-  if (compact && !editing) {
+  if (compact && !expanded && !editing) {
     const label = reminder
       ? reminder.status === 'active'
         ? formatReminderDateTime(reminder.dueAt)
@@ -103,7 +122,7 @@ export function ReminderControl({
           className="reminder-compact-button"
           type="button"
           aria-label={reminder ? `Change reminder: ${label}` : 'Add reminder'}
-          onClick={openEditor}
+          onClick={openCompact}
           disabled={busy}
         >
           <Bell aria-hidden="true" />
@@ -119,7 +138,10 @@ export function ReminderControl({
   }
 
   return (
-    <section className="reminder-control" aria-label="Reminder">
+    <section
+      className={`reminder-control${compact ? ' reminder-control-compact-expanded' : ''}`}
+      aria-label="Reminder"
+    >
       <div className="reminder-control-summary">
         <Bell aria-hidden="true" />
         <div>
@@ -150,6 +172,16 @@ export function ReminderControl({
         >
           {reminder ? 'Change' : 'Add reminder'}
         </button>
+        {compact && !editing ? (
+          <button
+            className="reminder-control-collapse"
+            type="button"
+            onClick={() => setExpanded(false)}
+            disabled={busy}
+          >
+            Done
+          </button>
+        ) : null}
       </div>
 
       {reminder?.status === 'active' && !editing ? (
@@ -228,7 +260,7 @@ export function ReminderControl({
             />
           </label>
           <div className="reminder-editor-actions">
-            <button type="button" disabled={busy} onClick={() => setEditing(false)}>
+            <button type="button" disabled={busy} onClick={cancelEditing}>
               Cancel
             </button>
             <button type="button" disabled={busy} onClick={() => void save()}>
