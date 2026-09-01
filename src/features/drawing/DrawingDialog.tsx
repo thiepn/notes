@@ -4,6 +4,8 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import {
@@ -53,13 +55,16 @@ export function DrawingDialog({ onSave, onClose }: DrawingDialogProps) {
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const redraw = useCallback((nextStrokes: DrawingStroke[] = strokes) => {
-    const canvas = canvasRef.current;
-    const context = canvas?.getContext('2d');
-    if (!canvas || !context) return;
-    context.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-    for (const stroke of nextStrokes) drawStroke(context, stroke);
-  }, [strokes]);
+  const redraw = useCallback(
+    (nextStrokes: DrawingStroke[] = strokes) => {
+      const canvas = canvasRef.current;
+      const context = canvas?.getContext('2d');
+      if (!canvas || !context) return;
+      context.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+      for (const stroke of nextStrokes) drawStroke(context, stroke);
+    },
+    [strokes],
+  );
 
   useLayoutEffect(() => {
     redraw();
@@ -68,18 +73,10 @@ export function DrawingDialog({ onSave, onClose }: DrawingDialogProps) {
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !saving) {
-        event.preventDefault();
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
     return () => {
       document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [onClose, saving]);
+  }, []);
 
   const startStroke = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     if (saving || event.button !== 0) return;
@@ -168,13 +165,23 @@ export function DrawingDialog({ onSave, onClose }: DrawingDialogProps) {
     }
   };
 
+  const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    event.stopPropagation();
+    if (event.key === 'Escape' && !saving) {
+      event.preventDefault();
+      onClose();
+    }
+  };
+
   return (
     <div
       className="drawing-dialog-layer"
       role="dialog"
       aria-modal="true"
       aria-label="Drawing editor"
+      onKeyDown={handleKeyDown}
       onPointerDown={(event) => {
+        event.stopPropagation();
         if (event.target === event.currentTarget && !saving) onClose();
       }}
     >
@@ -184,7 +191,13 @@ export function DrawingDialog({ onSave, onClose }: DrawingDialogProps) {
             <strong>Drawing</strong>
             <span>Draw with mouse, touch, or stylus</span>
           </div>
-          <button type="button" aria-label="Close drawing editor" disabled={saving} onClick={onClose}>
+          <button
+            type="button"
+            aria-label="Close drawing editor"
+            autoFocus
+            disabled={saving}
+            onClick={onClose}
+          >
             <X aria-hidden="true" />
           </button>
         </header>
@@ -220,7 +233,7 @@ export function DrawingDialog({ onSave, onClose }: DrawingDialogProps) {
                 aria-pressed={color === item}
                 disabled={saving}
                 key={item}
-                style={{ '--drawing-color': item } as React.CSSProperties}
+                style={{ '--drawing-color': item } as CSSProperties}
                 onClick={() => {
                   setColor(item);
                   setTool('pen');
@@ -246,13 +259,28 @@ export function DrawingDialog({ onSave, onClose }: DrawingDialogProps) {
 
           <span className="drawing-toolbar-spacer" />
 
-          <button type="button" aria-label="Undo drawing stroke" disabled={saving || strokes.length === 0} onClick={undo}>
+          <button
+            type="button"
+            aria-label="Undo drawing stroke"
+            disabled={saving || strokes.length === 0}
+            onClick={undo}
+          >
             <Undo2 aria-hidden="true" />
           </button>
-          <button type="button" aria-label="Redo drawing stroke" disabled={saving || redoStack.length === 0} onClick={redo}>
+          <button
+            type="button"
+            aria-label="Redo drawing stroke"
+            disabled={saving || redoStack.length === 0}
+            onClick={redo}
+          >
             <Redo2 aria-hidden="true" />
           </button>
-          <button type="button" aria-label="Clear drawing" disabled={saving || strokes.length === 0} onClick={clear}>
+          <button
+            type="button"
+            aria-label="Clear drawing"
+            disabled={saving || strokes.length === 0}
+            onClick={clear}
+          >
             <Trash2 aria-hidden="true" />
           </button>
         </div>
@@ -274,13 +302,25 @@ export function DrawingDialog({ onSave, onClose }: DrawingDialogProps) {
         <footer className="drawing-dialog-footer">
           <div aria-live="polite">
             {errorMessage ? <span className="drawing-error">{errorMessage}</span> : null}
-            {!errorMessage && strokes.length === 0 ? <span>Draw at least one stroke to save.</span> : null}
+            {!errorMessage && strokes.length === 0 ? (
+              <span>Draw at least one stroke to save.</span>
+            ) : null}
           </div>
           <div>
-            <button type="button" className="drawing-cancel" disabled={saving} onClick={onClose}>
+            <button
+              type="button"
+              className="drawing-cancel"
+              disabled={saving}
+              onClick={onClose}
+            >
               Cancel
             </button>
-            <button type="button" className="drawing-save" disabled={saving || strokes.length === 0} onClick={() => void save()}>
+            <button
+              type="button"
+              className="drawing-save"
+              disabled={saving || strokes.length === 0}
+              onClick={() => void save()}
+            >
               {saving ? <RotateCcw aria-hidden="true" /> : <Save aria-hidden="true" />}
               {saving ? 'Saving…' : 'Save drawing'}
             </button>
