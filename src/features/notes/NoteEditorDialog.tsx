@@ -24,6 +24,8 @@ import { DrawingAttachmentButton } from '../drawing/DrawingAttachmentButton';
 import { ConnectionsPanel } from '../links/ConnectionsPanel';
 import { resolveWikiLink } from '../links/linkIntelligence';
 import { requestLinkedNoteOpen } from '../links/navigation';
+import { appendOcrText } from '../ocr/ocr';
+import { OcrAttachmentControl } from '../ocr/OcrAttachmentControl';
 import { ReminderControl } from '../reminders/ReminderControl';
 import { RichTextEditor } from '../richText/RichTextEditor';
 import { VoiceAttachmentButton } from '../voice/VoiceAttachmentButton';
@@ -252,6 +254,13 @@ export function NoteEditorDialog({
             repository={attachmentsRepository}
             refreshKey={attachmentRefreshKey}
             onChanged={onAttachmentsChanged}
+          />
+
+          <OcrAttachmentControl
+            noteId={note.id}
+            repository={attachmentsRepository}
+            refreshKey={attachmentRefreshKey}
+            onAppend={(text) => setContent(appendOcrText(draft.content, text))}
           />
 
           <ConnectionsPanel
