@@ -5,7 +5,13 @@ import { clearRecentSearches } from '../search/searchHistory';
 import { usePrivacy } from './PrivacyContext';
 import { supportsPrivacyLock, validatePrivacyPasscode } from './privacy';
 
-export function PrivacySettingsDialog({ onClose }: { onClose(): void }) {
+export function PrivacySettingsDialog({
+  onClose,
+  lockOnly = false,
+}: {
+  onClose(): void;
+  lockOnly?: boolean;
+}) {
   const {
     hidePreviews,
     privateNotifications,
@@ -123,6 +129,7 @@ export function PrivacySettingsDialog({ onClose }: { onClose(): void }) {
     <div className="privacy-dialog-layer" role="presentation" onPointerDown={onClose}>
       <section
         className="privacy-dialog"
+        data-lock-only={lockOnly}
         role="dialog"
         aria-modal="true"
         aria-labelledby="privacy-settings-title"

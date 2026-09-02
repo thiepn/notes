@@ -7,19 +7,15 @@ import {
   List,
   LockKeyhole,
   Menu,
-  Monitor,
-  Moon,
   MoreHorizontal,
   Search,
-  ShieldCheck,
+  Settings2,
   SlidersHorizontal,
   StickyNote,
-  Sun,
   X,
 } from 'lucide-react';
 
 import { notesDatabase } from '../db';
-import { PrivacySettingsDialog } from '../features/privacy/PrivacySettingsDialog';
 import { usePrivacy } from '../features/privacy/PrivacyContext';
 import { SearchHistoryPopover } from '../features/search/SearchHistoryPopover';
 import {
@@ -33,20 +29,14 @@ import {
   type SearchSnapshot,
 } from '../features/search/searchHistory';
 import { hasSearchFilters, type SearchFilters } from '../features/search/searchTypes';
-import { useTheme } from '../theme/ThemeContext';
-import { nextThemePreference, type ThemePreference } from '../theme/theme';
 import { IconButton } from './ui/IconButton';
 
-const THEME_LABELS: Record<ThemePreference, string> = {
-  system: 'System',
-  light: 'Light',
-  dark: 'Dark',
-};
 const searchHistoryRepository = new SearchHistoryRepository(notesDatabase);
 
 interface AppHeaderProps {
   onMenu(): void;
   onCommandPalette(): void;
+  onSettings(): void;
   searchQuery: string;
   searchFilters: SearchFilters;
   filtersOpen: boolean;
@@ -60,6 +50,7 @@ interface AppHeaderProps {
 export function AppHeader({
   onMenu,
   onCommandPalette,
+  onSettings,
   searchQuery,
   searchFilters,
   filtersOpen,
@@ -69,17 +60,13 @@ export function AppHeader({
   onClearSearch,
   onApplySearch,
 }: AppHeaderProps) {
-  const { preference, cyclePreference } = useTheme();
   const { lockEnabled, lock } = usePrivacy();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [privacyOpen, setPrivacyOpen] = useState(false);
   const [searchHistoryOpen, setSearchHistoryOpen] = useState(false);
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>(readRecentSearches);
-  const nextPreference = nextThemePreference(preference);
-  const ThemeIcon = preference === 'system' ? Monitor : preference === 'light' ? Sun : Moon;
   const currentSnapshot: SearchSnapshot = { query: searchQuery, filters: searchFilters };
   const currentSignature = searchSignature(currentSnapshot);
   const currentCanBeSaved = Boolean(searchQuery.trim()) || filtersActive;
@@ -174,231 +161,215 @@ export function AppHeader({
   };
 
   return (
-    <>
-      <header className="app-header">
-        <div className="header-leading">
-          <IconButton
-            label="Toggle navigation"
-            tooltip="Toggle navigation"
-            onClick={onMenu}
-            aria-controls="app-navigation"
-            data-testid="navigation-toggle"
-          >
-            <Menu />
-          </IconButton>
-
-          <div className="app-brand" aria-label="Notes">
-            <span className="app-brand-mark" aria-hidden="true">
-              <StickyNote />
-            </span>
-            <span className="app-brand-text">Notes</span>
-          </div>
-        </div>
-
-        <div
-          className="search-shell"
-          role="search"
-          onFocusCapture={() => setSearchHistoryOpen(true)}
-          onBlurCapture={(event) => {
-            const next = event.relatedTarget;
-            if (!(next instanceof Node) || !event.currentTarget.contains(next)) {
-              setSearchHistoryOpen(false);
-            }
-          }}
+    <header className="app-header">
+      <div className="header-leading">
+        <IconButton
+          label="Toggle navigation"
+          tooltip="Toggle navigation"
+          onClick={onMenu}
+          aria-controls="app-navigation"
+          data-testid="navigation-toggle"
         >
-          <Search aria-hidden="true" />
-          <input
-            ref={searchInputRef}
-            type="search"
-            placeholder="Search notes"
-            aria-label="Search notes"
-            aria-keyshortcuts="/"
-            enterKeyHint="search"
-            value={searchQuery}
-            onChange={(event) => onSearchQueryChange(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'ArrowDown') {
-                event.preventDefault();
-                const selector = historyVisible
-                  ? '.search-history-popover .search-history-apply'
-                  : '.search-result-section .note-card-open';
-                const focusTarget = () => {
-                  const target = document.querySelector<HTMLButtonElement>(selector);
-                  if (!target) return false;
-                  target.focus();
-                  return true;
-                };
+          <Menu />
+        </IconButton>
+
+        <div className="app-brand" aria-label="Notes">
+          <span className="app-brand-mark" aria-hidden="true">
+            <StickyNote />
+          </span>
+          <span className="app-brand-text">Notes</span>
+        </div>
+      </div>
+
+      <div
+        className="search-shell"
+        role="search"
+        onFocusCapture={() => setSearchHistoryOpen(true)}
+        onBlurCapture={(event) => {
+          const next = event.relatedTarget;
+          if (!(next instanceof Node) || !event.currentTarget.contains(next)) {
+            setSearchHistoryOpen(false);
+          }
+        }}
+      >
+        <Search aria-hidden="true" />
+        <input
+          ref={searchInputRef}
+          type="search"
+          placeholder="Search notes"
+          aria-label="Search notes"
+          aria-keyshortcuts="/"
+          enterKeyHint="search"
+          value={searchQuery}
+          onChange={(event) => onSearchQueryChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'ArrowDown') {
+              event.preventDefault();
+              const selector = historyVisible
+                ? '.search-history-popover .search-history-apply'
+                : '.search-result-section .note-card-open';
+              const focusTarget = () => {
+                const target = document.querySelector<HTMLButtonElement>(selector);
+                if (!target) return false;
+                target.focus();
+                return true;
+              };
+              if (focusTarget()) return;
+
+              const input = event.currentTarget;
+              let attempts = 0;
+              const focusWhenReady = () => {
+                if (document.activeElement !== input) return;
                 if (focusTarget()) return;
+                attempts += 1;
+                if (attempts < 120) window.requestAnimationFrame(focusWhenReady);
+              };
+              window.requestAnimationFrame(focusWhenReady);
+              return;
+            }
 
-                const input = event.currentTarget;
-                let attempts = 0;
-                const focusWhenReady = () => {
-                  if (document.activeElement !== input) return;
-                  if (focusTarget()) return;
-                  attempts += 1;
-                  if (attempts < 120) window.requestAnimationFrame(focusWhenReady);
-                };
-                window.requestAnimationFrame(focusWhenReady);
-                return;
-              }
-
-              if (event.key !== 'Escape') return;
-              if (historyVisible) {
-                event.preventDefault();
-                setSearchHistoryOpen(false);
-                return;
-              }
-              if (searchQuery) {
-                event.preventDefault();
-                onSearchQueryChange('');
-                return;
-              }
-              if (filtersOpen) {
-                event.preventDefault();
-                onToggleFilters();
-                return;
-              }
-              if (filtersActive) {
-                event.preventDefault();
-                onClearSearch();
-                return;
-              }
-              event.currentTarget.blur();
-            }}
-          />
-          {searchQuery ? (
-            <button
-              className="search-inline-action"
-              type="button"
-              aria-label="Clear search query"
-              onClick={() => onSearchQueryChange('')}
-            >
-              <X />
-            </button>
-          ) : null}
+            if (event.key !== 'Escape') return;
+            if (historyVisible) {
+              event.preventDefault();
+              setSearchHistoryOpen(false);
+              return;
+            }
+            if (searchQuery) {
+              event.preventDefault();
+              onSearchQueryChange('');
+              return;
+            }
+            if (filtersOpen) {
+              event.preventDefault();
+              onToggleFilters();
+              return;
+            }
+            if (filtersActive) {
+              event.preventDefault();
+              onClearSearch();
+              return;
+            }
+            event.currentTarget.blur();
+          }}
+        />
+        {searchQuery ? (
           <button
             className="search-inline-action"
             type="button"
-            aria-label="Search filters"
-            aria-expanded={filtersOpen}
-            aria-pressed={filtersOpen || filtersActive}
-            data-active={filtersOpen || filtersActive}
-            onClick={onToggleFilters}
+            aria-label="Clear search query"
+            onClick={() => onSearchQueryChange('')}
           >
-            <SlidersHorizontal />
-            {activeFilterCount > 0 ? (
-              <span className="search-filter-count" aria-hidden="true">
-                {activeFilterCount}
-              </span>
-            ) : null}
+            <X />
           </button>
-          {currentCanBeSaved ? (
-            <button
-              className="search-inline-action"
-              type="button"
-              aria-label={currentIsSaved ? 'Search saved' : 'Save search'}
-              aria-pressed={currentIsSaved}
-              data-active={currentIsSaved}
-              disabled={currentIsSaved}
-              onClick={() => void saveCurrentSearch()}
-            >
-              {currentIsSaved ? <BookmarkCheck /> : <BookmarkPlus />}
-            </button>
+        ) : null}
+        <button
+          className="search-inline-action"
+          type="button"
+          aria-label="Search filters"
+          aria-expanded={filtersOpen}
+          aria-pressed={filtersOpen || filtersActive}
+          data-active={filtersOpen || filtersActive}
+          onClick={onToggleFilters}
+        >
+          <SlidersHorizontal />
+          {activeFilterCount > 0 ? (
+            <span className="search-filter-count" aria-hidden="true">
+              {activeFilterCount}
+            </span>
           ) : null}
-          {searchQuery || filtersActive ? (
-            <button className="search-reset" type="button" onClick={onClearSearch}>
-              Reset
-            </button>
-          ) : null}
-
-          {historyVisible ? (
-            <SearchHistoryPopover
-              saved={savedSearches}
-              recent={recentSearches}
-              onApply={(snapshot) => {
-                onApplySearch(snapshot);
-                setSearchHistoryOpen(false);
-              }}
-              onRemoveSaved={(id) => void removeSavedSearch(id)}
-              onClearRecent={() => setRecentSearches(clearRecentSearches())}
-            />
-          ) : null}
-        </div>
-
-        <div className="header-actions" ref={menuRef}>
-          <IconButton
-            label="More options"
-            tooltip="More options"
-            aria-expanded={moreOpen}
-            onClick={() => setMoreOpen((open) => !open)}
-            data-testid="header-more-toggle"
+        </button>
+        {currentCanBeSaved ? (
+          <button
+            className="search-inline-action"
+            type="button"
+            aria-label={currentIsSaved ? 'Search saved' : 'Save search'}
+            aria-pressed={currentIsSaved}
+            data-active={currentIsSaved}
+            disabled={currentIsSaved}
+            onClick={() => void saveCurrentSearch()}
           >
-            <MoreHorizontal />
-          </IconButton>
-          {moreOpen ? (
-            <div className="header-more-menu" role="menu">
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setMoreOpen(false);
-                  onCommandPalette();
-                }}
-              >
-                <Command aria-hidden="true" />
-                <span>Command palette</span>
-                <kbd>Ctrl K</kbd>
-              </button>
-              <button type="button" role="menuitem" onClick={() => clickViewButton('Grid view')}>
-                <LayoutGrid aria-hidden="true" />
-                <span>Grid view</span>
-              </button>
-              <button type="button" role="menuitem" onClick={() => clickViewButton('List view')}>
-                <List aria-hidden="true" />
-                <span>List view</span>
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  cyclePreference();
-                  setMoreOpen(false);
-                }}
-              >
-                <ThemeIcon aria-hidden="true" />
-                <span>{THEME_LABELS[preference]} appearance</span>
-                <small>Next: {THEME_LABELS[nextPreference]}</small>
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setMoreOpen(false);
-                  setPrivacyOpen(true);
-                }}
-              >
-                <ShieldCheck aria-hidden="true" />
-                <span>Privacy settings</span>
-              </button>
-              {lockEnabled ? (
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setMoreOpen(false);
-                    lock();
-                  }}
-                >
-                  <LockKeyhole aria-hidden="true" />
-                  <span>Lock now</span>
-                </button>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-      </header>
+            {currentIsSaved ? <BookmarkCheck /> : <BookmarkPlus />}
+          </button>
+        ) : null}
+        {searchQuery || filtersActive ? (
+          <button className="search-reset" type="button" onClick={onClearSearch}>
+            Reset
+          </button>
+        ) : null}
 
-      {privacyOpen ? <PrivacySettingsDialog onClose={() => setPrivacyOpen(false)} /> : null}
-    </>
+        {historyVisible ? (
+          <SearchHistoryPopover
+            saved={savedSearches}
+            recent={recentSearches}
+            onApply={(snapshot) => {
+              onApplySearch(snapshot);
+              setSearchHistoryOpen(false);
+            }}
+            onRemoveSaved={(id) => void removeSavedSearch(id)}
+            onClearRecent={() => setRecentSearches(clearRecentSearches())}
+          />
+        ) : null}
+      </div>
+
+      <div className="header-actions" ref={menuRef}>
+        <IconButton
+          label="More options"
+          tooltip="More options"
+          aria-expanded={moreOpen}
+          onClick={() => setMoreOpen((open) => !open)}
+          data-testid="header-more-toggle"
+        >
+          <MoreHorizontal />
+        </IconButton>
+        {moreOpen ? (
+          <div className="header-more-menu" role="menu">
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMoreOpen(false);
+                onCommandPalette();
+              }}
+            >
+              <Command aria-hidden="true" />
+              <span>Command palette</span>
+              <kbd>Ctrl K</kbd>
+            </button>
+            <button type="button" role="menuitem" onClick={() => clickViewButton('Grid view')}>
+              <LayoutGrid aria-hidden="true" />
+              <span>Grid view</span>
+            </button>
+            <button type="button" role="menuitem" onClick={() => clickViewButton('List view')}>
+              <List aria-hidden="true" />
+              <span>List view</span>
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMoreOpen(false);
+                onSettings();
+              }}
+            >
+              <Settings2 aria-hidden="true" />
+              <span>Settings</span>
+            </button>
+            {lockEnabled ? (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMoreOpen(false);
+                  lock();
+                }}
+              >
+                <LockKeyhole aria-hidden="true" />
+                <span>Lock now</span>
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </header>
   );
 }

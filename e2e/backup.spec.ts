@@ -6,6 +6,15 @@ async function waitForNotes(page: Page) {
   await expect(page.getByRole('heading', { name: 'Notes', level: 1 })).toBeVisible();
 }
 
+async function openBackupTools(page: Page) {
+  await page.getByRole('button', { name: 'More options' }).click();
+  await page.getByRole('menuitem', { name: 'Settings' }).click();
+  const settings = page.getByRole('dialog', { name: 'Settings' });
+  await settings.getByRole('button', { name: 'Data & advanced' }).click();
+  await settings.getByRole('button', { name: 'Open backup & import' }).click();
+  await expect(page.getByRole('heading', { name: 'Backup', level: 1 })).toBeVisible();
+}
+
 async function seedCompleteLibrary(page: Page) {
   return page.evaluate(async () => {
     const dbModule = await import('/notes/src/db/index.ts');
@@ -75,7 +84,7 @@ test('full backup round-trips every v2 table and downloads a pre-restore safety 
   await page.goto('./');
   await waitForNotes(page);
   const ids = await seedCompleteLibrary(page);
-  await page.getByRole('button', { name: 'Backup' }).click();
+  await openBackupTools(page);
 
   const exportDownloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download full backup' }).click();
@@ -268,7 +277,7 @@ test('corrupt backups are rejected during preview without changing the library',
   };
   corrupt.data.noteLabels[0]!.noteId = '10000000-0000-4000-8000-000000000099';
 
-  await page.getByRole('button', { name: 'Backup' }).click();
+  await openBackupTools(page);
   await page.getByLabel('Choose backup file').setInputFiles({
     name: 'corrupt-backup.json',
     mimeType: 'application/json',

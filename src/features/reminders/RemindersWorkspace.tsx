@@ -19,7 +19,6 @@ import { LifecycleToast, type LifecycleToastState } from '../notes/LifecycleToas
 import { MasonryGrid } from '../notes/MasonryGrid';
 import type { NoteCardActions } from '../notes/NoteCard';
 import { readNotesViewMode, writeNotesViewMode, type NotesViewMode } from '../notes/viewMode';
-import { ReminderNotificationSettings } from './ReminderNotificationSettings';
 import { reminderTimeBucket } from './reminderTime';
 
 const notesRepository = new NotesRepository(notesDatabase);
@@ -216,8 +215,6 @@ export function RemindersWorkspace({ labels }: RemindersWorkspaceProps) {
 
   return (
     <>
-      <ReminderNotificationSettings />
-
       {total > 0 ? (
         <div className="notes-board reminder-board" data-view={viewMode} data-mode="reminders">
           <div className="notes-toolbar">

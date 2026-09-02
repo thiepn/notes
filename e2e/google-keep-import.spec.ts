@@ -5,6 +5,15 @@ async function waitForNotes(page: Page) {
   await expect(page.getByRole('heading', { name: 'Notes', level: 1 })).toBeVisible();
 }
 
+async function openBackupTools(page: Page) {
+  await page.getByRole('button', { name: 'More options' }).click();
+  await page.getByRole('menuitem', { name: 'Settings' }).click();
+  const settings = page.getByRole('dialog', { name: 'Settings' });
+  await settings.getByRole('button', { name: 'Data & advanced' }).click();
+  await settings.getByRole('button', { name: 'Open backup & import' }).click();
+  await expect(page.getByRole('heading', { name: 'Backup', level: 1 })).toBeVisible();
+}
+
 function zipBuffer(entries: Record<string, Uint8Array>): Buffer {
   return Buffer.from(zipSync(entries));
 }
@@ -82,7 +91,7 @@ test('Google Keep Takeout imports non-destructively with metadata, attachments, 
     return { noteId: note.id, labelId: label.id };
   });
 
-  await page.getByRole('button', { name: 'Backup' }).click();
+  await openBackupTools(page);
   await expect(page.getByRole('heading', { name: 'Import Google Takeout' })).toBeVisible();
   await page.getByLabel('Choose Google Takeout archives').setInputFiles(takeoutParts());
 
@@ -348,7 +357,7 @@ test('a Takeout with no recoverable Keep note is rejected without touching local
     });
   });
 
-  await page.getByRole('button', { name: 'Backup' }).click();
+  await openBackupTools(page);
   await page.getByLabel('Choose Google Takeout archives').setInputFiles({
     name: 'broken-takeout.zip',
     mimeType: 'application/zip',

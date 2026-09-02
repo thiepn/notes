@@ -17,7 +17,6 @@ import {
   hasSearchFilters,
   type SearchFilters,
 } from '../features/search/searchTypes';
-import { useTheme } from '../theme/ThemeContext';
 
 const MOBILE_QUERY = '(max-width: 767px)';
 const ACTIVE_SECTION_KEY = 'notes.active-section';
@@ -42,6 +41,16 @@ const RemindersWorkspace = lazy(() =>
 const SearchWorkspace = lazy(() =>
   import('../features/search/SearchWorkspace').then((module) => ({
     default: module.SearchWorkspace,
+  })),
+);
+const SettingsDialog = lazy(() =>
+  import('../features/settings/SettingsDialog').then((module) => ({
+    default: module.SettingsDialog,
+  })),
+);
+const PrivacySettingsDialog = lazy(() =>
+  import('../features/privacy/PrivacySettingsDialog').then((module) => ({
+    default: module.PrivacySettingsDialog,
   })),
 );
 
@@ -82,13 +91,14 @@ const SECTION_COPY: Record<
 };
 
 export function AppShell() {
-  const { cyclePreference } = useTheme();
   const [activeSection, setActiveSection] = useState<AppSection>(() => readActiveSection());
   const [activeLabelId, setActiveLabelId] = useState<string | null>(() => readActiveLabelId());
   const [labels, setLabels] = useState<LabelRecord[]>([]);
   const [navigationStats, setNavigationStats] = useState<NavigationStats>(EMPTY_NAVIGATION_STATS);
   const [labelManagerOpen, setLabelManagerOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [privacyLockSettingsOpen, setPrivacyLockSettingsOpen] = useState(false);
   const [sidebarCompact, setSidebarCompact] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -495,12 +505,24 @@ export function AppShell() {
       run: () => setViewModeFromCommand('list'),
     },
     {
-      id: 'cycle-appearance',
-      label: 'Cycle appearance',
-      description: 'Switch System, Light, and Dark appearance',
-      group: 'View',
-      keywords: ['theme', 'dark', 'light'],
-      run: cyclePreference,
+      id: 'open-settings',
+      label: 'Open Settings',
+      description: 'Appearance, privacy, notifications, search history, and data tools',
+      group: 'Navigate',
+      keywords: [
+        'settings',
+        'preferences',
+        'theme',
+        'appearance',
+        'privacy',
+        'notifications',
+        'history',
+        'backup',
+      ],
+      run: () => {
+        setCommandPaletteOpen(false);
+        setSettingsOpen(true);
+      },
     },
   ];
 
@@ -509,6 +531,7 @@ export function AppShell() {
       <AppHeader
         onMenu={handleMenu}
         onCommandPalette={() => setCommandPaletteOpen(true)}
+        onSettings={() => setSettingsOpen(true)}
         searchQuery={searchQuery}
         searchFilters={searchFilters}
         filtersOpen={searchFiltersOpen}
@@ -602,6 +625,34 @@ export function AppShell() {
           </div>
         </main>
       </div>
+
+      {settingsOpen ? (
+        <Suspense fallback={<div className="deferred-settings-loading">Loading settings…</div>}>
+          <SettingsDialog
+            onClose={() => setSettingsOpen(false)}
+            onOpenBackup={() => {
+              setSettingsOpen(false);
+              handleNavigate('backup');
+            }}
+            onOpenPrivacyLock={() => {
+              setSettingsOpen(false);
+              setPrivacyLockSettingsOpen(true);
+            }}
+          />
+        </Suspense>
+      ) : null}
+
+      {privacyLockSettingsOpen ? (
+        <Suspense fallback={null}>
+          <PrivacySettingsDialog
+            lockOnly
+            onClose={() => {
+              setPrivacyLockSettingsOpen(false);
+              setSettingsOpen(true);
+            }}
+          />
+        </Suspense>
+      ) : null}
 
       {labelManagerOpen ? (
         <Suspense fallback={null}>

@@ -1,5 +1,14 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { strToU8, zipSync } from 'fflate';
+
+async function openBackupTools(page: Page) {
+  await page.getByRole('button', { name: 'More options' }).click();
+  await page.getByRole('menuitem', { name: 'Settings' }).click();
+  const settings = page.getByRole('dialog', { name: 'Settings' });
+  await settings.getByRole('button', { name: 'Data & advanced' }).click();
+  await settings.getByRole('button', { name: 'Open backup & import' }).click();
+  await expect(page.getByRole('heading', { name: 'Backup', level: 1 })).toBeVisible();
+}
 
 function takeoutWithReminder(): Buffer {
   return Buffer.from(
@@ -35,7 +44,7 @@ test('recognized Keep reminder timestamps import while unknown reminder shapes o
   page,
 }) => {
   await page.goto('./');
-  await page.getByRole('button', { name: 'Backup' }).click();
+  await openBackupTools(page);
 
   await page.getByLabel('Choose Google Takeout archives').setInputFiles({
     name: 'takeout-reminders.zip',
