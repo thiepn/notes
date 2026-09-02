@@ -11,4 +11,12 @@ old_test = "  let settings = await openSettings(page);"
 if old_test not in text:
     raise SystemExit('V3.4 settings lint target was not found.')
 text = text.replace(old_test, "  const settings = await openSettings(page);", 1)
+old_active_section = "  const activeSection = SECTIONS.find((item) => item.id === section) ?? SECTIONS[0];"
+if old_active_section not in text:
+    raise SystemExit('V3.4 settings type target was not found.')
+text = text.replace(
+    old_active_section,
+    "  const activeSection = SECTIONS.find((item) => item.id === section) ?? SECTIONS[0]!;",
+    1,
+)
 path.write_text(text)
