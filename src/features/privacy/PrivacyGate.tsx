@@ -1,5 +1,5 @@
-import { useState, type FormEvent, type ReactNode } from 'react';
-import { LockKeyhole, StickyNote } from 'lucide-react';
+import { useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react';
+import { Eye, EyeOff, LockKeyhole, StickyNote } from 'lucide-react';
 
 import { usePrivacy } from './PrivacyContext';
 
@@ -8,6 +8,8 @@ export function PrivacyGate({ children }: { children: ReactNode }) {
   const [passcode, setPasscode] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
+  const [showPasscode, setShowPasscode] = useState(false);
+  const [capsLock, setCapsLock] = useState(false);
 
   if (!locked) return children;
 
@@ -19,13 +21,21 @@ export function PrivacyGate({ children }: { children: ReactNode }) {
     try {
       const valid = await unlock(passcode);
       if (!valid) {
-        setErrorMessage('Incorrect passcode.');
+        setPasscode('');
+        setShowPasscode(false);
+        setErrorMessage('Incorrect passcode. Try again.');
         return;
       }
       setPasscode('');
+      setShowPasscode(false);
+      setCapsLock(false);
     } finally {
       setChecking(false);
     }
+  };
+
+  const updateCapsLock = (event: KeyboardEvent<HTMLInputElement>) => {
+    setCapsLock(event.getModifierState('CapsLock'));
   };
 
   return (
@@ -42,14 +52,34 @@ export function PrivacyGate({ children }: { children: ReactNode }) {
         <form onSubmit={(event) => void submit(event)}>
           <label>
             <span>Passcode</span>
-            <input
-              autoFocus
-              type="password"
-              autoComplete="current-password"
-              value={passcode}
-              onChange={(event) => setPasscode(event.target.value)}
-            />
+            <span className="privacy-lock-passcode-field">
+              <input
+                autoFocus
+                type={showPasscode ? 'text' : 'password'}
+                autoComplete="current-password"
+                value={passcode}
+                aria-describedby={capsLock ? 'privacy-caps-lock-warning' : undefined}
+                onChange={(event) => setPasscode(event.target.value)}
+                onKeyDown={updateCapsLock}
+                onKeyUp={updateCapsLock}
+                onBlur={() => setCapsLock(false)}
+              />
+              <button
+                type="button"
+                className="privacy-passcode-visibility"
+                aria-label={showPasscode ? 'Hide passcode' : 'Show passcode'}
+                aria-pressed={showPasscode}
+                onClick={() => setShowPasscode((visible) => !visible)}
+              >
+                {showPasscode ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+              </button>
+            </span>
           </label>
+          {capsLock ? (
+            <p id="privacy-caps-lock-warning" className="privacy-caps-lock" role="status">
+              Caps Lock is on.
+            </p>
+          ) : null}
           {errorMessage ? (
             <p className="privacy-error" role="alert">
               {errorMessage}
