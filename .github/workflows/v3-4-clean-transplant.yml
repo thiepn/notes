@@ -1,0 +1,86 @@
+name: V3-4 Clean Current-Main Transplant
+
+on:
+  push:
+    branches: [v3-4-clean-813d]
+
+permissions:
+  contents: write
+
+jobs:
+  transplant:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current-main candidate
+        uses: actions/checkout@v6
+        with:
+          ref: v3-4-clean-813d
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+
+      - name: Transplant V3.4 product changes
+        run: |
+          set -euo pipefail
+          git fetch origin v3-4-editor-interaction-polish:refs/remotes/origin/v3-4-editor-interaction-polish
+          git checkout origin/v3-4-editor-interaction-polish -- \
+            README.md \
+            docs/EDITOR_INTERACTION.md \
+            e2e/editor-interaction-polish.spec.ts \
+            src/features/notes/ChecklistEditorDialog.tsx \
+            src/features/notes/EditorStatusBar.tsx \
+            src/features/notes/NoteEditorDialog.tsx \
+            src/features/notes/editorInsights.test.ts \
+            src/features/notes/editorInsights.ts \
+            src/features/notes/useExistingNoteEditor.ts \
+            src/styles/editor-interaction-polish.css
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/styles.css')
+          text = path.read_text()
+          line = "@import './styles/editor-interaction-polish.css';\n"
+          if line not in text:
+              marker = "@import './styles/ui-simplification.css';\n"
+              if marker not in text:
+                  raise SystemExit('styles import marker changed')
+              text = text.replace(marker, marker + line, 1)
+          path.write_text(text)
+          PY
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Format and persist clean candidate
+        run: |
+          npx prettier --write README.md docs/EDITOR_INTERACTION.md e2e/editor-interaction-polish.spec.ts src/features/notes/ChecklistEditorDialog.tsx src/features/notes/EditorStatusBar.tsx src/features/notes/NoteEditorDialog.tsx src/features/notes/editorInsights.test.ts src/features/notes/editorInsights.ts src/features/notes/useExistingNoteEditor.ts src/styles/editor-interaction-polish.css src/styles.css
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md docs/EDITOR_INTERACTION.md e2e/editor-interaction-polish.spec.ts src/features/notes/ChecklistEditorDialog.tsx src/features/notes/EditorStatusBar.tsx src/features/notes/NoteEditorDialog.tsx src/features/notes/editorInsights.test.ts src/features/notes/editorInsights.ts src/features/notes/useExistingNoteEditor.ts src/styles/editor-interaction-polish.css src/styles.css
+          if ! git diff --cached --quiet; then
+            git commit -m "V3.4: transplant editor interaction polish onto current main"
+            git push origin HEAD:v3-4-clean-813d
+          fi
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Build
+        run: npm run build
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: V3.4 browser certification
+        run: npx playwright test e2e/editor-interaction-polish.spec.ts --retries=0
