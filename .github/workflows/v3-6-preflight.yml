@@ -1,0 +1,59 @@
+name: V3-6 Attachment Media Preflight
+
+on:
+  push:
+    branches: [v3-6-attachments-media-polish]
+
+permissions:
+  contents: write
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: v3-6-attachments-media-polish
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Integrate V3.6 media polish
+        run: |
+          python scripts/v3-6-media-patch.py
+          python scripts/v3-6-doc-patch.py
+          npx prettier --write src/features/notes/AttachmentPanel.tsx src/features/notes/attachmentPresentation.ts src/features/notes/attachmentPresentation.test.ts src/styles/attachments-media-polish.css src/styles.css e2e/attachments-media-polish.spec.ts README.md docs/ATTACHMENTS_MEDIA.md
+          if ! git diff --quiet -- .; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add src/features/notes/AttachmentPanel.tsx README.md
+            git commit -m "V3.6: integrate attachment media interaction polish"
+            git push origin HEAD:v3-6-attachments-media-polish
+          fi
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Build
+        run: npm run build
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Attachment media regression suite
+        run: npx playwright test e2e/attachments-media-polish.spec.ts e2e/attachments.spec.ts e2e/voice.spec.ts --retries=0
