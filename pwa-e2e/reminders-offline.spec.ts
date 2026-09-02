@@ -67,7 +67,7 @@ test('reminders survive offline cold reloads and can be changed without network 
   await page.getByRole('button', { name: 'Open note: Offline reminder' }).click();
   const editor = page.getByRole('dialog', { name: 'Edit note' });
   await editor.getByRole('button', { name: 'Add reminder' }).click();
-  await editor.getByRole('button', { name: 'Tomorrow' }).click();
+  await editor.getByRole('button', { name: 'Tomorrow', exact: true }).click();
   await editor.getByLabel('Time').fill('10:15');
   await editor.getByRole('button', { name: 'Save reminder' }).click();
   await editor.getByRole('button', { name: 'Close' }).click();
@@ -92,7 +92,7 @@ test('reminders survive offline cold reloads and can be changed without network 
   const offlineEditor = page.getByRole('dialog', { name: 'Edit note' });
   await offlineEditor.getByRole('button', { name: /Change reminder:/u }).click();
   const snoozeStartedAt = await page.evaluate(() => Date.now());
-  await offlineEditor.getByRole('button', { name: 'Snooze 1 hour' }).click();
+  await offlineEditor.getByRole('button', { name: '1 hour', exact: true }).click();
   await offlineEditor.getByRole('button', { name: 'Close' }).click();
 
   await page.reload({ waitUntil: 'domcontentloaded' });
