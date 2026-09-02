@@ -44,7 +44,7 @@ test('hide note previews masks visible and accessible card details while preserv
   const editor = page.getByRole('dialog', { name: 'Edit note' });
   await expect(editor.getByLabel('Edit title')).toHaveValue('Private plan');
   await expect(editor.getByLabel('Edit note text')).toHaveValue('Secret body details');
-  await editor.getByRole('button', { name: 'Close editor' }).click();
+  await editor.getByRole('button', { name: 'Close', exact: true }).click();
 
   await page.reload();
   const reloadedCard = page.locator(`[data-note-id="${noteId}"]`);
