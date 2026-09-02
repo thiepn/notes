@@ -28,6 +28,15 @@ import {
   type AttachmentRecord,
   type AttachmentsRepository,
 } from '../../db';
+import {
+  attachmentTypeLabel,
+  formatAttachmentBreakdown,
+  formatAttachmentBytes,
+  formatAttachmentSummary,
+  formatImageDimensions,
+  formatMediaDuration,
+  summarizeAttachments,
+} from './attachmentPresentation';
 
 interface AttachmentPanelProps {
   noteId: string | null;
@@ -155,6 +164,8 @@ export function AttachmentPanel({
   const lightboxIndex = lightboxId
     ? previewImages.findIndex((attachment) => attachment.id === lightboxId)
     : -1;
+  const summary = summarizeAttachments(attachments);
+  const breakdown = formatAttachmentBreakdown(summary);
 
   return (
     <section
@@ -181,9 +192,10 @@ export function AttachmentPanel({
         <div>
           <strong>{attachments.length > 0 ? 'Attachments' : 'Images'}</strong>
           {attachments.length > 0 ? (
-            <span>
-              {attachments.length} {attachments.length === 1 ? 'attachment' : 'attachments'}
-            </span>
+            <>
+              <span>{formatAttachmentSummary(summary)}</span>
+              {breakdown ? <small className="attachment-panel-breakdown">{breakdown}</small> : null}
+            </>
           ) : (
             <span>JPEG, PNG, GIF, WebP, or AVIF</span>
           )}
@@ -363,6 +375,21 @@ function AttachmentImageTile({
           <Maximize2 />
         </span>
       </button>
+      <div className="attachment-image-meta">
+        <span>
+          <strong title={label}>{label}</strong>
+          <small>
+            {attachmentTypeLabel(attachment.mimeType)} · {formatAttachmentBytes(attachment.size)}
+          </small>
+        </span>
+        <button
+          type="button"
+          aria-label={`Download image: ${label}`}
+          onClick={() => downloadAttachment(attachment)}
+        >
+          <Download aria-hidden="true" />
+        </button>
+      </div>
       {editable ? (
         pendingRemove ? (
           <div className="attachment-remove-confirm" role="group" aria-label={`Remove ${label}?`}>
@@ -409,6 +436,8 @@ function AttachmentAudioRow({
 }) {
   const url = useBlobUrl(attachment.data);
   const name = attachment.name ?? 'Voice recording';
+  const [duration, setDuration] = useState<number | null>(null);
+  const durationLabel = formatMediaDuration(duration);
   return (
     <div className="attachment-audio-row">
       <span className="attachment-audio-icon" aria-hidden="true">
@@ -417,7 +446,15 @@ function AttachmentAudioRow({
       <span className="attachment-audio-main">
         <span className="attachment-audio-copy">
           <strong title={name}>{name}</strong>
-          <small>{formatBytes(attachment.size)}</small>
+          <small>
+            {[
+              durationLabel,
+              attachmentTypeLabel(attachment.mimeType),
+              formatAttachmentBytes(attachment.size),
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </small>
         </span>
         {url ? (
           <audio
@@ -425,6 +462,14 @@ function AttachmentAudioRow({
             preload="metadata"
             src={url}
             aria-label={`Play voice recording: ${name}`}
+            onLoadedMetadata={(event) => {
+              const nextDuration = event.currentTarget.duration;
+              setDuration(Number.isFinite(nextDuration) ? nextDuration : null);
+            }}
+            onDurationChange={(event) => {
+              const nextDuration = event.currentTarget.duration;
+              setDuration(Number.isFinite(nextDuration) ? nextDuration : null);
+            }}
           />
         ) : null}
       </span>
@@ -499,7 +544,7 @@ function AttachmentFileRow({
       <span className="attachment-file-copy">
         <strong title={name}>{name}</strong>
         <small>
-          {attachment.mimeType} · {formatBytes(attachment.size)}
+          {attachmentTypeLabel(attachment.mimeType)} · {formatAttachmentBytes(attachment.size)}
         </small>
       </span>
       <button
@@ -553,6 +598,11 @@ function AttachmentLightbox({
 }) {
   const attachment = attachments[index];
   const url = useBlobUrl(attachment?.data ?? null);
+  const [dimensions, setDimensions] = useState<{
+    attachmentId: string;
+    width: number;
+    height: number;
+  } | null>(null);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -564,6 +614,17 @@ function AttachmentLightbox({
 
   if (!attachment) return null;
   const name = attachment.name ?? 'Attached image';
+  const dimensionLabel =
+    dimensions?.attachmentId === attachment.id
+      ? formatImageDimensions(dimensions.width, dimensions.height)
+      : null;
+  const meta = [
+    dimensionLabel,
+    attachmentTypeLabel(attachment.mimeType),
+    formatAttachmentBytes(attachment.size),
+  ]
+    .filter(Boolean)
+    .join(' · ');
   const move = (direction: 1 | -1) =>
     onIndexChange((index + direction + attachments.length) % attachments.length);
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
@@ -596,7 +657,7 @@ function AttachmentLightbox({
       }}
     >
       <div className="attachment-lightbox-toolbar">
-        <span>
+        <span className="attachment-lightbox-position">
           {index + 1} / {attachments.length}
         </span>
         <button
@@ -623,8 +684,23 @@ function AttachmentLightbox({
       ) : null}
 
       <div className="attachment-lightbox-image-wrap">
-        {url ? <img src={url} alt={name} /> : null}
-        <span>{name}</span>
+        {url ? (
+          <img
+            src={url}
+            alt={name}
+            onLoad={(event) =>
+              setDimensions({
+                attachmentId: attachment.id,
+                width: event.currentTarget.naturalWidth,
+                height: event.currentTarget.naturalHeight,
+              })
+            }
+          />
+        ) : null}
+        <div className="attachment-lightbox-meta">
+          <strong title={name}>{name}</strong>
+          <span>{meta}</span>
+        </div>
       </div>
 
       {attachments.length > 1 ? (
@@ -683,7 +759,7 @@ async function assertStorageLooksSufficient(files: File[]): Promise<void> {
     const required = files.reduce((total, file) => total + file.size, 0);
     if (required > available) {
       throw new Error(
-        `These images need about ${formatBytes(required)}, but the browser reports only ${formatBytes(available)} available.`,
+        `These images need about ${formatAttachmentBytes(required)}, but the browser reports only ${formatAttachmentBytes(available)} available.`,
       );
     }
   } catch (error) {
@@ -700,18 +776,6 @@ function formatAddResult(added: number, skippedDuplicates: number, source: AddSo
   return skippedDuplicates > 0
     ? `${addedText} ${skippedDuplicates} duplicate ${skippedDuplicates === 1 ? 'was' : 'images were'} skipped.`
     : addedText;
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  const units = ['KB', 'MB', 'GB'];
-  let value = bytes / 1024;
-  let unit = units[0] ?? 'KB';
-  for (let index = 1; index < units.length && value >= 1024; index += 1) {
-    value /= 1024;
-    unit = units[index] ?? unit;
-  }
-  return `${value.toFixed(value >= 10 ? 1 : 2)} ${unit}`;
 }
 
 function hasFiles(dataTransfer: DataTransfer): boolean {

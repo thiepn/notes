@@ -1,0 +1,157 @@
+.attachment-panel-breakdown {
+  color: var(--text-subtle);
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.attachment-image-tile {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  aspect-ratio: auto;
+  min-height: 168px;
+}
+
+.attachment-image-open {
+  position: relative;
+  inset: auto;
+  min-height: 118px;
+}
+
+.attachment-image-meta {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 7px 8px;
+  border-top: 1px solid color-mix(in srgb, var(--border-strong) 52%, transparent);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+}
+
+.attachment-image-meta > span {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.attachment-image-meta strong,
+.attachment-lightbox-meta strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-image-meta strong {
+  color: var(--text);
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+
+.attachment-image-meta small {
+  overflow: hidden;
+  color: var(--text-subtle);
+  font-size: 0.66rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-image-meta button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.attachment-image-meta button:hover,
+.attachment-image-meta button:focus-visible {
+  background: color-mix(in srgb, var(--text) 9%, transparent);
+  color: var(--text);
+}
+
+.attachment-image-meta button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.attachment-remove-button {
+  top: 7px;
+}
+
+.attachment-audio-copy small {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-lightbox-position {
+  margin-right: auto;
+}
+
+.attachment-lightbox-meta {
+  display: grid;
+  width: min(720px, 78vw);
+  min-width: 0;
+  gap: 2px;
+  text-align: center;
+}
+
+.attachment-lightbox-meta strong {
+  color: #fff;
+  font-size: var(--text-sm);
+  font-weight: 650;
+}
+
+.attachment-lightbox-meta span {
+  max-width: 100%;
+  overflow: hidden;
+  color: rgb(255 255 255 / 68%);
+  font-size: var(--text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  .attachment-image-tile {
+    min-height: 150px;
+  }
+
+  .attachment-image-open {
+    min-height: 100px;
+  }
+
+  .attachment-image-meta {
+    padding: 6px;
+  }
+
+  .attachment-image-meta button {
+    width: 28px;
+    height: 28px;
+  }
+
+  .attachment-lightbox-meta {
+    width: min(86vw, 620px);
+  }
+}
+
+@media (max-width: 380px) {
+  .attachment-image-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .attachment-image-tile {
+    min-height: 190px;
+  }
+
+  .attachment-image-open {
+    min-height: 138px;
+  }
+}
