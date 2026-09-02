@@ -94,4 +94,17 @@ Path(reminder_path).write_text(reminder_text)
 '''
 text = text[:insert_at] + reminder_patch + text[insert_at:]
 
+# Keep the Node-only performance check under the repo's no-globals ESLint rules.
+text = text.replace(
+    "import { join } from 'node:path';\nimport { gzipSync } from 'node:zlib';",
+    "import { join } from 'node:path';\nimport { cwd, stdout } from 'node:process';\nimport { gzipSync } from 'node:zlib';",
+    1,
+)
+text = text.replace("const distDir = join(process.cwd(), 'dist');", "const distDir = join(cwd(), 'dist');", 1)
+text = text.replace(
+    "console.log(\n  `[perf] entry ${(entryBytes / 1024).toFixed(1)} KiB (${(entryGzipBytes / 1024).toFixed(1)} KiB gzip); OCR deferred from precache; ${coreFiles.length} LSTM core assets.`,\n);",
+    "stdout.write(\n  `[perf] entry ${(entryBytes / 1024).toFixed(1)} KiB (${(entryGzipBytes / 1024).toFixed(1)} KiB gzip); OCR deferred from precache; ${coreFiles.length} LSTM core assets.\\n`,\n);",
+    1,
+)
+
 path.write_text(text)
