@@ -20,7 +20,7 @@ import { MasonryGrid } from '../notes/MasonryGrid';
 import type { NoteCardActions } from '../notes/NoteCard';
 import { readNotesViewMode, writeNotesViewMode, type NotesViewMode } from '../notes/viewMode';
 import { ReminderNotificationSettings } from './ReminderNotificationSettings';
-import { isSameLocalDay } from './reminderTime';
+import { reminderTimeBucket } from './reminderTime';
 
 const notesRepository = new NotesRepository(notesDatabase);
 const remindersRepository = new RemindersRepository(notesDatabase);
@@ -130,27 +130,22 @@ export function RemindersWorkspace({ labels }: RemindersWorkspaceProps) {
     const byDue = (a: NoteRecord, b: NoteRecord) =>
       (collection.remindersByNote[a.id]?.dueAt ?? 0) -
       (collection.remindersByNote[b.id]?.dueAt ?? 0);
-    const overdue = active
-      .filter((note) => (collection.remindersByNote[note.id]?.dueAt ?? Infinity) < now)
-      .sort(byDue);
-    const today = active
-      .filter((note) => {
-        const dueAt = collection.remindersByNote[note.id]?.dueAt;
-        return dueAt !== undefined && dueAt >= now && isSameLocalDay(dueAt, now);
-      })
-      .sort(byDue);
-    const upcoming = active
-      .filter((note) => {
-        const dueAt = collection.remindersByNote[note.id]?.dueAt;
-        return dueAt !== undefined && dueAt >= now && !isSameLocalDay(dueAt, now);
-      })
-      .sort(byDue);
+    const inBucket = (note: NoteRecord, bucket: ReturnType<typeof reminderTimeBucket>) => {
+      const dueAt = collection.remindersByNote[note.id]?.dueAt;
+      return dueAt !== undefined && reminderTimeBucket(dueAt, now) === bucket;
+    };
+
+    const overdue = active.filter((note) => inBucket(note, 'overdue')).sort(byDue);
+    const today = active.filter((note) => inBucket(note, 'today')).sort(byDue);
+    const tomorrow = active.filter((note) => inBucket(note, 'tomorrow')).sort(byDue);
+    const nextSevenDays = active.filter((note) => inBucket(note, 'next-seven-days')).sort(byDue);
+    const later = active.filter((note) => inBucket(note, 'later')).sort(byDue);
     history.sort(
       (a, b) =>
         (collection.remindersByNote[b.id]?.updatedAt ?? 0) -
         (collection.remindersByNote[a.id]?.updatedAt ?? 0),
     );
-    return { overdue, today, upcoming, history };
+    return { overdue, today, tomorrow, nextSevenDays, later, history };
   }, [collection, now]);
 
   const handleSaved = useCallback(() => void reload(), [reload]);
@@ -206,6 +201,13 @@ export function RemindersWorkspace({ labels }: RemindersWorkspaceProps) {
 
   const editingNote = collection.notes.find((note) => note.id === editingNoteId) ?? null;
   const total = collection.notes.length;
+  const activeCount =
+    groups.overdue.length +
+    groups.today.length +
+    groups.tomorrow.length +
+    groups.nextSevenDays.length +
+    groups.later.length;
+  const historyCount = groups.history.length;
 
   const handleViewMode = (next: NotesViewMode) => {
     setViewMode(next);
@@ -219,8 +221,9 @@ export function RemindersWorkspace({ labels }: RemindersWorkspaceProps) {
       {total > 0 ? (
         <div className="notes-board reminder-board" data-view={viewMode} data-mode="reminders">
           <div className="notes-toolbar">
-            <span className="notes-count">
-              {total} {total === 1 ? 'reminder' : 'reminders'}
+            <span className="notes-count reminder-count-summary">
+              <strong>{activeCount}</strong> active
+              {historyCount > 0 ? <span> · {historyCount} completed/dismissed</span> : null}
             </span>
             <div className="notes-view-toggle" role="group" aria-label="Reminder view">
               <IconButton
@@ -246,7 +249,9 @@ export function RemindersWorkspace({ labels }: RemindersWorkspaceProps) {
 
           <ReminderSection title="Overdue" notes={groups.overdue} {...sectionProps()} />
           <ReminderSection title="Today" notes={groups.today} {...sectionProps()} />
-          <ReminderSection title="Upcoming" notes={groups.upcoming} {...sectionProps()} />
+          <ReminderSection title="Tomorrow" notes={groups.tomorrow} {...sectionProps()} />
+          <ReminderSection title="Next 7 days" notes={groups.nextSevenDays} {...sectionProps()} />
+          <ReminderSection title="Later" notes={groups.later} {...sectionProps()} />
           <ReminderSection
             title="Completed & dismissed"
             notes={groups.history}
@@ -355,7 +360,12 @@ function ReminderSection({
   if (notes.length === 0) return null;
   return (
     <section className="note-section reminder-section" aria-label={`${title} reminders`}>
-      <h2 className="note-section-title">{title}</h2>
+      <h2 className="note-section-title">
+        {title}
+        <span className="reminder-section-count" aria-hidden="true">
+          {notes.length}
+        </span>
+      </h2>
       <MasonryGrid
         notes={notes}
         viewMode={viewMode}

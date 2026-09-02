@@ -5,11 +5,14 @@ import type { ReminderRecord, RemindersRepository } from '../../db';
 import { dispatchReminderChanged } from './reminderEvents';
 import {
   applyReminderDatePreset,
+  applyReminderQuickPreset,
   currentTimeZone,
   defaultReminderTimestamp,
   formatReminderDateTime,
+  formatReminderShort,
   localInputFromTimestamp,
   parseLocalReminderInput,
+  reminderSnoozeTimestamp,
 } from './reminderTime';
 
 interface ReminderControlProps {
@@ -107,10 +110,13 @@ export function ReminderControl({
     }
   };
 
+  const snooze = (preset: Parameters<typeof reminderSnoozeTimestamp>[0]) =>
+    run(() => repository.snooze(noteId, reminderSnoozeTimestamp(preset)));
+
   if (compact && !expanded && !editing) {
     const label = reminder
       ? reminder.status === 'active'
-        ? formatReminderDateTime(reminder.dueAt)
+        ? formatReminderShort(reminder.dueAt)
         : reminder.status === 'completed'
           ? 'Reminder completed'
           : 'Reminder dismissed'
@@ -148,7 +154,7 @@ export function ReminderControl({
           <strong>
             {reminder
               ? reminder.status === 'active'
-                ? formatReminderDateTime(reminder.dueAt)
+                ? formatReminderShort(reminder.dueAt)
                 : reminder.status === 'completed'
                   ? 'Reminder completed'
                   : 'Reminder dismissed'
@@ -157,7 +163,7 @@ export function ReminderControl({
           {reminder ? (
             <span>
               {reminder.status === 'active'
-                ? `Saved in ${reminder.timeZone}`
+                ? `${formatReminderDateTime(reminder.dueAt)} · ${reminder.timeZone}`
                 : `Last scheduled for ${formatReminderDateTime(reminder.dueAt)}`}
             </span>
           ) : (
@@ -186,40 +192,66 @@ export function ReminderControl({
 
       {reminder?.status === 'active' && !editing ? (
         <div className="reminder-control-actions">
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void run(() => repository.snooze(noteId, Date.now() + 60 * 60 * 1000))}
-          >
-            <Clock3 aria-hidden="true" /> Snooze 1 hour
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void run(() => repository.complete(noteId))}
-          >
-            <CheckCircle2 aria-hidden="true" /> Complete
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void run(() => repository.dismiss(noteId))}
-          >
-            <BellOff aria-hidden="true" /> Dismiss
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void run(() => repository.remove(noteId), true)}
-          >
-            <X aria-hidden="true" /> Remove
-          </button>
+          <div className="reminder-snooze-actions" aria-label="Snooze reminder">
+            <span>Snooze</span>
+            <button type="button" disabled={busy} onClick={() => void snooze('ten-minutes')}>
+              <Clock3 aria-hidden="true" /> 10 min
+            </button>
+            <button type="button" disabled={busy} onClick={() => void snooze('one-hour')}>
+              <Clock3 aria-hidden="true" /> 1 hour
+            </button>
+            <button type="button" disabled={busy} onClick={() => void snooze('tomorrow-morning')}>
+              <Clock3 aria-hidden="true" /> Tomorrow 9:00
+            </button>
+          </div>
+          <div className="reminder-lifecycle-actions">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void run(() => repository.complete(noteId))}
+            >
+              <CheckCircle2 aria-hidden="true" /> Complete
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void run(() => repository.dismiss(noteId))}
+            >
+              <BellOff aria-hidden="true" /> Dismiss
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void run(() => repository.remove(noteId), true)}
+            >
+              <X aria-hidden="true" /> Remove
+            </button>
+          </div>
         </div>
       ) : null}
 
       {editing ? (
         <div className="reminder-editor" role="group" aria-label="Set reminder">
-          <div className="reminder-presets">
+          <div className="reminder-quick-presets" role="group" aria-label="Quick presets">
+            <span>Quick</span>
+            <button type="button" onClick={() => setDraft(applyReminderQuickPreset('in-one-hour'))}>
+              In 1 hour
+            </button>
+            <button
+              type="button"
+              onClick={() => setDraft(applyReminderQuickPreset('tomorrow-morning'))}
+            >
+              Tomorrow 9:00
+            </button>
+            <button
+              type="button"
+              onClick={() => setDraft(applyReminderQuickPreset('next-week-morning'))}
+            >
+              Next week 9:00
+            </button>
+          </div>
+          <div className="reminder-presets" role="group" aria-label="Day presets">
+            <span>Date</span>
             <button
               type="button"
               onClick={() => setDraft((current) => applyReminderDatePreset(current, 0))}

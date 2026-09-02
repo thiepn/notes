@@ -3,6 +3,13 @@ export interface LocalReminderInput {
   time: string;
 }
 
+export type ReminderQuickPreset = 'in-one-hour' | 'tomorrow-morning' | 'next-week-morning';
+export type ReminderSnoozePreset = 'ten-minutes' | 'one-hour' | 'tomorrow-morning';
+export type ReminderTimeBucket = 'overdue' | 'today' | 'tomorrow' | 'next-seven-days' | 'later';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const MORNING_HOUR = 9;
+
 export function currentTimeZone(): string {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
@@ -65,6 +72,32 @@ export function applyReminderDatePreset(
   return { date: parts.date, time: current.time };
 }
 
+export function applyReminderQuickPreset(
+  preset: ReminderQuickPreset,
+  now = Date.now(),
+): LocalReminderInput {
+  if (preset === 'in-one-hour') {
+    return localInputFromTimestamp(now + 60 * 60 * 1000);
+  }
+
+  const date = new Date(now);
+  date.setSeconds(0, 0);
+  date.setMinutes(0);
+  date.setHours(MORNING_HOUR);
+  date.setDate(date.getDate() + (preset === 'tomorrow-morning' ? 1 : 7));
+  return localInputFromTimestamp(date.getTime());
+}
+
+export function reminderSnoozeTimestamp(preset: ReminderSnoozePreset, now = Date.now()): number {
+  if (preset === 'ten-minutes') return now + 10 * 60 * 1000;
+  if (preset === 'one-hour') return now + 60 * 60 * 1000;
+
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(MORNING_HOUR, 0, 0, 0);
+  return tomorrow.getTime();
+}
+
 export function isSameLocalDay(a: number, b: number): boolean {
   const first = new Date(a);
   const second = new Date(b);
@@ -73,6 +106,20 @@ export function isSameLocalDay(a: number, b: number): boolean {
     first.getMonth() === second.getMonth() &&
     first.getDate() === second.getDate()
   );
+}
+
+export function isReminderOverdue(timestamp: number, now = Date.now()): boolean {
+  return timestamp < now;
+}
+
+export function reminderTimeBucket(timestamp: number, now = Date.now()): ReminderTimeBucket {
+  if (timestamp < now) return 'overdue';
+
+  const daysFromToday = localDayOrdinal(timestamp) - localDayOrdinal(now);
+  if (daysFromToday <= 0) return 'today';
+  if (daysFromToday === 1) return 'tomorrow';
+  if (daysFromToday <= 7) return 'next-seven-days';
+  return 'later';
 }
 
 export function formatReminderDateTime(timestamp: number): string {
@@ -87,24 +134,37 @@ export function formatReminderDateTime(timestamp: number): string {
 }
 
 export function formatReminderShort(timestamp: number, now = Date.now()): string {
+  const formatted = formatReminderShortBase(timestamp, now);
+  return isReminderOverdue(timestamp, now) ? `Overdue · ${formatted}` : formatted;
+}
+
+function formatReminderShortBase(timestamp: number, now: number): string {
   if (isSameLocalDay(timestamp, now)) {
-    return `Today, ${new Intl.DateTimeFormat(undefined, {
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(new Date(timestamp))}`;
+    return `Today, ${formatClockTime(timestamp)}`;
   }
+
   const tomorrow = new Date(now);
   tomorrow.setDate(tomorrow.getDate() + 1);
   if (isSameLocalDay(timestamp, tomorrow.getTime())) {
-    return `Tomorrow, ${new Intl.DateTimeFormat(undefined, {
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(new Date(timestamp))}`;
+    return `Tomorrow, ${formatClockTime(timestamp)}`;
   }
+
   return new Intl.DateTimeFormat(undefined, {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(timestamp));
+}
+
+function formatClockTime(timestamp: number): string {
+  return new Intl.DateTimeFormat(undefined, {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(timestamp));
+}
+
+function localDayOrdinal(timestamp: number): number {
+  const date = new Date(timestamp);
+  return Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / DAY_MS);
 }

@@ -16,8 +16,8 @@ test('reminder editing remains usable at the minimum supported mobile viewport',
   await editor.getByRole('button', { name: 'Add reminder' }).click();
 
   await expect(editor.getByRole('group', { name: 'Set reminder' })).toBeVisible();
-  await expect(editor.getByRole('button', { name: 'Today' })).toBeVisible();
-  await expect(editor.getByRole('button', { name: 'Tomorrow' })).toBeVisible();
+  await expect(editor.getByRole('button', { name: 'Today', exact: true })).toBeVisible();
+  await expect(editor.getByRole('button', { name: 'Tomorrow', exact: true })).toBeVisible();
   await expect(editor.getByLabel('Date')).toBeVisible();
   await expect(editor.getByLabel('Time')).toBeVisible();
   await expect(editor.getByRole('button', { name: 'Save reminder' })).toBeVisible();
