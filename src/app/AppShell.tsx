@@ -7,6 +7,11 @@ import { BackupWorkspace } from '../features/backup/BackupWorkspace';
 import { LabelsRepository, notesDatabase, type LabelRecord } from '../db';
 import { CommandPalette, type CommandPaletteItem } from '../features/commands/CommandPalette';
 import { LabelManagerDialog } from '../features/notes/LabelManagerDialog';
+import {
+  EMPTY_NAVIGATION_STATS,
+  loadNavigationStats,
+  type NavigationStats,
+} from '../features/organization/navigationStats';
 import { NotesWorkspace } from '../features/notes/NotesWorkspace';
 import { RemindersWorkspace } from '../features/reminders/RemindersWorkspace';
 import { SearchWorkspace } from '../features/search/SearchWorkspace';
@@ -63,6 +68,7 @@ export function AppShell() {
   const [activeSection, setActiveSection] = useState<AppSection>(() => readActiveSection());
   const [activeLabelId, setActiveLabelId] = useState<string | null>(() => readActiveLabelId());
   const [labels, setLabels] = useState<LabelRecord[]>([]);
+  const [navigationStats, setNavigationStats] = useState<NavigationStats>(EMPTY_NAVIGATION_STATS);
   const [labelManagerOpen, setLabelManagerOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [sidebarCompact, setSidebarCompact] = useState(false);
@@ -81,6 +87,14 @@ export function AppShell() {
     setLabels(await labelsRepository.list());
   }, []);
 
+  const refreshNavigationStats = useCallback(async () => {
+    try {
+      setNavigationStats(await loadNavigationStats());
+    } catch {
+      // Navigation counts are derived convenience state and never block note access.
+    }
+  }, []);
+
   const clearSearch = useCallback(() => {
     setSearchQuery('');
     setSearchFilters({ ...DEFAULT_SEARCH_FILTERS });
@@ -93,8 +107,8 @@ export function AppShell() {
     setActiveLabelId(null);
     persistActiveSection('notes');
     persistActiveLabelId(null);
-    await refreshLabels();
-  }, [clearSearch, refreshLabels]);
+    await Promise.all([refreshLabels(), refreshNavigationStats()]);
+  }, [clearSearch, refreshLabels, refreshNavigationStats]);
 
   useEffect(() => {
     let cancelled = false;
@@ -113,6 +127,16 @@ export function AppShell() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    const initialRefresh = window.setTimeout(() => void refreshNavigationStats(), 0);
+    const handleReminderChanged = () => void refreshNavigationStats();
+    window.addEventListener('notes-reminders-changed', handleReminderChanged);
+    return () => {
+      window.clearTimeout(initialRefresh);
+      window.removeEventListener('notes-reminders-changed', handleReminderChanged);
+    };
+  }, [refreshNavigationStats]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia(MOBILE_QUERY);
@@ -177,12 +201,12 @@ export function AppShell() {
 
   const handleCreateLabel = async (name: string) => {
     await labelsRepository.create(name);
-    await refreshLabels();
+    await Promise.all([refreshLabels(), refreshNavigationStats()]);
   };
 
   const handleRenameLabel = async (labelId: string, name: string) => {
     await labelsRepository.rename(labelId, name);
-    await refreshLabels();
+    await Promise.all([refreshLabels(), refreshNavigationStats()]);
   };
 
   const handleDeleteLabel = async (labelId: string) => {
@@ -197,7 +221,7 @@ export function AppShell() {
       persistActiveLabelId(null);
       persistActiveSection('notes');
     }
-    await refreshLabels();
+    await Promise.all([refreshLabels(), refreshNavigationStats()]);
   };
 
   const prepareNotesCapture = useCallback(
@@ -330,6 +354,36 @@ export function AppShell() {
     activeSection === 'archive' ||
     activeSection === 'trash';
 
+  const activeWorkspaceCount =
+    searchActive || activeSection === 'backup'
+      ? null
+      : activeLabel
+        ? (navigationStats.labels[activeLabel.id] ?? 0)
+        : activeSection === 'notes'
+          ? navigationStats.notes
+          : activeSection === 'reminders'
+            ? navigationStats.reminders
+            : activeSection === 'archive'
+              ? navigationStats.archive
+              : navigationStats.trash;
+  const activeWorkspaceCountLabel =
+    activeWorkspaceCount === null
+      ? null
+      : activeSection === 'reminders' && activeLabel === null
+        ? `${activeWorkspaceCount} active ${activeWorkspaceCount === 1 ? 'reminder' : 'reminders'}`
+        : `${activeWorkspaceCount} ${activeWorkspaceCount === 1 ? 'note' : 'notes'}`;
+  const labelPaletteCommands: CommandPaletteItem[] = labels.map((label) => {
+    const count = navigationStats.labels[label.id] ?? 0;
+    return {
+      id: `open-label:${label.id}`,
+      label: `Open label: ${label.name}`,
+      description: `${count} active ${count === 1 ? 'note' : 'notes'}`,
+      group: 'Labels',
+      keywords: ['label', 'tag', label.name],
+      run: () => handleLabelNavigate(label.id),
+    };
+  });
+
   const paletteCommands: CommandPaletteItem[] = [
     {
       id: 'new-text-note',
@@ -405,6 +459,7 @@ export function AppShell() {
       keywords: ['tag', 'label'],
       run: openLabelManager,
     },
+    ...labelPaletteCommands,
     {
       id: 'grid-view',
       label: 'Grid view',
@@ -459,6 +514,7 @@ export function AppShell() {
           activeSection={activeSection}
           activeLabelId={activeLabel?.id ?? null}
           labels={labels}
+          counts={navigationStats}
           compact={sidebarCompact}
           mobileOpen={mobileSidebarOpen}
           mobile={isMobile}
@@ -481,7 +537,12 @@ export function AppShell() {
             <header className="workspace-heading">
               <div>
                 <p className="workspace-kicker">Local workspace</p>
-                <h1>{section.title}</h1>
+                <div className="workspace-title-line">
+                  <h1>{section.title}</h1>
+                  {activeWorkspaceCountLabel ? (
+                    <span className="workspace-count">{activeWorkspaceCountLabel}</span>
+                  ) : null}
+                </div>
                 <p>{section.description}</p>
               </div>
               <span className="local-badge">Local only</span>
@@ -506,6 +567,7 @@ export function AppShell() {
                 mode={activeLabel ? 'notes' : activeSection}
                 labels={labels}
                 filterLabelId={activeLabel?.id ?? null}
+                onCollectionChanged={() => void refreshNavigationStats()}
               />
             ) : (
               <SectionPlaceholder
