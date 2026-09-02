@@ -9,9 +9,18 @@ async function seedPrivateNote(page: Page) {
   });
 }
 
-async function openPrivacySettings(page: Page) {
+async function openSettings(page: Page, section: 'Privacy' | 'Search & history') {
   await page.getByRole('button', { name: 'More options' }).click();
-  await page.getByRole('menuitem', { name: 'Privacy settings' }).click();
+  await page.getByRole('menuitem', { name: 'Settings' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Settings' });
+  await dialog.getByRole('button', { name: section }).click();
+  await expect(dialog).toBeVisible();
+  return dialog;
+}
+
+async function openPrivacyLockSettings(page: Page) {
+  const settings = await openSettings(page, 'Privacy');
+  await settings.getByRole('button', { name: /privacy lock|passcode/u }).click();
   const dialog = page.getByRole('dialog', { name: 'Privacy settings' });
   await expect(dialog).toBeVisible();
   return dialog;
@@ -27,7 +36,7 @@ test('hide note previews masks visible and accessible card details while preserv
   await expect(card.getByText('Private plan')).toBeVisible();
   await expect(card.getByText('Secret body details')).toBeVisible();
 
-  const privacy = await openPrivacySettings(page);
+  const privacy = await openSettings(page, 'Privacy');
   await privacy.getByLabel('Hide note previews').check();
 
   await expect(card).toHaveAttribute('data-preview-hidden', 'true');
@@ -39,7 +48,7 @@ test('hide note previews masks visible and accessible card details while preserv
     0,
   );
 
-  await privacy.getByRole('button', { name: 'Close privacy settings' }).click();
+  await privacy.getByRole('button', { name: 'Close settings' }).click();
   await card.getByRole('button', { name: 'Open note: Hidden note' }).click();
   const editor = page.getByRole('dialog', { name: 'Edit note' });
   await expect(editor.getByLabel('Edit title')).toHaveValue('Private plan');
@@ -58,7 +67,7 @@ test('privacy lock stores only a derived credential, hides the app, rejects wron
   await seedPrivateNote(page);
   await page.reload();
 
-  const privacy = await openPrivacySettings(page);
+  const privacy = await openPrivacyLockSettings(page);
   await privacy.getByLabel('Passcode', { exact: true }).fill('4815');
   await privacy.getByLabel('Confirm passcode').fill('4815');
   await privacy.getByRole('button', { name: 'Enable privacy lock' }).click();
@@ -72,6 +81,9 @@ test('privacy lock stores only a derived credential, hides the app, rejects wron
   expect(JSON.parse(storedCredential ?? '{}').hash).toMatch(/^[0-9a-f]{64}$/u);
 
   await privacy.getByRole('button', { name: 'Close privacy settings' }).click();
+  const returnedSettings = page.getByRole('dialog', { name: 'Settings' });
+  await expect(returnedSettings).toBeVisible();
+  await returnedSettings.getByRole('button', { name: 'Close settings' }).click();
   await page.getByRole('button', { name: 'More options' }).click();
   await page.getByRole('menuitem', { name: 'Lock now' }).click();
 
@@ -109,9 +121,8 @@ test('privacy settings clear only disposable recent-search history', async ({ pa
     await repository.save({ query: 'saved query', filters: { ...types.DEFAULT_SEARCH_FILTERS } });
   });
 
-  const privacy = await openPrivacySettings(page);
-  await privacy.getByRole('button', { name: 'Clear recent searches' }).click();
-  await expect(privacy.getByText('Recent search history cleared.')).toBeVisible();
+  const privacy = await openSettings(page, 'Search & history');
+  await privacy.getByRole('button', { name: 'Clear recent' }).click();
 
   const state = await page.evaluate(async () => {
     const search = await import('/notes/src/features/search/searchHistory.ts');

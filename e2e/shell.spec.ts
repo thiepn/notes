@@ -61,16 +61,21 @@ test('appearance preference persists across reloads', async ({ page }) => {
   await page.goto('./');
 
   await page.getByTestId('header-more-toggle').click();
-  await page.getByRole('menuitem', { name: /System appearance/u }).click();
+  await page.getByRole('menuitem', { name: 'Settings' }).click();
+  let settings = page.getByRole('dialog', { name: 'Settings' });
+  await settings.getByLabel('Light').check();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await expect
     .poll(() => page.evaluate(() => window.localStorage.getItem('notes.theme')))
     .toBe('light');
+  await settings.getByRole('button', { name: 'Close settings' }).click();
 
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 
   await page.getByTestId('header-more-toggle').click();
-  await page.getByRole('menuitem', { name: /Light appearance/u }).click();
+  await page.getByRole('menuitem', { name: 'Settings' }).click();
+  settings = page.getByRole('dialog', { name: 'Settings' });
+  await settings.getByLabel('Dark').check();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 });

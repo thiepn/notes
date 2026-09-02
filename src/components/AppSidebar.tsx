@@ -1,15 +1,5 @@
 import { useState } from 'react';
-import {
-  Archive,
-  Bell,
-  DatabaseBackup,
-  Lightbulb,
-  Pencil,
-  Search,
-  ShieldCheck,
-  Tag,
-  Trash2,
-} from 'lucide-react';
+import { Archive, Bell, Lightbulb, Pencil, Search, ShieldCheck, Tag, Trash2 } from 'lucide-react';
 
 import type { LabelRecord } from '../db';
 import type { NavigationStats } from '../features/organization/navigationStats';
@@ -183,23 +173,6 @@ export function AppSidebar({
               </button>
             );
           })}
-        </div>
-
-        <div className="sidebar-section sidebar-tools-section">
-          <div className="sidebar-section-heading sidebar-section-heading-static">
-            <DatabaseBackup aria-hidden="true" />
-            <span>Tools</span>
-          </div>
-          <button
-            className="nav-item"
-            type="button"
-            data-active={activeSection === 'backup' && activeLabelId === null}
-            aria-current={activeSection === 'backup' && activeLabelId === null ? 'page' : undefined}
-            onClick={() => onNavigate('backup')}
-          >
-            <DatabaseBackup aria-hidden="true" />
-            <span className="nav-label">Backup & import</span>
-          </button>
         </div>
       </nav>
 
