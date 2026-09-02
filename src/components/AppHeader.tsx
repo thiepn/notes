@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import {
   BookmarkCheck,
   BookmarkPlus,
   Command,
+  Eye,
+  EyeOff,
   LayoutGrid,
   List,
   LockKeyhole,
@@ -19,8 +21,8 @@ import {
 } from 'lucide-react';
 
 import { notesDatabase } from '../db';
-import { PrivacySettingsDialog } from '../features/privacy/PrivacySettingsDialog';
 import { usePrivacy } from '../features/privacy/PrivacyContext';
+import { privacyModeMenuLabel } from '../features/privacy/privacyPresentation';
 import { SearchHistoryPopover } from '../features/search/SearchHistoryPopover';
 import {
   clearRecentSearches,
@@ -43,6 +45,10 @@ const THEME_LABELS: Record<ThemePreference, string> = {
   dark: 'Dark',
 };
 const searchHistoryRepository = new SearchHistoryRepository(notesDatabase);
+const PrivacySettingsDialog = lazy(async () => {
+  const module = await import('../features/privacy/PrivacySettingsDialog');
+  return { default: module.PrivacySettingsDialog };
+});
 
 interface AppHeaderProps {
   onMenu(): void;
@@ -70,7 +76,7 @@ export function AppHeader({
   onApplySearch,
 }: AppHeaderProps) {
   const { preference, cyclePreference } = useTheme();
-  const { lockEnabled, lock } = usePrivacy();
+  const { hidePreviews, lockEnabled, lock, setPreferences } = usePrivacy();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -86,7 +92,8 @@ export function AppHeader({
   const currentIsSaved = savedSearches.some(
     (search) => searchSignature(search) === currentSignature,
   );
-  const historyVisible = searchHistoryOpen && !searchQuery.trim() && !filtersActive && !filtersOpen;
+  const historyVisible =
+    !hidePreviews && searchHistoryOpen && !searchQuery.trim() && !filtersActive && !filtersOpen;
   const activeFilterCount =
     (searchFilters.type !== 'any' ? 1 : 0) +
     (searchFilters.status !== 'any' ? 1 : 0) +
@@ -111,13 +118,14 @@ export function AppHeader({
   }, []);
 
   useEffect(() => {
+    if (hidePreviews) return;
     const hasQuery = searchQuery.trim().length >= 2;
     if (!hasQuery && !hasSearchFilters(searchFilters)) return;
     const timer = window.setTimeout(() => {
       setRecentSearches(rememberRecentSearch({ query: searchQuery, filters: searchFilters }));
     }, 1_200);
     return () => window.clearTimeout(timer);
-  }, [searchFilters, searchQuery]);
+  }, [hidePreviews, searchFilters, searchQuery]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -210,7 +218,7 @@ export function AppHeader({
           <input
             ref={searchInputRef}
             type="search"
-            placeholder="Search notes"
+            placeholder={hidePreviews ? 'Search notes — history hidden' : 'Search notes'}
             aria-label="Search notes"
             aria-keyshortcuts="/"
             enterKeyHint="search"
@@ -371,6 +379,19 @@ export function AppHeader({
               </button>
               <button
                 type="button"
+                role="menuitemcheckbox"
+                aria-checked={hidePreviews}
+                onClick={() => {
+                  setPreferences({ hidePreviews: !hidePreviews });
+                  setMoreOpen(false);
+                }}
+              >
+                {hidePreviews ? <Eye aria-hidden="true" /> : <EyeOff aria-hidden="true" />}
+                <span>{privacyModeMenuLabel(hidePreviews)}</span>
+                <small>{hidePreviews ? 'Privacy mode on' : 'Privacy mode off'}</small>
+              </button>
+              <button
+                type="button"
                 role="menuitem"
                 onClick={() => {
                   setMoreOpen(false);
@@ -379,6 +400,7 @@ export function AppHeader({
               >
                 <ShieldCheck aria-hidden="true" />
                 <span>Privacy settings</span>
+                <small>{lockEnabled ? 'Lock enabled' : 'Lock not enabled'}</small>
               </button>
               {lockEnabled ? (
                 <button
@@ -398,7 +420,11 @@ export function AppHeader({
         </div>
       </header>
 
-      {privacyOpen ? <PrivacySettingsDialog onClose={() => setPrivacyOpen(false)} /> : null}
+      {privacyOpen ? (
+        <Suspense fallback={null}>
+          <PrivacySettingsDialog onClose={() => setPrivacyOpen(false)} />
+        </Suspense>
+      ) : null}
     </>
   );
 }

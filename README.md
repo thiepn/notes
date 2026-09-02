@@ -6,9 +6,9 @@ A local-first, zero-friction notes PWA designed to match Google Keep's capture s
 
 ## Status
 
-**V3.7 — Backup & Recovery UX Polish is implemented as the seventh V3 refinement release.** The existing validated full-library backup and atomic replace-restore system now exposes current-library readiness, device-local manual-backup recency, backup version/freshness, and current-vs-incoming recovery comparison without changing the backup format or database schema.
+**V3.8 — Privacy & Security UX Polish is implemented as the eighth V3 refinement release.** Existing V2-8 device-local privacy controls now expose clearer protection status, a fast preview-privacy toggle, search-history suppression while privacy mode is active, and safer lock-screen retry ergonomics without changing the credential model or claiming encryption.
 
-V1 through P15 remains the stable product foundation and V2-1 through V2-8 complete the feature roadmap through Privacy Enhancements. The V3 refinement track preserves that architecture while improving daily use: V3.1 polishes capture and mobile UX, V3.2 retrieval and search, V3.3 organization and navigation, V3.4 existing-note editing feedback and ergonomics, V3.5 reminder/time interaction quality, V3.6 attachment/media interaction clarity, and V3.7 backup/recovery confidence.
+V1 through P15 remains the stable product foundation and V2-1 through V2-8 complete the feature roadmap through Privacy Enhancements. The V3 refinement track preserves that architecture while improving daily use: V3.1 polishes capture and mobile UX, V3.2 retrieval and search, V3.3 organization and navigation, V3.4 existing-note editing feedback and ergonomics, V3.5 reminder/time interaction quality, V3.6 attachment/media interaction clarity, V3.7 backup/recovery confidence, and V3.8 privacy-state clarity and passive-leak reduction.
 
 ## V1 scope
 
@@ -294,13 +294,38 @@ V3.7 deliberately excludes scheduled/background backups, cloud backup destinatio
 
 See [`docs/BACKUP.md`](docs/BACKUP.md) for the P12/V3.7 backup format, validation, recovery-confidence UI, safety snapshot, and atomic replacement contract.
 
+## V3.8 scope
+
+V3.8 refines the existing V2-8 privacy controls without expanding their threat model:
+
+- Explicit protection summary showing whether privacy lock, hidden previews, and private notifications are on or off
+- Clear auto-lock policy wording derived from the existing visibility timer preference
+- Fast header-menu action to hide or show note previews without opening the full settings dialog
+- Saved/recent search-history suggestions are not rendered while Hide note previews is active
+- New recent-search entries are not recorded while Hide note previews is active
+- Search field explicitly indicates when history suggestions are suppressed
+- Existing saved searches remain intact; privacy mode hides suggestions rather than silently deleting user-authored searches
+- Lock screen can temporarily show/hide the entered passcode
+- Caps Lock status is surfaced while typing on the lock screen
+- Failed unlock clears the entered passcode before retry
+- Existing lock credential, PBKDF2 derivation, localStorage keys, notification redaction, cross-tab state, and auto-lock behavior are preserved
+
+V3.8 requires **no database migration and no credential-format change**. It adds presentation and passive-disclosure safeguards around the existing V2-8 device-local controls. The privacy lock remains a UI access barrier rather than encryption of IndexedDB or exported backups.
+
+V3.8 deliberately excludes encryption at rest, encrypted backups, WebAuthn/biometrics, remote wipe, account authentication, per-note passwords, server policies, security claims against browser-profile access, or deleting saved searches merely because privacy mode is enabled.
+
+See [`docs/PRIVACY.md`](docs/PRIVACY.md) for the V2-8/V3.8 threat-model boundary, lock behavior, privacy-mode search suppression, notification redaction, and local-trace behavior.
+
 ## Architecture
 
 - React + TypeScript + Vite
 - IndexedDB through Dexie
 - Local-first data model
 - Device-local privacy context for UI lock, preview masking, notification redaction, and auto-lock state
+- Derived privacy protection summary plus quick preview-privacy toggle without a new persistence model
+- Search-history suggestion/recording suppression while preview privacy is active, preserving saved searches without passive disclosure
 - PBKDF2-SHA-256 privacy-lock credential derivation with random salt and no plaintext credential persistence
+- Lock-screen passcode visibility/Caps Lock feedback with retry input clearing and unchanged credential verification
 - Explicit security boundary: privacy lock masks the application UI but does not encrypt IndexedDB or exported backups
 - Zod validation at data boundaries
 - Repository-only write access for application features
@@ -384,7 +409,7 @@ See [`docs/BACKUP.md`](docs/BACKUP.md) for the P12/V3.7 backup format, validatio
 
 See [`docs/EDITOR_INTERACTION.md`](docs/EDITOR_INTERACTION.md) for V3.4 autosave feedback, editor metrics, keyboard-close affordances, and the persistence/recovery boundary.
 
-See [`docs/PRIVACY.md`](docs/PRIVACY.md) for V2-8 lock, preview masking, notification redaction, local-trace cleanup, and the privacy/security boundary.
+See [`docs/PRIVACY.md`](docs/PRIVACY.md) for V2-8/V3.8 lock, preview masking, privacy-mode search suppression, notification redaction, local-trace cleanup, and the privacy/security boundary.
 
 See [`docs/DATABASE.md`](docs/DATABASE.md) for database invariants, [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for the shell and styling contract, [`docs/CAPTURE.md`](docs/CAPTURE.md) for new-note capture and recovery, [`docs/CARDS_AND_GRID.md`](docs/CARDS_AND_GRID.md) for the P4 card and editor architecture, [`docs/LIFECYCLE.md`](docs/LIFECYCLE.md) for lifecycle state, Undo, Archive, Trash, duplication, and permanent deletion behavior, [`docs/ORGANIZATION.md`](docs/ORGANIZATION.md) for P6 color, label, label-view, and organization behavior, [`docs/CHECKLISTS.md`](docs/CHECKLISTS.md) for P7 checklist storage, interaction, conversion, and recovery behavior, [`docs/SELECTION_AND_BULK.md`](docs/SELECTION_AND_BULK.md) for P8 selection scope, bulk toolbar behavior, transactional batch mutations, and Undo semantics, [`docs/SEARCH.md`](docs/SEARCH.md) for P9/V2-7 indexing, normalization, fuzzy matching, relevance scoring, filename/OCR discovery, saved/recent searches, query operators, and performance behavior, [`docs/KEYBOARD.md`](docs/KEYBOARD.md) for P10 command palette, shortcut safety, and focused-card keyboard behavior, [`docs/HISTORY.md`](docs/HISTORY.md) for P11 checkpoint, restore, Undo, copy, pruning, payload-validation, and cross-type recovery semantics, [`docs/BACKUP.md`](docs/BACKUP.md) for P12 full-library backup format, validation, safety snapshot, atomic replacement, and disaster-recovery behavior, [`docs/GOOGLE_KEEP_IMPORT.md`](docs/GOOGLE_KEEP_IMPORT.md) for P13 Takeout parsing, mapping, preview, repeat-import protection, and atomic additive migration behavior, [`docs/IMAGES.md`](docs/IMAGES.md) for P14 native image capture, privacy processing, thumbnails, viewer behavior, imported attachment handling, and storage limits, [`docs/PWA_OFFLINE.md`](docs/PWA_OFFLINE.md) for P15 installability, service-worker update policy, production offline behavior, and certification requirements, [`docs/REMINDERS.md`](docs/REMINDERS.md) for V2-1 reminder storage, scheduling, lifecycle, notification limits, backup/import integration, and regression requirements, [`docs/RICH_TEXT.md`](docs/RICH_TEXT.md) for V2-2 source syntax, editor behavior, rendering safety, search compatibility, scope boundaries, and regression requirements, [`docs/LINK_INTELLIGENCE.md`](docs/LINK_INTELLIGENCE.md) for V2-3 title resolution, WikiLink navigation, backlinks, unlinked mentions, safe auto-linking, and regression requirements, [`docs/DRAWING.md`](docs/DRAWING.md) for V2-4 drawing input, canvas tools, PNG persistence, modal isolation, capture integration, and regression requirements, [`docs/VOICE.md`](docs/VOICE.md) for V2-5 microphone capture, format negotiation, local persistence, playback, privacy boundaries, and regression requirements, and [`docs/OCR.md`](docs/OCR.md) for V2-6 local recognition, offline runtime packaging, text insertion, privacy boundaries, limitations, and regression requirements.
 
