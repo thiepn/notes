@@ -50,14 +50,18 @@ export function PrivacyGate({ children }: { children: ReactNode }) {
               onChange={(event) => setPasscode(event.target.value)}
             />
           </label>
-          {errorMessage ? <p className="privacy-error" role="alert">{errorMessage}</p> : null}
+          {errorMessage ? (
+            <p className="privacy-error" role="alert">
+              {errorMessage}
+            </p>
+          ) : null}
           <button type="submit" disabled={!passcode || checking}>
             {checking ? 'Checking…' : 'Unlock'}
           </button>
         </form>
         <p className="privacy-lock-disclaimer">
-          Privacy lock hides the Notes interface on this device. It does not encrypt the IndexedDB data
-          stored by your browser.
+          Privacy lock hides the Notes interface on this device. It does not encrypt the IndexedDB
+          data stored by your browser.
         </p>
       </section>
     </main>

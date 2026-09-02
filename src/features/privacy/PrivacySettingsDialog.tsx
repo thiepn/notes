@@ -56,9 +56,13 @@ export function PrivacySettingsDialog({ onClose }: { onClose(): void }) {
       await enableLock(newPasscode);
       setNewPasscode('');
       setConfirmPasscode('');
-      setMessage('Privacy lock enabled. It will be required after reload and whenever Notes locks.');
+      setMessage(
+        'Privacy lock enabled. It will be required after reload and whenever Notes locks.',
+      );
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Privacy lock could not be enabled.');
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Privacy lock could not be enabled.',
+      );
     } finally {
       setBusy(false);
     }
@@ -86,7 +90,9 @@ export function PrivacySettingsDialog({ onClose }: { onClose(): void }) {
       setConfirmPasscode('');
       setMessage('Privacy passcode changed.');
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Privacy passcode could not be changed.');
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Privacy passcode could not be changed.',
+      );
     } finally {
       setBusy(false);
     }
@@ -139,8 +145,8 @@ export function PrivacySettingsDialog({ onClose }: { onClose(): void }) {
 
         <div className="privacy-dialog-body">
           <p className="privacy-boundary">
-            These controls reduce casual exposure on this device. They do not encrypt browser storage,
-            replace operating-system security, or add cloud accounts.
+            These controls reduce casual exposure on this device. They do not encrypt browser
+            storage, replace operating-system security, or add cloud accounts.
           </p>
 
           <section className="privacy-setting-group" aria-labelledby="privacy-visibility-heading">
@@ -151,7 +157,10 @@ export function PrivacySettingsDialog({ onClose }: { onClose(): void }) {
               </span>
               <span>
                 <strong>Hide note previews</strong>
-                <small>Replace card titles, content, labels, reminders, and attachment thumbnails with a neutral placeholder.</small>
+                <small>
+                  Replace card titles, content, labels, reminders, and attachment thumbnails with a
+                  neutral placeholder.
+                </small>
               </span>
               <input
                 type="checkbox"
@@ -166,7 +175,10 @@ export function PrivacySettingsDialog({ onClose }: { onClose(): void }) {
               </span>
               <span>
                 <strong>Private reminder notifications</strong>
-                <small>Show a generic reminder instead of note title or content. Notifications are always redacted while Notes is locked.</small>
+                <small>
+                  Show a generic reminder instead of note title or content. Notifications are always
+                  redacted while Notes is locked.
+                </small>
               </span>
               <input
                 type="checkbox"
@@ -180,7 +192,11 @@ export function PrivacySettingsDialog({ onClose }: { onClose(): void }) {
             <div className="privacy-setting-heading-row">
               <div>
                 <h3 id="privacy-lock-heading">Privacy lock</h3>
-                <p>{lockEnabled ? 'Enabled on this browser profile.' : 'Not enabled on this browser profile.'}</p>
+                <p>
+                  {lockEnabled
+                    ? 'Enabled on this browser profile.'
+                    : 'Not enabled on this browser profile.'}
+                </p>
               </div>
               {lockEnabled ? (
                 <button
@@ -253,7 +269,9 @@ export function PrivacySettingsDialog({ onClose }: { onClose(): void }) {
                 </div>
               </>
             ) : (
-              <p className="privacy-unavailable">Web Crypto is unavailable, so privacy lock cannot be enabled in this browser.</p>
+              <p className="privacy-unavailable">
+                Web Crypto is unavailable, so privacy lock cannot be enabled in this browser.
+              </p>
             )}
 
             <label className="privacy-field privacy-auto-lock-field">
@@ -283,7 +301,10 @@ export function PrivacySettingsDialog({ onClose }: { onClose(): void }) {
             <div className="privacy-cleanup-row">
               <div>
                 <strong>Recent searches</strong>
-                <small>Saved searches remain in the normal backed-up settings table. Recent searches are disposable device-local history.</small>
+                <small>
+                  Saved searches remain in the normal backed-up settings table. Recent searches are
+                  disposable device-local history.
+                </small>
               </div>
               <button
                 className="privacy-secondary-button"
@@ -299,8 +320,16 @@ export function PrivacySettingsDialog({ onClose }: { onClose(): void }) {
             </div>
           </section>
 
-          {message ? <p className="privacy-success" role="status">{message}</p> : null}
-          {errorMessage ? <p className="privacy-error" role="alert">{errorMessage}</p> : null}
+          {message ? (
+            <p className="privacy-success" role="status">
+              {message}
+            </p>
+          ) : null}
+          {errorMessage ? (
+            <p className="privacy-error" role="alert">
+              {errorMessage}
+            </p>
+          ) : null}
         </div>
       </section>
     </div>

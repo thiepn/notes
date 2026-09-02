@@ -10,12 +10,20 @@ import {
 
 describe('privacy helpers', () => {
   it('normalizes malformed preferences to safe defaults', () => {
-    expect(normalizePrivacyPreferences({ hidePreviews: true, privateNotifications: false, autoLockMinutes: 15 })).toEqual({
+    expect(
+      normalizePrivacyPreferences({
+        hidePreviews: true,
+        privateNotifications: false,
+        autoLockMinutes: 15,
+      }),
+    ).toEqual({
       hidePreviews: true,
       privateNotifications: false,
       autoLockMinutes: 15,
     });
-    expect(normalizePrivacyPreferences({ autoLockMinutes: 999 })).toEqual(DEFAULT_PRIVACY_PREFERENCES);
+    expect(normalizePrivacyPreferences({ autoLockMinutes: 999 })).toEqual(
+      DEFAULT_PRIVACY_PREFERENCES,
+    );
     expect(normalizePrivacyPreferences(null)).toEqual(DEFAULT_PRIVACY_PREFERENCES);
   });
 

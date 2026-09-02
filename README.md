@@ -6,9 +6,9 @@ A local-first, zero-friction notes PWA designed to match Google Keep's capture s
 
 ## Status
 
-**V2-7 — Advanced Search is implemented as the seventh V2 feature release.** Notes now adds bounded typo tolerance, stronger field-aware relevance, attachment-filename and committed-OCR search, backed-up saved searches, and device-local recent search history while keeping the existing dependency-free local index.
+**V2-8 — Privacy Enhancements is implemented as the eighth V2 feature release.** Notes now adds a device-local privacy lock, shoulder-surfing-safe note-card previews, privacy-safe reminder notifications, automatic lock timing, and explicit recent-search cleanup without changing the IndexedDB storage or backup model.
 
-V1 through P15 remains the stable product foundation, V2-1 adds reminders, V2-2 adds lightweight formatting, V2-3 adds note-to-note link intelligence, V2-4 adds drawing, V2-5 adds local voice capture, V2-6 adds local OCR, and V2-7 upgrades local search without adding a backend or parallel persistent note index.
+V1 through P15 remains the stable product foundation. V2-1 adds reminders, V2-2 lightweight formatting, V2-3 note-to-note link intelligence, V2-4 drawing, V2-5 local voice capture, V2-6 local OCR, V2-7 advanced search, and V2-8 device-local privacy controls while preserving the same zero-backend architecture.
 
 ## V1 scope
 
@@ -181,11 +181,34 @@ V2-7 requires **no database migration**. Saved searches use the existing setting
 
 V2-7 deliberately excludes cloud search, semantic/vector/embedding search, AI query expansion, PDF/Office content extraction, a parallel durable search-index database, silently indexing transient OCR, and collaborative/shared saved searches.
 
+## V2-8 scope
+
+V2-8 adds device-local privacy controls for reducing accidental exposure without representing a UI lock as encryption:
+
+- Optional privacy lock with manual **Lock now** action
+- Salted PBKDF2-SHA-256 passcode verification with no plaintext passcode storage
+- Conservative locked-on-reload behavior whenever a local credential exists
+- Auto-lock after Notes is hidden: immediately, 1, 5, 15, or 30 minutes, or never
+- Hide-note-previews mode that suppresses card titles, bodies, checklist text, labels, reminders, and attachment previews
+- Privacy-safe card accessibility labels that do not expose hidden title/body text
+- Generic reminder notification copy by default and always while Notes is locked
+- Explicit recent-search-history cleanup without deleting backed-up saved searches
+- Device-local privacy preferences and credential kept outside portable Notes backups
+- Cross-tab credential-state coordination through browser storage events
+- Full offline operation with no privacy server or account dependency
+
+V2-8 requires **no database migration**. Notes, checklist rows, attachments, reminders, revisions, saved searches, and backups remain unchanged and authoritative in the established IndexedDB model. Privacy preferences and the local credential belong to the current browser profile rather than the portable library.
+
+V2-8 deliberately does **not** claim encryption at rest. It excludes encrypted note blobs/backups, end-to-end encryption, biometrics/WebAuthn, per-note passwords, remote wipe, cloud authentication, and protection against someone who controls the local browser profile or developer tools.
+
 ## Architecture
 
 - React + TypeScript + Vite
 - IndexedDB through Dexie
 - Local-first data model
+- Device-local privacy context for UI lock, preview masking, notification redaction, and auto-lock state
+- PBKDF2-SHA-256 privacy-lock credential derivation with random salt and no plaintext credential persistence
+- Explicit security boundary: privacy lock masks the application UI but does not encrypt IndexedDB or exported backups
 - Zod validation at data boundaries
 - Repository-only write access for application features
 - Optimistic per-note revision checks
@@ -263,6 +286,8 @@ V2-7 deliberately excludes cloud search, semantic/vector/embedding search, AI qu
 - Playwright for real-browser IndexedDB, capture recovery, card/grid, lifecycle, organization, checklist, selection/bulk, advanced fuzzy/saved/recent/filename/OCR search, revision-history/recovery, backup/disaster-recovery, Google Keep migration, image/attachment capture and viewing, command/keyboard, rich-text editing/rendering/search, link intelligence/navigation/auto-linking, drawing/pointer/PNG/modal integration, voice/microphone/audio/persistence/permission integration, real local OCR recognition/text insertion, responsive-shell, end-to-end, and production PWA/offline/OCR-asset certification
 - GitHub Actions for CI and deployment
 - GitHub Pages-compatible build rooted at `/notes/`
+
+See [`docs/PRIVACY.md`](docs/PRIVACY.md) for V2-8 lock, preview masking, notification redaction, local-trace cleanup, and the privacy/security boundary.
 
 See [`docs/DATABASE.md`](docs/DATABASE.md) for database invariants, [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) for the shell and styling contract, [`docs/CAPTURE.md`](docs/CAPTURE.md) for new-note capture and recovery, [`docs/CARDS_AND_GRID.md`](docs/CARDS_AND_GRID.md) for the P4 card and editor architecture, [`docs/LIFECYCLE.md`](docs/LIFECYCLE.md) for lifecycle state, Undo, Archive, Trash, duplication, and permanent deletion behavior, [`docs/ORGANIZATION.md`](docs/ORGANIZATION.md) for P6 color, label, label-view, and organization behavior, [`docs/CHECKLISTS.md`](docs/CHECKLISTS.md) for P7 checklist storage, interaction, conversion, and recovery behavior, [`docs/SELECTION_AND_BULK.md`](docs/SELECTION_AND_BULK.md) for P8 selection scope, bulk toolbar behavior, transactional batch mutations, and Undo semantics, [`docs/SEARCH.md`](docs/SEARCH.md) for P9/V2-7 indexing, normalization, fuzzy matching, relevance scoring, filename/OCR discovery, saved/recent searches, query operators, and performance behavior, [`docs/KEYBOARD.md`](docs/KEYBOARD.md) for P10 command palette, shortcut safety, and focused-card keyboard behavior, [`docs/HISTORY.md`](docs/HISTORY.md) for P11 checkpoint, restore, Undo, copy, pruning, payload-validation, and cross-type recovery semantics, [`docs/BACKUP.md`](docs/BACKUP.md) for P12 full-library backup format, validation, safety snapshot, atomic replacement, and disaster-recovery behavior, [`docs/GOOGLE_KEEP_IMPORT.md`](docs/GOOGLE_KEEP_IMPORT.md) for P13 Takeout parsing, mapping, preview, repeat-import protection, and atomic additive migration behavior, [`docs/IMAGES.md`](docs/IMAGES.md) for P14 native image capture, privacy processing, thumbnails, viewer behavior, imported attachment handling, and storage limits, [`docs/PWA_OFFLINE.md`](docs/PWA_OFFLINE.md) for P15 installability, service-worker update policy, production offline behavior, and certification requirements, [`docs/REMINDERS.md`](docs/REMINDERS.md) for V2-1 reminder storage, scheduling, lifecycle, notification limits, backup/import integration, and regression requirements, [`docs/RICH_TEXT.md`](docs/RICH_TEXT.md) for V2-2 source syntax, editor behavior, rendering safety, search compatibility, scope boundaries, and regression requirements, [`docs/LINK_INTELLIGENCE.md`](docs/LINK_INTELLIGENCE.md) for V2-3 title resolution, WikiLink navigation, backlinks, unlinked mentions, safe auto-linking, and regression requirements, [`docs/DRAWING.md`](docs/DRAWING.md) for V2-4 drawing input, canvas tools, PNG persistence, modal isolation, capture integration, and regression requirements, [`docs/VOICE.md`](docs/VOICE.md) for V2-5 microphone capture, format negotiation, local persistence, playback, privacy boundaries, and regression requirements, and [`docs/OCR.md`](docs/OCR.md) for V2-6 local recognition, offline runtime packaging, text insertion, privacy boundaries, limitations, and regression requirements.
 

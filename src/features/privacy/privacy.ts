@@ -68,7 +68,10 @@ export function readPrivacyPreferences(): PrivacyPreferences {
 export function writePrivacyPreferences(preferences: PrivacyPreferences): void {
   const storage = getStorage();
   if (!storage) return;
-  storage.setItem(PRIVACY_PREFERENCES_KEY, JSON.stringify(normalizePrivacyPreferences(preferences)));
+  storage.setItem(
+    PRIVACY_PREFERENCES_KEY,
+    JSON.stringify(normalizePrivacyPreferences(preferences)),
+  );
 }
 
 export function readPrivacyCredential(): PrivacyCredential | null {

@@ -300,9 +300,7 @@
   display: grid;
   place-items: center;
   padding: var(--space-5);
-  background:
-    radial-gradient(circle at 50% 18%, var(--accent-soft), transparent 38%),
-    var(--bg);
+  background: radial-gradient(circle at 50% 18%, var(--accent-soft), transparent 38%), var(--bg);
 }
 
 .privacy-lock-card {

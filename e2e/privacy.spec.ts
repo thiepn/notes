@@ -35,7 +35,9 @@ test('hide note previews masks visible and accessible card details while preserv
   await expect(card.getByText('Private plan')).toHaveCount(0);
   await expect(card.getByText('Secret body details')).toHaveCount(0);
   await expect(card.getByRole('button', { name: 'Open note: Hidden note' })).toBeVisible();
-  await expect(card.getByRole('button', { name: /Private plan|Secret body details/u })).toHaveCount(0);
+  await expect(card.getByRole('button', { name: /Private plan|Secret body details/u })).toHaveCount(
+    0,
+  );
 
   await privacy.getByRole('button', { name: 'Close privacy settings' }).click();
   await card.getByRole('button', { name: 'Open note: Hidden note' }).click();
@@ -62,7 +64,9 @@ test('privacy lock stores only a derived credential, hides the app, rejects wron
   await privacy.getByRole('button', { name: 'Enable privacy lock' }).click();
   await expect(privacy.getByText(/Privacy lock enabled/u)).toBeVisible();
 
-  const storedCredential = await page.evaluate(() => localStorage.getItem('notes.privacy.credential.v1'));
+  const storedCredential = await page.evaluate(() =>
+    localStorage.getItem('notes.privacy.credential.v1'),
+  );
   expect(storedCredential).toBeTruthy();
   expect(storedCredential).not.toContain('4815');
   expect(JSON.parse(storedCredential ?? '{}').hash).toMatch(/^[0-9a-f]{64}$/u);
@@ -95,7 +99,10 @@ test('privacy settings clear only disposable recent-search history', async ({ pa
   await page.evaluate(async () => {
     const search = await import('/notes/src/features/search/searchHistory.ts');
     const types = await import('/notes/src/features/search/searchTypes.ts');
-    search.rememberRecentSearch({ query: 'sensitive query', filters: { ...types.DEFAULT_SEARCH_FILTERS } });
+    search.rememberRecentSearch({
+      query: 'sensitive query',
+      filters: { ...types.DEFAULT_SEARCH_FILTERS },
+    });
 
     const db = await import('/notes/src/db/index.ts');
     const repository = new search.SearchHistoryRepository(db.notesDatabase);
