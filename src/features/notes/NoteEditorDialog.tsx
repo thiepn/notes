@@ -30,6 +30,8 @@ import { ReminderControl } from '../reminders/ReminderControl';
 import { RichTextEditor } from '../richText/RichTextEditor';
 import { VoiceAttachmentButton } from '../voice/VoiceAttachmentButton';
 import { AttachmentPanel } from './AttachmentPanel';
+import { EditorCloseButton, EditorStatusBar } from './EditorStatusBar';
+import { textEditorMetrics } from './editorInsights';
 import { RevisionHistoryDialog } from './RevisionHistoryDialog';
 import { useExistingNoteEditor } from './useExistingNoteEditor';
 
@@ -74,16 +76,26 @@ export function NoteEditorDialog({
   const [moreOpen, setMoreOpen] = useState(false);
   const [attachmentsOpen, setAttachmentsOpen] = useState(false);
   const [connectionsOpen, setConnectionsOpen] = useState(false);
-  const { draft, errorMessage, status, setTitle, setContent, saveNow, finishEditing, retrySave } =
-    useExistingNoteEditor({
-      note,
-      repository,
-      onSaved,
-      beforeClose: async (saved) => {
-        await revisionsRepository.checkpoint(saved.id, 'close');
-      },
-      onClose,
-    });
+  const {
+    draft,
+    errorMessage,
+    status,
+    hasPendingChanges,
+    lastSavedAt,
+    setTitle,
+    setContent,
+    saveNow,
+    finishEditing,
+    retrySave,
+  } = useExistingNoteEditor({
+    note,
+    repository,
+    onSaved,
+    beforeClose: async (saved) => {
+      await revisionsRepository.checkpoint(saved.id, 'close');
+    },
+    onClose,
+  });
 
   const refreshLinkLibrary = useCallback(async () => {
     const [active, archived] = await Promise.all([
@@ -162,6 +174,14 @@ export function NoteEditorDialog({
       void finishEditing();
     }
   };
+
+  const metrics = useMemo(() => {
+    const current = textEditorMetrics(draft.content);
+    return [
+      `${current.words} ${current.words === 1 ? 'word' : 'words'}`,
+      `${current.characters} ${current.characters === 1 ? 'character' : 'characters'}`,
+    ];
+  }, [draft.content]);
 
   const handleLayerPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (historyNote || event.target !== event.currentTarget) return;
@@ -362,17 +382,14 @@ export function NoteEditorDialog({
               ) : null}
             </div>
 
-            <div className="note-editor-state" aria-live="polite">
-              {status === 'saving' ? <span className="sr-only">Saving…</span> : null}
-              {errorMessage ? (
-                <span className="note-editor-error" role="alert">
-                  {errorMessage}
-                  <button type="button" onClick={retrySave}>
-                    Retry
-                  </button>
-                </span>
-              ) : null}
-            </div>
+            <EditorStatusBar
+              status={status}
+              hasPendingChanges={hasPendingChanges}
+              lastSavedAt={lastSavedAt}
+              metrics={metrics}
+              errorMessage={errorMessage}
+              onRetry={retrySave}
+            />
 
             <div className="note-editor-footer-actions">
               <div className="note-editor-menu-slot">
@@ -415,13 +432,7 @@ export function NoteEditorDialog({
                   </div>
                 ) : null}
               </div>
-              <button
-                className="note-editor-close"
-                type="button"
-                onClick={() => void finishEditing()}
-              >
-                Close
-              </button>
+              <EditorCloseButton onClick={() => void finishEditing()} />
             </div>
           </div>
         </div>

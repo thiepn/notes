@@ -1,0 +1,80 @@
+.note-editor-status-line {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--text-subtle);
+  line-height: 1.4;
+}
+
+.note-editor-save-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.note-editor-save-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--text-subtle);
+}
+
+.note-editor-save-indicator[data-state='saved'] .note-editor-save-dot {
+  background: var(--accent);
+}
+
+.note-editor-save-indicator[data-state='saving'] .note-editor-save-dot,
+.note-editor-save-indicator[data-state='pending'] .note-editor-save-dot {
+  background: var(--text-muted);
+}
+
+.note-editor-metric,
+.note-editor-updated {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.note-editor-metric::before,
+.note-editor-updated::before {
+  content: '·';
+  margin-right: 6px;
+  color: var(--text-subtle);
+}
+
+.note-editor-close {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.note-editor-close-shortcut {
+  padding: 2px 5px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+  color: var(--text-subtle);
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+@media (max-width: 767px) {
+  .note-editor-status-line {
+    gap: 5px;
+  }
+
+  .note-editor-updated {
+    display: none;
+  }
+
+  .note-editor-close-shortcut {
+    display: none;
+  }
+}

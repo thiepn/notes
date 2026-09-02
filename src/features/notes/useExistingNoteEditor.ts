@@ -43,6 +43,12 @@ export function useExistingNoteEditor({
   const [draft, setDraft] = useState<EditorDraft>(initialEditor.draft);
   const [status, setStatus] = useState<EditorStatus>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [lastSavedAt, setLastSavedAt] = useState(note.updatedAt);
+  const [hasPendingChanges, setHasPendingChanges] = useState(
+    () =>
+      initialEditor.journal !== null &&
+      (initialEditor.draft.title !== note.title || initialEditor.draft.content !== note.content),
+  );
 
   const pendingDraftRef = useRef<EditorDraft>(initialEditor.draft);
   const noteRef = useRef<NoteRecord>(note);
@@ -81,17 +87,20 @@ export function useExistingNoteEditor({
 
       if (mountedRef.current) {
         setStatus('idle');
+        setLastSavedAt(saved.updatedAt);
       }
 
       const pending = pendingDraftRef.current;
       if (pending.title === snapshot.title && pending.content === snapshot.content) {
         clearEditorJournal();
+        if (mountedRef.current) setHasPendingChanges(false);
       } else {
         writeEditorJournal({
           noteId: saved.id,
           title: pending.title,
           content: pending.content,
         });
+        if (mountedRef.current) setHasPendingChanges(true);
       }
 
       return saved;
@@ -108,6 +117,7 @@ export function useExistingNoteEditor({
       if (mountedRef.current) {
         setStatus('error');
         setErrorMessage(toErrorMessage(error));
+        setHasPendingChanges(true);
       }
 
       throw error;
@@ -145,6 +155,7 @@ export function useExistingNoteEditor({
       setDraft(nextDraft);
       setStatus('idle');
       setErrorMessage(null);
+      setHasPendingChanges(true);
       scheduleSave(nextDraft);
     },
     [scheduleSave],
@@ -210,6 +221,8 @@ export function useExistingNoteEditor({
     draft,
     errorMessage,
     status,
+    hasPendingChanges,
+    lastSavedAt,
     setTitle: (title: string) => updateDraft({ title }),
     setContent: (content: string) => updateDraft({ content }),
     saveNow,
