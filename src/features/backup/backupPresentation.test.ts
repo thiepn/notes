@@ -6,6 +6,7 @@ import {
   backupVersionLabel,
   formatBackupAge,
   formatBackupBytes,
+  formatBackupCount,
   formatBackupDelta,
 } from './backupPresentation';
 
@@ -25,10 +26,13 @@ function stats(overrides: Partial<BackupStats> = {}): BackupStats {
 }
 
 describe('backup recovery presentation helpers', () => {
-  it('formats file sizes and backup age clearly', () => {
+  it('formats file sizes, counts, and backup age clearly', () => {
     expect(formatBackupBytes(0)).toBe('0 B');
     expect(formatBackupBytes(1024)).toBe('1.00 KB');
     expect(formatBackupBytes(12 * 1024)).toBe('12.0 KB');
+    expect(formatBackupCount(1, 'attachment')).toBe('1 attachment');
+    expect(formatBackupCount(2, 'attachment')).toBe('2 attachments');
+    expect(formatBackupCount(0, 'saved version', 'saved versions')).toBe('0 saved versions');
 
     const now = new Date(2026, 8, 2, 10, 0, 0, 0).getTime();
     expect(formatBackupAge(now - 20_000, now)).toBe('Just now');
