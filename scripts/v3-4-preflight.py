@@ -19,4 +19,8 @@ text = text.replace(
     "  const activeSection = SECTIONS.find((item) => item.id === section) ?? SECTIONS[0]!;",
     1,
 )
+old_z = "  z-index: calc(var(--z-modal) + 20);"
+if old_z not in text:
+    raise SystemExit('V3.4 settings z-index target was not found.')
+text = text.replace(old_z, "  z-index: calc(var(--z-dialog) + 20);", 1)
 path.write_text(text)
