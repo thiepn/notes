@@ -1,0 +1,52 @@
+name: V3.4 settings consolidation
+
+on:
+  push:
+    branches:
+      - v3-4-settings-consolidation
+
+permissions:
+  contents: write
+
+jobs:
+  implement:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: v3-4-settings-consolidation
+          fetch-depth: 1
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Apply V3.4 settings consolidation
+        run: python scripts/v3-4-settings-consolidation.py
+      - name: Format changed files
+        run: npx prettier --write src/app/AppShell.tsx src/components/AppHeader.tsx src/components/AppSidebar.tsx src/features/settings/SettingsDialog.tsx src/features/privacy/PrivacySettingsDialog.tsx src/features/reminders/RemindersWorkspace.tsx src/styles/settings.css src/styles.css e2e/shell.spec.ts e2e/privacy.spec.ts e2e/backup.spec.ts e2e/google-keep-import.spec.ts e2e/google-keep-reminders.spec.ts e2e/settings-consolidation.spec.ts
+      - name: Format check
+        run: npm run format:check
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm run test
+      - name: Production build
+        run: npm run build
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: End-to-end regression suite
+        run: npm run e2e
+      - name: PWA offline certification
+        run: npm run e2e:pwa
+      - name: Commit V3.4
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src e2e
+          git commit -m "Implement V3.4 settings and advanced-feature consolidation"
+          git push origin HEAD:v3-4-settings-consolidation
