@@ -52,6 +52,104 @@ test('hide note previews masks visible and accessible card details while preserv
   await expect(reloadedCard.getByText('Private plan')).toHaveCount(0);
 });
 
+test('privacy mode quick toggle suppresses search-history disclosure and new recent-search recording', async ({
+  page,
+}) => {
+  await page.goto('./');
+  await page.evaluate(async () => {
+    const search = await import('/notes/src/features/search/searchHistory.ts');
+    const types = await import('/notes/src/features/search/searchTypes.ts');
+    search.rememberRecentSearch({
+      query: 'existing sensitive recent',
+      filters: { ...types.DEFAULT_SEARCH_FILTERS },
+    });
+    const db = await import('/notes/src/db/index.ts');
+    const repository = new search.SearchHistoryRepository(db.notesDatabase);
+    await repository.save({
+      query: 'existing sensitive saved',
+      filters: { ...types.DEFAULT_SEARCH_FILTERS },
+    });
+  });
+  await page.reload();
+
+  const search = page.getByRole('searchbox', { name: 'Search notes' });
+  await search.focus();
+  const history = page.getByRole('dialog', { name: 'Search history' });
+  await expect(history).toContainText('existing sensitive saved');
+  await expect(history).toContainText('existing sensitive recent');
+
+  await search.blur();
+  await page.getByRole('button', { name: 'More options' }).click();
+  const privacyMode = page.getByRole('menuitemcheckbox', { name: /Hide note previews/u });
+  await expect(privacyMode).toHaveAttribute('aria-checked', 'false');
+  await privacyMode.click();
+
+  await expect(search).toHaveAttribute('placeholder', 'Search notes — history hidden');
+  await search.focus();
+  await expect(page.getByRole('dialog', { name: 'Search history' })).toHaveCount(0);
+  await search.fill('private lookup that should not persist');
+  await page.waitForTimeout(1_500);
+
+  const recentQueries = await page.evaluate(() => {
+    const raw = localStorage.getItem('notes.search.recent.v1');
+    const parsed = raw ? (JSON.parse(raw) as { searches?: Array<{ query?: string }> }) : null;
+    return (parsed?.searches ?? []).map((item) => item.query ?? '');
+  });
+  expect(recentQueries).toContain('existing sensitive recent');
+  expect(recentQueries).not.toContain('private lookup that should not persist');
+
+  await page.getByRole('button', { name: 'Clear search query' }).click();
+  await page.getByRole('button', { name: 'More options' }).click();
+  const showPreviews = page.getByRole('menuitemcheckbox', { name: /Show note previews/u });
+  await expect(showPreviews).toHaveAttribute('aria-checked', 'true');
+  await showPreviews.click();
+  await search.focus();
+  await expect(page.getByRole('dialog', { name: 'Search history' })).toContainText(
+    'existing sensitive saved',
+  );
+});
+
+test('privacy settings summarize active protections and auto-lock policy', async ({ page }) => {
+  await page.goto('./');
+  let privacy = await openPrivacySettings(page);
+
+  const summary = privacy.getByLabel('Privacy protection summary');
+  await expect(summary).toContainText('1 of 3 passive privacy controls are on');
+  await expect(summary).toContainText('privacy lock off');
+  await expect(privacy.getByText('Automatic locking while hidden is disabled.')).toBeVisible();
+
+  await privacy.getByLabel('Hide note previews').check();
+  await privacy.getByLabel('Passcode', { exact: true }).fill('4815');
+  await privacy.getByLabel('Confirm passcode').fill('4815');
+  await privacy.getByRole('button', { name: 'Enable privacy lock' }).click();
+  await expect(summary).toContainText('All passive privacy controls are on');
+  await expect(privacy.getByText('Locks after 5 minutes hidden.')).toBeVisible();
+
+  await privacy.getByRole('button', { name: 'Close privacy settings' }).click();
+  await page.getByRole('button', { name: 'More options' }).click();
+  await page.getByRole('menuitem', { name: 'Lock now' }).click();
+
+  const passcode = page.getByLabel('Passcode');
+  await expect(passcode).toHaveAttribute('type', 'password');
+  await passcode.fill('4815');
+  await page.getByRole('button', { name: 'Show passcode' }).click();
+  await expect(passcode).toHaveAttribute('type', 'text');
+  await page.getByRole('button', { name: 'Hide passcode' }).click();
+  await expect(passcode).toHaveAttribute('type', 'password');
+
+  await passcode.fill('0000');
+  await page.getByRole('button', { name: 'Unlock' }).click();
+  await expect(page.getByRole('alert')).toHaveText('Incorrect passcode. Try again.');
+  await expect(passcode).toHaveValue('');
+
+  await passcode.fill('4815');
+  await page.getByRole('button', { name: 'Unlock' }).click();
+  privacy = await openPrivacySettings(page);
+  await expect(privacy.getByLabel('Privacy protection summary')).toContainText(
+    'All passive privacy controls are on',
+  );
+});
+
 test('privacy lock stores only a derived credential, hides the app, rejects wrong passcodes, and locks on reload', async ({
   page,
 }) => {
@@ -80,7 +178,8 @@ test('privacy lock stores only a derived credential, hides the app, rejects wron
   const passcode = page.getByLabel('Passcode');
   await passcode.fill('0000');
   await page.getByRole('button', { name: 'Unlock' }).click();
-  await expect(page.getByRole('alert')).toHaveText('Incorrect passcode.');
+  await expect(page.getByRole('alert')).toHaveText('Incorrect passcode. Try again.');
+  await expect(passcode).toHaveValue('');
 
   await passcode.fill('4815');
   await page.getByRole('button', { name: 'Unlock' }).click();
