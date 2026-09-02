@@ -4,7 +4,7 @@ import { checklistEditorMetrics, editorSaveLabel, textEditorMetrics } from './ed
 
 describe('editor insights', () => {
   it('counts visible rich-text words and characters rather than Markdown markers', () => {
-    expect(textEditorMetrics('**Hello** _world_')).toEqual({ words: 2, characters: 11 });
+    expect(textEditorMetrics('**Hello** *world*')).toEqual({ words: 2, characters: 11 });
     expect(textEditorMetrics('')).toEqual({ words: 0, characters: 0 });
   });
 
