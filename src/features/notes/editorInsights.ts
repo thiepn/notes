@@ -43,3 +43,7 @@ export function formatEditorSavedTime(timestamp: number): string {
     minute: '2-digit',
   }).format(new Date(timestamp));
 }
+
+function countWords(value: string): number {
+  return value.match(/[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu)?.length ?? 0;
+}
