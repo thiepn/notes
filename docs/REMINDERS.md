@@ -27,7 +27,7 @@ The reminder is deliberately separate from `NoteRecord`. Editing reminder state 
 
 The reminder editor accepts a local calendar date and local wall-clock time. Notes converts that local value to an absolute timestamp at save time and records the current IANA timezone.
 
-Presets are available for Today, Tomorrow, and Next week. V3.5 also adds one-click quick scheduling for In 1 hour, Tomorrow 9:00, and Next week 9:00 while leaving the date/time inputs editable.
+Presets are available for Today, Tomorrow, and Next week. V3.5 also adds one-click quick scheduling for In 1 hour, Tomorrow 9:00, and Next week 9:00 while leaving the date/time inputs editable. V3.5 also adds one-click quick scheduling for In 1 hour, Tomorrow 9:00, and Next week 9:00 while leaving the date/time inputs editable.
 
 ### Timezones and daylight-saving time
 
