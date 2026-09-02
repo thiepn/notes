@@ -59,9 +59,7 @@ export function readPrivacyPreferences(): PrivacyPreferences {
   if (!storage) return { ...DEFAULT_PRIVACY_PREFERENCES };
   try {
     const raw = storage.getItem(PRIVACY_PREFERENCES_KEY);
-    return raw
-      ? normalizePrivacyPreferences(JSON.parse(raw))
-      : { ...DEFAULT_PRIVACY_PREFERENCES };
+    return raw ? normalizePrivacyPreferences(JSON.parse(raw)) : { ...DEFAULT_PRIVACY_PREFERENCES };
   } catch {
     return { ...DEFAULT_PRIVACY_PREFERENCES };
   }
