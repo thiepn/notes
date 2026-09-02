@@ -116,7 +116,9 @@ test('privacy settings summarize active protections and auto-lock policy', async
   const summary = privacy.getByLabel('Privacy protection summary');
   await expect(summary).toContainText('1 of 3 passive privacy controls is on');
   await expect(summary).toContainText('privacy lock off');
-  await expect(privacy.getByText('Automatic locking while hidden is disabled.')).toBeVisible();
+  await expect(
+    privacy.getByText('Auto-lock becomes available after privacy lock is enabled.'),
+  ).toBeVisible();
 
   await privacy.getByLabel('Hide note previews').check();
   await privacy.getByLabel('Passcode', { exact: true }).fill('4815');
@@ -129,7 +131,7 @@ test('privacy settings summarize active protections and auto-lock policy', async
   await page.getByRole('button', { name: 'More options' }).click();
   await page.getByRole('menuitem', { name: 'Lock now' }).click();
 
-  const passcode = page.getByLabel('Passcode');
+  const passcode = page.getByLabel('Passcode', { exact: true });
   await expect(passcode).toHaveAttribute('type', 'password');
   await passcode.fill('4815');
   await page.getByRole('button', { name: 'Show passcode' }).click();
@@ -175,7 +177,7 @@ test('privacy lock stores only a derived credential, hides the app, rejects wron
 
   await expect(page.getByRole('heading', { name: 'Notes is locked' })).toBeVisible();
   await expect(page.getByText('Private plan')).toHaveCount(0);
-  const passcode = page.getByLabel('Passcode');
+  const passcode = page.getByLabel('Passcode', { exact: true });
   await passcode.fill('0000');
   await page.getByRole('button', { name: 'Unlock' }).click();
   await expect(page.getByRole('alert')).toHaveText('Incorrect passcode. Try again.');
@@ -188,7 +190,7 @@ test('privacy lock stores only a derived credential, hides the app, rejects wron
 
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Notes is locked' })).toBeVisible();
-  await page.getByLabel('Passcode').fill('4815');
+  await page.getByLabel('Passcode', { exact: true }).fill('4815');
   await page.getByRole('button', { name: 'Unlock' }).click();
   await expect(page.getByText('Private plan')).toBeVisible();
 });
