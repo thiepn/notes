@@ -17,4 +17,9 @@ text = text.replace(
     'text = text.replace("      ) : null}\\n\\n      {toast ? <LifecycleToast", "          }\\n        </Suspense>\\n      ) : null}\\n\\n      {toast ? <LifecycleToast", 1)',
 )
 
+checklist_start = text.index('# Checklist capture only needs attachments after the user opens that panel.')
+checklist_end = text.index('# Search and reminder browsing should not drag full editors into their first-load chunks.', checklist_start)
+checklist_section = text[checklist_start:checklist_end].replace('noteId={activeNoteId}', 'noteId={attachmentNoteId}')
+text = text[:checklist_start] + checklist_section + text[checklist_end:]
+
 path.write_text(text)
