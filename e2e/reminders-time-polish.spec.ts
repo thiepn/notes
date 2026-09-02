@@ -17,7 +17,10 @@ async function seedReminderLibrary(page: Page) {
 
     const make = async (title: string, dueAt: number) => {
       const note = await notes.create({ title, content: `${title} body` });
-      await reminders.set(note.id, { dueAt, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
+      await reminders.set(note.id, {
+        dueAt,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      });
       return note.id;
     };
 
@@ -40,7 +43,9 @@ async function createTextNote(page: Page, title: string) {
   await composer.getByRole('button', { name: 'Close' }).click();
 }
 
-test('reminder workspace uses useful time buckets, counts, and overdue presentation', async ({ page }) => {
+test('reminder workspace uses useful time buckets, counts, and overdue presentation', async ({
+  page,
+}) => {
   const ids = await seedReminderLibrary(page);
   await page.reload();
   await page.getByRole('button', { name: 'Reminders' }).click();
@@ -50,7 +55,9 @@ test('reminder workspace uses useful time buckets, counts, and overdue presentat
   await expect(page.getByRole('heading', { name: 'Tomorrow', level: 2 })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Next 7 days', level: 2 })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Later', level: 2 })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Completed & dismissed', level: 2 })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Completed & dismissed', level: 2 }),
+  ).toBeVisible();
 
   const overdueCard = page.locator(`[data-note-id="${ids.overdue}"]`);
   const overdueChip = overdueCard.locator('.note-card-reminder');
@@ -106,7 +113,9 @@ test('quick scheduling and richer snooze choices preserve the existing reminder 
   expect(snoozed?.lastNotifiedAt).toBeNull();
 });
 
-test('tomorrow-morning quick preset uses local 09:00 without bypassing manual inputs', async ({ page }) => {
+test('tomorrow-morning quick preset uses local 09:00 without bypassing manual inputs', async ({
+  page,
+}) => {
   await page.goto('./');
   await createTextNote(page, 'Morning preset polish');
   await page.getByRole('button', { name: 'Open note: Morning preset polish' }).click();

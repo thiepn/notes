@@ -88,10 +88,7 @@ export function applyReminderQuickPreset(
   return localInputFromTimestamp(date.getTime());
 }
 
-export function reminderSnoozeTimestamp(
-  preset: ReminderSnoozePreset,
-  now = Date.now(),
-): number {
+export function reminderSnoozeTimestamp(preset: ReminderSnoozePreset, now = Date.now()): number {
   if (preset === 'ten-minutes') return now + 10 * 60 * 1000;
   if (preset === 'one-hour') return now + 60 * 60 * 1000;
 
@@ -115,10 +112,7 @@ export function isReminderOverdue(timestamp: number, now = Date.now()): boolean 
   return timestamp < now;
 }
 
-export function reminderTimeBucket(
-  timestamp: number,
-  now = Date.now(),
-): ReminderTimeBucket {
+export function reminderTimeBucket(timestamp: number, now = Date.now()): ReminderTimeBucket {
   if (timestamp < now) return 'overdue';
 
   const daysFromToday = localDayOrdinal(timestamp) - localDayOrdinal(now);

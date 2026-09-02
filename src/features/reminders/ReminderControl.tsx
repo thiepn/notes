@@ -200,11 +200,7 @@ export function ReminderControl({
             <button type="button" disabled={busy} onClick={() => void snooze('one-hour')}>
               <Clock3 aria-hidden="true" /> 1 hour
             </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void snooze('tomorrow-morning')}
-            >
+            <button type="button" disabled={busy} onClick={() => void snooze('tomorrow-morning')}>
               <Clock3 aria-hidden="true" /> Tomorrow 9:00
             </button>
           </div>
@@ -238,10 +234,7 @@ export function ReminderControl({
         <div className="reminder-editor" role="group" aria-label="Set reminder">
           <div className="reminder-quick-presets" aria-label="Quick reminder times">
             <span>Quick</span>
-            <button
-              type="button"
-              onClick={() => setDraft(applyReminderQuickPreset('in-one-hour'))}
-            >
+            <button type="button" onClick={() => setDraft(applyReminderQuickPreset('in-one-hour'))}>
               In 1 hour
             </button>
             <button

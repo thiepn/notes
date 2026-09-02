@@ -27,7 +27,7 @@ The reminder is deliberately separate from `NoteRecord`. Editing reminder state 
 
 The reminder editor accepts a local calendar date and local wall-clock time. Notes converts that local value to an absolute timestamp at save time and records the current IANA timezone.
 
-Presets are available for Today, Tomorrow, and Next week.
+Presets are available for Today, Tomorrow, and Next week. V3.5 also adds one-click quick scheduling for In 1 hour, Tomorrow 9:00, and Next week 9:00 while leaving the date/time inputs editable.
 
 ### Timezones and daylight-saving time
 
@@ -48,7 +48,7 @@ The E2E regression suite runs a dedicated `Europe/Berlin` timezone test for thes
 An active reminder appears in the Reminders workspace and can be:
 
 - changed to another date/time
-- snoozed one hour
+- snoozed 10 minutes, one hour, or until 09:00 tomorrow
 - completed
 - dismissed
 - removed entirely
@@ -75,7 +75,9 @@ Visible reminders are grouped into:
 
 - Overdue
 - Today
-- Upcoming
+- Tomorrow
+- Next 7 days
+- Later
 - Completed & dismissed
 
 The workspace supports the normal card editor, colors, labels, duplication, and trash actions. Grid/list preference is shared with the Notes workspace.
@@ -190,6 +192,20 @@ V2-1 adds automated coverage for:
 - backup format v2 and legacy-v1 compatibility
 - conservative Google Keep reminder migration
 - Europe/Berlin DST-gap handling
+
+## V3.5 reminder/time UX polish
+
+V3.5 is a presentation and interaction refinement over the same reminder rows introduced in V2-1.
+
+Scheduling gains three fast paths: In 1 hour, Tomorrow at 09:00, and Next week at 09:00. These presets populate the existing local date/time draft and therefore still pass through the same DST validation and `RemindersRepository.set()` write path as manual scheduling.
+
+Active reminders gain three snooze targets: 10 minutes, one hour, and 09:00 tomorrow. Snooze still calls the existing repository method, keeps the reminder active, and clears `lastNotifiedAt` so the new due time can notify once.
+
+The Reminders workspace now derives five active time buckets from the stored absolute timestamp: Overdue, Today, Tomorrow, Next 7 days, and Later. Calendar-day distance is computed from local year/month/day values rather than dividing elapsed milliseconds by 24 hours, so a DST transition does not move a reminder into the wrong local-date section.
+
+Reminder cards and compact editor controls now use explicit overdue wording. The card chip also exposes `data-overdue` for visual treatment without changing reminder state.
+
+Section counts and the workspace active/history summary are derived UI state only. No count, bucket, or relative-time value is persisted.
 
 ## Phase boundary
 

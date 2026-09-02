@@ -66,9 +66,7 @@ describe('reminder local time helpers', () => {
     const now = new Date(2026, 8, 2, 23, 45, 0, 0).getTime();
     expect(reminderTimeBucket(new Date(2026, 8, 2, 23, 55).getTime(), now)).toBe('today');
     expect(reminderTimeBucket(new Date(2026, 8, 3, 0, 5).getTime(), now)).toBe('tomorrow');
-    expect(reminderTimeBucket(new Date(2026, 8, 8, 9, 0).getTime(), now)).toBe(
-      'next-seven-days',
-    );
+    expect(reminderTimeBucket(new Date(2026, 8, 8, 9, 0).getTime(), now)).toBe('next-seven-days');
     expect(reminderTimeBucket(new Date(2026, 8, 10, 9, 0).getTime(), now)).toBe('later');
   });
 

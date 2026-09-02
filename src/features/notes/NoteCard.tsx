@@ -31,7 +31,7 @@ import {
   type ReminderRecord,
 } from '../../db';
 import { usePrivacy } from '../privacy/PrivacyContext';
-import { formatReminderShort } from '../reminders/reminderTime';
+import { formatReminderShort, isReminderOverdue } from '../reminders/reminderTime';
 import { RichTextContent } from '../richText/RichTextContent';
 import { richTextToPlainText } from '../richText/richText';
 import { NoteCardAttachmentPreview } from './NoteCardAttachmentPreview';
@@ -477,7 +477,11 @@ function NoteCardContent({
         </span>
       ) : null}
       {reminder && (reminder.status === 'active' || mode === 'reminders') ? (
-        <span className="note-card-reminder" data-status={reminder.status}>
+        <span
+          className="note-card-reminder"
+          data-status={reminder.status}
+          data-overdue={reminder.status === 'active' && isReminderOverdue(reminder.dueAt)}
+        >
           <Bell aria-hidden="true" />
           {reminder.status === 'active'
             ? formatReminderShort(reminder.dueAt)

@@ -6,9 +6,9 @@ A local-first, zero-friction notes PWA designed to match Google Keep's capture s
 
 ## Status
 
-**V3.4 — Editor & Note Interaction Polish is implemented as the fourth V3 refinement release.** Existing text-note and checklist editors now expose persistence-backed autosave state, last-saved time, useful content metrics, and a discoverable Ctrl/Cmd+Enter close shortcut without changing stored note semantics or recovery behavior.
+**V3.5 — Reminders & Time UX Polish is implemented as the fifth V3 refinement release.** Existing local reminders now schedule faster, snooze more flexibly, communicate overdue state clearly, and group upcoming reminders into more useful local-calendar buckets without changing the reminder schema or notification architecture.
 
-V1 through P15 remains the stable product foundation and V2-1 through V2-8 complete the feature roadmap through Privacy Enhancements. The V3 refinement track preserves that architecture while improving daily use: V3.1 polishes capture and mobile UX, V3.2 retrieval and search, V3.3 organization and navigation, and V3.4 existing-note editing feedback and ergonomics.
+V1 through P15 remains the stable product foundation and V2-1 through V2-8 complete the feature roadmap through Privacy Enhancements. The V3 refinement track preserves that architecture while improving daily use: V3.1 polishes capture and mobile UX, V3.2 retrieval and search, V3.3 organization and navigation, V3.4 existing-note editing feedback and ergonomics, and V3.5 reminder/time interaction quality.
 
 ## V1 scope
 
@@ -36,7 +36,7 @@ V2-1 adds:
 - One reminder per saved text note or checklist
 - Local date/time scheduling stored as an absolute UTC instant plus the scheduling IANA timezone
 - Active, completed, dismissed, snoozed, and removed reminder states
-- Overdue, Today, Upcoming, and Completed & dismissed reminder groups
+- Overdue, Today, Tomorrow, Next 7 days, Later, and Completed & dismissed reminder groups
 - Reminder chips on note cards and live `has:reminder` search
 - Archive preservation, Trash suppression/restoration, and transactional permanent-delete cleanup
 - Backup format v2 with reminder round-trip and legacy-v1 restore compatibility
@@ -237,6 +237,23 @@ V3.4 improves existing-note editor feedback without changing the underlying pers
 V3.4 requires **no database migration**. The 180 ms autosave delay, serialized save chains, optimistic revisions, recovery journals, revision-history checkpoints, normalized checklist rows, attachments, reminders, backup/restore formats, and offline/PWA behavior remain unchanged.
 
 Metrics and save-feedback state are transient UI state. V3.4 deliberately excludes a new editor framework, document statistics persistence, manual-save mode, new revision semantics, alternate storage formats, and changes to crash-recovery authority.
+
+## V3.5 scope
+
+V3.5 refines the existing V2-1 reminder system without adding another persistence model:
+
+- Quick scheduling for **In 1 hour**, **Tomorrow 9:00**, and **Next week 9:00**
+- Existing Today / Tomorrow / Next week date-only presets retained for manual time selection
+- Snooze choices for **10 minutes**, **1 hour**, and **Tomorrow 9:00**
+- Clear `Overdue · …` wording on active reminder chips and editor summaries
+- Card-level overdue state exposed for restrained visual emphasis
+- Local-calendar grouping into Overdue, Today, Tomorrow, Next 7 days, and Later
+- Section-level reminder counts plus active/history totals in the Reminders workspace
+- DST-safe local-day grouping derived from calendar dates instead of elapsed 24-hour windows
+- Existing absolute `dueAt` timestamp + scheduling timezone storage preserved
+- Snooze continues to reactivate the existing reminder record and clear notification de-duplication state
+
+V3.5 requires **no database migration**. It deliberately excludes recurring reminders, location reminders, task projects, cloud scheduling, background servers, and any new claim of reliable notification delivery while every Notes tab/PWA window is closed.
 
 ## Architecture
 
