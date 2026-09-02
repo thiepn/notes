@@ -11,11 +11,7 @@ import {
   summarizeAttachments,
 } from './attachmentPresentation';
 
-function attachment(
-  mimeType: string,
-  size: number,
-  name = 'file',
-): AttachmentRecord {
+function attachment(mimeType: string, size: number, name = 'file'): AttachmentRecord {
   return {
     id: crypto.randomUUID(),
     noteId: 'note',
