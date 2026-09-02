@@ -16,6 +16,7 @@
 @import './styles/commands.css';
 @import './styles/history.css';
 @import './styles/backup.css';
+@import './styles/backup-recovery-polish.css';
 @import './styles/attachments.css';
 @import './styles/attachments-media-polish.css';
 @import './styles/attachment-capture.css';
