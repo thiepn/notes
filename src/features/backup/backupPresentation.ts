@@ -65,6 +65,14 @@ export function formatBackupBytes(bytes: number): string {
   return `${value.toFixed(value >= 10 ? 1 : 2)} ${unit}`;
 }
 
+export function formatBackupCount(
+  count: number,
+  singular: string,
+  plural = `${singular}s`,
+): string {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
 export function formatBackupAge(timestamp: number, now = Date.now()): string {
   const difference = now - timestamp;
   if (difference < -5 * 60_000) return 'Timestamp is ahead of this device';
