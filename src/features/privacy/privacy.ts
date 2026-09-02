@@ -59,7 +59,9 @@ export function readPrivacyPreferences(): PrivacyPreferences {
   if (!storage) return { ...DEFAULT_PRIVACY_PREFERENCES };
   try {
     const raw = storage.getItem(PRIVACY_PREFERENCES_KEY);
-    return raw ? normalizePrivacyPreferences(JSON.parse(raw)) : { ...DEFAULT_PRIVACY_PREFERENCES };
+    return raw
+      ? normalizePrivacyPreferences(JSON.parse(raw))
+      : { ...DEFAULT_PRIVACY_PREFERENCES };
   } catch {
     return { ...DEFAULT_PRIVACY_PREFERENCES };
   }
@@ -185,7 +187,7 @@ async function derivePrivacyHash(
     {
       name: 'PBKDF2',
       hash: 'SHA-256',
-      salt: hexToBytes(saltHex),
+      salt: hexToArrayBuffer(saltHex),
       iterations,
     },
     key,
@@ -198,12 +200,13 @@ function bytesToHex(bytes: Uint8Array): string {
   return Array.from(bytes, (value) => value.toString(16).padStart(2, '0')).join('');
 }
 
-function hexToBytes(value: string): Uint8Array {
-  const bytes = new Uint8Array(value.length / 2);
+function hexToArrayBuffer(value: string): ArrayBuffer {
+  const buffer = new ArrayBuffer(value.length / 2);
+  const bytes = new Uint8Array(buffer);
   for (let index = 0; index < bytes.length; index += 1) {
     bytes[index] = Number.parseInt(value.slice(index * 2, index * 2 + 2), 16);
   }
-  return bytes;
+  return buffer;
 }
 
 function constantTimeHexEqual(left: string, right: string): boolean {
