@@ -42,8 +42,8 @@ test('hide note previews masks visible and accessible card details while preserv
   await privacy.getByRole('button', { name: 'Close privacy settings' }).click();
   await card.getByRole('button', { name: 'Open note: Hidden note' }).click();
   const editor = page.getByRole('dialog', { name: 'Edit note' });
-  await expect(editor.getByDisplayValue('Private plan')).toBeVisible();
-  await expect(editor.getByText('Secret body details')).toBeVisible();
+  await expect(editor.getByLabel('Edit title')).toHaveValue('Private plan');
+  await expect(editor.getByLabel('Edit note text')).toHaveValue('Secret body details');
   await editor.getByRole('button', { name: 'Close editor' }).click();
 
   await page.reload();
