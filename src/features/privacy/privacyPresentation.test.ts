@@ -27,7 +27,7 @@ describe('privacy polish presentation helpers', () => {
         hidePreviews: true,
         privateNotifications: false,
       }).label,
-    ).toBe('1 of 3 passive privacy controls are on');
+    ).toBe('1 of 3 passive privacy controls is on');
   });
 
   it('describes auto-lock policies clearly', () => {
