@@ -232,7 +232,7 @@ export function ReminderControl({
 
       {editing ? (
         <div className="reminder-editor" role="group" aria-label="Set reminder">
-          <div className="reminder-quick-presets" aria-label="Quick reminder times">
+          <div className="reminder-quick-presets" role="group" aria-label="Quick presets">
             <span>Quick</span>
             <button type="button" onClick={() => setDraft(applyReminderQuickPreset('in-one-hour'))}>
               In 1 hour
@@ -250,7 +250,7 @@ export function ReminderControl({
               Next week 9:00
             </button>
           </div>
-          <div className="reminder-presets" aria-label="Reminder date presets">
+          <div className="reminder-presets" role="group" aria-label="Day presets">
             <span>Date</span>
             <button
               type="button"
