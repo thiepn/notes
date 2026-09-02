@@ -6,9 +6,9 @@ A local-first, zero-friction notes PWA designed to match Google Keep's capture s
 
 ## Status
 
-**V3.6 — Attachments & Media Interaction Polish is implemented as the sixth V3 refinement release.** Existing local image, voice, and imported-file attachments now expose clearer size/type context, richer image viewing, direct image download, and browser-derived media metadata without changing attachment records or Blob storage.
+**V3.7 — Backup & Recovery UX Polish is implemented as the seventh V3 refinement release.** The existing validated full-library backup and atomic replace-restore system now exposes current-library readiness, device-local manual-backup recency, backup version/freshness, and current-vs-incoming recovery comparison without changing the backup format or database schema.
 
-V1 through P15 remains the stable product foundation and V2-1 through V2-8 complete the feature roadmap through Privacy Enhancements. The V3 refinement track preserves that architecture while improving daily use: V3.1 polishes capture and mobile UX, V3.2 retrieval and search, V3.3 organization and navigation, V3.4 existing-note editing feedback and ergonomics, V3.5 reminder/time interaction quality, and V3.6 attachment/media interaction clarity.
+V1 through P15 remains the stable product foundation and V2-1 through V2-8 complete the feature roadmap through Privacy Enhancements. The V3 refinement track preserves that architecture while improving daily use: V3.1 polishes capture and mobile UX, V3.2 retrieval and search, V3.3 organization and navigation, V3.4 existing-note editing feedback and ergonomics, V3.5 reminder/time interaction quality, V3.6 attachment/media interaction clarity, and V3.7 backup/recovery confidence.
 
 ## V1 scope
 
@@ -273,6 +273,27 @@ V3.6 deliberately excludes cloud media hosting, server processing, transcoding, 
 
 See [`docs/ATTACHMENTS_MEDIA.md`](docs/ATTACHMENTS_MEDIA.md) for the V3.6 interaction and persistence contract.
 
+## V3.7 scope
+
+V3.7 improves confidence and clarity around the existing P12 full-library backup/restore system:
+
+- Current-library readiness counts before a manual backup
+- Device-local memory of the most recent successful manual backup, including filename, time, age, and file size
+- Validated backup file size, backup/database version, export timestamp, and human-readable freshness
+- Current-vs-incoming comparison for notes, attachments, reminders, saved versions, and all database records before replacement
+- Clear numeric deltas showing what the selected restore would add or remove
+- Existing read-only validation before restore preserved
+- Existing explicit destructive-restore acknowledgement preserved
+- Existing automatic pre-restore safety backup preserved
+- Existing atomic eight-table rollback semantics preserved
+- Current-library counts refresh after successful Google Keep import or full restore
+
+V3.7 requires **no database migration and no backup-format change**. Current counts and comparison rows are derived from the existing eight IndexedDB tables. The last-manual-backup marker is disposable browser-local activity metadata in `localStorage`; it is intentionally not portable library data and is not written into Notes backups.
+
+V3.7 deliberately excludes scheduled/background backups, cloud backup destinations, sync, encryption, differential/incremental backups, merge restore, automatic restore, and any weakening of P12 validation or replacement safety gates.
+
+See [`docs/BACKUP.md`](docs/BACKUP.md) for the P12/V3.7 backup format, validation, recovery-confidence UI, safety snapshot, and atomic replacement contract.
+
 ## Architecture
 
 - React + TypeScript + Vite
@@ -322,6 +343,8 @@ See [`docs/ATTACHMENTS_MEDIA.md`](docs/ATTACHMENTS_MEDIA.md) for the V3.6 intera
 - Versioned eight-table full-library JSON backups taken from one consistent IndexedDB read transaction
 - Base64 attachment preservation with independent SHA-256 backup integrity checks
 - Read-only backup validation and recovery preview before any destructive database write
+- Derived current-library counts plus current-vs-incoming recovery comparison before replacement
+- Device-local last-manual-backup activity marker kept outside portable library backups
 - Automatic current-device safety backup before full-library restore
 - Atomic eight-table replacement recovery with IndexedDB rollback on write failure
 - Direct local parsing of single- or multi-part Google Keep Takeout ZIP archives
