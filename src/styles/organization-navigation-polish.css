@@ -1,0 +1,107 @@
+.nav-count {
+  min-width: 26px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  padding: 0 7px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface-subtle);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.nav-item[data-active='true'] .nav-count {
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+  background: color-mix(in srgb, var(--accent-soft) 72%, var(--surface));
+  color: var(--accent-strong);
+}
+
+.sidebar-label-search {
+  display: flex;
+  height: 38px;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 var(--space-2);
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-subtle);
+  color: var(--text-muted);
+}
+
+.sidebar-label-search:focus-within {
+  border-color: var(--border-strong);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.sidebar-label-search svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.sidebar-label-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-sm);
+}
+
+.sidebar-label-search input::placeholder {
+  color: var(--text-subtle);
+}
+
+.sidebar-label-empty {
+  margin: var(--space-3) var(--space-2) 0;
+  color: var(--text-subtle);
+  font-size: var(--text-sm);
+}
+
+.workspace-title-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.workspace-count {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface-subtle);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.app-sidebar[data-compact='true'] .nav-count,
+.app-sidebar[data-compact='true'] .sidebar-label-search,
+.app-sidebar[data-compact='true'] .sidebar-label-empty {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .workspace-title-line {
+    gap: var(--space-2);
+  }
+
+  .workspace-count {
+    min-height: 26px;
+  }
+}
