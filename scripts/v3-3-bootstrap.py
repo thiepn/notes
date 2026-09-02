@@ -103,8 +103,117 @@ text = text.replace(
 text = text.replace("const distDir = join(process.cwd(), 'dist');", "const distDir = join(cwd(), 'dist');", 1)
 text = text.replace(
     "console.log(\n  `[perf] entry ${(entryBytes / 1024).toFixed(1)} KiB (${(entryGzipBytes / 1024).toFixed(1)} KiB gzip); OCR deferred from precache; ${coreFiles.length} LSTM core assets.`,\n);",
-    "stdout.write(\n  `[perf] entry ${(entryBytes / 1024).toFixed(1)} KiB (${(entryGzipBytes / 1024).toFixed(1)} KiB gzip); OCR deferred from precache; ${coreFiles.length} LSTM core assets.\\n`,\n);",
+    "stdout.write(\n  `[perf] entry ${(entryBytes / 1024).toFixed(1)} KiB (${(entryGzipBytes / 1024).toFixed(1)} KiB gzip); OCR deferred from precache; ${coreFiles.length} local core assets.\\n`,\n);",
     1,
 )
+
+# Append behavioral compatibility corrections after the performance transformations.
+text += r'''
+
+# Keep tiny, latency-sensitive controls eager. Their savings are negligible, while
+# synchronous mount/focus semantics are part of existing keyboard and selection UX.
+app_shell_path = Path("src/app/AppShell.tsx")
+app_shell = app_shell_path.read_text()
+app_shell = app_shell.replace(
+    "import type { CommandPaletteItem } from '../features/commands/CommandPalette';\n",
+    "import type { CommandPaletteItem } from '../features/commands/CommandPalette';\n"
+    "import { LabelManagerDialog } from '../features/notes/LabelManagerDialog';\n",
+    1,
+)
+label_lazy = """const LabelManagerDialog = lazy(() =>
+  import('../features/notes/LabelManagerDialog').then((module) => ({
+    default: module.LabelManagerDialog,
+  })),
+);
+"""
+if app_shell.count(label_lazy) != 1:
+    raise SystemExit("Could not restore eager LabelManagerDialog")
+app_shell_path.write_text(app_shell.replace(label_lazy, "", 1))
+
+notes_workspace_path = Path("src/features/notes/NotesWorkspace.tsx")
+notes_workspace = notes_workspace_path.read_text()
+notes_workspace = notes_workspace.replace(
+    "import {\n  clearChecklistEditorJournal,",
+    "import { BulkSelectionToolbar } from './BulkSelectionToolbar';\n"
+    "import {\n  clearChecklistEditorJournal,",
+    1,
+)
+bulk_lazy = """const BulkSelectionToolbar = lazy(() =>
+  import('./BulkSelectionToolbar').then((module) => ({ default: module.BulkSelectionToolbar })),
+);
+"""
+if notes_workspace.count(bulk_lazy) != 1:
+    raise SystemExit("Could not restore eager BulkSelectionToolbar")
+notes_workspace_path.write_text(notes_workspace.replace(bulk_lazy, "", 1))
+
+# Preserve all Tesseract core fallbacks on the deployment. OCR is still excluded
+# from install-time precache, so this compatibility choice does not restore the
+# 49 MiB install cost.
+replace_exact(
+    "scripts/prepare-ocr-assets.mjs",
+    "  if (!/^tesseract-core(?:-simd)?-lstm\\.wasm(?:\\.js)?$/u.test(fileName)) continue;",
+    "  if (!/^tesseract-core(?:-[a-z]+)*(?:-lstm)?\\.wasm(?:\\.js)?$/u.test(fileName)) continue;",
+)
+
+budget_path = Path("scripts/check-performance-budget.mjs")
+budget = budget_path.read_text()
+legacy_assertion = """const unexpectedCore = coreFiles.filter((name) => !/-lstm\\.wasm(?:\\.js)?$/u.test(name));
+if (unexpectedCore.length > 0) {
+  throw new Error(`Unexpected legacy OCR cores in dist: ${unexpectedCore.join(', ')}`);
+}
+
+"""
+if budget.count(legacy_assertion) != 1:
+    raise SystemExit("Could not relax OCR core deployment assertion")
+budget_path.write_text(budget.replace(legacy_assertion, "", 1))
+
+# Search itself is deferred, so ArrowDown retries briefly until a cold local chunk
+# has mounted the first result instead of losing the keyboard handoff.
+header_path = Path("src/components/AppHeader.tsx")
+header = header_path.read_text()
+old_arrow = """              if (event.key === 'ArrowDown') {
+                const target = historyVisible
+                  ? document.querySelector<HTMLButtonElement>(
+                      '.search-history-popover .search-history-apply',
+                    )
+                  : document.querySelector<HTMLButtonElement>(
+                      '.search-result-section .note-card-open',
+                    );
+                if (target) {
+                  event.preventDefault();
+                  target.focus();
+                }
+                return;
+              }
+"""
+new_arrow = """              if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                const selector = historyVisible
+                  ? '.search-history-popover .search-history-apply'
+                  : '.search-result-section .note-card-open';
+                const focusTarget = () => {
+                  const target = document.querySelector<HTMLButtonElement>(selector);
+                  if (!target) return false;
+                  target.focus();
+                  return true;
+                };
+                if (focusTarget()) return;
+
+                const input = event.currentTarget;
+                let attempts = 0;
+                const focusWhenReady = () => {
+                  if (document.activeElement !== input) return;
+                  if (focusTarget()) return;
+                  attempts += 1;
+                  if (attempts < 120) window.requestAnimationFrame(focusWhenReady);
+                };
+                window.requestAnimationFrame(focusWhenReady);
+                return;
+              }
+"""
+if header.count(old_arrow) != 1:
+    raise SystemExit("Could not patch deferred search focus handoff")
+header_path.write_text(header.replace(old_arrow, new_arrow, 1))
+'''
 
 path.write_text(text)
