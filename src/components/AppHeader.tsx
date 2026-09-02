@@ -5,11 +5,13 @@ import {
   Command,
   LayoutGrid,
   List,
+  LockKeyhole,
   Menu,
   Monitor,
   Moon,
   MoreHorizontal,
   Search,
+  ShieldCheck,
   SlidersHorizontal,
   StickyNote,
   Sun,
@@ -17,6 +19,8 @@ import {
 } from 'lucide-react';
 
 import { notesDatabase } from '../db';
+import { PrivacySettingsDialog } from '../features/privacy/PrivacySettingsDialog';
+import { usePrivacy } from '../features/privacy/PrivacyContext';
 import { SearchHistoryPopover } from '../features/search/SearchHistoryPopover';
 import {
   clearRecentSearches,
@@ -66,9 +70,11 @@ export function AppHeader({
   onApplySearch,
 }: AppHeaderProps) {
   const { preference, cyclePreference } = useTheme();
+  const { lockEnabled, lock } = usePrivacy();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [privacyOpen, setPrivacyOpen] = useState(false);
   const [searchHistoryOpen, setSearchHistoryOpen] = useState(false);
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>(readRecentSearches);
@@ -160,153 +166,181 @@ export function AppHeader({
   };
 
   return (
-    <header className="app-header">
-      <div className="header-leading">
-        <IconButton
-          label="Toggle navigation"
-          tooltip="Toggle navigation"
-          onClick={onMenu}
-          aria-controls="app-navigation"
-          data-testid="navigation-toggle"
-        >
-          <Menu />
-        </IconButton>
+    <>
+      <header className="app-header">
+        <div className="header-leading">
+          <IconButton
+            label="Toggle navigation"
+            tooltip="Toggle navigation"
+            onClick={onMenu}
+            aria-controls="app-navigation"
+            data-testid="navigation-toggle"
+          >
+            <Menu />
+          </IconButton>
 
-        <div className="app-brand" aria-label="Notes">
-          <span className="app-brand-mark" aria-hidden="true">
-            <StickyNote />
-          </span>
-          <span className="app-brand-text">Notes</span>
+          <div className="app-brand" aria-label="Notes">
+            <span className="app-brand-mark" aria-hidden="true">
+              <StickyNote />
+            </span>
+            <span className="app-brand-text">Notes</span>
+          </div>
         </div>
-      </div>
 
-      <div
-        className="search-shell"
-        role="search"
-        onFocusCapture={() => setSearchHistoryOpen(true)}
-        onBlurCapture={(event) => {
-          const next = event.relatedTarget;
-          if (!(next instanceof Node) || !event.currentTarget.contains(next)) {
-            setSearchHistoryOpen(false);
-          }
-        }}
-      >
-        <Search aria-hidden="true" />
-        <input
-          ref={searchInputRef}
-          type="search"
-          placeholder="Search notes"
-          aria-label="Search notes"
-          value={searchQuery}
-          onChange={(event) => onSearchQueryChange(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Escape' && searchQuery) {
-              event.preventDefault();
-              onSearchQueryChange('');
+        <div
+          className="search-shell"
+          role="search"
+          onFocusCapture={() => setSearchHistoryOpen(true)}
+          onBlurCapture={(event) => {
+            const next = event.relatedTarget;
+            if (!(next instanceof Node) || !event.currentTarget.contains(next)) {
+              setSearchHistoryOpen(false);
             }
           }}
-        />
-        {searchQuery ? (
-          <button
-            className="search-inline-action"
-            type="button"
-            aria-label="Clear search query"
-            onClick={() => onSearchQueryChange('')}
-          >
-            <X />
-          </button>
-        ) : null}
-        <button
-          className="search-inline-action"
-          type="button"
-          aria-label="Search filters"
-          aria-expanded={filtersOpen}
-          aria-pressed={filtersOpen || filtersActive}
-          data-active={filtersOpen || filtersActive}
-          onClick={onToggleFilters}
         >
-          <SlidersHorizontal />
-        </button>
-        {currentCanBeSaved ? (
-          <button
-            className="search-inline-action"
-            type="button"
-            aria-label={currentIsSaved ? 'Search saved' : 'Save search'}
-            aria-pressed={currentIsSaved}
-            data-active={currentIsSaved}
-            disabled={currentIsSaved}
-            onClick={() => void saveCurrentSearch()}
-          >
-            {currentIsSaved ? <BookmarkCheck /> : <BookmarkPlus />}
-          </button>
-        ) : null}
-        {searchQuery || filtersActive ? (
-          <button className="search-reset" type="button" onClick={onClearSearch}>
-            Reset
-          </button>
-        ) : null}
-
-        {searchHistoryOpen && !searchQuery.trim() && !filtersActive && !filtersOpen ? (
-          <SearchHistoryPopover
-            saved={savedSearches}
-            recent={recentSearches}
-            onApply={(snapshot) => {
-              onApplySearch(snapshot);
-              setSearchHistoryOpen(false);
+          <Search aria-hidden="true" />
+          <input
+            ref={searchInputRef}
+            type="search"
+            placeholder="Search notes"
+            aria-label="Search notes"
+            value={searchQuery}
+            onChange={(event) => onSearchQueryChange(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape' && searchQuery) {
+                event.preventDefault();
+                onSearchQueryChange('');
+              }
             }}
-            onRemoveSaved={(id) => void removeSavedSearch(id)}
-            onClearRecent={() => setRecentSearches(clearRecentSearches())}
           />
-        ) : null}
-      </div>
+          {searchQuery ? (
+            <button
+              className="search-inline-action"
+              type="button"
+              aria-label="Clear search query"
+              onClick={() => onSearchQueryChange('')}
+            >
+              <X />
+            </button>
+          ) : null}
+          <button
+            className="search-inline-action"
+            type="button"
+            aria-label="Search filters"
+            aria-expanded={filtersOpen}
+            aria-pressed={filtersOpen || filtersActive}
+            data-active={filtersOpen || filtersActive}
+            onClick={onToggleFilters}
+          >
+            <SlidersHorizontal />
+          </button>
+          {currentCanBeSaved ? (
+            <button
+              className="search-inline-action"
+              type="button"
+              aria-label={currentIsSaved ? 'Search saved' : 'Save search'}
+              aria-pressed={currentIsSaved}
+              data-active={currentIsSaved}
+              disabled={currentIsSaved}
+              onClick={() => void saveCurrentSearch()}
+            >
+              {currentIsSaved ? <BookmarkCheck /> : <BookmarkPlus />}
+            </button>
+          ) : null}
+          {searchQuery || filtersActive ? (
+            <button className="search-reset" type="button" onClick={onClearSearch}>
+              Reset
+            </button>
+          ) : null}
 
-      <div className="header-actions" ref={menuRef}>
-        <IconButton
-          label="More options"
-          tooltip="More options"
-          aria-expanded={moreOpen}
-          onClick={() => setMoreOpen((open) => !open)}
-          data-testid="header-more-toggle"
-        >
-          <MoreHorizontal />
-        </IconButton>
-        {moreOpen ? (
-          <div className="header-more-menu" role="menu">
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setMoreOpen(false);
-                onCommandPalette();
+          {searchHistoryOpen && !searchQuery.trim() && !filtersActive && !filtersOpen ? (
+            <SearchHistoryPopover
+              saved={savedSearches}
+              recent={recentSearches}
+              onApply={(snapshot) => {
+                onApplySearch(snapshot);
+                setSearchHistoryOpen(false);
               }}
-            >
-              <Command aria-hidden="true" />
-              <span>Command palette</span>
-              <kbd>Ctrl K</kbd>
-            </button>
-            <button type="button" role="menuitem" onClick={() => clickViewButton('Grid view')}>
-              <LayoutGrid aria-hidden="true" />
-              <span>Grid view</span>
-            </button>
-            <button type="button" role="menuitem" onClick={() => clickViewButton('List view')}>
-              <List aria-hidden="true" />
-              <span>List view</span>
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                cyclePreference();
-                setMoreOpen(false);
-              }}
-            >
-              <ThemeIcon aria-hidden="true" />
-              <span>{THEME_LABELS[preference]} appearance</span>
-              <small>Next: {THEME_LABELS[nextPreference]}</small>
-            </button>
-          </div>
-        ) : null}
-      </div>
-    </header>
+              onRemoveSaved={(id) => void removeSavedSearch(id)}
+              onClearRecent={() => setRecentSearches(clearRecentSearches())}
+            />
+          ) : null}
+        </div>
+
+        <div className="header-actions" ref={menuRef}>
+          <IconButton
+            label="More options"
+            tooltip="More options"
+            aria-expanded={moreOpen}
+            onClick={() => setMoreOpen((open) => !open)}
+            data-testid="header-more-toggle"
+          >
+            <MoreHorizontal />
+          </IconButton>
+          {moreOpen ? (
+            <div className="header-more-menu" role="menu">
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMoreOpen(false);
+                  onCommandPalette();
+                }}
+              >
+                <Command aria-hidden="true" />
+                <span>Command palette</span>
+                <kbd>Ctrl K</kbd>
+              </button>
+              <button type="button" role="menuitem" onClick={() => clickViewButton('Grid view')}>
+                <LayoutGrid aria-hidden="true" />
+                <span>Grid view</span>
+              </button>
+              <button type="button" role="menuitem" onClick={() => clickViewButton('List view')}>
+                <List aria-hidden="true" />
+                <span>List view</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  cyclePreference();
+                  setMoreOpen(false);
+                }}
+              >
+                <ThemeIcon aria-hidden="true" />
+                <span>{THEME_LABELS[preference]} appearance</span>
+                <small>Next: {THEME_LABELS[nextPreference]}</small>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMoreOpen(false);
+                  setPrivacyOpen(true);
+                }}
+              >
+                <ShieldCheck aria-hidden="true" />
+                <span>Privacy settings</span>
+              </button>
+              {lockEnabled ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMoreOpen(false);
+                    lock();
+                  }}
+                >
+                  <LockKeyhole aria-hidden="true" />
+                  <span>Lock now</span>
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      </header>
+
+      {privacyOpen ? <PrivacySettingsDialog onClose={() => setPrivacyOpen(false)} /> : null}
+    </>
   );
 }
