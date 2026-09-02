@@ -20,6 +20,7 @@ import {
   backupVersionLabel,
   formatBackupAge,
   formatBackupBytes,
+  formatBackupCount,
   formatBackupDelta,
   readLastManualBackup,
   writeLastManualBackup,
@@ -182,7 +183,7 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
                 <strong>Current library</strong>
                 <small>
                   {currentStats
-                    ? `${currentStats.notes} notes · ${currentStats.attachments} attachments · ${currentStats.reminders} reminders · ${currentStats.totalRecords} records`
+                    ? `${formatBackupCount(currentStats.notes, 'note')} · ${formatBackupCount(currentStats.attachments, 'attachment')} · ${formatBackupCount(currentStats.reminders, 'reminder')} · ${formatBackupCount(currentStats.totalRecords, 'record')}`
                     : 'Counting local records…'}
                 </small>
               </span>
