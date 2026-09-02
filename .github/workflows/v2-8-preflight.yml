@@ -24,54 +24,14 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Update release documentation and format
+      - name: Format release candidate
         run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          path = Path('README.md')
-          text = path.read_text()
-
-          old_status = '''**V2-7 — Advanced Search is implemented as the seventh V2 feature release.** Notes now adds bounded typo tolerance, stronger field-aware relevance, attachment-filename and committed-OCR search, backed-up saved searches, and device-local recent search history while keeping the existing dependency-free local index.\n\nV1 through P15 remains the stable product foundation, V2-1 adds reminders, V2-2 adds lightweight formatting, V2-3 adds note-to-note link intelligence, V2-4 adds drawing, V2-5 adds local voice capture, V2-6 adds local OCR, and V2-7 upgrades local search without adding a backend or parallel persistent note index.\n'''
-          new_status = '''**V2-8 — Privacy Enhancements is implemented as the eighth V2 feature release.** Notes now adds a device-local privacy lock, shoulder-surfing-safe note-card previews, privacy-safe reminder notifications, automatic lock timing, and explicit recent-search cleanup without changing the IndexedDB storage or backup model.\n\nV1 through P15 remains the stable product foundation. V2-1 adds reminders, V2-2 lightweight formatting, V2-3 note-to-note link intelligence, V2-4 drawing, V2-5 local voice capture, V2-6 local OCR, V2-7 advanced search, and V2-8 device-local privacy controls while preserving the same zero-backend architecture.\n'''
-          if old_status not in text:
-              raise SystemExit('README status marker changed.')
-          text = text.replace(old_status, new_status, 1)
-
-          marker = '''## Architecture\n'''
-          section = '''## V2-8 scope\n\nV2-8 adds device-local privacy controls for reducing accidental exposure without representing a UI lock as encryption:\n\n- Optional privacy lock with manual **Lock now** action\n- Salted PBKDF2-SHA-256 passcode verification with no plaintext passcode storage\n- Conservative locked-on-reload behavior whenever a local credential exists\n- Auto-lock after Notes is hidden: immediately, 1, 5, 15, or 30 minutes, or never\n- Hide-note-previews mode that suppresses card titles, bodies, checklist text, labels, reminders, and attachment previews\n- Privacy-safe card accessibility labels that do not expose hidden title/body text\n- Generic reminder notification copy by default and always while Notes is locked\n- Explicit recent-search-history cleanup without deleting backed-up saved searches\n- Device-local privacy preferences and credential kept outside portable Notes backups\n- Cross-tab credential-state coordination through browser storage events\n- Full offline operation with no privacy server or account dependency\n\nV2-8 requires **no database migration**. Notes, checklist rows, attachments, reminders, revisions, saved searches, and backups remain unchanged and authoritative in the established IndexedDB model. Privacy preferences and the local credential belong to the current browser profile rather than the portable library.\n\nV2-8 deliberately does **not** claim encryption at rest. It excludes encrypted note blobs/backups, end-to-end encryption, biometrics/WebAuthn, per-note passwords, remote wipe, cloud authentication, and protection against someone who controls the local browser profile or developer tools.\n\n'''
-          if '## V2-8 scope' not in text:
-              if marker not in text:
-                  raise SystemExit('README Architecture marker changed.')
-              text = text.replace(marker, section + marker, 1)
-
-          architecture_marker = '''- Local-first data model\n'''
-          architecture_addition = '''- Device-local privacy context for UI lock, preview masking, notification redaction, and auto-lock state\n- PBKDF2-SHA-256 privacy-lock credential derivation with random salt and no plaintext credential persistence\n- Explicit security boundary: privacy lock masks the application UI but does not encrypt IndexedDB or exported backups\n'''
-          if architecture_addition not in text:
-              if architecture_marker not in text:
-                  raise SystemExit('README architecture insertion marker changed.')
-              text = text.replace(architecture_marker, architecture_marker + architecture_addition, 1)
-
-          docs_marker = 'See [`docs/DATABASE.md`](docs/DATABASE.md)'
-          if 'privacy/security boundary' not in text:
-              if docs_marker not in text:
-                  raise SystemExit('README docs marker changed.')
-              text = text.replace(
-                  docs_marker,
-                  'See [`docs/PRIVACY.md`](docs/PRIVACY.md) for V2-8 lock, preview masking, notification redaction, local-trace cleanup, and the privacy/security boundary.\n\n' + docs_marker,
-                  1,
-              )
-
-          path.write_text(text)
-          PY
-
           npx prettier --write README.md docs/PRIVACY.md src/App.tsx src/components/AppHeader.tsx src/features/privacy src/features/reminders/ReminderNotificationCoordinator.tsx src/features/notes/NoteCard.tsx src/styles/privacy.css src/styles.css e2e/privacy.spec.ts
-
           if ! git diff --quiet -- .; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add README.md docs/PRIVACY.md src/App.tsx src/components/AppHeader.tsx src/features/privacy src/features/reminders/ReminderNotificationCoordinator.tsx src/features/notes/NoteCard.tsx src/styles/privacy.css src/styles.css e2e/privacy.spec.ts
-            git commit -m "V2-8: polish privacy release candidate"
+            git commit -m "V2-8: format privacy release candidate"
             git push origin HEAD:v2-8-privacy-enhancements
           fi
 
