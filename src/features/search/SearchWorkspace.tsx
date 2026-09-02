@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { LayoutGrid, Rows3, SearchX } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { LayoutGrid, Rows3, SearchX, X } from 'lucide-react';
 
 import { IconButton } from '../../components/ui/IconButton';
 import {
@@ -19,10 +19,16 @@ import { MasonryGrid } from '../notes/MasonryGrid';
 import { type NoteCardActions, type NoteCollectionMode } from '../notes/NoteCard';
 import { NoteEditorDialog } from '../notes/NoteEditorDialog';
 import { readNotesViewMode, writeNotesViewMode, type NotesViewMode } from '../notes/viewMode';
-import { parseSearchQuery, searchDocuments, type SearchDocument } from './searchEngine';
+import { richTextToPlainText } from '../richText/richText';
+import {
+  parseSearchQuery,
+  primarySearchMatchField,
+  searchDocuments,
+  type SearchDocument,
+} from './searchEngine';
 import { SearchFiltersPanel } from './SearchFiltersPanel';
 import { SearchRepository } from './searchRepository';
-import type { SearchFilters } from './searchTypes';
+import { DEFAULT_SEARCH_FILTERS, type SearchFilters } from './searchTypes';
 
 const searchRepository = new SearchRepository(notesDatabase);
 const notesRepository = new NotesRepository(notesDatabase);
@@ -36,6 +42,8 @@ interface SearchWorkspaceProps {
   filtersOpen: boolean;
   labels: LabelRecord[];
   onFiltersChange(filters: SearchFilters): void;
+  onCloseFilters(): void;
+  onClearSearch(): void;
 }
 
 interface EditingState {
@@ -49,6 +57,8 @@ export function SearchWorkspace({
   filtersOpen,
   labels,
   onFiltersChange,
+  onCloseFilters,
+  onClearSearch,
 }: SearchWorkspaceProps) {
   const [documents, setDocuments] = useState<SearchDocument[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -58,6 +68,7 @@ export function SearchWorkspace({
   const [attachmentRefreshByNote, setAttachmentRefreshByNote] = useState<Record<string, number>>(
     {},
   );
+  const searchOriginNoteIdRef = useRef<string | null>(null);
 
   const showToast = useCallback((message: string, undo?: () => Promise<void>) => {
     const id = crypto.randomUUID();
@@ -129,6 +140,18 @@ export function SearchWorkspace({
     () => new Map(documents.map((document) => [document.note.id, document])),
     [documents],
   );
+  const activeFilterChips = useMemo(
+    () => buildActiveFilterChips(filters, labels),
+    [filters, labels],
+  );
+  const searchContextByNote = useMemo<Record<string, string>>(() => {
+    const contexts: Record<string, string> = {};
+    for (const result of results) {
+      const context = buildSearchContext(result.document, query);
+      if (context) contexts[result.document.note.id] = context;
+    }
+    return contexts;
+  }, [query, results]);
 
   const handleViewMode = useCallback((nextMode: NotesViewMode) => {
     setViewMode(nextMode);
@@ -268,7 +291,9 @@ export function SearchWorkspace({
     () => ({
       open: (note) => {
         const document = documentsById.get(note.id);
-        if (document) setEditing({ note: document.note, items: document.checklistItems });
+        if (!document) return;
+        searchOriginNoteIdRef.current = note.id;
+        setEditing({ note: document.note, items: document.checklistItems });
       },
       togglePin: (note) => void handleTogglePin(note),
       archive: (note) => void handleArchive(note),
@@ -308,6 +333,23 @@ export function SearchWorkspace({
     [reloadIndex],
   );
 
+  const closeEditing = useCallback(() => {
+    setEditing(null);
+    window.requestAnimationFrame(() => {
+      if (document.querySelector('[role="dialog"]')) return;
+      const noteId = searchOriginNoteIdRef.current;
+      const card = noteId
+        ? document.querySelector<HTMLElement>(`[data-note-id="${noteId}"]`)
+        : null;
+      const target = card?.querySelector<HTMLButtonElement>('.note-card-open');
+      if (target) {
+        target.focus();
+        return;
+      }
+      document.querySelector<HTMLInputElement>('input[aria-label="Search notes"]')?.focus();
+    });
+  }, []);
+
   const handleUndo = useCallback(() => {
     const undo = toast?.undo;
     if (!undo) return;
@@ -318,13 +360,27 @@ export function SearchWorkspace({
   return (
     <>
       {filtersOpen ? (
-        <SearchFiltersPanel filters={filters} labels={labels} onChange={onFiltersChange} />
+        <>
+          <button
+            className="search-filters-backdrop"
+            type="button"
+            aria-label="Close search filters"
+            onClick={onCloseFilters}
+          />
+          <SearchFiltersPanel
+            filters={filters}
+            labels={labels}
+            onChange={onFiltersChange}
+            onClose={onCloseFilters}
+          />
+        </>
       ) : null}
 
       <div className="search-results-toolbar">
-        <div>
+        <div className="search-results-summary" role="status" aria-live="polite">
           <strong>{loaded ? results.length : '…'}</strong>{' '}
           <span>{results.length === 1 ? 'result' : 'results'}</span>
+          {query.trim() ? <span className="search-results-for"> for “{query.trim()}”</span> : null}
         </div>
         <div className="notes-view-toggle" role="group" aria-label="Search result view">
           <IconButton
@@ -348,6 +404,30 @@ export function SearchWorkspace({
         </div>
       </div>
 
+      {activeFilterChips.length > 0 ? (
+        <div className="search-active-filters" aria-label="Active search filters">
+          {activeFilterChips.map((chip) => (
+            <button
+              className="search-filter-chip"
+              type="button"
+              aria-label={`Remove filter ${chip.label}`}
+              key={chip.key}
+              onClick={() => onFiltersChange(chip.nextFilters)}
+            >
+              <span>{chip.label}</span>
+              <X aria-hidden="true" />
+            </button>
+          ))}
+          <button
+            className="search-clear-active-filters"
+            type="button"
+            onClick={() => onFiltersChange({ ...DEFAULT_SEARCH_FILTERS })}
+          >
+            Clear filters
+          </button>
+        </div>
+      ) : null}
+
       {parsedQuery.errors.length > 0 ? (
         <div className="search-query-errors" role="status">
           {parsedQuery.errors.map((error) => (
@@ -363,6 +443,11 @@ export function SearchWorkspace({
           </span>
           <h2 id="search-empty-title">No matching notes</h2>
           <p>Try fewer words, remove a filter, or use a broader date range.</p>
+          <div className="search-empty-actions">
+            <button className="search-empty-reset" type="button" onClick={onClearSearch}>
+              Reset search
+            </button>
+          </div>
         </section>
       ) : null}
 
@@ -375,6 +460,7 @@ export function SearchWorkspace({
           labels={labels}
           actions={actions}
           attachmentRefreshByNote={attachmentRefreshByNote}
+          searchContextByNote={searchContextByNote}
         />
       ) : null}
       {archivedDocuments.length > 0 ? (
@@ -386,6 +472,7 @@ export function SearchWorkspace({
           labels={labels}
           actions={actions}
           attachmentRefreshByNote={attachmentRefreshByNote}
+          searchContextByNote={searchContextByNote}
         />
       ) : null}
 
@@ -404,7 +491,7 @@ export function SearchWorkspace({
               setEditing({ note, items: [] });
               void reloadIndex();
             }}
-            onClose={() => setEditing(null)}
+            onClose={closeEditing}
           />
         ) : (
           <NoteEditorDialog
@@ -427,7 +514,7 @@ export function SearchWorkspace({
                 showToast('Note could not be converted to a checklist.');
               }
             }}
-            onClose={() => setEditing(null)}
+            onClose={closeEditing}
           />
         )
       ) : null}
@@ -445,6 +532,7 @@ function SearchSection({
   labels,
   actions,
   attachmentRefreshByNote,
+  searchContextByNote,
 }: {
   title: string | null;
   documents: SearchDocument[];
@@ -453,6 +541,7 @@ function SearchSection({
   labels: LabelRecord[];
   actions: NoteCardActions;
   attachmentRefreshByNote: Record<string, number>;
+  searchContextByNote: Record<string, string>;
 }) {
   const notes = documents.map((document) => document.note);
   const labelIdsByNote = Object.fromEntries(
@@ -475,7 +564,101 @@ function SearchSection({
         labelIdsByNote={labelIdsByNote}
         checklistItemsByNote={checklistItemsByNote}
         attachmentRefreshByNote={attachmentRefreshByNote}
+        searchContextByNote={searchContextByNote}
       />
     </section>
   );
+}
+
+interface ActiveFilterChip {
+  key: string;
+  label: string;
+  nextFilters: SearchFilters;
+}
+
+function buildActiveFilterChips(filters: SearchFilters, labels: LabelRecord[]): ActiveFilterChip[] {
+  const chips: ActiveFilterChip[] = [];
+  if (filters.type !== 'any') {
+    chips.push({
+      key: 'type',
+      label: `Type: ${filters.type === 'text' ? 'Text' : 'Checklist'}`,
+      nextFilters: { ...filters, type: 'any' },
+    });
+  }
+  if (filters.status !== 'any') {
+    chips.push({
+      key: 'status',
+      label: `Status: ${capitalize(filters.status)}`,
+      nextFilters: { ...filters, status: 'any' },
+    });
+  }
+  for (const color of filters.colors) {
+    chips.push({
+      key: `color:${color}`,
+      label: `Color: ${capitalize(color)}`,
+      nextFilters: { ...filters, colors: filters.colors.filter((item) => item !== color) },
+    });
+  }
+  for (const labelId of filters.labelIds) {
+    const name = labels.find((label) => label.id === labelId)?.name ?? 'Unknown';
+    chips.push({
+      key: `label:${labelId}`,
+      label: `Label: ${name}`,
+      nextFilters: { ...filters, labelIds: filters.labelIds.filter((id) => id !== labelId) },
+    });
+  }
+  if (filters.after) {
+    chips.push({
+      key: 'after',
+      label: `After: ${filters.after}`,
+      nextFilters: { ...filters, after: '' },
+    });
+  }
+  if (filters.before) {
+    chips.push({
+      key: 'before',
+      label: `Before: ${filters.before}`,
+      nextFilters: { ...filters, before: '' },
+    });
+  }
+  return chips;
+}
+
+function buildSearchContext(document: SearchDocument, query: string): string | null {
+  const field = primarySearchMatchField(document, query);
+  if (!field) return null;
+
+  if (field === 'title') return formatSearchContext('Title', document.note.title);
+  if (field === 'label') return formatSearchContext('Label', document.labelNames.join(' · '));
+  if (field === 'attachment') {
+    return formatSearchContext('Attachment', document.attachmentNames.join(' · '));
+  }
+  if (field === 'ocr') return formatSearchContext('OCR', document.ocrText);
+  if (field === 'checklist') {
+    return formatSearchContext(
+      'Checklist',
+      document.checklistItems
+        .map((item) => item.text)
+        .filter(Boolean)
+        .join(' · '),
+    );
+  }
+  const body =
+    document.note.type === 'text'
+      ? richTextToPlainText(document.note.content)
+      : document.note.content;
+  return formatSearchContext('Text', body);
+}
+
+function formatSearchContext(label: string, value: string): string | null {
+  const compact = value.replace(/\s+/gu, ' ').trim();
+  if (!compact) return null;
+  const maximum = 150;
+  const excerpt =
+    compact.length > maximum ? `${compact.slice(0, maximum - 1).trimEnd()}…` : compact;
+  return `${label} · ${excerpt}`;
+}
+
+function capitalize(value: string): string {
+  return value ? `${value[0]?.toLocaleUpperCase() ?? ''}${value.slice(1)}` : value;
 }

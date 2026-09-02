@@ -70,6 +70,7 @@ interface NoteCardProps {
   checklistItems: ChecklistItemRecord[];
   reminder?: ReminderRecord | null;
   attachmentRefreshKey?: number;
+  searchContext?: string | undefined;
   selection?: NoteCardSelection | undefined;
 }
 
@@ -86,6 +87,7 @@ export function NoteCard({
   checklistItems,
   reminder,
   attachmentRefreshKey = 0,
+  searchContext,
   selection,
 }: NoteCardProps) {
   const cardRef = useRef<HTMLElement>(null);
@@ -248,6 +250,7 @@ export function NoteCard({
             labels={selectedLabels}
             checklistItems={checklistItems}
             attachmentRefreshKey={attachmentRefreshKey}
+            searchContext={searchContext}
           />
         </button>
       ) : (
@@ -259,6 +262,7 @@ export function NoteCard({
             labels={selectedLabels}
             checklistItems={checklistItems}
             attachmentRefreshKey={attachmentRefreshKey}
+            searchContext={searchContext}
           />
         </div>
       )}
@@ -426,6 +430,7 @@ function NoteCardContent({
   labels,
   checklistItems,
   attachmentRefreshKey,
+  searchContext,
 }: {
   note: NoteRecord;
   mode: NoteCardMode;
@@ -433,6 +438,7 @@ function NoteCardContent({
   labels: LabelRecord[];
   checklistItems: ChecklistItemRecord[];
   attachmentRefreshKey: number;
+  searchContext?: string | undefined;
 }) {
   return (
     <>
@@ -447,6 +453,11 @@ function NoteCardContent({
       ) : null}
       {note.type === 'text' && !note.title && !note.content ? (
         <span className="note-card-empty">Empty note</span>
+      ) : null}
+      {searchContext ? (
+        <span className="note-card-search-context" aria-label={`Search match: ${searchContext}`}>
+          {searchContext}
+        </span>
       ) : null}
       {reminder && (reminder.status === 'active' || mode === 'reminders') ? (
         <span className="note-card-reminder" data-status={reminder.status}>

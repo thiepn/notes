@@ -45,6 +45,8 @@ export interface SearchResult {
   score: number;
 }
 
+export type SearchMatchField = 'title' | 'label' | 'attachment' | 'ocr' | 'checklist' | 'body';
+
 interface FieldWeights {
   exact: number;
   prefix: number;
@@ -221,6 +223,76 @@ export function searchDocuments(
     if (aPinned !== bPinned) return aPinned ? -1 : 1;
     return b.document.note.updatedAt - a.document.note.updatedAt;
   });
+}
+
+export function primarySearchMatchField(
+  document: SearchDocument,
+  query: string,
+): SearchMatchField | null {
+  const terms = parseSearchQuery(query).terms;
+  if (terms.length === 0) return null;
+
+  const candidates: Array<{
+    field: SearchMatchField;
+    normalized: string;
+    tokens: string[];
+    weights: FieldWeights;
+  }> = [
+    {
+      field: 'title',
+      normalized: document.normalizedTitle,
+      tokens: document.titleTokens,
+      weights: TITLE_WEIGHTS,
+    },
+    {
+      field: 'label',
+      normalized: document.normalizedLabels,
+      tokens: document.labelTokens,
+      weights: LABEL_WEIGHTS,
+    },
+    {
+      field: 'attachment',
+      normalized: document.normalizedAttachments,
+      tokens: document.attachmentTokens,
+      weights: ATTACHMENT_WEIGHTS,
+    },
+    {
+      field: 'ocr',
+      normalized: document.normalizedOcr,
+      tokens: document.ocrTokens,
+      weights: OCR_WEIGHTS,
+    },
+    {
+      field: 'checklist',
+      normalized: document.normalizedChecklist,
+      tokens: document.checklistTokens,
+      weights: CHECKLIST_WEIGHTS,
+    },
+    {
+      field: 'body',
+      normalized: document.normalizedBody,
+      tokens: document.bodyTokens,
+      weights: BODY_WEIGHTS,
+    },
+  ];
+
+  let best: { field: SearchMatchField; matched: number; score: number } | null = null;
+  for (const candidate of candidates) {
+    let matched = 0;
+    let score = 0;
+    for (const term of terms) {
+      const termScore = scoreField(term, candidate.normalized, candidate.tokens, candidate.weights);
+      if (termScore <= 0) continue;
+      matched += 1;
+      score += termScore;
+    }
+    if (matched === 0) continue;
+    if (!best || matched > best.matched || (matched === best.matched && score > best.score)) {
+      best = { field: candidate.field, matched, score };
+    }
+  }
+
+  return best?.field ?? null;
 }
 
 function scoreDocument(

@@ -1,4 +1,4 @@
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, X } from 'lucide-react';
 
 import { NOTE_COLORS, type LabelRecord, type NoteColor } from '../../db';
 import { DEFAULT_SEARCH_FILTERS, type SearchFilters } from './searchTypes';
@@ -21,9 +21,15 @@ interface SearchFiltersPanelProps {
   filters: SearchFilters;
   labels: LabelRecord[];
   onChange(filters: SearchFilters): void;
+  onClose(): void;
 }
 
-export function SearchFiltersPanel({ filters, labels, onChange }: SearchFiltersPanelProps) {
+export function SearchFiltersPanel({
+  filters,
+  labels,
+  onChange,
+  onClose,
+}: SearchFiltersPanelProps) {
   const toggleColor = (color: NoteColor) => {
     const colors = filters.colors.includes(color)
       ? filters.colors.filter((item) => item !== color)
@@ -40,6 +46,21 @@ export function SearchFiltersPanel({ filters, labels, onChange }: SearchFiltersP
 
   return (
     <section className="search-filters" aria-label="Search filters">
+      <header className="search-filters-header">
+        <div>
+          <strong>Filters</strong>
+          <span>Refine local results</span>
+        </div>
+        <button
+          className="search-filters-close"
+          type="button"
+          aria-label="Close search filters"
+          onClick={onClose}
+        >
+          <X aria-hidden="true" />
+        </button>
+      </header>
+
       <div className="search-filter-row search-filter-selects">
         <label>
           <span>Type</span>

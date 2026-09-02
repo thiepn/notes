@@ -477,7 +477,7 @@ export function AppShell() {
         ) : null}
 
         <main className="app-main" id="main-content">
-          <div className="workspace">
+          <div className={`workspace${searchActive ? ' workspace-search-active' : ''}`}>
             <header className="workspace-heading">
               <div>
                 <p className="workspace-kicker">Local workspace</p>
@@ -494,6 +494,8 @@ export function AppShell() {
                 filtersOpen={searchFiltersOpen}
                 labels={labels}
                 onFiltersChange={setSearchFilters}
+                onCloseFilters={() => setSearchFiltersOpen(false)}
+                onClearSearch={clearSearch}
               />
             ) : activeSection === 'backup' ? (
               <BackupWorkspace onRestored={handleLibraryRestored} onImported={refreshLabels} />

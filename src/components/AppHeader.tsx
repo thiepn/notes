@@ -80,6 +80,14 @@ export function AppHeader({
   const currentIsSaved = savedSearches.some(
     (search) => searchSignature(search) === currentSignature,
   );
+  const historyVisible = searchHistoryOpen && !searchQuery.trim() && !filtersActive && !filtersOpen;
+  const activeFilterCount =
+    (searchFilters.type !== 'any' ? 1 : 0) +
+    (searchFilters.status !== 'any' ? 1 : 0) +
+    searchFilters.colors.length +
+    searchFilters.labelIds.length +
+    (searchFilters.after ? 1 : 0) +
+    (searchFilters.before ? 1 : 0);
 
   useEffect(() => {
     let cancelled = false;
@@ -197,13 +205,48 @@ export function AppHeader({
           type="search"
           placeholder="Search notes"
           aria-label="Search notes"
+          aria-keyshortcuts="/"
+          enterKeyHint="search"
           value={searchQuery}
           onChange={(event) => onSearchQueryChange(event.target.value)}
           onKeyDown={(event) => {
-            if (event.key === 'Escape' && searchQuery) {
+            if (event.key === 'ArrowDown') {
+              const target = historyVisible
+                ? document.querySelector<HTMLButtonElement>(
+                    '.search-history-popover .search-history-apply',
+                  )
+                : document.querySelector<HTMLButtonElement>(
+                    '.search-result-section .note-card-open',
+                  );
+              if (target) {
+                event.preventDefault();
+                target.focus();
+              }
+              return;
+            }
+
+            if (event.key !== 'Escape') return;
+            if (historyVisible) {
+              event.preventDefault();
+              setSearchHistoryOpen(false);
+              return;
+            }
+            if (searchQuery) {
               event.preventDefault();
               onSearchQueryChange('');
+              return;
             }
+            if (filtersOpen) {
+              event.preventDefault();
+              onToggleFilters();
+              return;
+            }
+            if (filtersActive) {
+              event.preventDefault();
+              onClearSearch();
+              return;
+            }
+            event.currentTarget.blur();
           }}
         />
         {searchQuery ? (
@@ -226,6 +269,11 @@ export function AppHeader({
           onClick={onToggleFilters}
         >
           <SlidersHorizontal />
+          {activeFilterCount > 0 ? (
+            <span className="search-filter-count" aria-hidden="true">
+              {activeFilterCount}
+            </span>
+          ) : null}
         </button>
         {currentCanBeSaved ? (
           <button
@@ -246,7 +294,7 @@ export function AppHeader({
           </button>
         ) : null}
 
-        {searchHistoryOpen && !searchQuery.trim() && !filtersActive && !filtersOpen ? (
+        {historyVisible ? (
           <SearchHistoryPopover
             saved={savedSearches}
             recent={recentSearches}
