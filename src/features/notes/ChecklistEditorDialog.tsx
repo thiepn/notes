@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -24,6 +25,8 @@ import { OcrAttachmentControl } from '../ocr/OcrAttachmentControl';
 import { ReminderControl } from '../reminders/ReminderControl';
 import { VoiceAttachmentButton } from '../voice/VoiceAttachmentButton';
 import { AttachmentPanel } from './AttachmentPanel';
+import { EditorCloseButton, EditorStatusBar } from './EditorStatusBar';
+import { checklistEditorMetrics } from './editorInsights';
 import {
   clearChecklistEditorJournal,
   readChecklistEditorJournal,
@@ -87,6 +90,8 @@ export function ChecklistEditorDialog({
   const [draft, setDraft] = useState(initial.draft);
   const [status, setStatus] = useState<EditorStatus>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [lastSavedAt, setLastSavedAt] = useState(note.updatedAt);
+  const [hasPendingChanges, setHasPendingChanges] = useState(() => initial.journal !== null);
   const [hideCompleted, setHideCompleted] = useState(false);
   const [moveCompletedDown, setMoveCompletedDown] = useState(readMoveCompletedPreference);
   const [historyNote, setHistoryNote] = useState<NoteRecord | null>(null);
@@ -128,16 +133,22 @@ export function ChecklistEditorDialog({
       );
       noteRef.current = saved.note;
       onSaved(saved.note, saved.items);
-      if (mountedRef.current) setStatus('idle');
+      if (mountedRef.current) {
+        setStatus('idle');
+        setLastSavedAt(saved.note.updatedAt);
+      }
 
       const pending = pendingDraftRef.current;
-      if (sameDraft(pending, snapshot)) clearChecklistEditorJournal();
-      else {
+      if (sameDraft(pending, snapshot)) {
+        clearChecklistEditorJournal();
+        if (mountedRef.current) setHasPendingChanges(false);
+      } else {
         writeChecklistEditorJournal({
           noteId: saved.note.id,
           title: pending.title,
           items: pending.items,
         });
+        if (mountedRef.current) setHasPendingChanges(true);
       }
       return saved;
     });
@@ -152,6 +163,7 @@ export function ChecklistEditorDialog({
       if (mountedRef.current) {
         setStatus('error');
         setErrorMessage(toErrorMessage(error));
+        setHasPendingChanges(true);
       }
       throw error;
     });
@@ -184,6 +196,7 @@ export function ChecklistEditorDialog({
       setDraft(nextDraft);
       setStatus('idle');
       setErrorMessage(null);
+      setHasPendingChanges(true);
       scheduleSave(nextDraft);
     },
     [scheduleSave],
@@ -318,6 +331,14 @@ export function ChecklistEditorDialog({
     }
   };
 
+  const metrics = useMemo(() => {
+    const current = checklistEditorMetrics(draft.items);
+    return [
+      `${current.items} ${current.items === 1 ? 'item' : 'items'}`,
+      `${current.completed} completed`,
+    ];
+  }, [draft.items]);
+
   const handleLayerPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!historyNote && event.target === event.currentTarget) void finish();
   };
@@ -436,17 +457,14 @@ export function ChecklistEditorDialog({
               ) : null}
             </div>
 
-            <div className="note-editor-state" aria-live="polite">
-              {status === 'saving' ? <span className="sr-only">Saving…</span> : null}
-              {errorMessage ? (
-                <span className="note-editor-error" role="alert">
-                  {errorMessage}
-                  <button type="button" onClick={() => void persistLatest()}>
-                    Retry
-                  </button>
-                </span>
-              ) : null}
-            </div>
+            <EditorStatusBar
+              status={status}
+              hasPendingChanges={hasPendingChanges}
+              lastSavedAt={lastSavedAt}
+              metrics={metrics}
+              errorMessage={errorMessage}
+              onRetry={() => void persistLatest()}
+            />
 
             <div className="note-editor-footer-actions">
               <div className="note-editor-menu-slot">
@@ -479,9 +497,7 @@ export function ChecklistEditorDialog({
                   </div>
                 ) : null}
               </div>
-              <button className="note-editor-close" type="button" onClick={() => void finish()}>
-                Close
-              </button>
+              <EditorCloseButton onClick={() => void finish()} />
             </div>
           </div>
         </div>

@@ -21,7 +21,13 @@ export function EditorStatusBar({
 }: EditorStatusBarProps) {
   const saveLabel = editorSaveLabel(status, hasPendingChanges);
   const saveState =
-    status === 'error' ? 'error' : status === 'saving' ? 'saving' : hasPendingChanges ? 'pending' : 'saved';
+    status === 'error'
+      ? 'error'
+      : status === 'saving'
+        ? 'saving'
+        : hasPendingChanges
+          ? 'pending'
+          : 'saved';
 
   return (
     <div className="note-editor-state" aria-live="polite">

@@ -69,14 +69,20 @@ test('checklist editor reports meaningful item and completion metrics with autos
   await card.getByRole('button', { name: 'Open note: Editor checklist' }).click();
   const dialog = page.getByRole('dialog', { name: 'Edit checklist' });
 
-  await expect(dialog.locator('.note-editor-save-indicator')).toHaveAttribute('data-state', 'saved');
+  await expect(dialog.locator('.note-editor-save-indicator')).toHaveAttribute(
+    'data-state',
+    'saved',
+  );
   await expect(dialog.getByText('3 items', { exact: true })).toBeVisible();
   await expect(dialog.getByText('0 completed', { exact: true })).toBeVisible();
 
   await dialog.getByRole('checkbox', { name: 'Mark item 1 complete' }).check();
   await expect(dialog.getByText('3 items', { exact: true })).toBeVisible();
   await expect(dialog.getByText('1 completed', { exact: true })).toBeVisible();
-  await expect(dialog.locator('.note-editor-save-indicator')).toHaveAttribute('data-state', 'saved');
+  await expect(dialog.locator('.note-editor-save-indicator')).toHaveAttribute(
+    'data-state',
+    'saved',
+  );
 
   const stored = await page.evaluate(async () => {
     const db = await import('/notes/src/db/index.ts');
@@ -101,7 +107,10 @@ test('recovered text edits settle back to a saved state without changing recover
 
   const recovered = page.getByRole('dialog', { name: 'Edit note' });
   await expect(recovered.getByLabel('Edit note text')).toHaveValue('Recovered editor content');
-  await expect(recovered.locator('.note-editor-save-indicator')).toHaveAttribute('data-state', 'saved');
+  await expect(recovered.locator('.note-editor-save-indicator')).toHaveAttribute(
+    'data-state',
+    'saved',
+  );
   await expect
     .poll(() =>
       page.evaluate(async (id) => {
