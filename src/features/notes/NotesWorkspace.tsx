@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LayoutGrid, NotebookPen, Rows3 } from 'lucide-react';
 
 import { IconButton } from '../../components/ui/IconButton';
@@ -19,14 +19,11 @@ import {
   type NoteRecord,
 } from '../../db';
 import { BulkSelectionToolbar } from './BulkSelectionToolbar';
-import { ChecklistComposer } from './ChecklistComposer';
-import { ChecklistEditorDialog } from './ChecklistEditorDialog';
 import {
   clearChecklistEditorJournal,
   readChecklistCaptureJournal,
   readChecklistEditorJournal,
 } from './checklistJournal';
-import { ConfirmDeleteDialog } from './ConfirmDeleteDialog';
 import { clearEditorJournal, readEditorJournal } from './editorJournal';
 import { LifecycleToast, type LifecycleToastState } from './LifecycleToast';
 import { MasonryGrid } from './MasonryGrid';
@@ -35,7 +32,6 @@ import {
   type NoteCollectionMode,
   type NoteSelectionIntent,
 } from './NoteCard';
-import { NoteEditorDialog } from './NoteEditorDialog';
 import { TextNoteComposer } from './TextNoteComposer';
 import { readNotesViewMode, writeNotesViewMode, type NotesViewMode } from './viewMode';
 
@@ -44,6 +40,19 @@ const labelsRepository = new LabelsRepository(notesDatabase);
 const checklistsRepository = new ChecklistsRepository(notesDatabase);
 const attachmentsRepository = new AttachmentsRepository(notesDatabase);
 const bulkActionsRepository = new BulkActionsRepository(notesDatabase);
+
+const ChecklistComposer = lazy(() =>
+  import('./ChecklistComposer').then((module) => ({ default: module.ChecklistComposer })),
+);
+const ChecklistEditorDialog = lazy(() =>
+  import('./ChecklistEditorDialog').then((module) => ({ default: module.ChecklistEditorDialog })),
+);
+const ConfirmDeleteDialog = lazy(() =>
+  import('./ConfirmDeleteDialog').then((module) => ({ default: module.ConfirmDeleteDialog })),
+);
+const NoteEditorDialog = lazy(() =>
+  import('./NoteEditorDialog').then((module) => ({ default: module.NoteEditorDialog })),
+);
 const EMPTY_NOTES: NoteRecord[] = [];
 const EMPTY_LABEL_MAP: Record<string, string[]> = {};
 const EMPTY_CHECKLIST_MAP: Record<string, ChecklistItemRecord[]> = {};
@@ -728,17 +737,19 @@ export function NotesWorkspace({
     <>
       {mode === 'notes' ? (
         checklistCaptureOpen ? (
-          <ChecklistComposer
-            repository={checklistsRepository}
-            notesRepository={notesRepository}
-            attachmentsRepository={attachmentsRepository}
-            beforeSaved={prepareCapturedNote}
-            onSaved={handleChecklistSaved}
-            onRemoved={handleRemoved}
-            onActiveNoteChange={setActiveCaptureNoteId}
-            onAttachmentsChanged={handleAttachmentsChanged}
-            onFinished={() => setChecklistCaptureOpen(false)}
-          />
+          <Suspense fallback={<DeferredNoteSurface label="Loading checklist…" />}>
+            <ChecklistComposer
+              repository={checklistsRepository}
+              notesRepository={notesRepository}
+              attachmentsRepository={attachmentsRepository}
+              beforeSaved={prepareCapturedNote}
+              onSaved={handleChecklistSaved}
+              onRemoved={handleRemoved}
+              onActiveNoteChange={setActiveCaptureNoteId}
+              onAttachmentsChanged={handleAttachmentsChanged}
+              onFinished={() => setChecklistCaptureOpen(false)}
+            />
+          </Suspense>
         ) : (
           <TextNoteComposer
             repository={notesRepository}
@@ -756,25 +767,27 @@ export function NotesWorkspace({
       {visibleNotes.length > 0 ? (
         <div className="notes-board" data-view={viewMode} data-mode={mode}>
           {selectionActive ? (
-            <BulkSelectionToolbar
-              mode={mode}
-              selectedNotes={selectedNotes}
-              visibleCount={visibleNotes.length}
-              labels={labels}
-              labelIdsByNote={labelIdsByNote}
-              onClear={clearSelection}
-              onSelectAll={handleSelectAll}
-              onSetPinned={(pinned) => void handleBulkSetPinned(pinned)}
-              onArchive={() => void handleBulkArchive()}
-              onUnarchive={() => void handleBulkUnarchive()}
-              onTrash={() => void handleBulkTrash()}
-              onRestore={() => void handleBulkRestore()}
-              onDeletePermanently={() => setBulkDeleteIds(selectedNotes.map((note) => note.id))}
-              onSetColor={(color) => void handleBulkSetColor(color)}
-              onSetLabelMembership={(labelId, assigned) =>
-                void handleBulkSetLabelMembership(labelId, assigned)
-              }
-            />
+            <Suspense fallback={null}>
+              <BulkSelectionToolbar
+                mode={mode}
+                selectedNotes={selectedNotes}
+                visibleCount={visibleNotes.length}
+                labels={labels}
+                labelIdsByNote={labelIdsByNote}
+                onClear={clearSelection}
+                onSelectAll={handleSelectAll}
+                onSetPinned={(pinned) => void handleBulkSetPinned(pinned)}
+                onArchive={() => void handleBulkArchive()}
+                onUnarchive={() => void handleBulkUnarchive()}
+                onTrash={() => void handleBulkTrash()}
+                onRestore={() => void handleBulkRestore()}
+                onDeletePermanently={() => setBulkDeleteIds(selectedNotes.map((note) => note.id))}
+                onSetColor={(color) => void handleBulkSetColor(color)}
+                onSetLabelMembership={(labelId, assigned) =>
+                  void handleBulkSetLabelMembership(labelId, assigned)
+                }
+              />
+            </Suspense>
           ) : (
             <div className="notes-toolbar">
               <span className="notes-count">
@@ -847,59 +860,75 @@ export function NotesWorkspace({
       ) : null}
 
       {editingNote && mode !== 'trash' ? (
-        editingNote.type === 'checklist' ? (
-          <ChecklistEditorDialog
-            key={editingNote.id}
-            note={editingNote}
-            items={checklistItemsByNote[editingNote.id] ?? []}
-            repository={checklistsRepository}
-            attachmentsRepository={attachmentsRepository}
-            attachmentRefreshKey={attachmentRefreshByNote[editingNote.id] ?? 0}
-            onSaved={handleChecklistSaved}
-            onAttachmentsChanged={handleAttachmentsChanged}
-            onConverted={handleConvertedToText}
-            onClose={() => setEditingNoteId(null)}
-          />
-        ) : (
-          <NoteEditorDialog
-            key={editingNote.id}
-            note={editingNote}
-            repository={notesRepository}
-            attachmentsRepository={attachmentsRepository}
-            attachmentRefreshKey={attachmentRefreshByNote[editingNote.id] ?? 0}
-            onSaved={handleSaved}
-            onAttachmentsChanged={handleAttachmentsChanged}
-            onHistoryChecklistSaved={handleChecklistSaved}
-            onConvertToChecklist={async () => {
-              try {
-                const converted = await checklistsRepository.convertTextToChecklist(editingNote.id);
-                handleChecklistSaved(converted.note, converted.items);
-                setEditingNoteId(converted.note.id);
-              } catch {
-                showToast('Note could not be converted to a checklist.');
-              }
-            }}
-            onClose={() => setEditingNoteId(null)}
-          />
-        )
+        <Suspense fallback={<DeferredNoteSurface label="Opening note…" />}>
+          {editingNote.type === 'checklist' ? (
+            <ChecklistEditorDialog
+              key={editingNote.id}
+              note={editingNote}
+              items={checklistItemsByNote[editingNote.id] ?? []}
+              repository={checklistsRepository}
+              attachmentsRepository={attachmentsRepository}
+              attachmentRefreshKey={attachmentRefreshByNote[editingNote.id] ?? 0}
+              onSaved={handleChecklistSaved}
+              onAttachmentsChanged={handleAttachmentsChanged}
+              onConverted={handleConvertedToText}
+              onClose={() => setEditingNoteId(null)}
+            />
+          ) : (
+            <NoteEditorDialog
+              key={editingNote.id}
+              note={editingNote}
+              repository={notesRepository}
+              attachmentsRepository={attachmentsRepository}
+              attachmentRefreshKey={attachmentRefreshByNote[editingNote.id] ?? 0}
+              onSaved={handleSaved}
+              onAttachmentsChanged={handleAttachmentsChanged}
+              onHistoryChecklistSaved={handleChecklistSaved}
+              onConvertToChecklist={async () => {
+                try {
+                  const converted = await checklistsRepository.convertTextToChecklist(
+                    editingNote.id,
+                  );
+                  handleChecklistSaved(converted.note, converted.items);
+                  setEditingNoteId(converted.note.id);
+                } catch {
+                  showToast('Note could not be converted to a checklist.');
+                }
+              }}
+              onClose={() => setEditingNoteId(null)}
+            />
+          )}
+        </Suspense>
       ) : null}
 
       {toast ? <LifecycleToast toast={toast} onUndo={handleUndo} /> : null}
       {deleteCandidate ? (
-        <ConfirmDeleteDialog
-          title={deleteCandidate.title}
-          onCancel={() => setDeleteCandidate(null)}
-          onConfirm={() => void handleConfirmDelete()}
-        />
+        <Suspense fallback={null}>
+          <ConfirmDeleteDialog
+            title={deleteCandidate.title}
+            onCancel={() => setDeleteCandidate(null)}
+            onConfirm={() => void handleConfirmDelete()}
+          />
+        </Suspense>
       ) : null}
       {bulkDeleteIds ? (
-        <ConfirmDeleteDialog
-          count={bulkDeleteIds.length}
-          onCancel={() => setBulkDeleteIds(null)}
-          onConfirm={() => void handleConfirmBulkDelete()}
-        />
+        <Suspense fallback={null}>
+          <ConfirmDeleteDialog
+            count={bulkDeleteIds.length}
+            onCancel={() => setBulkDeleteIds(null)}
+            onConfirm={() => void handleConfirmBulkDelete()}
+          />
+        </Suspense>
       ) : null}
     </>
+  );
+}
+
+function DeferredNoteSurface({ label }: { label: string }) {
+  return (
+    <div className="deferred-note-surface" role="status" aria-live="polite">
+      {label}
+    </div>
   );
 }
 

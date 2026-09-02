@@ -48,7 +48,22 @@ export default defineConfig({
         clientsClaim: true,
         skipWaiting: false,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,wasm,gz}'],
-        maximumFileSizeToCacheInBytes: 16 * 1024 * 1024,
+        globIgnores: ['ocr/**/*'],
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        runtimeCaching: [
+          {
+            urlPattern: /\/notes\/ocr\//u,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'notes-ocr-runtime-v1',
+              cacheableResponse: { statuses: [0, 200] },
+              expiration: {
+                maxEntries: 16,
+                maxAgeSeconds: 365 * 24 * 60 * 60,
+              },
+            },
+          },
+        ],
       },
     }),
   ],

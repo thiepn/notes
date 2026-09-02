@@ -1,4 +1,6 @@
 import {
+  Suspense,
+  lazy,
   useCallback,
   useEffect,
   useRef,
@@ -15,7 +17,6 @@ import type {
   NoteRecord,
   NotesRepository,
 } from '../../db';
-import { AttachmentPanel } from './AttachmentPanel';
 import {
   clearChecklistCaptureJournal,
   readChecklistCaptureJournal,
@@ -23,6 +24,10 @@ import {
 } from './checklistJournal';
 import { createChecklistDraftItem, isMeaningfulChecklist } from './checklistModel';
 import { ChecklistEditorFields } from './ChecklistEditorFields';
+
+const AttachmentPanel = lazy(() =>
+  import('./AttachmentPanel').then((module) => ({ default: module.AttachmentPanel })),
+);
 
 const AUTOSAVE_DELAY_MS = 180;
 const MOVE_COMPLETED_KEY = 'notes.checklist.move-completed';
@@ -402,13 +407,15 @@ export function ChecklistComposer({
 
       {attachmentsOpen ? (
         <div className="note-composer-secondary-panel">
-          <AttachmentPanel
-            noteId={attachmentNoteId}
-            repository={attachmentsRepository}
-            ensureNoteId={ensureNoteId}
-            refreshKey={attachmentRefreshKey}
-            onChanged={markAttachmentsChanged}
-          />
+          <Suspense fallback={<span role="status">Loading attachments…</span>}>
+            <AttachmentPanel
+              noteId={attachmentNoteId}
+              repository={attachmentsRepository}
+              ensureNoteId={ensureNoteId}
+              refreshKey={attachmentRefreshKey}
+              onChanged={markAttachmentsChanged}
+            />
+          </Suspense>
         </div>
       ) : null}
 

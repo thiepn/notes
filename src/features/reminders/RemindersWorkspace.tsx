@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { Bell, LayoutGrid, Rows3 } from 'lucide-react';
 
 import { IconButton } from '../../components/ui/IconButton';
@@ -15,11 +15,9 @@ import {
   type NoteRecord,
   type ReminderRecord,
 } from '../../db';
-import { ChecklistEditorDialog } from '../notes/ChecklistEditorDialog';
 import { LifecycleToast, type LifecycleToastState } from '../notes/LifecycleToast';
 import { MasonryGrid } from '../notes/MasonryGrid';
 import type { NoteCardActions } from '../notes/NoteCard';
-import { NoteEditorDialog } from '../notes/NoteEditorDialog';
 import { readNotesViewMode, writeNotesViewMode, type NotesViewMode } from '../notes/viewMode';
 import { ReminderNotificationSettings } from './ReminderNotificationSettings';
 import { isSameLocalDay } from './reminderTime';
@@ -29,6 +27,14 @@ const remindersRepository = new RemindersRepository(notesDatabase);
 const labelsRepository = new LabelsRepository(notesDatabase);
 const checklistsRepository = new ChecklistsRepository(notesDatabase);
 const attachmentsRepository = new AttachmentsRepository(notesDatabase);
+const ChecklistEditorDialog = lazy(() =>
+  import('../notes/ChecklistEditorDialog').then((module) => ({
+    default: module.ChecklistEditorDialog,
+  })),
+);
+const NoteEditorDialog = lazy(() =>
+  import('../notes/NoteEditorDialog').then((module) => ({ default: module.NoteEditorDialog })),
+);
 const INITIAL_REMINDER_NOW = Date.now();
 
 interface RemindersWorkspaceProps {
@@ -258,37 +264,45 @@ export function RemindersWorkspace({ labels }: RemindersWorkspaceProps) {
       ) : null}
 
       {editingNote ? (
-        editingNote.type === 'checklist' ? (
-          <ChecklistEditorDialog
-            key={editingNote.id}
-            note={editingNote}
-            items={collection.checklistItemsByNote[editingNote.id] ?? []}
-            repository={checklistsRepository}
-            attachmentsRepository={attachmentsRepository}
-            attachmentRefreshKey={attachmentRefreshByNote[editingNote.id] ?? 0}
-            onSaved={handleChecklistSaved}
-            onAttachmentsChanged={handleAttachmentsChanged}
-            onConverted={() => void reload()}
-            onClose={() => setEditingNoteId(null)}
-          />
-        ) : (
-          <NoteEditorDialog
-            key={editingNote.id}
-            note={editingNote}
-            repository={notesRepository}
-            attachmentsRepository={attachmentsRepository}
-            attachmentRefreshKey={attachmentRefreshByNote[editingNote.id] ?? 0}
-            onSaved={handleSaved}
-            onAttachmentsChanged={handleAttachmentsChanged}
-            onHistoryChecklistSaved={handleChecklistSaved}
-            onConvertToChecklist={async () => {
-              const converted = await checklistsRepository.convertTextToChecklist(editingNote.id);
-              setEditingNoteId(converted.note.id);
-              await reload();
-            }}
-            onClose={() => setEditingNoteId(null)}
-          />
-        )
+        <Suspense
+          fallback={
+            <span className="deferred-note-surface" role="status">
+              Opening note…
+            </span>
+          }
+        >
+          {editingNote.type === 'checklist' ? (
+            <ChecklistEditorDialog
+              key={editingNote.id}
+              note={editingNote}
+              items={collection.checklistItemsByNote[editingNote.id] ?? []}
+              repository={checklistsRepository}
+              attachmentsRepository={attachmentsRepository}
+              attachmentRefreshKey={attachmentRefreshByNote[editingNote.id] ?? 0}
+              onSaved={handleChecklistSaved}
+              onAttachmentsChanged={handleAttachmentsChanged}
+              onConverted={() => void reload()}
+              onClose={() => setEditingNoteId(null)}
+            />
+          ) : (
+            <NoteEditorDialog
+              key={editingNote.id}
+              note={editingNote}
+              repository={notesRepository}
+              attachmentsRepository={attachmentsRepository}
+              attachmentRefreshKey={attachmentRefreshByNote[editingNote.id] ?? 0}
+              onSaved={handleSaved}
+              onAttachmentsChanged={handleAttachmentsChanged}
+              onHistoryChecklistSaved={handleChecklistSaved}
+              onConvertToChecklist={async () => {
+                const converted = await checklistsRepository.convertTextToChecklist(editingNote.id);
+                setEditingNoteId(converted.note.id);
+                await reload();
+              }}
+              onClose={() => setEditingNoteId(null)}
+            />
+          )}
+        </Suspense>
       ) : null}
 
       {toast ? (
