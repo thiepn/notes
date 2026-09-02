@@ -10,6 +10,7 @@ import {
   Bell,
   Check,
   Copy,
+  EyeOff,
   MoreHorizontal,
   Palette,
   Pin,
@@ -29,6 +30,7 @@ import {
   type NoteRecord,
   type ReminderRecord,
 } from '../../db';
+import { usePrivacy } from '../privacy/PrivacyContext';
 import { formatReminderShort } from '../reminders/reminderTime';
 import { RichTextContent } from '../richText/RichTextContent';
 import { richTextToPlainText } from '../richText/richText';
@@ -90,13 +92,14 @@ export function NoteCard({
   searchContext,
   selection,
 }: NoteCardProps) {
+  const { hidePreviews } = usePrivacy();
   const cardRef = useRef<HTMLElement>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggeredRef = useRef(false);
   const [openPanel, setOpenPanel] = useState<OrganizationPanel>(null);
   const [loadedReminder, setLoadedReminder] = useState<ReminderRecord | null>(reminder ?? null);
   const effectiveReminder = reminder === undefined ? loadedReminder : reminder;
-  const label = noteLabel(note, checklistItems);
+  const label = hidePreviews ? 'Hidden note' : noteLabel(note, checklistItems);
   const canOpen = mode !== 'trash';
   const selectedLabels = labels.filter((item) => selectedLabelIds.includes(item.id));
   const selectionActive = selection?.active ?? false;
@@ -199,6 +202,7 @@ export function NoteCard({
       data-selection-active={selectionActive}
       data-panel-open={visiblePanel !== null}
       data-has-reminder={effectiveReminder !== null}
+      data-preview-hidden={hidePreviews}
       onPointerDown={handlePointerDown}
       onPointerUp={clearLongPress}
       onPointerCancel={clearLongPress}
@@ -250,6 +254,7 @@ export function NoteCard({
             labels={selectedLabels}
             checklistItems={checklistItems}
             attachmentRefreshKey={attachmentRefreshKey}
+            hidePreview={hidePreviews}
             searchContext={searchContext}
           />
         </button>
@@ -262,6 +267,7 @@ export function NoteCard({
             labels={selectedLabels}
             checklistItems={checklistItems}
             attachmentRefreshKey={attachmentRefreshKey}
+            hidePreview={hidePreviews}
             searchContext={searchContext}
           />
         </div>
@@ -430,6 +436,7 @@ function NoteCardContent({
   labels,
   checklistItems,
   attachmentRefreshKey,
+  hidePreview,
   searchContext,
 }: {
   note: NoteRecord;
@@ -438,8 +445,18 @@ function NoteCardContent({
   labels: LabelRecord[];
   checklistItems: ChecklistItemRecord[];
   attachmentRefreshKey: number;
+  hidePreview: boolean;
   searchContext?: string | undefined;
 }) {
+  if (hidePreview) {
+    return (
+      <span className="note-card-private-placeholder" aria-label="Note preview hidden">
+        <EyeOff aria-hidden="true" />
+        <span>Preview hidden</span>
+      </span>
+    );
+  }
+
   return (
     <>
       <NoteCardAttachmentPreview noteId={note.id} refreshKey={attachmentRefreshKey} />

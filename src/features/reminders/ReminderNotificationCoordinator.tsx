@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 
 import { NotesRepository, RemindersRepository, notesDatabase } from '../../db';
+import { usePrivacy } from '../privacy/PrivacyContext';
+import { privacyNotificationCopy } from '../privacy/privacy';
 import { dispatchReminderChanged } from './reminderEvents';
 
 const remindersRepository = new RemindersRepository(notesDatabase);
@@ -8,6 +10,8 @@ const notesRepository = new NotesRepository(notesDatabase);
 const CHECK_INTERVAL_MS = 60_000;
 
 export function ReminderNotificationCoordinator() {
+  const { privateNotifications, locked } = usePrivacy();
+
   useEffect(() => {
     let checking = false;
 
@@ -20,9 +24,8 @@ export function ReminderNotificationCoordinator() {
         for (const reminder of due) {
           const note = await notesRepository.get(reminder.noteId);
           if (!note || note.trashedAt !== null) continue;
-          const title = note.title.trim() || 'Notes reminder';
-          const body = note.content.trim().slice(0, 180) || 'Open Notes to view this reminder.';
-          const shown = await showLocalNotification(title, body, reminder.noteId);
+          const copy = privacyNotificationCopy(note, privateNotifications || locked);
+          const shown = await showLocalNotification(copy.title, copy.body, reminder.noteId);
           if (shown) {
             await remindersRepository.markNotified(reminder.noteId);
             dispatchReminderChanged();
@@ -53,7 +56,7 @@ export function ReminderNotificationCoordinator() {
       window.removeEventListener('notes-reminders-changed', handleReminderChanged);
       document.removeEventListener('visibilitychange', handleVisibility);
     };
-  }, []);
+  }, [locked, privateNotifications]);
 
   return null;
 }
