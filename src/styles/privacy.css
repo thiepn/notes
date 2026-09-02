@@ -1,0 +1,451 @@
+.privacy-dialog-layer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dialog);
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: var(--scrim);
+}
+
+.privacy-dialog {
+  width: min(720px, 100%);
+  max-height: min(780px, calc(100dvh - 32px));
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
+
+.privacy-dialog-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.privacy-dialog-header > div,
+.privacy-setting-heading-row,
+.privacy-cleanup-row,
+.privacy-switch-row {
+  display: flex;
+  align-items: center;
+}
+
+.privacy-dialog-header > div {
+  gap: var(--space-3);
+}
+
+.privacy-dialog-header p,
+.privacy-dialog-header h2,
+.privacy-setting-group h3,
+.privacy-setting-heading-row p,
+.privacy-lock-card h1,
+.privacy-lock-card p {
+  margin: 0;
+}
+
+.privacy-dialog-header p {
+  margin-bottom: 2px;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.privacy-dialog-header h2 {
+  font-size: var(--text-xl);
+}
+
+.privacy-dialog-header > button {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.privacy-dialog-header > button:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.privacy-dialog-header svg,
+.privacy-setting-icon svg,
+.privacy-secondary-button svg,
+.privacy-lock-actions svg {
+  width: 18px;
+  height: 18px;
+}
+
+.privacy-dialog-icon,
+.privacy-setting-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.privacy-dialog-icon {
+  width: 42px;
+  height: 42px;
+}
+
+.privacy-setting-icon {
+  width: 36px;
+  height: 36px;
+}
+
+.privacy-dialog-body {
+  display: grid;
+  gap: var(--space-5);
+  padding: var(--space-6);
+}
+
+.privacy-boundary {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-subtle);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.privacy-setting-group {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.privacy-setting-group h3 {
+  font-size: var(--text-md);
+}
+
+.privacy-switch-row {
+  gap: var(--space-3);
+  min-height: 56px;
+  padding: var(--space-2) 0;
+  cursor: pointer;
+}
+
+.privacy-switch-row > span:nth-child(2) {
+  display: grid;
+  flex: 1;
+  gap: 3px;
+}
+
+.privacy-switch-row strong,
+.privacy-cleanup-row strong {
+  font-size: var(--text-sm);
+}
+
+.privacy-switch-row small,
+.privacy-cleanup-row small,
+.privacy-setting-heading-row p {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+}
+
+.privacy-switch-row input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+.privacy-setting-heading-row {
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.privacy-field {
+  display: grid;
+  gap: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+.privacy-field input,
+.privacy-field select {
+  min-height: 42px;
+  width: 100%;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  padding: 0 var(--space-3);
+}
+
+.privacy-field input:focus,
+.privacy-field select:focus {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.privacy-passcode-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.privacy-lock-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.privacy-lock-actions button,
+.privacy-secondary-button,
+.privacy-lock-card button[type='submit'] {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  padding: 0 var(--space-3);
+  cursor: pointer;
+}
+
+.privacy-lock-actions button:disabled,
+.privacy-lock-card button[type='submit']:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.privacy-secondary-button {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.privacy-secondary-button:hover {
+  background: var(--surface-hover);
+}
+
+.privacy-danger-button {
+  border-color: #b64b4b !important;
+  background: transparent !important;
+  color: #b64b4b !important;
+}
+
+.privacy-auto-lock-field {
+  margin-top: var(--space-1);
+}
+
+.privacy-cleanup-row {
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.privacy-cleanup-row > div {
+  display: grid;
+  gap: 3px;
+}
+
+.privacy-success,
+.privacy-error,
+.privacy-unavailable {
+  margin: 0;
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.privacy-success {
+  background: color-mix(in srgb, #2f8f5b 13%, var(--surface));
+  color: #27754c;
+}
+
+.privacy-error {
+  background: color-mix(in srgb, #b64b4b 12%, var(--surface));
+  color: #a23d3d;
+}
+
+.privacy-unavailable {
+  background: var(--surface-subtle);
+  color: var(--text-muted);
+}
+
+.privacy-lock-screen {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-5);
+  background:
+    radial-gradient(circle at 50% 18%, var(--accent-soft), transparent 38%),
+    var(--bg);
+}
+
+.privacy-lock-card {
+  width: min(430px, 100%);
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  padding: var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  text-align: center;
+}
+
+.privacy-lock-brand,
+.privacy-lock-icon {
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-lg);
+}
+
+.privacy-lock-brand {
+  width: 50px;
+  height: 50px;
+  background: var(--accent);
+  color: #fff;
+}
+
+.privacy-lock-icon {
+  width: 42px;
+  height: 42px;
+  margin-top: var(--space-1);
+  background: var(--surface-subtle);
+  color: var(--text-muted);
+}
+
+.privacy-lock-brand svg,
+.privacy-lock-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.privacy-lock-card > p:not(.privacy-lock-disclaimer) {
+  color: var(--text-muted);
+}
+
+.privacy-lock-card form {
+  width: 100%;
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.privacy-lock-card label {
+  display: grid;
+  gap: var(--space-2);
+  text-align: left;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.privacy-lock-card input {
+  min-height: 46px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  padding: 0 var(--space-3);
+}
+
+.privacy-lock-card input:focus {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.privacy-lock-card button[type='submit'] {
+  min-height: 46px;
+}
+
+.privacy-lock-disclaimer {
+  margin-top: var(--space-2) !important;
+  color: var(--text-subtle);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+}
+
+.note-card-private-placeholder {
+  min-height: 112px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.note-card-private-placeholder svg {
+  width: 22px;
+  height: 22px;
+}
+
+.note-card[data-preview-hidden='true'] .note-card-open {
+  min-height: 128px;
+}
+
+@media (max-width: 640px) {
+  .privacy-dialog-layer {
+    padding: 0;
+  }
+
+  .privacy-dialog {
+    width: 100%;
+    height: 100dvh;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .privacy-dialog-header,
+  .privacy-dialog-body {
+    padding-left: var(--space-4);
+    padding-right: var(--space-4);
+  }
+
+  .privacy-passcode-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .privacy-setting-heading-row,
+  .privacy-cleanup-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .privacy-secondary-button {
+    width: 100%;
+  }
+
+  .privacy-lock-card {
+    padding: var(--space-6) var(--space-5);
+  }
+}
