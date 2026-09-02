@@ -1,4 +1,6 @@
 import {
+  Suspense,
+  lazy,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -16,15 +18,36 @@ import {
   type NoteRecord,
   type NotesRepository,
 } from '../../db';
-import { DrawingAttachmentButton } from '../drawing/DrawingAttachmentButton';
-import { DrawingDialog } from '../drawing/DrawingDialog';
 import { appendOcrText } from '../ocr/ocr';
-import { OcrAttachmentControl } from '../ocr/OcrAttachmentControl';
 import { RichTextEditor } from '../richText/RichTextEditor';
-import { VoiceAttachmentButton } from '../voice/VoiceAttachmentButton';
-import { VoiceRecorderDialog } from '../voice/VoiceRecorderDialog';
-import { AttachmentPanel } from './AttachmentPanel';
 import { useTextNoteCapture } from './useTextNoteCapture';
+
+const DrawingAttachmentButton = lazy(() =>
+  import('../drawing/DrawingAttachmentButton').then((module) => ({
+    default: module.DrawingAttachmentButton,
+  })),
+);
+const DrawingDialog = lazy(() =>
+  import('../drawing/DrawingDialog').then((module) => ({ default: module.DrawingDialog })),
+);
+const OcrAttachmentControl = lazy(() =>
+  import('../ocr/OcrAttachmentControl').then((module) => ({
+    default: module.OcrAttachmentControl,
+  })),
+);
+const VoiceAttachmentButton = lazy(() =>
+  import('../voice/VoiceAttachmentButton').then((module) => ({
+    default: module.VoiceAttachmentButton,
+  })),
+);
+const VoiceRecorderDialog = lazy(() =>
+  import('../voice/VoiceRecorderDialog').then((module) => ({
+    default: module.VoiceRecorderDialog,
+  })),
+);
+const AttachmentPanel = lazy(() =>
+  import('./AttachmentPanel').then((module) => ({ default: module.AttachmentPanel })),
+);
 
 const voiceAttachmentsRepository = new VoiceAttachmentsRepository(notesDatabase);
 
@@ -349,13 +372,15 @@ export function TextNoteComposer({
 
       {attachmentsOpen ? (
         <div className="note-composer-secondary-panel">
-          <AttachmentPanel
-            noteId={activeNoteId}
-            repository={attachmentsRepository}
-            ensureNoteId={ensureNoteId}
-            refreshKey={attachmentRefreshKey}
-            onChanged={markAttachmentsChanged}
-          />
+          <Suspense fallback={<DeferredComposerTool label="Loading attachments…" />}>
+            <AttachmentPanel
+              noteId={activeNoteId}
+              repository={attachmentsRepository}
+              ensureNoteId={ensureNoteId}
+              refreshKey={attachmentRefreshKey}
+              onChanged={markAttachmentsChanged}
+            />
+          </Suspense>
         </div>
       ) : null}
 
@@ -399,37 +424,39 @@ export function TextNoteComposer({
                 >
                   <ImagePlus aria-hidden="true" /> Image
                 </button>
-                <DrawingAttachmentButton
-                  noteId={activeNoteId}
-                  repository={attachmentsRepository}
-                  ensureNoteId={ensureNoteId}
-                  className="note-composer-menu-control"
-                  onDialogClose={() => setExpandedToolsOpen(false)}
-                  onChanged={(noteId) => {
-                    setExpandedToolsOpen(false);
-                    markAttachmentsChanged(noteId);
-                  }}
-                />
-                <VoiceAttachmentButton
-                  noteId={activeNoteId}
-                  repository={voiceAttachmentsRepository}
-                  ensureNoteId={ensureNoteId}
-                  className="note-composer-menu-control"
-                  onDialogClose={() => setExpandedToolsOpen(false)}
-                  onChanged={(noteId) => {
-                    setExpandedToolsOpen(false);
-                    markAttachmentsChanged(noteId);
-                  }}
-                />
-                <OcrAttachmentControl
-                  noteId={activeNoteId}
-                  repository={attachmentsRepository}
-                  refreshKey={attachmentRefreshKey}
-                  onAppend={(text) => {
-                    setExpandedToolsOpen(false);
-                    setContent(appendOcrText(draft.content, text));
-                  }}
-                />
+                <Suspense fallback={<DeferredComposerTool label="Loading tools…" />}>
+                  <DrawingAttachmentButton
+                    noteId={activeNoteId}
+                    repository={attachmentsRepository}
+                    ensureNoteId={ensureNoteId}
+                    className="note-composer-menu-control"
+                    onDialogClose={() => setExpandedToolsOpen(false)}
+                    onChanged={(noteId) => {
+                      setExpandedToolsOpen(false);
+                      markAttachmentsChanged(noteId);
+                    }}
+                  />
+                  <VoiceAttachmentButton
+                    noteId={activeNoteId}
+                    repository={voiceAttachmentsRepository}
+                    ensureNoteId={ensureNoteId}
+                    className="note-composer-menu-control"
+                    onDialogClose={() => setExpandedToolsOpen(false)}
+                    onChanged={(noteId) => {
+                      setExpandedToolsOpen(false);
+                      markAttachmentsChanged(noteId);
+                    }}
+                  />
+                  <OcrAttachmentControl
+                    noteId={activeNoteId}
+                    repository={attachmentsRepository}
+                    refreshKey={attachmentRefreshKey}
+                    onAppend={(text) => {
+                      setExpandedToolsOpen(false);
+                      setContent(appendOcrText(draft.content, text));
+                    }}
+                  />
+                </Suspense>
               </div>
             ) : null}
           </div>
@@ -476,12 +503,24 @@ export function TextNoteComposer({
     <>
       {composer}
       {quickDrawingOpen ? (
-        <DrawingDialog onSave={handleQuickDrawing} onClose={() => setQuickDrawingOpen(false)} />
+        <Suspense fallback={null}>
+          <DrawingDialog onSave={handleQuickDrawing} onClose={() => setQuickDrawingOpen(false)} />
+        </Suspense>
       ) : null}
       {quickVoiceOpen ? (
-        <VoiceRecorderDialog onSave={handleQuickVoice} onClose={() => setQuickVoiceOpen(false)} />
+        <Suspense fallback={null}>
+          <VoiceRecorderDialog onSave={handleQuickVoice} onClose={() => setQuickVoiceOpen(false)} />
+        </Suspense>
       ) : null}
     </>
+  );
+}
+
+function DeferredComposerTool({ label }: { label: string }) {
+  return (
+    <span className="deferred-composer-tool" role="status">
+      {label}
+    </span>
   );
 }
 

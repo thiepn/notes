@@ -1,0 +1,29 @@
+.deferred-workspace-loading,
+.deferred-note-surface,
+.deferred-composer-tool {
+  color: var(--text-subtle);
+  font-size: var(--text-xs);
+}
+
+.deferred-workspace-loading {
+  display: grid;
+  min-height: 96px;
+  place-items: center;
+}
+
+.deferred-note-surface {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dialog);
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  backdrop-filter: blur(4px);
+}
+
+.deferred-composer-tool {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  padding-inline: 10px;
+}

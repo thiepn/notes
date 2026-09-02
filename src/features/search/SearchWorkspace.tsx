@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LayoutGrid, Rows3, SearchX, X } from 'lucide-react';
 
 import { IconButton } from '../../components/ui/IconButton';
@@ -13,11 +13,9 @@ import {
   type NoteColor,
   type NoteRecord,
 } from '../../db';
-import { ChecklistEditorDialog } from '../notes/ChecklistEditorDialog';
 import { LifecycleToast, type LifecycleToastState } from '../notes/LifecycleToast';
 import { MasonryGrid } from '../notes/MasonryGrid';
 import { type NoteCardActions, type NoteCollectionMode } from '../notes/NoteCard';
-import { NoteEditorDialog } from '../notes/NoteEditorDialog';
 import { readNotesViewMode, writeNotesViewMode, type NotesViewMode } from '../notes/viewMode';
 import { richTextToPlainText } from '../richText/richText';
 import {
@@ -35,6 +33,14 @@ const notesRepository = new NotesRepository(notesDatabase);
 const labelsRepository = new LabelsRepository(notesDatabase);
 const checklistsRepository = new ChecklistsRepository(notesDatabase);
 const attachmentsRepository = new AttachmentsRepository(notesDatabase);
+const ChecklistEditorDialog = lazy(() =>
+  import('../notes/ChecklistEditorDialog').then((module) => ({
+    default: module.ChecklistEditorDialog,
+  })),
+);
+const NoteEditorDialog = lazy(() =>
+  import('../notes/NoteEditorDialog').then((module) => ({ default: module.NoteEditorDialog })),
+);
 
 interface SearchWorkspaceProps {
   query: string;
@@ -477,46 +483,54 @@ export function SearchWorkspace({
       ) : null}
 
       {editing ? (
-        editing.note.type === 'checklist' ? (
-          <ChecklistEditorDialog
-            key={editing.note.id}
-            note={editing.note}
-            items={editing.items}
-            repository={checklistsRepository}
-            attachmentsRepository={attachmentsRepository}
-            attachmentRefreshKey={attachmentRefreshByNote[editing.note.id] ?? 0}
-            onSaved={handleChecklistSaved}
-            onAttachmentsChanged={handleAttachmentsChanged}
-            onConverted={(note) => {
-              setEditing({ note, items: [] });
-              void reloadIndex();
-            }}
-            onClose={closeEditing}
-          />
-        ) : (
-          <NoteEditorDialog
-            key={editing.note.id}
-            note={editing.note}
-            repository={notesRepository}
-            attachmentsRepository={attachmentsRepository}
-            attachmentRefreshKey={attachmentRefreshByNote[editing.note.id] ?? 0}
-            onSaved={handleSaved}
-            onAttachmentsChanged={handleAttachmentsChanged}
-            onHistoryChecklistSaved={handleChecklistSaved}
-            onConvertToChecklist={async () => {
-              try {
-                const converted = await checklistsRepository.convertTextToChecklist(
-                  editing.note.id,
-                );
-                setEditing({ note: converted.note, items: converted.items });
-                await reloadIndex();
-              } catch {
-                showToast('Note could not be converted to a checklist.');
-              }
-            }}
-            onClose={closeEditing}
-          />
-        )
+        <Suspense
+          fallback={
+            <span className="deferred-note-surface" role="status">
+              Opening note…
+            </span>
+          }
+        >
+          {editing.note.type === 'checklist' ? (
+            <ChecklistEditorDialog
+              key={editing.note.id}
+              note={editing.note}
+              items={editing.items}
+              repository={checklistsRepository}
+              attachmentsRepository={attachmentsRepository}
+              attachmentRefreshKey={attachmentRefreshByNote[editing.note.id] ?? 0}
+              onSaved={handleChecklistSaved}
+              onAttachmentsChanged={handleAttachmentsChanged}
+              onConverted={(note) => {
+                setEditing({ note, items: [] });
+                void reloadIndex();
+              }}
+              onClose={closeEditing}
+            />
+          ) : (
+            <NoteEditorDialog
+              key={editing.note.id}
+              note={editing.note}
+              repository={notesRepository}
+              attachmentsRepository={attachmentsRepository}
+              attachmentRefreshKey={attachmentRefreshByNote[editing.note.id] ?? 0}
+              onSaved={handleSaved}
+              onAttachmentsChanged={handleAttachmentsChanged}
+              onHistoryChecklistSaved={handleChecklistSaved}
+              onConvertToChecklist={async () => {
+                try {
+                  const converted = await checklistsRepository.convertTextToChecklist(
+                    editing.note.id,
+                  );
+                  setEditing({ note: converted.note, items: converted.items });
+                  await reloadIndex();
+                } catch {
+                  showToast('Note could not be converted to a checklist.');
+                }
+              }}
+              onClose={closeEditing}
+            />
+          )}
+        </Suspense>
       ) : null}
 
       {toast ? <LifecycleToast toast={toast} onUndo={handleUndo} /> : null}

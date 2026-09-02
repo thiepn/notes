@@ -1,15 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useState } from 'react';
 import { NotebookPen } from 'lucide-react';
 
 import { AppHeader } from '../components/AppHeader';
 import { AppSidebar, type AppSection } from '../components/AppSidebar';
-import { BackupWorkspace } from '../features/backup/BackupWorkspace';
 import { LabelsRepository, notesDatabase, type LabelRecord } from '../db';
-import { CommandPalette, type CommandPaletteItem } from '../features/commands/CommandPalette';
+import type { CommandPaletteItem } from '../features/commands/CommandPalette';
 import { LabelManagerDialog } from '../features/notes/LabelManagerDialog';
 import { NotesWorkspace } from '../features/notes/NotesWorkspace';
-import { RemindersWorkspace } from '../features/reminders/RemindersWorkspace';
-import { SearchWorkspace } from '../features/search/SearchWorkspace';
 import {
   DEFAULT_SEARCH_FILTERS,
   hasSearchFilters,
@@ -21,6 +18,27 @@ const MOBILE_QUERY = '(max-width: 767px)';
 const ACTIVE_SECTION_KEY = 'notes.active-section';
 const ACTIVE_LABEL_KEY = 'notes.active-label';
 const labelsRepository = new LabelsRepository(notesDatabase);
+
+const BackupWorkspace = lazy(() =>
+  import('../features/backup/BackupWorkspace').then((module) => ({
+    default: module.BackupWorkspace,
+  })),
+);
+const CommandPalette = lazy(() =>
+  import('../features/commands/CommandPalette').then((module) => ({
+    default: module.CommandPalette,
+  })),
+);
+const RemindersWorkspace = lazy(() =>
+  import('../features/reminders/RemindersWorkspace').then((module) => ({
+    default: module.RemindersWorkspace,
+  })),
+);
+const SearchWorkspace = lazy(() =>
+  import('../features/search/SearchWorkspace').then((module) => ({
+    default: module.SearchWorkspace,
+  })),
+);
 
 const SECTION_COPY: Record<
   AppSection,
@@ -488,19 +506,25 @@ export function AppShell() {
             </header>
 
             {searchActive ? (
-              <SearchWorkspace
-                query={searchQuery}
-                filters={searchFilters}
-                filtersOpen={searchFiltersOpen}
-                labels={labels}
-                onFiltersChange={setSearchFilters}
-                onCloseFilters={() => setSearchFiltersOpen(false)}
-                onClearSearch={clearSearch}
-              />
+              <Suspense fallback={<DeferredWorkspaceFallback label="Loading search…" />}>
+                <SearchWorkspace
+                  query={searchQuery}
+                  filters={searchFilters}
+                  filtersOpen={searchFiltersOpen}
+                  labels={labels}
+                  onFiltersChange={setSearchFilters}
+                  onCloseFilters={() => setSearchFiltersOpen(false)}
+                  onClearSearch={clearSearch}
+                />
+              </Suspense>
             ) : activeSection === 'backup' ? (
-              <BackupWorkspace onRestored={handleLibraryRestored} onImported={refreshLabels} />
+              <Suspense fallback={<DeferredWorkspaceFallback label="Loading backup tools…" />}>
+                <BackupWorkspace onRestored={handleLibraryRestored} onImported={refreshLabels} />
+              </Suspense>
             ) : activeSection === 'reminders' ? (
-              <RemindersWorkspace labels={labels} />
+              <Suspense fallback={<DeferredWorkspaceFallback label="Loading reminders…" />}>
+                <RemindersWorkspace labels={labels} />
+              </Suspense>
             ) : lifecycleSection ? (
               <NotesWorkspace
                 mode={activeLabel ? 'notes' : activeSection}
@@ -518,18 +542,30 @@ export function AppShell() {
       </div>
 
       {labelManagerOpen ? (
-        <LabelManagerDialog
-          labels={labels}
-          onClose={() => setLabelManagerOpen(false)}
-          onCreate={handleCreateLabel}
-          onRename={handleRenameLabel}
-          onDelete={handleDeleteLabel}
-        />
+        <Suspense fallback={null}>
+          <LabelManagerDialog
+            labels={labels}
+            onClose={() => setLabelManagerOpen(false)}
+            onCreate={handleCreateLabel}
+            onRename={handleRenameLabel}
+            onDelete={handleDeleteLabel}
+          />
+        </Suspense>
       ) : null}
 
       {commandPaletteOpen ? (
-        <CommandPalette commands={paletteCommands} onClose={() => setCommandPaletteOpen(false)} />
+        <Suspense fallback={null}>
+          <CommandPalette commands={paletteCommands} onClose={() => setCommandPaletteOpen(false)} />
+        </Suspense>
       ) : null}
+    </div>
+  );
+}
+
+function DeferredWorkspaceFallback({ label }: { label: string }) {
+  return (
+    <div className="deferred-workspace-loading" role="status" aria-live="polite">
+      {label}
     </div>
   );
 }

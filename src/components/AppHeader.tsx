@@ -218,17 +218,27 @@ export function AppHeader({
             onChange={(event) => onSearchQueryChange(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === 'ArrowDown') {
-                const target = historyVisible
-                  ? document.querySelector<HTMLButtonElement>(
-                      '.search-history-popover .search-history-apply',
-                    )
-                  : document.querySelector<HTMLButtonElement>(
-                      '.search-result-section .note-card-open',
-                    );
-                if (target) {
-                  event.preventDefault();
+                event.preventDefault();
+                const selector = historyVisible
+                  ? '.search-history-popover .search-history-apply'
+                  : '.search-result-section .note-card-open';
+                const focusTarget = () => {
+                  const target = document.querySelector<HTMLButtonElement>(selector);
+                  if (!target) return false;
                   target.focus();
-                }
+                  return true;
+                };
+                if (focusTarget()) return;
+
+                const input = event.currentTarget;
+                let attempts = 0;
+                const focusWhenReady = () => {
+                  if (document.activeElement !== input) return;
+                  if (focusTarget()) return;
+                  attempts += 1;
+                  if (attempts < 120) window.requestAnimationFrame(focusWhenReady);
+                };
+                window.requestAnimationFrame(focusWhenReady);
                 return;
               }
 
