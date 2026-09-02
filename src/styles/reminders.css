@@ -70,12 +70,31 @@
   opacity: 0.55;
 }
 
-.reminder-control-actions,
+.reminder-control-actions {
+  display: grid;
+  gap: 6px;
+}
+
+.reminder-snooze-actions,
+.reminder-lifecycle-actions,
+.reminder-quick-presets,
 .reminder-presets,
 .reminder-editor-actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
+}
+
+.reminder-snooze-actions > span,
+.reminder-quick-presets > span,
+.reminder-presets > span {
+  min-width: 42px;
+  color: var(--text-subtle);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
 
 .reminder-control-actions button {
@@ -89,6 +108,11 @@
   height: 15px;
 }
 
+.reminder-lifecycle-actions {
+  padding-top: 6px;
+  border-top: 1px solid color-mix(in srgb, var(--border-strong) 40%, transparent);
+}
+
 .reminder-editor {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -97,9 +121,15 @@
   border-top: 1px solid color-mix(in srgb, var(--border-strong) 50%, transparent);
 }
 
+.reminder-quick-presets,
 .reminder-presets,
 .reminder-editor-actions {
   grid-column: 1 / -1;
+}
+
+.reminder-quick-presets button {
+  background: color-mix(in srgb, var(--accent-soft) 70%, transparent);
+  color: var(--accent-strong);
 }
 
 .reminder-editor label {
@@ -180,7 +210,7 @@
 }
 
 .reminder-control-compact-expanded {
-  width: min(100%, 520px);
+  width: min(100%, 560px);
   margin-top: 0;
 }
 
@@ -228,8 +258,38 @@
   gap: var(--space-5);
 }
 
+.reminder-count-summary {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 3px;
+}
+
+.reminder-count-summary strong {
+  color: var(--text);
+}
+
 .reminder-section + .reminder-section {
   margin-top: 0;
+}
+
+.reminder-section .note-section-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.reminder-section-count {
+  display: inline-grid;
+  min-width: 22px;
+  height: 22px;
+  place-items: center;
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+  color: var(--text-subtle);
+  font-size: 0.68rem;
+  font-weight: 700;
 }
 
 .reminder-notification-banner {
@@ -281,8 +341,23 @@
   }
 
   .reminder-editor label,
+  .reminder-quick-presets,
   .reminder-presets,
   .reminder-editor-actions {
     grid-column: 1;
+  }
+
+  .reminder-snooze-actions,
+  .reminder-lifecycle-actions,
+  .reminder-quick-presets,
+  .reminder-presets {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .reminder-snooze-actions > span,
+  .reminder-quick-presets > span,
+  .reminder-presets > span {
+    grid-column: 1 / -1;
   }
 }
