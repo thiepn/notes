@@ -66,7 +66,7 @@ test('reminders can be scheduled, viewed, completed, and restored with their not
 
   await page.getByRole('button', { name: 'Reminders' }).click();
   await expect(page.getByRole('heading', { name: 'Reminders', level: 1 })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Upcoming', level: 2 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Tomorrow', level: 2 })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Open note: Call tomorrow' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Open note: Call tomorrow' }).click();
@@ -87,7 +87,7 @@ test('reminders can be scheduled, viewed, completed, and restored with their not
   await reactivateEditor.getByRole('button', { name: 'Change' }).click();
   await reactivateEditor.getByRole('button', { name: 'Save reminder' }).click();
   await reactivateEditor.getByRole('button', { name: 'Close' }).click();
-  await expect(page.getByRole('heading', { name: 'Upcoming', level: 2 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Tomorrow', level: 2 })).toBeVisible();
 
   await moveCardToTrash(page, 'Call tomorrow');
   await expect(page.getByRole('button', { name: 'Open note: Call tomorrow' })).not.toBeVisible();
