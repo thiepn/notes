@@ -10,13 +10,14 @@ export function privacyProtectionSummary(input: {
   hidePreviews: boolean;
   privateNotifications: boolean;
 }): PrivacyProtectionSummary {
-  const enabledCount = Number(input.lockEnabled) + Number(input.hidePreviews) + Number(input.privateNotifications);
+  const enabledCount =
+    Number(input.lockEnabled) + Number(input.hidePreviews) + Number(input.privateNotifications);
   const label =
     enabledCount === 3
       ? 'All passive privacy controls are on'
       : enabledCount === 0
         ? 'Passive privacy controls are off'
-        : `${enabledCount} of 3 passive privacy controls are on`;
+        : `${enabledCount} of 3 passive privacy controls ${enabledCount === 1 ? 'is' : 'are'} on`;
   const detail = [
     input.lockEnabled ? 'privacy lock enabled' : 'privacy lock off',
     input.hidePreviews ? 'card previews hidden' : 'card previews visible',
