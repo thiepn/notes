@@ -1,8 +1,4 @@
-import {
-  isPreviewableImageMimeType,
-  isVoiceAudioMimeType,
-  type AttachmentRecord,
-} from '../../db';
+import { isPreviewableImageMimeType, isVoiceAudioMimeType, type AttachmentRecord } from '../../db';
 
 export interface AttachmentSummary {
   count: number;
