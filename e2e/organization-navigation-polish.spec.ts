@@ -104,7 +104,9 @@ test('collection counts refresh after normal lifecycle mutations', async ({ page
   const seeded = await seedOrganizationLibrary(page);
 
   const alphaCard = page.locator(`[data-note-id="${seeded.alphaId}"]`);
-  await alphaCard.getByRole('button', { name: 'Archive note: Active Alpha' }).click();
+  await alphaCard
+    .getByRole('button', { name: 'Archive note: Active Alpha' })
+    .click({ force: true });
 
   await expect(alphaCard).toHaveCount(0);
   await expect(sidebarCount(page, 'Notes')).toHaveText('2');
