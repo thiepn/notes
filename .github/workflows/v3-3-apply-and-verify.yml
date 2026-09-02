@@ -38,6 +38,7 @@ jobs:
           scripts/prepare-ocr-assets.mjs
           scripts/check-performance-budget.mjs
           src/app/AppShell.tsx
+          src/components/AppHeader.tsx
           src/features/notes/NotesWorkspace.tsx
           src/features/notes/TextNoteComposer.tsx
           src/features/notes/ChecklistComposer.tsx
@@ -77,6 +78,7 @@ jobs:
             scripts/prepare-ocr-assets.mjs \
             scripts/check-performance-budget.mjs \
             src/app/AppShell.tsx \
+            src/components/AppHeader.tsx \
             src/features/notes/NotesWorkspace.tsx \
             src/features/notes/TextNoteComposer.tsx \
             src/features/notes/ChecklistComposer.tsx \
