@@ -384,36 +384,6 @@ export function AppShell() {
     };
   });
 
-  const activeWorkspaceCount =
-    searchActive || activeSection === 'backup'
-      ? null
-      : activeLabel
-        ? (navigationStats.labels[activeLabel.id] ?? 0)
-        : activeSection === 'notes'
-          ? navigationStats.notes
-          : activeSection === 'reminders'
-            ? navigationStats.reminders
-            : activeSection === 'archive'
-              ? navigationStats.archive
-              : navigationStats.trash;
-  const activeWorkspaceCountLabel =
-    activeWorkspaceCount === null
-      ? null
-      : activeSection === 'reminders' && activeLabel === null
-        ? `${activeWorkspaceCount} active ${activeWorkspaceCount === 1 ? 'reminder' : 'reminders'}`
-        : `${activeWorkspaceCount} ${activeWorkspaceCount === 1 ? 'note' : 'notes'}`;
-  const labelPaletteCommands: CommandPaletteItem[] = labels.map((label) => {
-    const count = navigationStats.labels[label.id] ?? 0;
-    return {
-      id: `open-label:${label.id}`,
-      label: `Open label: ${label.name}`,
-      description: `${count} active ${count === 1 ? 'note' : 'notes'}`,
-      group: 'Labels',
-      keywords: ['label', 'tag', label.name],
-      run: () => handleLabelNavigate(label.id),
-    };
-  });
-
   const paletteCommands: CommandPaletteItem[] = [
     {
       id: 'new-text-note',
