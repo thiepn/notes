@@ -93,8 +93,11 @@ test('mixed attachment panels show useful derived totals, friendly types, and im
   await expect(panel).toBeVisible();
 
   const totalBytes = seeded.pngSize + seeded.wavSize + 2048;
-  const expectedTotal = totalBytes < 1024 ? `${totalBytes} B` : `${(totalBytes / 1024).toFixed(1)} KB`;
-  await expect(panel.getByText(new RegExp(`3 attachments · .*${expectedTotal.replace('.', '\\.')}`))).toBeVisible();
+  const kilobytes = totalBytes / 1024;
+  const expectedTotal = `${kilobytes.toFixed(kilobytes >= 10 ? 1 : 2)} KB`;
+  await expect(
+    panel.getByText(new RegExp(`3 attachments · .*${expectedTotal.replace('.', '\\.')}`)),
+  ).toBeVisible();
   await expect(panel.getByText('1 image · 1 recording · 1 file')).toBeVisible();
 
   const imageTile = panel.locator('.attachment-image-tile').filter({ hasText: 'tiny.png' });
@@ -147,5 +150,7 @@ test('voice rows expose friendly audio metadata and loaded duration', async ({ p
 
   await expect(audioRow.getByText(/WAV audio/u)).toBeVisible();
   await expect(audioRow.getByText(/0:01 · WAV audio/u)).toBeVisible();
-  await expect(audioRow.getByRole('button', { name: 'Download voice recording: memo.wav' })).toBeVisible();
+  await expect(
+    audioRow.getByRole('button', { name: 'Download voice recording: memo.wav' }),
+  ).toBeVisible();
 });

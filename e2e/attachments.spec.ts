@@ -228,7 +228,7 @@ test('imported non-image attachments are visible and downloadable instead of dis
 
   const editor = page.getByRole('dialog', { name: 'Edit note' });
   await expect(editor.getByText('details.txt')).toBeVisible();
-  await expect(editor.getByText(/text\/plain/u)).toBeVisible();
+  await expect(editor.getByText(/Text document/u)).toBeVisible();
   await expect(
     editor.getByRole('button', { name: 'Download attachment: details.txt' }),
   ).toBeVisible();
