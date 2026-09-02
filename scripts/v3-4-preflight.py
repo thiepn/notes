@@ -23,4 +23,22 @@ old_z = "  z-index: calc(var(--z-modal) + 20);"
 if old_z not in text:
     raise SystemExit('V3.4 settings z-index target was not found.')
 text = text.replace(old_z, "  z-index: calc(var(--z-dialog) + 20);", 1)
+text += r'''
+
+# Closing the passcode sub-dialog intentionally returns to unified Settings.
+privacy_path = Path('e2e/privacy.spec.ts')
+privacy_text = privacy_path.read_text()
+privacy_return_target = """  await privacy.getByRole('button', { name: 'Close privacy settings' }).click();
+  await page.getByRole('button', { name: 'More options' }).click();"""
+privacy_return_replacement = """  await privacy.getByRole('button', { name: 'Close privacy settings' }).click();
+  const returnedSettings = page.getByRole('dialog', { name: 'Settings' });
+  await expect(returnedSettings).toBeVisible();
+  await returnedSettings.getByRole('button', { name: 'Close settings' }).click();
+  await page.getByRole('button', { name: 'More options' }).click();"""
+if privacy_text.count(privacy_return_target) != 1:
+    raise SystemExit(
+        f"Expected one privacy return-to-settings test target, found {privacy_text.count(privacy_return_target)}"
+    )
+privacy_path.write_text(privacy_text.replace(privacy_return_target, privacy_return_replacement, 1))
+'''
 path.write_text(text)
