@@ -5,7 +5,20 @@ async function waitForNotes(page: Page) {
 }
 
 async function openBackup(page: Page) {
-  await page.getByRole('button', { name: 'Backup' }).click();
+  await page.getByRole('button', { name: 'More options' }).click();
+  const menu = page.getByRole('menu');
+  const settings = menu.getByRole('menuitem', { name: 'Settings' });
+
+  if (await settings.isVisible()) {
+    await settings.click();
+    const dialog = page.getByRole('dialog', { name: 'Settings' });
+    await dialog.getByRole('button', { name: 'Data & advanced' }).click();
+    await dialog.getByRole('button', { name: 'Open backup & import' }).click();
+  } else {
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'Backup' }).click();
+  }
+
   await expect(page.getByRole('heading', { name: 'Back up this device' })).toBeVisible();
 }
 
