@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import {
   BookmarkCheck,
   BookmarkPlus,
@@ -21,7 +21,6 @@ import {
 } from 'lucide-react';
 
 import { notesDatabase } from '../db';
-import { PrivacySettingsDialog } from '../features/privacy/PrivacySettingsDialog';
 import { usePrivacy } from '../features/privacy/PrivacyContext';
 import { privacyModeMenuLabel } from '../features/privacy/privacyPresentation';
 import { SearchHistoryPopover } from '../features/search/SearchHistoryPopover';
@@ -46,6 +45,10 @@ const THEME_LABELS: Record<ThemePreference, string> = {
   dark: 'Dark',
 };
 const searchHistoryRepository = new SearchHistoryRepository(notesDatabase);
+const PrivacySettingsDialog = lazy(async () => {
+  const module = await import('../features/privacy/PrivacySettingsDialog');
+  return { default: module.PrivacySettingsDialog };
+});
 
 interface AppHeaderProps {
   onMenu(): void;
@@ -417,7 +420,11 @@ export function AppHeader({
         </div>
       </header>
 
-      {privacyOpen ? <PrivacySettingsDialog onClose={() => setPrivacyOpen(false)} /> : null}
+      {privacyOpen ? (
+        <Suspense fallback={null}>
+          <PrivacySettingsDialog onClose={() => setPrivacyOpen(false)} />
+        </Suspense>
+      ) : null}
     </>
   );
 }
