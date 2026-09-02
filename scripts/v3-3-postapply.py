@@ -24,7 +24,7 @@ new = """  expect(online.every((entry) => entry.ok)).toBe(true);
             }),
           );
           return cached.every(Boolean);
-        }, assetPaths),
+        }, paths),
       { message: 'OCR runtime assets should finish populating the runtime cache.' },
     )
     .toBe(true);
