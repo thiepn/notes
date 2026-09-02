@@ -27,13 +27,14 @@ jobs:
       - name: Integrate V3.6 media polish
         run: |
           python scripts/v3-6-media-patch.py
+          python scripts/v3-6-lightbox-fix.py
           python scripts/v3-6-doc-patch.py
           npx prettier --write src/features/notes/AttachmentPanel.tsx src/features/notes/attachmentPresentation.ts src/features/notes/attachmentPresentation.test.ts src/styles/attachments-media-polish.css src/styles.css e2e/attachments-media-polish.spec.ts README.md docs/ATTACHMENTS_MEDIA.md
           if ! git diff --quiet -- .; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add src/features/notes/AttachmentPanel.tsx README.md
-            git commit -m "V3.6: integrate attachment media interaction polish"
+            git commit -m "V3.6: repair attachment media polish candidate"
             git push origin HEAD:v3-6-attachments-media-polish
           fi
 
