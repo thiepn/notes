@@ -598,7 +598,11 @@ function AttachmentLightbox({
 }) {
   const attachment = attachments[index];
   const url = useBlobUrl(attachment?.data ?? null);
-  const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
+  const [dimensions, setDimensions] = useState<{
+    attachmentId: string;
+    width: number;
+    height: number;
+  } | null>(null);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -608,15 +612,12 @@ function AttachmentLightbox({
     };
   }, []);
 
-  useEffect(() => {
-    setDimensions(null);
-  }, [attachment?.id]);
-
   if (!attachment) return null;
   const name = attachment.name ?? 'Attached image';
-  const dimensionLabel = dimensions
-    ? formatImageDimensions(dimensions.width, dimensions.height)
-    : null;
+  const dimensionLabel =
+    dimensions?.attachmentId === attachment.id
+      ? formatImageDimensions(dimensions.width, dimensions.height)
+      : null;
   const meta = [
     dimensionLabel,
     attachmentTypeLabel(attachment.mimeType),
@@ -689,6 +690,7 @@ function AttachmentLightbox({
             alt={name}
             onLoad={(event) =>
               setDimensions({
+                attachmentId: attachment.id,
                 width: event.currentTarget.naturalWidth,
                 height: event.currentTarget.naturalHeight,
               })
