@@ -33,6 +33,57 @@ export interface BackupExport {
 export class BackupRepository {
   constructor(private readonly database: NotesDatabase) {}
 
+  async currentStats(): Promise<BackupStats> {
+    const counts = await this.database.transaction(
+      'r',
+      [
+        this.database.notes,
+        this.database.checklistItems,
+        this.database.labels,
+        this.database.noteLabels,
+        this.database.attachments,
+        this.database.reminders,
+        this.database.revisions,
+        this.database.settings,
+      ],
+      async () =>
+        Promise.all([
+          this.database.notes.count(),
+          this.database.checklistItems.count(),
+          this.database.labels.count(),
+          this.database.noteLabels.count(),
+          this.database.attachments.count(),
+          this.database.reminders.count(),
+          this.database.revisions.count(),
+          this.database.settings.count(),
+        ]),
+    );
+    const [
+      notes,
+      checklistItems,
+      labels,
+      noteLabels,
+      attachments,
+      reminders,
+      revisions,
+      settings,
+    ] = counts;
+    const stats = {
+      notes: notes ?? 0,
+      checklistItems: checklistItems ?? 0,
+      labels: labels ?? 0,
+      noteLabels: noteLabels ?? 0,
+      attachments: attachments ?? 0,
+      reminders: reminders ?? 0,
+      revisions: revisions ?? 0,
+      settings: settings ?? 0,
+    };
+    return {
+      ...stats,
+      totalRecords: Object.values(stats).reduce((total, count) => total + count, 0),
+    };
+  }
+
   async exportBackup(): Promise<BackupExport> {
     const exportedAt = Date.now();
     const snapshot = await this.database.transaction(
