@@ -50,10 +50,11 @@ export function PrivacyGate({ children }: { children: ReactNode }) {
         <h1 id="privacy-lock-title">Notes is locked</h1>
         <p>Enter the device-local privacy passcode to show your notes.</p>
         <form onSubmit={(event) => void submit(event)}>
-          <label>
-            <span>Passcode</span>
+          <div className="privacy-lock-field">
+            <label htmlFor="privacy-lock-passcode">Passcode</label>
             <span className="privacy-lock-passcode-field">
               <input
+                id="privacy-lock-passcode"
                 autoFocus
                 type={showPasscode ? 'text' : 'password'}
                 autoComplete="current-password"
@@ -74,7 +75,7 @@ export function PrivacyGate({ children }: { children: ReactNode }) {
                 {showPasscode ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
               </button>
             </span>
-          </label>
+          </div>
           {capsLock ? (
             <p id="privacy-caps-lock-warning" className="privacy-caps-lock" role="status">
               Caps Lock is on.
