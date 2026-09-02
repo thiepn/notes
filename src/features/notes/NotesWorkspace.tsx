@@ -53,6 +53,7 @@ interface NotesWorkspaceProps {
   mode?: NoteCollectionMode;
   labels: LabelRecord[];
   filterLabelId?: string | null;
+  onCollectionChanged?: () => void;
 }
 
 interface CollectionState {
@@ -90,6 +91,7 @@ export function NotesWorkspace({
   mode = 'notes',
   labels,
   filterLabelId = null,
+  onCollectionChanged,
 }: NotesWorkspaceProps) {
   const [initialEditorNoteId] = useState(
     () => readEditorJournal()?.noteId ?? readChecklistEditorJournal()?.noteId ?? null,
@@ -130,7 +132,8 @@ export function NotesWorkspace({
   const refreshCollection = useCallback(async () => {
     const loadedCollection = await loadCollection(mode, filterLabelId);
     setCollection({ mode, filterLabelId, ...loadedCollection, loaded: true });
-  }, [filterLabelId, mode]);
+    onCollectionChanged?.();
+  }, [filterLabelId, mode, onCollectionChanged]);
 
   useEffect(() => {
     let cancelled = false;
@@ -205,8 +208,9 @@ export function NotesWorkspace({
           labelIdsByNote: { ...current.labelIdsByNote, [note.id]: nextLabelIds },
         };
       });
+      onCollectionChanged?.();
     },
-    [filterLabelId, mode],
+    [filterLabelId, mode, onCollectionChanged],
   );
 
   const handleChecklistSaved = useCallback(
@@ -251,8 +255,9 @@ export function NotesWorkspace({
         delete next[noteId];
         return next;
       });
+      onCollectionChanged?.();
     },
-    [filterLabelId, mode],
+    [filterLabelId, mode, onCollectionChanged],
   );
 
   const handleConvertedToText = useCallback(

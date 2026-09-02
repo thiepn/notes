@@ -1,9 +1,4 @@
-import {
-  LabelsRepository,
-  NotesRepository,
-  RemindersRepository,
-  notesDatabase,
-} from '../../db';
+import { LabelsRepository, NotesRepository, RemindersRepository, notesDatabase } from '../../db';
 
 export interface NavigationStats {
   notes: number;
@@ -33,9 +28,7 @@ export async function loadNavigationStats(): Promise<NavigationStats> {
     remindersRepository.listVisibleWithNotes(),
   ]);
 
-  const labelIdsByNote = await labelsRepository.labelIdsByNote(
-    activeNotes.map((note) => note.id),
-  );
+  const labelIdsByNote = await labelsRepository.labelIdsByNote(activeNotes.map((note) => note.id));
 
   return {
     notes: activeNotes.length,
