@@ -1,9 +1,21 @@
 import { useEffect, useState } from 'react';
-import { BellOff, EyeOff, LockKeyhole, ShieldCheck, Trash2, X } from 'lucide-react';
+import {
+  BellOff,
+  EyeOff,
+  LockKeyhole,
+  Search,
+  ShieldCheck,
+  Trash2,
+  X,
+} from 'lucide-react';
 
 import { clearRecentSearches } from '../search/searchHistory';
 import { usePrivacy } from './PrivacyContext';
 import { supportsPrivacyLock, validatePrivacyPasscode } from './privacy';
+import {
+  formatPrivacyAutoLockPolicy,
+  privacyProtectionSummary,
+} from './privacyPresentation';
 
 export function PrivacySettingsDialog({ onClose }: { onClose(): void }) {
   const {
@@ -23,6 +35,7 @@ export function PrivacySettingsDialog({ onClose }: { onClose(): void }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const protection = privacyProtectionSummary({ lockEnabled, hidePreviews, privateNotifications });
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -149,6 +162,28 @@ export function PrivacySettingsDialog({ onClose }: { onClose(): void }) {
             storage, replace operating-system security, or add cloud accounts.
           </p>
 
+          <section
+            className="privacy-protection-summary"
+            data-enabled-count={protection.enabledCount}
+            aria-label="Privacy protection summary"
+          >
+            <div className="privacy-protection-summary-heading">
+              <ShieldCheck aria-hidden="true" />
+              <div>
+                <strong>{protection.label}</strong>
+                <span>{protection.detail}</span>
+              </div>
+              <b aria-label={`${protection.enabledCount} of ${protection.totalCount} controls on`}>
+                {protection.enabledCount}/{protection.totalCount}
+              </b>
+            </div>
+            <div className="privacy-protection-grid" aria-label="Privacy controls status">
+              <PrivacyStatusItem label="Privacy lock" enabled={lockEnabled} />
+              <PrivacyStatusItem label="Hidden previews" enabled={hidePreviews} />
+              <PrivacyStatusItem label="Private notifications" enabled={privateNotifications} />
+            </div>
+          </section>
+
           <section className="privacy-setting-group" aria-labelledby="privacy-visibility-heading">
             <h3 id="privacy-visibility-heading">On-screen privacy</h3>
             <label className="privacy-switch-row">
@@ -158,8 +193,9 @@ export function PrivacySettingsDialog({ onClose }: { onClose(): void }) {
               <span>
                 <strong>Hide note previews</strong>
                 <small>
-                  Replace card titles, content, labels, reminders, and attachment thumbnails with a
-                  neutral placeholder.
+                  Replace card titles, content, labels, reminders, attachment thumbnails, and search
+                  match snippets with a neutral placeholder. Saved and recent search suggestions are
+                  also suppressed while this is on.
                 </small>
               </span>
               <input
@@ -293,6 +329,9 @@ export function PrivacySettingsDialog({ onClose }: { onClose(): void }) {
                 <option value="30">30 minutes</option>
                 <option value="never">Never</option>
               </select>
+              <small className="privacy-auto-lock-summary">
+                {formatPrivacyAutoLockPolicy(autoLockMinutes, lockEnabled)}
+              </small>
             </label>
           </section>
 
@@ -303,7 +342,8 @@ export function PrivacySettingsDialog({ onClose }: { onClose(): void }) {
                 <strong>Recent searches</strong>
                 <small>
                   Saved searches remain in the normal backed-up settings table. Recent searches are
-                  disposable device-local history.
+                  disposable device-local history. Search-history suggestions are not rendered or
+                  newly recorded while Hide note previews is enabled.
                 </small>
               </div>
               <button
@@ -317,6 +357,13 @@ export function PrivacySettingsDialog({ onClose }: { onClose(): void }) {
               >
                 <Trash2 aria-hidden="true" /> Clear recent searches
               </button>
+            </div>
+            <div className="privacy-trace-note">
+              <Search aria-hidden="true" />
+              <span>
+                Privacy mode suppresses search suggestions; it does not delete saved searches unless
+                you remove them yourself.
+              </span>
             </div>
           </section>
 
@@ -333,5 +380,15 @@ export function PrivacySettingsDialog({ onClose }: { onClose(): void }) {
         </div>
       </section>
     </div>
+  );
+}
+
+function PrivacyStatusItem({ label, enabled }: { label: string; enabled: boolean }) {
+  return (
+    <span className="privacy-status-item" data-enabled={enabled}>
+      <i aria-hidden="true" />
+      <span>{label}</span>
+      <strong>{enabled ? 'On' : 'Off'}</strong>
+    </span>
   );
 }
