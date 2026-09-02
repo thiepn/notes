@@ -54,7 +54,9 @@ test('backup readiness shows current library counts and remembers the latest man
 
   const activity = await page.evaluate(() => {
     const raw = localStorage.getItem('notes.backup.last-manual.v1');
-    return raw ? (JSON.parse(raw) as { exportedAt: number; filename: string; fileBytes: number }) : null;
+    return raw
+      ? (JSON.parse(raw) as { exportedAt: number; filename: string; fileBytes: number })
+      : null;
   });
   expect(activity).not.toBeNull();
   expect(activity?.filename).toBe(download.suggestedFilename());

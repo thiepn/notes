@@ -43,9 +43,9 @@ describe('backup recovery presentation helpers', () => {
   });
 
   it('labels normalized backup/database versions', () => {
-    expect(
-      backupVersionLabel({ formatVersion: 2, databaseVersion: 2 } as BackupDocument),
-    ).toBe('Backup v2 · Database v2');
+    expect(backupVersionLabel({ formatVersion: 2, databaseVersion: 2 } as BackupDocument)).toBe(
+      'Backup v2 · Database v2',
+    );
   });
 
   it('compares current and incoming recovery counts with useful deltas', () => {

@@ -58,16 +58,8 @@ export class BackupRepository {
           this.database.settings.count(),
         ]),
     );
-    const [
-      notes,
-      checklistItems,
-      labels,
-      noteLabels,
-      attachments,
-      reminders,
-      revisions,
-      settings,
-    ] = counts;
+    const [notes, checklistItems, labels, noteLabels, attachments, reminders, revisions, settings] =
+      counts;
     const stats = {
       notes: notes ?? 0,
       checklistItems: checklistItems ?? 0,

@@ -124,6 +124,31 @@ The Backup workspace provides:
 
 After a successful restore the app returns to Notes and remounts the active note workspace against the recovered database.
 
+## V3.7 recovery-confidence polish
+
+V3.7 does not alter P12's backup bytes, validation rules, replace-restore semantics, or database schema. It adds derived context around the existing recovery workflow so a user can make a more informed decision before exporting or replacing a local library.
+
+The Backup workspace now shows **current backup readiness** using counts read from all eight durable IndexedDB tables in one read transaction. The compact summary includes current notes, attachments, reminders, and total database records. These counts are presentation state only; no cache/count table is persisted.
+
+After a successful manual **Download full backup**, Notes records a small device-local activity marker under `notes.backup.last-manual.v1`. It contains only the export timestamp, downloaded filename, and JSON byte size. The marker is used to show when the last manual backup was made on this browser profile. It is not a guarantee that the user retained the downloaded file, and it is intentionally excluded from the portable Notes backup.
+
+A validated incoming backup now exposes additional read-only context before the destructive confirmation step:
+
+- selected JSON file size;
+- normalized backup and database version;
+- exact export timestamp;
+- human-readable backup age/freshness;
+- total database-record count; and
+- a current-versus-incoming table for notes, attachments, reminders, saved versions, and all database records.
+
+The comparison uses simple row-count deltas. It does not attempt content-level merge analysis and it never changes the current database. A negative value means the selected backup contains fewer rows in that category than the current device; a positive value means it contains more.
+
+Current readiness counts refresh after a successful Google Keep import or full-library restore so the Backup workspace does not retain stale pre-mutation numbers.
+
+All existing destructive-recovery gates remain mandatory: full validation first, explicit acknowledgement, a successfully generated/downloaded current-device safety backup, and one atomic eight-table replacement transaction.
+
+V3.7 deliberately excludes scheduled/background backups, cloud backup destinations, sync, encryption, differential/incremental backups, merge restore, automatic restore, or a persistent backup-history database.
+
 ## Regression coverage
 
 P12 verifies in real Chromium that:

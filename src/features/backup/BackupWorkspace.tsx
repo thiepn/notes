@@ -296,7 +296,9 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
                           <th scope="row">{row.label}</th>
                           <td>{row.current}</td>
                           <td>{row.incoming}</td>
-                          <td data-delta={row.delta === 0 ? 'same' : row.delta > 0 ? 'more' : 'less'}>
+                          <td
+                            data-delta={row.delta === 0 ? 'same' : row.delta > 0 ? 'more' : 'less'}
+                          >
                             {formatBackupDelta(row.delta)}
                           </td>
                         </tr>
