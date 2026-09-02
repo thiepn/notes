@@ -22,7 +22,9 @@ jobs:
           node-version-file: .nvmrc
 
       - name: Apply V3.3 integration patch
-        run: python scripts/v3-3-organization-navigation-patch.py
+        run: |
+          python scripts/v3-3-organization-navigation-patch.py
+          python scripts/v3-3-lint-fix.py
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
@@ -34,7 +36,7 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add src/app/AppShell.tsx src/components/AppSidebar.tsx src/features/notes/NotesWorkspace.tsx src/features/organization src/styles/organization-navigation-polish.css src/styles.css e2e/organization-navigation-polish.spec.ts
-            git commit -m "V3.3: integrate organization and navigation polish"
+            git commit -m "V3.3: repair navigation stats effect"
             git push origin HEAD:v3-3-organization-navigation-polish
           fi
 
