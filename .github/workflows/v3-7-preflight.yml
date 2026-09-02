@@ -1,14 +1,14 @@
-name: V3-7 Backup Recovery Preflight
+name: V3-7 Backup Recovery Verify
 
 on:
   push:
     branches: [v3-7-backup-recovery-polish]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  preflight:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -23,53 +23,6 @@ jobs:
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-
-      - name: Repair initial stats refresh and format
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          path = Path('src/features/backup/BackupWorkspace.tsx')
-          text = path.read_text()
-          text = text.replace(
-              "import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';",
-              "import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';",
-          )
-          old = '''  useEffect(() => {
-    void refreshCurrentStats();
-  }, [refreshCurrentStats]);
-'''
-          new = '''  useEffect(() => {
-    let cancelled = false;
-    void backupRepository.currentStats().then(
-      (stats) => {
-        if (!cancelled) setCurrentStats(stats);
-      },
-      () => {
-        if (!cancelled) setCurrentStats(null);
-      },
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-'''
-          if old in text:
-              text = text.replace(old, new, 1)
-          elif new not in text:
-              raise SystemExit('BackupWorkspace initial stats effect marker changed.')
-          path.write_text(text)
-          PY
-
-          npx prettier --write README.md docs/BACKUP.md src/features/backup src/styles.css src/styles/backup-recovery-polish.css e2e/backup-recovery-polish.spec.ts
-
-          if ! git diff --quiet -- .; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add README.md docs/BACKUP.md src/features/backup src/styles.css src/styles/backup-recovery-polish.css e2e/backup-recovery-polish.spec.ts
-            git commit -m "V3.7: make backup stats refresh effect-safe"
-            git push origin HEAD:v3-7-backup-recovery-polish
-          fi
 
       - name: Format check
         run: npm run format:check
