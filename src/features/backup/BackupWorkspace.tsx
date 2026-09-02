@@ -62,8 +62,19 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
   }, []);
 
   useEffect(() => {
-    void refreshCurrentStats();
-  }, [refreshCurrentStats]);
+    let cancelled = false;
+    void backupRepository.currentStats().then(
+      (stats) => {
+        if (!cancelled) setCurrentStats(stats);
+      },
+      () => {
+        if (!cancelled) setCurrentStats(null);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const handleStorage = (event: StorageEvent) => {
