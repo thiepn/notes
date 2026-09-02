@@ -21,20 +21,22 @@ jobs:
         with:
           node-version-file: .nvmrc
 
-      - name: Apply V3.4 editor integration
-        run: python scripts/v3-4-editor-patch.py
+      - name: Apply V3.4 release patch
+        run: |
+          python scripts/v3-4-editor-patch.py
+          python scripts/v3-4-readme.py
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
       - name: Format V3.4 files
         run: |
-          npx prettier --write src/features/notes/NoteEditorDialog.tsx src/features/notes/ChecklistEditorDialog.tsx src/features/notes/useExistingNoteEditor.ts src/features/notes/EditorStatusBar.tsx src/features/notes/editorInsights.ts src/features/notes/editorInsights.test.ts src/styles/editor-interaction-polish.css src/styles.css e2e/editor-interaction-polish.spec.ts
+          npx prettier --write README.md docs/EDITOR_INTERACTION.md src/features/notes/NoteEditorDialog.tsx src/features/notes/ChecklistEditorDialog.tsx src/features/notes/useExistingNoteEditor.ts src/features/notes/EditorStatusBar.tsx src/features/notes/editorInsights.ts src/features/notes/editorInsights.test.ts src/styles/editor-interaction-polish.css src/styles.css e2e/editor-interaction-polish.spec.ts
           if ! git diff --quiet -- .; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add src/features/notes/NoteEditorDialog.tsx src/features/notes/ChecklistEditorDialog.tsx src/features/notes/useExistingNoteEditor.ts src/features/notes/EditorStatusBar.tsx src/features/notes/editorInsights.ts src/features/notes/editorInsights.test.ts src/styles/editor-interaction-polish.css src/styles.css e2e/editor-interaction-polish.spec.ts
-            git commit -m "V3.4: integrate editor interaction polish"
+            git add README.md docs/EDITOR_INTERACTION.md src/features/notes/NoteEditorDialog.tsx src/features/notes/ChecklistEditorDialog.tsx src/features/notes/useExistingNoteEditor.ts src/features/notes/EditorStatusBar.tsx src/features/notes/editorInsights.ts src/features/notes/editorInsights.test.ts src/styles/editor-interaction-polish.css src/styles.css e2e/editor-interaction-polish.spec.ts
+            git commit -m "V3.4: finalize editor interaction release candidate"
             git push origin HEAD:v3-4-editor-interaction-polish
           fi
 
