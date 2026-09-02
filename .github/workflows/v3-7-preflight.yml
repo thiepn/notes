@@ -1,0 +1,93 @@
+name: V3-7 Backup Recovery Preflight
+
+on:
+  push:
+    branches: [v3-7-backup-recovery-polish]
+
+permissions:
+  contents: write
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: v3-7-backup-recovery-polish
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Freeze V3.7 documentation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          readme = Path('README.md')
+          text = readme.read_text()
+          old_status = '''**V3.6 — Attachments & Media Interaction Polish is implemented as the sixth V3 refinement release.** Existing local image, voice, and imported-file attachments now expose clearer size/type context, richer image viewing, direct image download, and browser-derived media metadata without changing attachment records or Blob storage.\n\nV1 through P15 remains the stable product foundation and V2-1 through V2-8 complete the feature roadmap through Privacy Enhancements. The V3 refinement track preserves that architecture while improving daily use: V3.1 polishes capture and mobile UX, V3.2 retrieval and search, V3.3 organization and navigation, V3.4 existing-note editing feedback and ergonomics, V3.5 reminder/time interaction quality, and V3.6 attachment/media interaction clarity.\n'''
+          new_status = '''**V3.7 — Backup & Recovery UX Polish is implemented as the seventh V3 refinement release.** The existing validated full-library backup and atomic replace-restore system now exposes current-library readiness, device-local manual-backup recency, backup version/freshness, and current-vs-incoming recovery comparison without changing the backup format or database schema.\n\nV1 through P15 remains the stable product foundation and V2-1 through V2-8 complete the feature roadmap through Privacy Enhancements. The V3 refinement track preserves that architecture while improving daily use: V3.1 polishes capture and mobile UX, V3.2 retrieval and search, V3.3 organization and navigation, V3.4 existing-note editing feedback and ergonomics, V3.5 reminder/time interaction quality, V3.6 attachment/media interaction clarity, and V3.7 backup/recovery confidence.\n'''
+          if old_status not in text:
+              raise SystemExit('README V3.6 status marker changed.')
+          text = text.replace(old_status, new_status, 1)
+
+          boundary = '''V3.6 deliberately excludes cloud media hosting, server processing, transcoding, waveform/image editing, attachment-folder/order persistence, EXIF/location display, and persistent media-dimension/duration columns.\n\nSee [`docs/ATTACHMENTS_MEDIA.md`](docs/ATTACHMENTS_MEDIA.md) for the V3.6 interaction and persistence contract.\n\n## Architecture\n'''
+          addition = '''V3.6 deliberately excludes cloud media hosting, server processing, transcoding, waveform/image editing, attachment-folder/order persistence, EXIF/location display, and persistent media-dimension/duration columns.\n\nSee [`docs/ATTACHMENTS_MEDIA.md`](docs/ATTACHMENTS_MEDIA.md) for the V3.6 interaction and persistence contract.\n\n## V3.7 scope\n\nV3.7 improves confidence and clarity around the existing P12 full-library backup/restore system:\n\n- Current-library readiness counts before a manual backup\n- Device-local memory of the most recent successful manual backup, including filename, time, age, and file size\n- Validated backup file size, backup/database version, export timestamp, and human-readable freshness\n- Current-vs-incoming comparison for notes, attachments, reminders, saved versions, and all database records before replacement\n- Clear numeric deltas showing what the selected restore would add or remove\n- Existing read-only validation before restore preserved\n- Existing explicit destructive-restore acknowledgement preserved\n- Existing automatic pre-restore safety backup preserved\n- Existing atomic eight-table rollback semantics preserved\n- Current-library counts refresh after successful Google Keep import or full restore\n\nV3.7 requires **no database migration and no backup-format change**. Current counts and comparison rows are derived from the existing eight IndexedDB tables. The last-manual-backup marker is disposable browser-local activity metadata in `localStorage`; it is intentionally not portable library data and is not written into Notes backups.\n\nV3.7 deliberately excludes scheduled/background backups, cloud backup destinations, sync, encryption, differential/incremental backups, merge restore, automatic restore, and any weakening of P12 validation or replacement safety gates.\n\nSee [`docs/BACKUP.md`](docs/BACKUP.md) for the P12/V3.7 backup format, validation, recovery-confidence UI, safety snapshot, and atomic replacement contract.\n\n## Architecture\n'''
+          if boundary not in text:
+              raise SystemExit('README V3.6/Architecture boundary changed.')
+          text = text.replace(boundary, addition, 1)
+
+          old_arch = '''- Read-only backup validation and recovery preview before any destructive database write\n- Automatic current-device safety backup before full-library restore\n- Atomic eight-table replacement recovery with IndexedDB rollback on write failure\n'''
+          new_arch = '''- Read-only backup validation and recovery preview before any destructive database write\n- Derived current-library counts plus current-vs-incoming recovery comparison before replacement\n- Device-local last-manual-backup activity marker kept outside portable library backups\n- Automatic current-device safety backup before full-library restore\n- Atomic eight-table replacement recovery with IndexedDB rollback on write failure\n'''
+          if old_arch not in text:
+              raise SystemExit('README backup architecture block changed.')
+          text = text.replace(old_arch, new_arch, 1)
+          readme.write_text(text)
+
+          docs = Path('docs/BACKUP.md')
+          backup = docs.read_text()
+          marker = '''## Regression coverage\n'''
+          section = '''## V3.7 recovery-confidence polish\n\nV3.7 does not alter P12's backup bytes, validation rules, replace-restore semantics, or database schema. It adds derived context around the existing recovery workflow so a user can make a more informed decision before exporting or replacing a local library.\n\nThe Backup workspace now shows **current backup readiness** using counts read from all eight durable IndexedDB tables in one read transaction. The compact summary includes current notes, attachments, reminders, and total database records. These counts are presentation state only; no cache/count table is persisted.\n\nAfter a successful manual **Download full backup**, Notes records a small device-local activity marker under `notes.backup.last-manual.v1`. It contains only the export timestamp, downloaded filename, and JSON byte size. The marker is used to show when the last manual backup was made on this browser profile. It is not a guarantee that the user retained the downloaded file, and it is intentionally excluded from the portable Notes backup.\n\nA validated incoming backup now exposes additional read-only context before the destructive confirmation step:\n\n- selected JSON file size;\n- normalized backup and database version;\n- exact export timestamp;\n- human-readable backup age/freshness;\n- total database-record count; and\n- a current-versus-incoming table for notes, attachments, reminders, saved versions, and all database records.\n\nThe comparison uses simple row-count deltas. It does not attempt content-level merge analysis and it never changes the current database. A negative value means the selected backup contains fewer rows in that category than the current device; a positive value means it contains more.\n\nCurrent readiness counts refresh after a successful Google Keep import or full-library restore so the Backup workspace does not retain stale pre-mutation numbers.\n\nAll existing destructive-recovery gates remain mandatory: full validation first, explicit acknowledgement, a successfully generated/downloaded current-device safety backup, and one atomic eight-table replacement transaction.\n\nV3.7 deliberately excludes scheduled/background backups, cloud backup destinations, sync, encryption, differential/incremental backups, merge restore, automatic restore, or a persistent backup-history database.\n\n'''
+          if '## V3.7 recovery-confidence polish' not in backup:
+              if marker not in backup:
+                  raise SystemExit('BACKUP.md regression marker changed.')
+              backup = backup.replace(marker, section + marker, 1)
+          docs.write_text(backup)
+          PY
+
+          npx prettier --write README.md docs/BACKUP.md src/features/backup src/styles.css src/styles/backup-recovery-polish.css e2e/backup-recovery-polish.spec.ts
+
+          if ! git diff --quiet -- .; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add README.md docs/BACKUP.md src/features/backup src/styles.css src/styles/backup-recovery-polish.css e2e/backup-recovery-polish.spec.ts
+            git commit -m "V3.7: finalize backup recovery polish"
+            git push origin HEAD:v3-7-backup-recovery-polish
+          fi
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Build
+        run: npm run build
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Backup regression preflight
+        run: npx playwright test e2e/backup.spec.ts e2e/backup-recovery-polish.spec.ts --retries=0
