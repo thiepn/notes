@@ -1,29 +1,43 @@
-name: V2-8 Clean Transplant
+name: V2-8 Privacy Candidate Verify
 
 on:
   push:
     branches: [v2-8-clean-48ac]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  transplant:
+  verify:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout current-main candidate
+      - name: Checkout
         uses: actions/checkout@v6
         with:
           ref: v2-8-clean-48ac
-          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
 
-      - name: Transplant and verify privacy feature
-        run: bash scripts/v2-8-clean-transplant.sh
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Build
+        run: npm run build
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
