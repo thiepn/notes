@@ -30,6 +30,9 @@ jobs:
       - name: Apply V3.3
         run: python scripts/v3-3-apply.py
 
+      - name: Align runtime-cache certification
+        run: python scripts/v3-3-postapply.py
+
       - name: Format V3.3 files
         run: >-
           npx prettier --write
@@ -46,6 +49,7 @@ jobs:
           src/features/reminders/RemindersWorkspace.tsx
           src/styles.css
           src/styles/performance.css
+          pwa-e2e/pwa.spec.ts
 
       - name: Lint
         run: npm run lint
@@ -85,6 +89,7 @@ jobs:
             src/features/search/SearchWorkspace.tsx \
             src/features/reminders/RemindersWorkspace.tsx \
             src/styles.css \
-            src/styles/performance.css
+            src/styles/performance.css \
+            pwa-e2e/pwa.spec.ts
           git commit -m "Implement V3.3 performance and bundle reduction"
           git push
