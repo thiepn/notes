@@ -1,4 +1,4 @@
-# V2-8 Privacy Enhancements
+# V2-8 Privacy Enhancements + V3.8 UX Polish
 
 V2-8 adds device-local controls that reduce accidental exposure of Notes content without changing the app's local-first persistence architecture.
 
@@ -110,6 +110,30 @@ All V2-8 behavior is local and works offline:
 - recent-search deletion is local.
 
 No privacy action requires a server request.
+
+## V3.8 privacy and security UX polish
+
+V3.8 keeps V2-8's security boundary unchanged and improves privacy-state visibility plus passive-disclosure behavior.
+
+Privacy settings now show a derived **passive privacy controls** summary for three existing controls: privacy lock, hidden note previews, and private reminder notifications. The summary is descriptive UI state only. It does not calculate a cryptographic security score and does not imply that enabling all three encrypts stored Notes data.
+
+The header More menu now exposes a fast **Hide note previews / Show note previews** toggle. This uses the existing `hidePreviews` preference; no new privacy-mode credential or database field exists.
+
+While Hide note previews is enabled, Notes also reduces passive search disclosure:
+
+- saved/recent search-history suggestions are not rendered when the empty search field receives focus;
+- new recent-search entries are not written to `notes.search.recent.v1`;
+- the search field indicates that history suggestions are hidden;
+- existing recent history remains device-local and can still be explicitly cleared from Privacy settings; and
+- existing saved searches remain in the normal backed-up settings table and are not deleted or modified.
+
+This behavior intentionally targets passive history exposure. An actively typed search query remains visible in the search box because entering it is a deliberate user action.
+
+The lock screen now offers a temporary show/hide control for the entered passcode and reports Caps Lock while typing. After a failed verification, the entered value is cleared before retry. These are interaction improvements only; credential storage and verification remain the same PBKDF2-SHA-256 model established in V2-8.
+
+The auto-lock selector now includes a plain-language description of the effective hidden-page policy. The visibility/timer implementation itself is unchanged.
+
+V3.8 requires no database migration, no backup-format change, and no credential-format change. It deliberately does not add encryption at rest, encrypted backups, biometrics/WebAuthn, remote wipe, account authentication, per-note secrets, or protection against someone who controls the local browser profile or developer tools.
 
 ## Deliberate exclusions
 

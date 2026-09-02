@@ -1,21 +1,10 @@
 import { useEffect, useState } from 'react';
-import {
-  BellOff,
-  EyeOff,
-  LockKeyhole,
-  Search,
-  ShieldCheck,
-  Trash2,
-  X,
-} from 'lucide-react';
+import { BellOff, EyeOff, LockKeyhole, Search, ShieldCheck, Trash2, X } from 'lucide-react';
 
 import { clearRecentSearches } from '../search/searchHistory';
 import { usePrivacy } from './PrivacyContext';
 import { supportsPrivacyLock, validatePrivacyPasscode } from './privacy';
-import {
-  formatPrivacyAutoLockPolicy,
-  privacyProtectionSummary,
-} from './privacyPresentation';
+import { formatPrivacyAutoLockPolicy, privacyProtectionSummary } from './privacyPresentation';
 
 export function PrivacySettingsDialog({ onClose }: { onClose(): void }) {
   const {

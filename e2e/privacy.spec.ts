@@ -114,7 +114,7 @@ test('privacy settings summarize active protections and auto-lock policy', async
   let privacy = await openPrivacySettings(page);
 
   const summary = privacy.getByLabel('Privacy protection summary');
-  await expect(summary).toContainText('1 of 3 passive privacy controls are on');
+  await expect(summary).toContainText('1 of 3 passive privacy controls is on');
   await expect(summary).toContainText('privacy lock off');
   await expect(privacy.getByText('Automatic locking while hidden is disabled.')).toBeVisible();
 
