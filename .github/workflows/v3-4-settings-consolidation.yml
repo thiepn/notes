@@ -23,6 +23,8 @@ jobs:
           node-version-file: .nvmrc
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Prepare V3.4 migration
+        run: python scripts/v3-4-preflight.py
       - name: Apply V3.4 settings consolidation
         run: python scripts/v3-4-settings-consolidation.py
       - name: Format changed files
