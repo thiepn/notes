@@ -5,7 +5,10 @@ async function seedNote(page: import('@playwright/test').Page, title = 'Visual p
   await page.evaluate(async (noteTitle) => {
     const db = await import('/notes/src/db/index.ts');
     const repository = new db.NotesRepository(db.notesDatabase);
-    await repository.create({ title: noteTitle, content: 'Calm readable note content for visual checks.' });
+    await repository.create({
+      title: noteTitle,
+      content: 'Calm readable note content for visual checks.',
+    });
   }, title);
 }
 
@@ -29,26 +32,30 @@ test('V4.1 uses intentionally designed light and dark tonal palettes', async ({ 
   await page.evaluate(() => localStorage.setItem('notes.theme', 'light'));
   await page.reload();
 
-  await expect.poll(() => themeTokens(page)).toEqual({
-    theme: 'light',
-    background: '#f7f7f5',
-    surface: '#ffffff',
-    surfaceSubtle: '#f1f1ee',
-    text: '#222220',
-    yellow: '#fff6d6',
-  });
+  await expect
+    .poll(() => themeTokens(page))
+    .toEqual({
+      theme: 'light',
+      background: '#f7f7f5',
+      surface: '#ffffff',
+      surfaceSubtle: '#f1f1ee',
+      text: '#222220',
+      yellow: '#fff6d6',
+    });
 
   await page.evaluate(() => localStorage.setItem('notes.theme', 'dark'));
   await page.reload();
 
-  await expect.poll(() => themeTokens(page)).toEqual({
-    theme: 'dark',
-    background: '#17181a',
-    surface: '#1f2023',
-    surfaceSubtle: '#242629',
-    text: '#f1f1ef',
-    yellow: '#34301f',
-  });
+  await expect
+    .poll(() => themeTokens(page))
+    .toEqual({
+      theme: 'dark',
+      background: '#17181a',
+      surface: '#1f2023',
+      surfaceSubtle: '#242629',
+      text: '#f1f1ef',
+      yellow: '#34301f',
+    });
 });
 
 test('cards, navigation, search, and settings use the quieter V4.1 hierarchy', async ({ page }) => {
@@ -68,10 +75,13 @@ test('cards, navigation, search, and settings use the quieter V4.1 hierarchy', a
   expect(cardStyle.radius).toBe('15px');
   expect(cardStyle.shadow).not.toBe('none');
 
-  const countStyle = await page.locator('.nav-count').first().evaluate((element) => {
-    const styles = getComputedStyle(element);
-    return { border: styles.borderTopWidth, background: styles.backgroundColor };
-  });
+  const countStyle = await page
+    .locator('.nav-count')
+    .first()
+    .evaluate((element) => {
+      const styles = getComputedStyle(element);
+      return { border: styles.borderTopWidth, background: styles.backgroundColor };
+    });
   expect(countStyle.border).toBe('0px');
   expect(countStyle.background).toBe('rgba(0, 0, 0, 0)');
 
@@ -106,9 +116,9 @@ test('mobile cards expose one quiet overflow path instead of a persistent action
 
   const card = page.locator('[data-note-card]').first();
   await expect(card).toBeVisible();
-  const directSecondaryDisplays = await card.locator('.note-card-direct-secondary').evaluateAll(
-    (elements) => elements.map((element) => getComputedStyle(element).display),
-  );
+  const directSecondaryDisplays = await card
+    .locator('.note-card-direct-secondary')
+    .evaluateAll((elements) => elements.map((element) => getComputedStyle(element).display));
   expect(directSecondaryDisplays.length).toBeGreaterThan(0);
   expect(directSecondaryDisplays.every((display) => display === 'none')).toBe(true);
   await expect(card.getByRole('button', { name: /More actions:/ })).toBeVisible();
