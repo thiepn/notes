@@ -106,7 +106,11 @@ test('mobile cards expose one quiet overflow path instead of a persistent action
 
   const card = page.locator('[data-note-card]').first();
   await expect(card).toBeVisible();
-  await expect(card.locator('.note-card-direct-secondary')).toBeHidden();
+  const directSecondaryDisplays = await card.locator('.note-card-direct-secondary').evaluateAll(
+    (elements) => elements.map((element) => getComputedStyle(element).display),
+  );
+  expect(directSecondaryDisplays.length).toBeGreaterThan(0);
+  expect(directSecondaryDisplays.every((display) => display === 'none')).toBe(true);
   await expect(card.getByRole('button', { name: /More actions:/ })).toBeVisible();
 
   const cardRadius = await card.evaluate((element) => getComputedStyle(element).borderRadius);
