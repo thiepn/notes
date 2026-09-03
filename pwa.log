@@ -1,6 +1,0 @@
-
-> @thiepn/notes@0.0.0 e2e:pwa
-> playwright test --config=playwright.pwa.config.ts
-
-Error: Timed out waiting 60000ms from config.webServer.
-
