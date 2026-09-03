@@ -47,7 +47,20 @@ jobs:
         run: exit 1
 
       - name: Typecheck
-        run: npm run typecheck
+        id: typecheck
+        continue-on-error: true
+        run: npm run typecheck 2>&1 | tee typecheck.log
+
+      - name: Upload typecheck diagnostics
+        if: steps.typecheck.outcome == 'failure'
+        uses: actions/upload-artifact@v6
+        with:
+          name: v3-9-typecheck-diagnostics
+          path: typecheck.log
+
+      - name: Stop on typecheck failure
+        if: steps.typecheck.outcome == 'failure'
+        run: exit 1
 
       - name: Unit tests
         run: npm run test
