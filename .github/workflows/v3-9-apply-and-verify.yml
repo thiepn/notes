@@ -79,7 +79,20 @@ jobs:
         run: exit 1
 
       - name: Production build and performance gates
-        run: npm run build
+        id: build
+        continue-on-error: true
+        run: npm run build 2>&1 | tee build.log
+
+      - name: Upload build diagnostics
+        if: steps.build.outcome == 'failure'
+        uses: actions/upload-artifact@v6
+        with:
+          name: v3-9-build-diagnostics
+          path: build.log
+
+      - name: Stop on build failure
+        if: steps.build.outcome == 'failure'
+        run: exit 1
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
