@@ -37,6 +37,8 @@ interface AppHeaderProps {
   onMenu(): void;
   onCommandPalette(): void;
   onSettings(): void;
+  onViewModeChange(view: 'grid' | 'list'): void;
+  searchFocusRequest: number;
   searchQuery: string;
   searchFilters: SearchFilters;
   filtersOpen: boolean;
@@ -51,6 +53,8 @@ export function AppHeader({
   onMenu,
   onCommandPalette,
   onSettings,
+  onViewModeChange,
+  searchFocusRequest,
   searchQuery,
   searchFilters,
   filtersOpen,
@@ -146,8 +150,13 @@ export function AppHeader({
     };
   }, [moreOpen]);
 
-  const clickViewButton = (label: 'Grid view' | 'List view') => {
-    document.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)?.click();
+  useEffect(() => {
+    if (searchFocusRequest <= 0) return;
+    searchInputRef.current?.focus();
+  }, [searchFocusRequest]);
+
+  const chooseView = (view: 'grid' | 'list') => {
+    onViewModeChange(view);
     setMoreOpen(false);
   };
 
@@ -335,11 +344,11 @@ export function AppHeader({
               <span>Command palette</span>
               <kbd>Ctrl K</kbd>
             </button>
-            <button type="button" role="menuitem" onClick={() => clickViewButton('Grid view')}>
+            <button type="button" role="menuitem" onClick={() => chooseView('grid')}>
               <LayoutGrid aria-hidden="true" />
               <span>Grid view</span>
             </button>
-            <button type="button" role="menuitem" onClick={() => clickViewButton('List view')}>
+            <button type="button" role="menuitem" onClick={() => chooseView('list')}>
               <List aria-hidden="true" />
               <span>List view</span>
             </button>

@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { NotebookPen } from 'lucide-react';
 
 import { AppHeader } from '../components/AppHeader';
@@ -11,7 +11,12 @@ import {
   loadNavigationStats,
   type NavigationStats,
 } from '../features/organization/navigationStats';
-import { NotesWorkspace } from '../features/notes/NotesWorkspace';
+import { NotesWorkspace, type CaptureRequest } from '../features/notes/NotesWorkspace';
+import {
+  readNotesViewMode,
+  writeNotesViewMode,
+  type NotesViewMode,
+} from '../features/notes/viewMode';
 import {
   DEFAULT_SEARCH_FILTERS,
   hasSearchFilters,
@@ -104,6 +109,10 @@ export function AppShell() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFilters, setSearchFilters] = useState<SearchFilters>({ ...DEFAULT_SEARCH_FILTERS });
   const [searchFiltersOpen, setSearchFiltersOpen] = useState(false);
+  const [searchFocusRequest, setSearchFocusRequest] = useState(0);
+  const [captureRequest, setCaptureRequest] = useState<CaptureRequest | null>(null);
+  const captureRequestIdRef = useRef(0);
+  const [viewMode, setViewMode] = useState<NotesViewMode>(() => readNotesViewMode());
   const [isMobile, setIsMobile] = useState(() =>
     typeof window === 'undefined' ? false : window.matchMedia(MOBILE_QUERY).matches,
   );
@@ -256,49 +265,38 @@ export function AppShell() {
     (kind: 'text' | 'checklist') => {
       clearSearch();
       setCommandPaletteOpen(false);
-      if (activeSection !== 'notes') {
-        setActiveSection('notes');
-        setActiveLabelId(null);
-        persistActiveSection('notes');
-        persistActiveLabelId(null);
-      }
-
-      afterUiUpdate(() => {
-        const selector =
-          kind === 'text'
-            ? 'button[aria-label="Create a text note"]'
-            : 'button[aria-label="Create a checklist"]';
-        document.querySelector<HTMLButtonElement>(selector)?.click();
-      });
+      setActiveSection('notes');
+      setActiveLabelId(null);
+      persistActiveSection('notes');
+      persistActiveLabelId(null);
+      captureRequestIdRef.current += 1;
+      setCaptureRequest({ id: captureRequestIdRef.current, kind });
     },
-    [activeSection, clearSearch],
+    [clearSearch],
   );
 
   const focusSearch = useCallback(() => {
     setCommandPaletteOpen(false);
-    afterUiUpdate(() => {
-      document.querySelector<HTMLInputElement>('input[aria-label="Search notes"]')?.focus();
-    });
+    setSearchFocusRequest((request) => request + 1);
   }, []);
 
   const openLabelManager = useCallback(() => {
     setCommandPaletteOpen(false);
     setLabelManagerOpen(true);
-    afterUiUpdate(() => {
-      document.querySelector<HTMLInputElement>('input[aria-label="New label name"]')?.focus();
-    });
   }, []);
 
-  const setViewModeFromCommand = useCallback((view: 'grid' | 'list') => {
-    setCommandPaletteOpen(false);
-    afterUiUpdate(() => {
-      document
-        .querySelector<HTMLButtonElement>(
-          `button[aria-label="${view === 'grid' ? 'Grid' : 'List'} view"]`,
-        )
-        ?.click();
-    });
+  const handleViewMode = useCallback((view: NotesViewMode) => {
+    setViewMode(view);
+    writeNotesViewMode(view);
   }, []);
+
+  const setViewModeFromCommand = useCallback(
+    (view: NotesViewMode) => {
+      setCommandPaletteOpen(false);
+      handleViewMode(view);
+    },
+    [handleViewMode],
+  );
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -532,6 +530,8 @@ export function AppShell() {
         onMenu={handleMenu}
         onCommandPalette={() => setCommandPaletteOpen(true)}
         onSettings={() => setSettingsOpen(true)}
+        onViewModeChange={handleViewMode}
+        searchFocusRequest={searchFocusRequest}
         searchQuery={searchQuery}
         searchFilters={searchFilters}
         filtersOpen={searchFiltersOpen}
@@ -593,6 +593,8 @@ export function AppShell() {
               <Suspense fallback={<DeferredWorkspaceFallback label="Loading search…" />}>
                 <SearchWorkspace
                   query={searchQuery}
+                  viewMode={viewMode}
+                  onViewModeChange={handleViewMode}
                   filters={searchFilters}
                   filtersOpen={searchFiltersOpen}
                   labels={labels}
@@ -607,13 +609,23 @@ export function AppShell() {
               </Suspense>
             ) : activeSection === 'reminders' ? (
               <Suspense fallback={<DeferredWorkspaceFallback label="Loading reminders…" />}>
-                <RemindersWorkspace labels={labels} />
+                <RemindersWorkspace
+                  labels={labels}
+                  viewMode={viewMode}
+                  onViewModeChange={handleViewMode}
+                />
               </Suspense>
             ) : lifecycleSection ? (
               <NotesWorkspace
                 mode={activeLabel ? 'notes' : activeSection}
                 labels={labels}
                 filterLabelId={activeLabel?.id ?? null}
+                viewMode={viewMode}
+                onViewModeChange={handleViewMode}
+                captureRequest={captureRequest}
+                onCaptureRequestHandled={(requestId) =>
+                  setCaptureRequest((current) => (current?.id === requestId ? null : current))
+                }
                 onCollectionChanged={() => void refreshNavigationStats()}
               />
             ) : (

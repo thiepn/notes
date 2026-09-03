@@ -1,5 +1,4 @@
 import {
-  attachmentRecordSchema,
   checklistItemRecordSchema,
   labelRecordSchema,
   noteLabelRecordSchema,
@@ -22,15 +21,23 @@ export class SearchRepository {
   constructor(private readonly database: NotesDatabase) {}
 
   async loadIndex(): Promise<SearchDocument[]> {
-    const [rawNotes, rawItems, rawLabels, rawLinks, rawAttachments, rawReminders] =
-      await Promise.all([
-        this.database.notes.toArray(),
-        this.database.checklistItems.toArray(),
-        this.database.labels.toArray(),
-        this.database.noteLabels.toArray(),
-        this.database.attachments.toArray(),
-        this.database.reminders.toArray(),
-      ]);
+    const [
+      rawNotes,
+      rawItems,
+      rawLabels,
+      rawLinks,
+      attachmentNameKeys,
+      attachmentMimeKeys,
+      rawReminders,
+    ] = await Promise.all([
+      this.database.notes.toArray(),
+      this.database.checklistItems.toArray(),
+      this.database.labels.toArray(),
+      this.database.noteLabels.toArray(),
+      this.database.attachments.orderBy('[noteId+name]').keys(),
+      this.database.attachments.orderBy('[noteId+mimeType]').keys(),
+      this.database.reminders.toArray(),
+    ]);
 
     const notes = rawNotes
       .map((note) => noteRecordSchema.parse(note))
@@ -65,15 +72,22 @@ export class SearchRepository {
 
     const imageNoteIds = new Set<string>();
     const attachmentNamesByNote = new Map<string, string[]>();
-    for (const rawAttachment of rawAttachments) {
-      const attachment = attachmentRecordSchema.parse(rawAttachment);
-      if (!noteIds.has(attachment.noteId)) continue;
-      if (attachment.mimeType.startsWith('image/')) imageNoteIds.add(attachment.noteId);
-      const name = attachment.name?.trim();
+    for (const rawKey of attachmentNameKeys) {
+      const key = compoundStringKey(rawKey);
+      if (!key) continue;
+      const [noteId, rawName] = key;
+      if (!noteIds.has(noteId)) continue;
+      const name = rawName.trim();
       if (!name) continue;
-      const names = attachmentNamesByNote.get(attachment.noteId) ?? [];
+      const names = attachmentNamesByNote.get(noteId) ?? [];
       names.push(name);
-      attachmentNamesByNote.set(attachment.noteId, names);
+      attachmentNamesByNote.set(noteId, names);
+    }
+    for (const rawKey of attachmentMimeKeys) {
+      const key = compoundStringKey(rawKey);
+      if (!key) continue;
+      const [noteId, mimeType] = key;
+      if (noteIds.has(noteId) && mimeType.startsWith('image/')) imageNoteIds.add(noteId);
     }
 
     const reminderNoteIds = new Set<string>();
@@ -153,4 +167,10 @@ export class SearchRepository {
       };
     });
   }
+}
+
+function compoundStringKey(value: unknown): [string, string] | null {
+  if (!Array.isArray(value) || value.length !== 2) return null;
+  const [first, second] = value;
+  return typeof first === 'string' && typeof second === 'string' ? [first, second] : null;
 }

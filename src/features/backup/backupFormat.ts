@@ -57,6 +57,16 @@ export const backupDocumentSchema = z
   })
   .strict();
 
+const previousBackupDocumentSchema = z
+  .object({
+    format: z.literal(NOTES_BACKUP_FORMAT),
+    formatVersion: z.literal(NOTES_BACKUP_FORMAT_VERSION),
+    databaseVersion: z.literal(2),
+    exportedAt: timestampSchema,
+    data: backupDataV2Schema,
+  })
+  .strict();
+
 const legacyBackupDocumentSchema = z
   .object({
     format: z.literal(NOTES_BACKUP_FORMAT),
@@ -207,6 +217,11 @@ export async function sha256Hex(bytes: Uint8Array): Promise<string> {
 function normalizeBackupDocument(raw: unknown): BackupDocument {
   const current = backupDocumentSchema.safeParse(raw);
   if (current.success) return current.data;
+
+  const previous = previousBackupDocumentSchema.safeParse(raw);
+  if (previous.success) {
+    return backupDocumentSchema.parse({ ...previous.data, databaseVersion: DATABASE_VERSION });
+  }
 
   const legacy = legacyBackupDocumentSchema.parse(raw);
   return backupDocumentSchema.parse({

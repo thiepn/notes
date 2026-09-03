@@ -52,6 +52,7 @@ const AttachmentPanel = lazy(() =>
 const voiceAttachmentsRepository = new VoiceAttachmentsRepository(notesDatabase);
 
 interface TextNoteComposerProps {
+  openRequestId?: number;
   repository: NotesRepository;
   attachmentsRepository: AttachmentsRepository;
   beforeSaved?: ((note: NoteRecord) => Promise<void>) | undefined;
@@ -63,6 +64,7 @@ interface TextNoteComposerProps {
 }
 
 export function TextNoteComposer({
+  openRequestId,
   repository,
   attachmentsRepository,
   beforeSaved,
@@ -73,6 +75,7 @@ export function TextNoteComposer({
   onChecklistRequested,
 }: TextNoteComposerProps) {
   const composerRef = useRef<HTMLDivElement>(null);
+  const lastOpenRequestIdRef = useRef<number | undefined>(undefined);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const captureTriggerRef = useRef<HTMLButtonElement>(null);
   const quickImageInputRef = useRef<HTMLInputElement>(null);
@@ -108,6 +111,12 @@ export function TextNoteComposer({
   useEffect(() => {
     onActiveNoteChange(activeNoteId);
   }, [activeNoteId, onActiveNoteChange]);
+
+  useEffect(() => {
+    if (openRequestId === undefined || lastOpenRequestIdRef.current === openRequestId) return;
+    lastOpenRequestIdRef.current = openRequestId;
+    openCapture();
+  }, [openCapture, openRequestId]);
 
   useEffect(() => {
     if (!expanded) return;

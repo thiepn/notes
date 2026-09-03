@@ -2,6 +2,7 @@ import Dexie, { type Table } from 'dexie';
 
 import { applyDatabaseVersion1 } from './migrations/v1';
 import { applyDatabaseVersion2 } from './migrations/v2';
+import { applyDatabaseVersion3 } from './migrations/v3';
 import type {
   AttachmentRecord,
   ChecklistItemRecord,
@@ -29,6 +30,7 @@ export class NotesDatabase extends Dexie {
     super(name);
     applyDatabaseVersion1(this);
     applyDatabaseVersion2(this);
+    applyDatabaseVersion3(this);
   }
 }
 

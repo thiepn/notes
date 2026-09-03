@@ -1,0 +1,221 @@
+
+> @thiepn/notes@0.0.0 e2e
+> playwright test
+
+
+Running 119 tests using 1 worker
+··········××F··························××F······································
+···············×±··········×±················
+
+  1) [chromium] › e2e/backup-recovery-polish.spec.ts:89:1 › validated recovery preview compares current and incoming libraries without mutating either 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByLabel('Validated backup preview')
+    Expected substring: "Backup v2 · Database v2"
+    Received string:    "recovery-preview.json706 B · Backup v2 · Database v3Just now · exported Sep 3, 2026, 8:41 AMValidatedNotes1Checklist rows0Labels0Attachments0Reminders0Saved versions0All records1Compare before replacingIncoming counts are compared with the current local database.ContentThis deviceBackupChangeNotes31-2Attachments10-1Reminders00SameSaved versions00SameAll database records41-3This replaces the complete local library.Before replacement starts, Notes automatically downloads a fresh safety backup of the current device.I understand that this backup will replace the current local library.Restore and replace local library"
+    Timeout: 5000ms
+
+    Call log:
+      - Expect "toContainText" with timeout 5000ms
+      - waiting for getByLabel('Validated backup preview')
+        14 × locator resolved to <div class="backup-preview" aria-label="Validated backup preview">…</div>
+           - unexpected value "recovery-preview.json706 B · Backup v2 · Database v3Just now · exported Sep 3, 2026, 8:41 AMValidatedNotes1Checklist rows0Labels0Attachments0Reminders0Saved versions0All records1Compare before replacingIncoming counts are compared with the current local database.ContentThis deviceBackupChangeNotes31-2Attachments10-1Reminders00SameSaved versions00SameAll database records41-3This replaces the complete local library.Before replacement starts, Notes automatically downloads a fresh safety backup of the current device.I understand that this backup will replace the current local library.Restore and replace local library"
+
+
+      128 |   const preview = page.getByLabel('Validated backup preview');
+      129 |   await expect(preview).toBeVisible();
+    > 130 |   await expect(preview).toContainText('Backup v2 · Database v2');
+          |                         ^
+      131 |   await expect(preview).toContainText('Just now');
+      132 |   const comparison = preview.getByRole('table', { name: 'Current library versus backup' });
+      133 |   await expect(comparison).toBeVisible();
+        at /home/runner/work/notes/notes/e2e/backup-recovery-polish.spec.ts:130:25
+
+    Error Context: test-results/backup-recovery-polish-val-9bf7f-ies-without-mutating-either-chromium/error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByLabel('Validated backup preview')
+    Expected substring: "Backup v2 · Database v2"
+    Received string:    "recovery-preview.json706 B · Backup v2 · Database v3Just now · exported Sep 3, 2026, 8:41 AMValidatedNotes1Checklist rows0Labels0Attachments0Reminders0Saved versions0All records1Compare before replacingIncoming counts are compared with the current local database.ContentThis deviceBackupChangeNotes31-2Attachments10-1Reminders00SameSaved versions00SameAll database records41-3This replaces the complete local library.Before replacement starts, Notes automatically downloads a fresh safety backup of the current device.I understand that this backup will replace the current local library.Restore and replace local library"
+    Timeout: 5000ms
+
+    Call log:
+      - Expect "toContainText" with timeout 5000ms
+      - waiting for getByLabel('Validated backup preview')
+        14 × locator resolved to <div class="backup-preview" aria-label="Validated backup preview">…</div>
+           - unexpected value "recovery-preview.json706 B · Backup v2 · Database v3Just now · exported Sep 3, 2026, 8:41 AMValidatedNotes1Checklist rows0Labels0Attachments0Reminders0Saved versions0All records1Compare before replacingIncoming counts are compared with the current local database.ContentThis deviceBackupChangeNotes31-2Attachments10-1Reminders00SameSaved versions00SameAll database records41-3This replaces the complete local library.Before replacement starts, Notes automatically downloads a fresh safety backup of the current device.I understand that this backup will replace the current local library.Restore and replace local library"
+
+
+      128 |   const preview = page.getByLabel('Validated backup preview');
+      129 |   await expect(preview).toBeVisible();
+    > 130 |   await expect(preview).toContainText('Backup v2 · Database v2');
+          |                         ^
+      131 |   await expect(preview).toContainText('Just now');
+      132 |   const comparison = preview.getByRole('table', { name: 'Current library versus backup' });
+      133 |   await expect(comparison).toBeVisible();
+        at /home/runner/work/notes/notes/e2e/backup-recovery-polish.spec.ts:130:25
+
+    Error Context: test-results/backup-recovery-polish-val-9bf7f-ies-without-mutating-either-chromium-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/backup-recovery-polish-val-9bf7f-ies-without-mutating-either-chromium-retry1/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/backup-recovery-polish-val-9bf7f-ies-without-mutating-either-chromium-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByLabel('Validated backup preview')
+    Expected substring: "Backup v2 · Database v2"
+    Received string:    "recovery-preview.json706 B · Backup v2 · Database v3Just now · exported Sep 3, 2026, 8:41 AMValidatedNotes1Checklist rows0Labels0Attachments0Reminders0Saved versions0All records1Compare before replacingIncoming counts are compared with the current local database.ContentThis deviceBackupChangeNotes31-2Attachments10-1Reminders00SameSaved versions00SameAll database records41-3This replaces the complete local library.Before replacement starts, Notes automatically downloads a fresh safety backup of the current device.I understand that this backup will replace the current local library.Restore and replace local library"
+    Timeout: 5000ms
+
+    Call log:
+      - Expect "toContainText" with timeout 5000ms
+      - waiting for getByLabel('Validated backup preview')
+        14 × locator resolved to <div class="backup-preview" aria-label="Validated backup preview">…</div>
+           - unexpected value "recovery-preview.json706 B · Backup v2 · Database v3Just now · exported Sep 3, 2026, 8:41 AMValidatedNotes1Checklist rows0Labels0Attachments0Reminders0Saved versions0All records1Compare before replacingIncoming counts are compared with the current local database.ContentThis deviceBackupChangeNotes31-2Attachments10-1Reminders00SameSaved versions00SameAll database records41-3This replaces the complete local library.Before replacement starts, Notes automatically downloads a fresh safety backup of the current device.I understand that this backup will replace the current local library.Restore and replace local library"
+
+
+      128 |   const preview = page.getByLabel('Validated backup preview');
+      129 |   await expect(preview).toBeVisible();
+    > 130 |   await expect(preview).toContainText('Backup v2 · Database v2');
+          |                         ^
+      131 |   await expect(preview).toContainText('Just now');
+      132 |   const comparison = preview.getByRole('table', { name: 'Current library versus backup' });
+      133 |   await expect(comparison).toBeVisible();
+        at /home/runner/work/notes/notes/e2e/backup-recovery-polish.spec.ts:130:25
+
+    Error Context: test-results/backup-recovery-polish-val-9bf7f-ies-without-mutating-either-chromium-retry2/error-context.md
+
+  2) [chromium] › e2e/database.spec.ts:7:1 › persists notes across database reopen and protects revisions 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 2
+    Received: 3
+
+      56 |   expect(result.updatedRevision).toBe(2);
+      57 |   expect(result.conflictName).toBe('NoteConflictError');
+    > 58 |   expect(result.databaseVersion).toBe(2);
+         |                                  ^
+      59 |   expect(result.hasReminderStore).toBe(true);
+      60 | });
+      61 |
+        at /home/runner/work/notes/notes/e2e/database.spec.ts:58:34
+
+    Error Context: test-results/database-persists-notes-ac-d403f-open-and-protects-revisions-chromium/error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 2
+    Received: 3
+
+      56 |   expect(result.updatedRevision).toBe(2);
+      57 |   expect(result.conflictName).toBe('NoteConflictError');
+    > 58 |   expect(result.databaseVersion).toBe(2);
+         |                                  ^
+      59 |   expect(result.hasReminderStore).toBe(true);
+      60 | });
+      61 |
+        at /home/runner/work/notes/notes/e2e/database.spec.ts:58:34
+
+    Error Context: test-results/database-persists-notes-ac-d403f-open-and-protects-revisions-chromium-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/database-persists-notes-ac-d403f-open-and-protects-revisions-chromium-retry1/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/database-persists-notes-ac-d403f-open-and-protects-revisions-chromium-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #2 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 2
+    Received: 3
+
+      56 |   expect(result.updatedRevision).toBe(2);
+      57 |   expect(result.conflictName).toBe('NoteConflictError');
+    > 58 |   expect(result.databaseVersion).toBe(2);
+         |                                  ^
+      59 |   expect(result.hasReminderStore).toBe(true);
+      60 | });
+      61 |
+        at /home/runner/work/notes/notes/e2e/database.spec.ts:58:34
+
+    Error Context: test-results/database-persists-notes-ac-d403f-open-and-protects-revisions-chromium-retry2/error-context.md
+
+  3) [chromium] › e2e/search-retrieval-polish.spec.ts:74:1 › ArrowDown enters results and closing a result restores retrieval focus 
+
+    Error: expect(locator).toBeFocused() failed
+
+    Locator:  locator('[data-note-id="ad359fe6-8d20-412d-94a9-0d2dc8b515f1"]').getByRole('button', { name: 'Open note: Missionary preparation' })
+    Expected: focused
+    Received: inactive
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toBeFocused" with timeout 5000ms
+      - waiting for locator('[data-note-id="ad359fe6-8d20-412d-94a9-0d2dc8b515f1"]').getByRole('button', { name: 'Open note: Missionary preparation' })
+        14 × locator resolved to <button type="button" class="note-card-open" aria-label="Open note: Missionary preparation">…</button>
+           - unexpected value "inactive"
+
+
+      86 |   await expect(editor).toBeVisible();
+      87 |   await editor.getByRole('button', { name: 'Close' }).click();
+    > 88 |   await expect(result).toBeFocused();
+         |                        ^
+      89 | });
+      90 |
+      91 | test('active filter chips are individually removable and Escape unwinds search in stages', async ({
+        at /home/runner/work/notes/notes/e2e/search-retrieval-polish.spec.ts:88:24
+
+    Error Context: test-results/search-retrieval-polish-Ar-c0927-lt-restores-retrieval-focus-chromium/error-context.md
+
+  4) [chromium] › e2e/selection.spec.ts:75:1 › touch long press enters selection without opening the note editor 
+
+    Error: expect(locator).toHaveAttribute(expected) failed
+
+    Locator:  locator('[data-note-card]').first()
+    Expected: "true"
+    Received: "false"
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveAttribute" with timeout 5000ms
+      - waiting for locator('[data-note-card]').first()
+        14 × locator resolved to <article class="note-card" data-pinned="false" data-color="default" data-note-card="true" data-note-type="text" data-selected="false" data-panel-open="false" data-has-reminder="false" data-preview-hidden="false" data-selection-active="false" data-note-id="1754a304-4056-4aa1-bd84-4879e792c2d6">…</article>
+           - unexpected value "false"
+
+
+      83 |   await surface.dispatchEvent('pointerup', { pointerType: 'touch', button: 0, isPrimary: true });
+      84 |
+    > 85 |   await expect(card).toHaveAttribute('data-selected', 'true');
+         |                      ^
+      86 |   await expect(page.getByRole('toolbar', { name: 'Selected notes actions' })).toContainText(
+      87 |     '1 selected',
+      88 |   );
+        at /home/runner/work/notes/notes/e2e/selection.spec.ts:85:22
+
+    Error Context: test-results/selection-touch-long-press-551cb-out-opening-the-note-editor-chromium/error-context.md
+
+  2 failed
+    [chromium] › e2e/backup-recovery-polish.spec.ts:89:1 › validated recovery preview compares current and incoming libraries without mutating either 
+    [chromium] › e2e/database.spec.ts:7:1 › persists notes across database reopen and protects revisions 
+  2 flaky
+    [chromium] › e2e/search-retrieval-polish.spec.ts:74:1 › ArrowDown enters results and closing a result restores retrieval focus 
+    [chromium] › e2e/selection.spec.ts:75:1 › touch long press enters selection without opening the note editor 
+  115 passed (3.8m)

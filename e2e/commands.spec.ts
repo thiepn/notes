@@ -76,6 +76,25 @@ test('C starts text capture while editor typing suppresses global shortcuts and 
   await expect(card).toHaveAttribute('data-pinned', 'false');
 });
 
+test('repeated C shortcuts create distinct capture requests', async ({ page }) => {
+  await page.goto('./');
+  await waitForNotesWorkspace(page);
+
+  await page.keyboard.press('c');
+  const first = page.getByRole('form', { name: 'New note' });
+  await expect(first).toBeVisible();
+  await first.getByLabel('Title').fill('First capture request');
+  await first.getByRole('button', { name: 'Close' }).click();
+  await expect(
+    page.locator('[data-note-card]').filter({ hasText: 'First capture request' }),
+  ).toBeVisible();
+
+  await page.keyboard.press('c');
+  const second = page.getByRole('form', { name: 'New note' });
+  await expect(second).toBeVisible();
+  await expect(second.getByLabel('Note text')).toBeFocused();
+});
+
 test('J and K cycle focus through visible cards and Enter opens the focused note', async ({
   page,
 }) => {

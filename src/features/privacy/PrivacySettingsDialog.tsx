@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useRef, useState } from 'react';
 import { BellOff, EyeOff, LockKeyhole, ShieldCheck, Trash2, X } from 'lucide-react';
 
+import { useDialogFocusTrap } from '../../components/ui/useDialogFocusTrap';
 import { clearRecentSearches } from '../search/searchHistory';
 import { usePrivacy } from './PrivacyContext';
 import { supportsPrivacyLock, validatePrivacyPasscode } from './privacy';
@@ -29,14 +30,9 @@ export function PrivacySettingsDialog({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const dialogRef = useRef<HTMLElement>(null);
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  useDialogFocusTrap(dialogRef, { onEscape: onClose });
 
   const resetFeedback = () => {
     setMessage(null);
@@ -128,6 +124,8 @@ export function PrivacySettingsDialog({
   return (
     <div className="privacy-dialog-layer" role="presentation" onPointerDown={onClose}>
       <section
+        ref={dialogRef}
+        tabIndex={-1}
         className="privacy-dialog"
         data-lock-only={lockOnly}
         role="dialog"

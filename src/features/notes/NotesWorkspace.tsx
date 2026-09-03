@@ -33,7 +33,7 @@ import {
   type NoteSelectionIntent,
 } from './NoteCard';
 import { TextNoteComposer } from './TextNoteComposer';
-import { readNotesViewMode, writeNotesViewMode, type NotesViewMode } from './viewMode';
+import type { NotesViewMode } from './viewMode';
 
 const notesRepository = new NotesRepository(notesDatabase);
 const labelsRepository = new LabelsRepository(notesDatabase);
@@ -58,10 +58,19 @@ const EMPTY_LABEL_MAP: Record<string, string[]> = {};
 const EMPTY_CHECKLIST_MAP: Record<string, ChecklistItemRecord[]> = {};
 const EMPTY_SELECTION = new Set<string>();
 
+export interface CaptureRequest {
+  id: number;
+  kind: 'text' | 'checklist';
+}
+
 interface NotesWorkspaceProps {
   mode?: NoteCollectionMode;
   labels: LabelRecord[];
   filterLabelId?: string | null;
+  viewMode: NotesViewMode;
+  onViewModeChange(view: NotesViewMode): void;
+  captureRequest?: CaptureRequest | null;
+  onCaptureRequestHandled?(requestId: number): void;
   onCollectionChanged?: () => void;
 }
 
@@ -100,6 +109,10 @@ export function NotesWorkspace({
   mode = 'notes',
   labels,
   filterLabelId = null,
+  viewMode,
+  onViewModeChange,
+  captureRequest = null,
+  onCaptureRequestHandled,
   onCollectionChanged,
 }: NotesWorkspaceProps) {
   const [initialEditorNoteId] = useState(
@@ -119,7 +132,7 @@ export function NotesWorkspace({
   });
   const [activeCaptureNoteId, setActiveCaptureNoteId] = useState<string | null>(null);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<NotesViewMode>(() => readNotesViewMode());
+  const [textCaptureRequestId, setTextCaptureRequestId] = useState<number | undefined>(undefined);
   const [toast, setToast] = useState<LifecycleToastState | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<NoteRecord | null>(null);
   const [bulkDeleteIds, setBulkDeleteIds] = useState<string[] | null>(null);
@@ -281,10 +294,17 @@ export function NotesWorkspace({
     [handleSaved],
   );
 
-  const handleViewMode = useCallback((nextMode: NotesViewMode) => {
-    setViewMode(nextMode);
-    writeNotesViewMode(nextMode);
-  }, []);
+  useEffect(() => {
+    if (!captureRequest || mode !== 'notes') return;
+    if (captureRequest.kind === 'checklist') {
+      setTextCaptureRequestId(undefined);
+      setChecklistCaptureOpen(true);
+    } else {
+      setChecklistCaptureOpen(false);
+      setTextCaptureRequestId(captureRequest.id);
+    }
+    onCaptureRequestHandled?.(captureRequest.id);
+  }, [captureRequest, mode, onCaptureRequestHandled]);
 
   const handleTogglePin = useCallback(
     async (note: NoteRecord) => {
@@ -752,6 +772,7 @@ export function NotesWorkspace({
           </Suspense>
         ) : (
           <TextNoteComposer
+            openRequestId={textCaptureRequestId}
             repository={notesRepository}
             attachmentsRepository={attachmentsRepository}
             beforeSaved={prepareCapturedNote}
@@ -799,7 +820,7 @@ export function NotesWorkspace({
                   label="Grid view"
                   aria-pressed={viewMode === 'grid'}
                   data-active={viewMode === 'grid'}
-                  onClick={() => handleViewMode('grid')}
+                  onClick={() => onViewModeChange('grid')}
                 >
                   <LayoutGrid />
                 </IconButton>
@@ -808,7 +829,7 @@ export function NotesWorkspace({
                   label="List view"
                   aria-pressed={viewMode === 'list'}
                   data-active={viewMode === 'list'}
-                  onClick={() => handleViewMode('list')}
+                  onClick={() => onViewModeChange('list')}
                 >
                   <Rows3 />
                 </IconButton>

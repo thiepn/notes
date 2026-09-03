@@ -1,7 +1,8 @@
-import { useEffect, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import { useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { Check, Pencil, Plus, Trash2, X } from 'lucide-react';
 
 import { IconButton } from '../../components/ui/IconButton';
+import { useDialogFocusTrap } from '../../components/ui/useDialogFocusTrap';
 import type { LabelRecord } from '../../db';
 
 interface LabelManagerDialogProps {
@@ -25,14 +26,10 @@ export function LabelManagerDialog({
   const [deleteCandidateId, setDeleteCandidateId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const newLabelRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  useDialogFocusTrap(dialogRef, { onEscape: onClose, initialFocusRef: newLabelRef });
 
   const run = async (operation: () => Promise<void>) => {
     setBusy(true);
@@ -74,6 +71,8 @@ export function LabelManagerDialog({
   return (
     <div className="label-manager-layer" onPointerDown={handleLayerPointerDown}>
       <div
+        ref={dialogRef}
+        tabIndex={-1}
         className="label-manager-dialog"
         role="dialog"
         aria-modal="true"
@@ -91,6 +90,7 @@ export function LabelManagerDialog({
 
         <form className="label-create-row" onSubmit={handleCreate}>
           <input
+            ref={newLabelRef}
             type="text"
             value={newLabelName}
             maxLength={100}

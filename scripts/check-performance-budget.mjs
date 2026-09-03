@@ -22,6 +22,20 @@ if (entryGzipBytes > maxEntryGzipBytes) {
   throw new Error(`Entry JS gzip ${entryGzipBytes} B exceeds ${maxEntryGzipBytes} B budget.`);
 }
 
+const searchRepository = await readFile(
+  join(cwd(), 'src', 'features', 'search', 'searchRepository.ts'),
+  'utf8',
+);
+if (/attachments\.toArray\(\)/u.test(searchRepository)) {
+  throw new Error('Search must not materialize Blob-bearing attachment rows.');
+}
+if (
+  !searchRepository.includes("orderBy('[noteId+name]').keys()") ||
+  !searchRepository.includes("orderBy('[noteId+mimeType]').keys()")
+) {
+  throw new Error('Search attachment metadata indexes are missing from the production source.');
+}
+
 const sw = await readFile(join(distDir, 'sw.js'), 'utf8');
 for (const forbidden of [
   'ocr/lang/eng.traineddata.gz',

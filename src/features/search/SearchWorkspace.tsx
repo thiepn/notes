@@ -16,7 +16,7 @@ import {
 import { LifecycleToast, type LifecycleToastState } from '../notes/LifecycleToast';
 import { MasonryGrid } from '../notes/MasonryGrid';
 import { type NoteCardActions, type NoteCollectionMode } from '../notes/NoteCard';
-import { readNotesViewMode, writeNotesViewMode, type NotesViewMode } from '../notes/viewMode';
+import type { NotesViewMode } from '../notes/viewMode';
 import { richTextToPlainText } from '../richText/richText';
 import {
   parseSearchQuery,
@@ -44,6 +44,8 @@ const NoteEditorDialog = lazy(() =>
 
 interface SearchWorkspaceProps {
   query: string;
+  viewMode: NotesViewMode;
+  onViewModeChange(view: NotesViewMode): void;
   filters: SearchFilters;
   filtersOpen: boolean;
   labels: LabelRecord[];
@@ -59,6 +61,8 @@ interface EditingState {
 
 export function SearchWorkspace({
   query,
+  viewMode,
+  onViewModeChange,
   filters,
   filtersOpen,
   labels,
@@ -68,7 +72,6 @@ export function SearchWorkspace({
 }: SearchWorkspaceProps) {
   const [documents, setDocuments] = useState<SearchDocument[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [viewMode, setViewMode] = useState<NotesViewMode>(() => readNotesViewMode());
   const [editing, setEditing] = useState<EditingState | null>(null);
   const [toast, setToast] = useState<LifecycleToastState | null>(null);
   const [attachmentRefreshByNote, setAttachmentRefreshByNote] = useState<Record<string, number>>(
@@ -158,11 +161,6 @@ export function SearchWorkspace({
     }
     return contexts;
   }, [query, results]);
-
-  const handleViewMode = useCallback((nextMode: NotesViewMode) => {
-    setViewMode(nextMode);
-    writeNotesViewMode(nextMode);
-  }, []);
 
   const handleAttachmentsChanged = useCallback((noteId: string) => {
     setAttachmentRefreshByNote((current) => ({
@@ -394,7 +392,7 @@ export function SearchWorkspace({
             label="Grid view"
             aria-pressed={viewMode === 'grid'}
             data-active={viewMode === 'grid'}
-            onClick={() => handleViewMode('grid')}
+            onClick={() => onViewModeChange('grid')}
           >
             <LayoutGrid />
           </IconButton>
@@ -403,7 +401,7 @@ export function SearchWorkspace({
             label="List view"
             aria-pressed={viewMode === 'list'}
             data-active={viewMode === 'list'}
-            onClick={() => handleViewMode('list')}
+            onClick={() => onViewModeChange('list')}
           >
             <Rows3 />
           </IconButton>

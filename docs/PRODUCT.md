@@ -1,41 +1,33 @@
-# Product Freeze — V1
+# Current Product Contract
 
 ## Product statement
 
-Notes is a local-first, zero-friction notes application for `thiepn.dev/notes/`. It should match Google Keep's speed and simplicity while improving local ownership, recovery, portability, search, and desktop ergonomics.
+Notes is a local-first, zero-friction notes application for `thiepn.dev/notes/`. It aims to preserve Google Keep's capture speed while improving local ownership, recovery, portability, search, privacy controls, and desktop ergonomics.
 
-## V1 must include
+## Core product
 
-- Text notes
-- Checklists
-- Automatic saving
-- Pinning
-- Colors
-- Labels
-- Archive and trash
-- Grid and list views
-- Fast local search
-- Image attachments
-- Revision history
-- Full backup and restore
-- Markdown and JSON export
-- Google Keep Takeout import
+- Text notes and checklists with automatic saving
+- Pinning, colors, labels, archive, trash, grid/list views, and bulk actions
+- Fast local search with filters, operators, saved searches, attachment-name indexing, OCR text indexing, and typo tolerance
+- Image/file attachments, voice recordings, drawings, and optional local OCR
+- Note links/connections and revision history
+- Reminders with optional best-effort browser notifications
+- Full backup/restore plus Markdown/JSON export and Google Keep Takeout import
 - Offline-first PWA behavior
 - Responsive desktop, tablet, and mobile UX
+- Device-local privacy controls and optional UI privacy lock
 
-## V1 explicitly excludes
+## Deliberate exclusions
 
 - Cloud sync
-- Accounts and authentication
+- Accounts and server authentication
 - Collaboration
-- AI features
-- OCR
-- Voice notes
-- Drawings
+- Server-side AI features
 - Nested folders
 - Notion-style databases
-- Project management
+- Project-management systems
 - Plugin systems
+- Claims of encryption at rest or end-to-end encryption
 
 ## Product rules
 
@@ -47,12 +39,15 @@ Notes is a local-first, zero-friction notes application for `thiepn.dev/notes/`.
 6. Core workflows must work without a network connection.
 7. User data must remain exportable in open formats.
 8. Advanced features may not increase core capture friction.
+9. Local-only storage durability and backup health are product responsibilities, not implementation details.
+10. Scale regressions in search, rendering, attachments, or backups must be treated as reliability defects.
 
 ## Release hierarchy
 
 1. Capture quality
-2. Data integrity
+2. Data integrity and storage durability
 3. Retrieval
-4. Portability
+4. Portability and recovery
 5. Responsive/polished interaction
-6. Advanced features
+6. Performance at realistic library scale
+7. Advanced features

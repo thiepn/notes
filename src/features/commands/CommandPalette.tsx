@@ -1,11 +1,7 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type PointerEvent as ReactPointerEvent,
-} from 'react';
+import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { Command, Search } from 'lucide-react';
+
+import { useDialogFocusTrap } from '../../components/ui/useDialogFocusTrap';
 
 export interface CommandPaletteItem {
   id: string;
@@ -24,6 +20,7 @@ interface CommandPaletteProps {
 }
 
 export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
@@ -43,10 +40,7 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
 
   const safeActiveIndex = filtered.length === 0 ? -1 : Math.min(activeIndex, filtered.length - 1);
 
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(() => inputRef.current?.focus());
-    return () => window.cancelAnimationFrame(frame);
-  }, []);
+  useDialogFocusTrap(dialogRef, { initialFocusRef: inputRef });
 
   const execute = (command: CommandPaletteItem | undefined) => {
     if (!command || command.disabled) return;
@@ -61,6 +55,8 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
   return (
     <div className="command-palette-layer" onPointerDown={handleLayerPointerDown}>
       <div
+        ref={dialogRef}
+        tabIndex={-1}
         className="command-palette"
         role="dialog"
         aria-modal="true"

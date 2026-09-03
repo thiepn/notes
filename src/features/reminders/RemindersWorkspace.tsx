@@ -18,7 +18,7 @@ import {
 import { LifecycleToast, type LifecycleToastState } from '../notes/LifecycleToast';
 import { MasonryGrid } from '../notes/MasonryGrid';
 import type { NoteCardActions } from '../notes/NoteCard';
-import { readNotesViewMode, writeNotesViewMode, type NotesViewMode } from '../notes/viewMode';
+import type { NotesViewMode } from '../notes/viewMode';
 import { reminderTimeBucket } from './reminderTime';
 
 const notesRepository = new NotesRepository(notesDatabase);
@@ -38,6 +38,8 @@ const INITIAL_REMINDER_NOW = Date.now();
 
 interface RemindersWorkspaceProps {
   labels: LabelRecord[];
+  viewMode: NotesViewMode;
+  onViewModeChange(view: NotesViewMode): void;
 }
 
 interface ReminderCollection {
@@ -56,10 +58,13 @@ const EMPTY_COLLECTION: ReminderCollection = {
   loaded: false,
 };
 
-export function RemindersWorkspace({ labels }: RemindersWorkspaceProps) {
+export function RemindersWorkspace({
+  labels,
+  viewMode,
+  onViewModeChange,
+}: RemindersWorkspaceProps) {
   const [collection, setCollection] = useState<ReminderCollection>(EMPTY_COLLECTION);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<NotesViewMode>(() => readNotesViewMode());
   const [attachmentRefreshByNote, setAttachmentRefreshByNote] = useState<Record<string, number>>(
     {},
   );
@@ -208,11 +213,6 @@ export function RemindersWorkspace({ labels }: RemindersWorkspaceProps) {
     groups.later.length;
   const historyCount = groups.history.length;
 
-  const handleViewMode = (next: NotesViewMode) => {
-    setViewMode(next);
-    writeNotesViewMode(next);
-  };
-
   return (
     <>
       {total > 0 ? (
@@ -228,7 +228,7 @@ export function RemindersWorkspace({ labels }: RemindersWorkspaceProps) {
                 label="Grid view"
                 aria-pressed={viewMode === 'grid'}
                 data-active={viewMode === 'grid'}
-                onClick={() => handleViewMode('grid')}
+                onClick={() => onViewModeChange('grid')}
               >
                 <LayoutGrid />
               </IconButton>
@@ -237,7 +237,7 @@ export function RemindersWorkspace({ labels }: RemindersWorkspaceProps) {
                 label="List view"
                 aria-pressed={viewMode === 'list'}
                 data-active={viewMode === 'list'}
-                onClick={() => handleViewMode('list')}
+                onClick={() => onViewModeChange('list')}
               >
                 <Rows3 />
               </IconButton>

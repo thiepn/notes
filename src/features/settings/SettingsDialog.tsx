@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   BellRing,
   DatabaseBackup,
@@ -12,9 +12,11 @@ import {
   X,
 } from 'lucide-react';
 
+import { useDialogFocusTrap } from '../../components/ui/useDialogFocusTrap';
 import { usePrivacy } from '../privacy/PrivacyContext';
 import { ReminderNotificationSettings } from '../reminders/ReminderNotificationSettings';
 import { clearRecentSearches, readRecentSearches } from '../search/searchHistory';
+import { StorageHealthSettings } from '../storage/StorageHealthSettings';
 import { useTheme } from '../../theme/ThemeContext';
 import type { ThemePreference } from '../../theme/theme';
 
@@ -79,27 +81,21 @@ export function SettingsDialog({
 }: SettingsDialogProps) {
   const [section, setSection] = useState<SettingsSection>(initialSection);
   const [recentSearchCount, setRecentSearchCount] = useState(() => readRecentSearches().length);
+  const dialogRef = useRef<HTMLElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const { preference, setPreference } = useTheme();
   const { hidePreviews, privateNotifications, autoLockMinutes, lockEnabled, setPreferences, lock } =
     usePrivacy();
 
-  useEffect(() => {
-    closeRef.current?.focus();
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      event.preventDefault();
-      onClose();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  useDialogFocusTrap(dialogRef, { onEscape: onClose, initialFocusRef: closeRef });
 
   const activeSection = SECTIONS.find((item) => item.id === section) ?? SECTIONS[0]!;
 
   return (
     <div className="settings-dialog-layer" role="presentation" onPointerDown={onClose}>
       <section
+        ref={dialogRef}
+        tabIndex={-1}
         className="settings-dialog"
         role="dialog"
         aria-modal="true"
@@ -319,6 +315,7 @@ export function SettingsDialog({
 
             {section === 'advanced' ? (
               <>
+                <StorageHealthSettings />
                 <section className="settings-group" aria-label="Backup and import">
                   <div className="settings-setting-row">
                     <span className="settings-row-icon" aria-hidden="true">

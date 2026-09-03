@@ -7,7 +7,8 @@ export {
 } from './database';
 export { InvalidNoteStateError, NoteConflictError, NoteNotFoundError } from './errors';
 export { DATABASE_SCHEMA_V1 } from './migrations/v1';
-export { DATABASE_SCHEMA_V2, DATABASE_VERSION } from './migrations/v2';
+export { DATABASE_SCHEMA_V2 } from './migrations/v2';
+export { DATABASE_SCHEMA_V3, DATABASE_VERSION } from './migrations/v3';
 export {
   AttachmentsRepository,
   isPreviewableImageMimeType,

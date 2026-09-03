@@ -1,0 +1,13 @@
+
+> @thiepn/notes@0.0.0 typecheck
+> tsc --noEmit
+
+src/features/backup/backupFormat.test.ts(19,5): error TS2322: Type '2' is not assignable to type '3'.
+src/features/backup/backupPresentation.test.ts(46,31): error TS2352: Conversion of type '{ formatVersion: 2; databaseVersion: 2; }' to type '{ format: "thiepn.notes.backup"; formatVersion: 2; databaseVersion: 3; exportedAt: number; data: { notes: { id: string; type: "text" | "checklist"; title: string; content: string; color: "default" | ... 9 more ... | "gray"; ... 6 more ...; revision: number; }[]; ... 6 more ...; settings: { ...; }[]; }; }' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ formatVersion: 2; databaseVersion: 2; }' is missing the following properties from type '{ format: "thiepn.notes.backup"; formatVersion: 2; databaseVersion: 3; exportedAt: number; data: { notes: { id: string; type: "text" | "checklist"; title: string; content: string; color: "default" | ... 9 more ... | "gray"; ... 6 more ...; revision: number; }[]; ... 6 more ...; settings: { ...; }[]; }; }': format, exportedAt, data
+src/features/notes/NotesWorkspace.tsx(774,12): error TS2375: Type '{ openRequestId: number | undefined; repository: NotesRepository; attachmentsRepository: AttachmentsRepository; beforeSaved: (note: NoteRecord) => Promise<...>; ... 4 more ...; onChecklistRequested: () => void; }' is not assignable to type 'TextNoteComposerProps' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'openRequestId' are incompatible.
+    Type 'number | undefined' is not assignable to type 'number'.
+      Type 'undefined' is not assignable to type 'number'.
+src/features/storage/storageHealth.ts(63,5): error TS2322: Type '"KiB" | "MiB" | "GiB" | "TiB"' is not assignable to type '"KiB"'.
+  Type '"MiB"' is not assignable to type '"KiB"'.
