@@ -25,6 +25,7 @@ jobs:
         run: |
           python scripts/v4-0-apply.py
           python scripts/v4-0-fix.py
+          python scripts/v4-0-compat-fix.py
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
@@ -40,6 +41,7 @@ jobs:
           src/styles/notes.css
           scripts/check-performance-budget.mjs
           e2e/large-library-engine.spec.ts
+          e2e/selection.spec.ts
           docs/LARGE_LIBRARY_ENGINE.md
           docs/ARCHITECTURE.md
           docs/PRODUCT.md
@@ -60,7 +62,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: V4.0 focused browser regression
-        run: npx playwright test e2e/large-library-engine.spec.ts e2e/search.spec.ts e2e/database.spec.ts
+        run: npx playwright test e2e/large-library-engine.spec.ts e2e/search.spec.ts e2e/database.spec.ts e2e/selection.spec.ts
 
       - name: Full browser regression suite
         run: npm run e2e
@@ -70,7 +72,7 @@ jobs:
 
       - name: Commit verified V4.0
         run: |
-          git rm scripts/v4-0-apply.py scripts/v4-0-fix.py .github/workflows/v4-0-verify.yml
+          git rm scripts/v4-0-apply.py scripts/v4-0-fix.py scripts/v4-0-compat-fix.py .github/workflows/v4-0-verify.yml
           git add \
             src/features/search/search.worker.ts \
             src/features/search/searchWorkerClient.ts \
@@ -80,6 +82,7 @@ jobs:
             src/styles/notes.css \
             scripts/check-performance-budget.mjs \
             e2e/large-library-engine.spec.ts \
+            e2e/selection.spec.ts \
             docs/LARGE_LIBRARY_ENGINE.md \
             docs/ARCHITECTURE.md \
             docs/PRODUCT.md
