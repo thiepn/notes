@@ -31,7 +31,20 @@ jobs:
         run: npm run format
 
       - name: Lint
-        run: npm run lint
+        id: lint
+        continue-on-error: true
+        run: npm run lint 2>&1 | tee lint.log
+
+      - name: Upload lint diagnostics
+        if: steps.lint.outcome == 'failure'
+        uses: actions/upload-artifact@v6
+        with:
+          name: v3-9-lint-diagnostics
+          path: lint.log
+
+      - name: Stop on lint failure
+        if: steps.lint.outcome == 'failure'
+        run: exit 1
 
       - name: Typecheck
         run: npm run typecheck
