@@ -118,7 +118,22 @@ jobs:
         run: exit 1
 
       - name: PWA offline certification
-        run: npm run e2e:pwa
+        id: pwa
+        continue-on-error: true
+        run: npm run e2e:pwa 2>&1 | tee pwa.log
+
+      - name: Upload PWA diagnostics
+        if: steps.pwa.outcome == 'failure'
+        uses: actions/upload-artifact@v6
+        with:
+          name: v3-9-pwa-diagnostics
+          path: |
+            pwa.log
+            test-results
+
+      - name: Stop on PWA failure
+        if: steps.pwa.outcome == 'failure'
+        run: exit 1
 
       - name: Commit verified V3.9
         run: |
