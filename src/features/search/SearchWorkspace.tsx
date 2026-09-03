@@ -21,11 +21,12 @@ import { richTextToPlainText } from '../richText/richText';
 import {
   parseSearchQuery,
   primarySearchMatchField,
-  searchDocuments,
   type SearchDocument,
+  type SearchResult,
 } from './searchEngine';
 import { SearchFiltersPanel } from './SearchFiltersPanel';
 import { SearchRepository } from './searchRepository';
+import { SearchWorkerClient } from './searchWorkerClient';
 import { DEFAULT_SEARCH_FILTERS, type SearchFilters } from './searchTypes';
 
 const searchRepository = new SearchRepository(notesDatabase);
@@ -71,23 +72,60 @@ export function SearchWorkspace({
   onClearSearch,
 }: SearchWorkspaceProps) {
   const [documents, setDocuments] = useState<SearchDocument[]>([]);
+  const [results, setResults] = useState<SearchResult[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [indexRevision, setIndexRevision] = useState(0);
+  const [completedSearchKey, setCompletedSearchKey] = useState('');
   const [editing, setEditing] = useState<EditingState | null>(null);
   const [toast, setToast] = useState<LifecycleToastState | null>(null);
   const [attachmentRefreshByNote, setAttachmentRefreshByNote] = useState<Record<string, number>>(
     {},
   );
   const searchOriginNoteIdRef = useRef<string | null>(null);
+  const searchClientRef = useRef<SearchWorkerClient | null>(null);
+  const searchRequestIdRef = useRef(0);
 
   const showToast = useCallback((message: string, undo?: () => Promise<void>) => {
     const id = crypto.randomUUID();
     setToast(undo ? { id, message, undo } : { id, message });
   }, []);
 
-  const reloadIndex = useCallback(async () => {
-    const index = await searchRepository.loadIndex();
+  useEffect(() => {
+    const client = new SearchWorkerClient();
+    searchClientRef.current = client;
+    return () => {
+      searchClientRef.current = null;
+      client.dispose();
+    };
+  }, []);
+
+  const replaceIndex = useCallback((index: SearchDocument[]) => {
+    searchClientRef.current?.replaceIndex(index);
     setDocuments(index);
     setLoaded(true);
+    setIndexRevision((current) => current + 1);
+  }, []);
+
+  const reloadIndex = useCallback(async () => {
+    replaceIndex(await searchRepository.loadIndex());
+  }, [replaceIndex]);
+
+  const refreshDocument = useCallback(async (noteId: string) => {
+    const document = await searchRepository.loadDocument(noteId);
+    if (document) {
+      searchClientRef.current?.upsertDocument(document);
+      setDocuments((current) => {
+        const existingIndex = current.findIndex((item) => item.note.id === noteId);
+        if (existingIndex < 0) return [...current, document];
+        const next = [...current];
+        next[existingIndex] = document;
+        return next;
+      });
+    } else {
+      searchClientRef.current?.removeDocument(noteId);
+      setDocuments((current) => current.filter((item) => item.note.id !== noteId));
+    }
+    setIndexRevision((current) => current + 1);
   }, []);
 
   useEffect(() => {
@@ -96,19 +134,20 @@ export function SearchWorkspace({
       .loadIndex()
       .then((index) => {
         if (cancelled) return;
-        setDocuments(index);
-        setLoaded(true);
+        replaceIndex(index);
       })
       .catch(() => {
         if (cancelled) return;
+        searchClientRef.current?.replaceIndex([]);
         setDocuments([]);
         setLoaded(true);
+        setIndexRevision((current) => current + 1);
         showToast('Search index could not be loaded.');
       });
     return () => {
       cancelled = true;
     };
-  }, [showToast]);
+  }, [replaceIndex, showToast]);
 
   useEffect(() => {
     const handleReminderChanged = () => {
@@ -127,10 +166,40 @@ export function SearchWorkspace({
   }, [toast]);
 
   const parsedQuery = useMemo(() => parseSearchQuery(query), [query]);
-  const results = useMemo(
-    () => searchDocuments(documents, query, filters),
-    [documents, filters, query],
+  const searchKey = useMemo(
+    () => `${indexRevision}:${query}:${JSON.stringify(filters)}`,
+    [filters, indexRevision, query],
   );
+  const searchReady = loaded && completedSearchKey === searchKey;
+
+  useEffect(() => {
+    if (!loaded) return;
+    const client = searchClientRef.current;
+    if (!client) return;
+    let cancelled = false;
+    const requestId = ++searchRequestIdRef.current;
+    void client
+      .search(query, filters)
+      .then((matches) => {
+        if (cancelled || requestId !== searchRequestIdRef.current) return;
+        const byId = new Map(documents.map((document) => [document.note.id, document]));
+        const nextResults = matches.flatMap((match) => {
+          const document = byId.get(match.noteId);
+          return document ? [{ document, score: match.score }] : [];
+        });
+        setResults(nextResults);
+        setCompletedSearchKey(searchKey);
+      })
+      .catch(() => {
+        if (cancelled || requestId !== searchRequestIdRef.current) return;
+        setResults([]);
+        setCompletedSearchKey(searchKey);
+        showToast('Search could not be completed.');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [documents, filters, loaded, query, searchKey, showToast]);
   const activeDocuments = useMemo(
     () =>
       results
@@ -162,28 +231,32 @@ export function SearchWorkspace({
     return contexts;
   }, [query, results]);
 
-  const handleAttachmentsChanged = useCallback((noteId: string) => {
-    setAttachmentRefreshByNote((current) => ({
-      ...current,
-      [noteId]: (current[noteId] ?? 0) + 1,
-    }));
-  }, []);
+  const handleAttachmentsChanged = useCallback(
+    (noteId: string) => {
+      setAttachmentRefreshByNote((current) => ({
+        ...current,
+        [noteId]: (current[noteId] ?? 0) + 1,
+      }));
+      void refreshDocument(noteId);
+    },
+    [refreshDocument],
+  );
 
   const handleTogglePin = useCallback(
     async (note: NoteRecord) => {
       const previous = note.pinnedAt !== null;
       try {
         await notesRepository.setPinned(note.id, !previous, note.revision);
-        await reloadIndex();
+        await refreshDocument(note.id);
         showToast(previous ? 'Note unpinned.' : 'Note pinned.', async () => {
           await notesRepository.setPinned(note.id, previous);
-          await reloadIndex();
+          await refreshDocument(note.id);
         });
       } catch {
         showToast('Pin state could not be changed.');
       }
     },
-    [reloadIndex, showToast],
+    [refreshDocument, showToast],
   );
 
   const handleArchive = useCallback(
@@ -191,33 +264,33 @@ export function SearchWorkspace({
       const wasPinned = note.pinnedAt !== null;
       try {
         await notesRepository.archive(note.id, note.revision);
-        await reloadIndex();
+        await refreshDocument(note.id);
         showToast('Note archived.', async () => {
           const restored = await notesRepository.unarchive(note.id);
           if (wasPinned) await notesRepository.setPinned(note.id, true, restored.revision);
-          await reloadIndex();
+          await refreshDocument(note.id);
         });
       } catch {
         showToast('Note could not be archived.');
       }
     },
-    [reloadIndex, showToast],
+    [refreshDocument, showToast],
   );
 
   const handleUnarchive = useCallback(
     async (note: NoteRecord) => {
       try {
         await notesRepository.unarchive(note.id, note.revision);
-        await reloadIndex();
+        await refreshDocument(note.id);
         showToast('Note moved to Notes.', async () => {
           await notesRepository.archive(note.id);
-          await reloadIndex();
+          await refreshDocument(note.id);
         });
       } catch {
         showToast('Note could not be unarchived.');
       }
     },
-    [reloadIndex, showToast],
+    [refreshDocument, showToast],
   );
 
   const handleTrash = useCallback(
@@ -226,34 +299,34 @@ export function SearchWorkspace({
       const wasPinned = note.pinnedAt !== null;
       try {
         await notesRepository.trash(note.id, note.revision);
-        await reloadIndex();
+        await refreshDocument(note.id);
         showToast('Note moved to trash.', async () => {
           const restored = await notesRepository.restore(note.id);
           if (wasArchived) await notesRepository.archive(note.id, restored.revision);
           else if (wasPinned) await notesRepository.setPinned(note.id, true, restored.revision);
-          await reloadIndex();
+          await refreshDocument(note.id);
         });
       } catch {
         showToast('Note could not be moved to trash.');
       }
     },
-    [reloadIndex, showToast],
+    [refreshDocument, showToast],
   );
 
   const handleDuplicate = useCallback(
     async (note: NoteRecord) => {
       try {
         const duplicate = await notesRepository.duplicate(note.id);
-        await reloadIndex();
+        await refreshDocument(duplicate.id);
         showToast('Note duplicated.', async () => {
           await notesRepository.deletePermanently(duplicate.id);
-          await reloadIndex();
+          await refreshDocument(duplicate.id);
         });
       } catch {
         showToast('Note could not be duplicated.');
       }
     },
-    [reloadIndex, showToast],
+    [refreshDocument, showToast],
   );
 
   const handleSetColor = useCallback(
@@ -262,16 +335,16 @@ export function SearchWorkspace({
       const previous = note.color;
       try {
         await notesRepository.update(note.id, { color }, note.revision);
-        await reloadIndex();
+        await refreshDocument(note.id);
         showToast('Color changed.', async () => {
           await notesRepository.update(note.id, { color: previous });
-          await reloadIndex();
+          await refreshDocument(note.id);
         });
       } catch {
         showToast('Note color could not be changed.');
       }
     },
-    [reloadIndex, showToast],
+    [refreshDocument, showToast],
   );
 
   const handleSetLabels = useCallback(
@@ -279,16 +352,16 @@ export function SearchWorkspace({
       const previous = documentsById.get(note.id)?.labelIds ?? [];
       try {
         await labelsRepository.setForNote(note.id, labelIds);
-        await reloadIndex();
+        await refreshDocument(note.id);
         showToast('Labels updated.', async () => {
           await labelsRepository.setForNote(note.id, previous);
-          await reloadIndex();
+          await refreshDocument(note.id);
         });
       } catch {
         showToast('Note labels could not be changed.');
       }
     },
-    [documentsById, reloadIndex, showToast],
+    [documentsById, refreshDocument, showToast],
   );
 
   const actions = useMemo<NoteCardActions>(
@@ -324,17 +397,17 @@ export function SearchWorkspace({
   const handleSaved = useCallback(
     (note: NoteRecord) => {
       setEditing((current) => (current ? { ...current, note } : current));
-      void reloadIndex();
+      void refreshDocument(note.id);
     },
-    [reloadIndex],
+    [refreshDocument],
   );
 
   const handleChecklistSaved = useCallback(
     (note: NoteRecord, items: ChecklistItemRecord[]) => {
       setEditing({ note, items });
-      void reloadIndex();
+      void refreshDocument(note.id);
     },
-    [reloadIndex],
+    [refreshDocument],
   );
 
   const closeEditing = useCallback(() => {
@@ -382,7 +455,7 @@ export function SearchWorkspace({
 
       <div className="search-results-toolbar">
         <div className="search-results-summary" role="status" aria-live="polite">
-          <strong>{loaded ? results.length : '…'}</strong>{' '}
+          <strong>{searchReady ? results.length : '…'}</strong>{' '}
           <span>{results.length === 1 ? 'result' : 'results'}</span>
           {query.trim() ? <span className="search-results-for"> for “{query.trim()}”</span> : null}
         </div>
@@ -440,7 +513,7 @@ export function SearchWorkspace({
         </div>
       ) : null}
 
-      {loaded && results.length === 0 ? (
+      {searchReady && results.length === 0 ? (
         <section className="empty-state" aria-labelledby="search-empty-title">
           <span className="empty-state-icon" aria-hidden="true">
             <SearchX />
@@ -500,7 +573,7 @@ export function SearchWorkspace({
               onAttachmentsChanged={handleAttachmentsChanged}
               onConverted={(note) => {
                 setEditing({ note, items: [] });
-                void reloadIndex();
+                void refreshDocument(note.id);
               }}
               onClose={closeEditing}
             />
@@ -520,7 +593,7 @@ export function SearchWorkspace({
                     editing.note.id,
                   );
                   setEditing({ note: converted.note, items: converted.items });
-                  await reloadIndex();
+                  await refreshDocument(converted.note.id);
                 } catch {
                   showToast('Note could not be converted to a checklist.');
                 }

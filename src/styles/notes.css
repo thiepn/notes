@@ -229,6 +229,39 @@
   grid-row-end: auto !important;
 }
 
+.note-grid-progress {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-5) 0 var(--space-2);
+}
+
+.note-grid-progress button {
+  min-height: 40px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 650;
+}
+
+.note-grid-progress button:hover,
+.note-grid-progress button:focus-visible {
+  border-color: var(--border-strong);
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.note-grid-progress button span {
+  margin-left: var(--space-2);
+  color: var(--text-subtle);
+  font-size: var(--text-xs);
+  font-weight: 550;
+}
+
 .note-card {
   position: relative;
   width: 100%;

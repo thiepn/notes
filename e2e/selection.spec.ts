@@ -187,7 +187,9 @@ test('Archive and Trash expose mode-valid bulk lifecycle actions and confirmed p
   expect(remaining).toBe(0);
 });
 
-test('select all and a bulk mutation remain usable with 500 notes', async ({ page }) => {
+test('select all and a bulk mutation span 500 notes with progressive card mounting', async ({
+  page,
+}) => {
   test.setTimeout(60_000);
   await page.goto('./');
   await page.evaluate(async () => {
@@ -211,7 +213,11 @@ test('select all and a bulk mutation remain usable with 500 notes', async ({ pag
     );
   });
   await page.reload();
-  await expect(page.locator('[data-note-card]')).toHaveCount(500);
+
+  const cards = page.locator('[data-note-card]');
+  await expect(cards.first()).toBeVisible();
+  expect(await cards.count()).toBeLessThan(500);
+  await expect(page.locator('.note-grid').first()).toHaveAttribute('data-total-count', '500');
 
   await selectAllVisible(page);
   const toolbar = page.getByRole('toolbar', { name: 'Selected notes actions' });
@@ -222,7 +228,7 @@ test('select all and a bulk mutation remain usable with 500 notes', async ({ pag
     .getByRole('button', { name: 'Set Gray color on selected notes' })
     .click();
 
-  await expect(page.locator('[data-note-card][data-color="gray"]')).toHaveCount(500);
+  await expect(cards.first()).toHaveAttribute('data-color', 'gray');
   const grayCount = await page.evaluate(async () => {
     const dbModule = await import('/notes/src/db/index.ts');
     return (await dbModule.notesDatabase.notes.toArray()).filter((note) => note.color === 'gray')

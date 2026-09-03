@@ -35,6 +35,24 @@ if (
 ) {
   throw new Error('Search attachment metadata indexes are missing from the production source.');
 }
+if (!searchRepository.includes('async loadDocument(noteId: string)')) {
+  throw new Error('Incremental single-note search refresh is missing.');
+}
+
+const searchWorkspace = await readFile(
+  join(cwd(), 'src', 'features', 'search', 'SearchWorkspace.tsx'),
+  'utf8',
+);
+if (searchWorkspace.includes('searchDocuments(')) {
+  throw new Error('Search scoring regressed onto the SearchWorkspace main-thread render path.');
+}
+const searchWorkerClient = await readFile(
+  join(cwd(), 'src', 'features', 'search', 'searchWorkerClient.ts'),
+  'utf8',
+);
+if (!searchWorkerClient.includes("new Worker(new URL('./search.worker.ts', import.meta.url)")) {
+  throw new Error('The dedicated search worker is missing.');
+}
 
 const sw = await readFile(join(distDir, 'sw.js'), 'utf8');
 for (const forbidden of [
