@@ -1,0 +1,52 @@
+name: V3.9 clean CI source fix
+
+on:
+  push:
+    branches: [v3-9-scale-storage-architecture-hardening]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix-and-verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+
+      - name: Apply source fixes
+        run: python scripts/v3-9-clean-ci-fix.py
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Format changed source
+        run: npx prettier --write src/components/ui/useDialogFocusTrap.ts src/features/notes/NotesWorkspace.tsx src/features/storage/StorageHealthSettings.tsx
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Build
+        run: npm run build
+
+      - name: Commit clean source fix
+        run: |
+          git rm scripts/v3-9-clean-ci-fix.py .github/workflows/v3-9-clean-ci-fix.yml
+          git add -A
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Fix V3.9 clean CI lint regressions"
+          git push
