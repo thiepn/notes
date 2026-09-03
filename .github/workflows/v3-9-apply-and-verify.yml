@@ -98,7 +98,22 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Browser regression suite
-        run: npm run e2e
+        id: e2e
+        continue-on-error: true
+        run: npm run e2e 2>&1 | tee e2e.log
+
+      - name: Upload browser diagnostics
+        if: steps.e2e.outcome == 'failure'
+        uses: actions/upload-artifact@v6
+        with:
+          name: v3-9-browser-diagnostics
+          path: |
+            e2e.log
+            test-results
+
+      - name: Stop on browser failure
+        if: steps.e2e.outcome == 'failure'
+        run: exit 1
 
       - name: PWA offline certification
         run: npm run e2e:pwa
