@@ -1,0 +1,61 @@
+name: V3.9 hardening verifier
+
+on:
+  push:
+    branches: [v3-9-scale-storage-architecture-hardening]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verify-and-commit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+
+      - name: Apply V3.9
+        run: python scripts/v3-9-apply.py
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Format
+        run: npm run format
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Production build and performance gates
+        run: npm run build
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Browser regression suite
+        run: npm run e2e
+
+      - name: PWA offline certification
+        run: npm run e2e:pwa
+
+      - name: Commit verified V3.9
+        run: |
+          git rm scripts/v3-9-apply.py .github/workflows/v3-9-apply-and-verify.yml
+          git add -A
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Implement V3.9 scale storage and architecture hardening"
+          git push
