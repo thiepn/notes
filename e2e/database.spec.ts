@@ -55,7 +55,7 @@ test('persists notes across database reopen and protects revisions', async ({ pa
   expect(result.revision).toBe(2);
   expect(result.updatedRevision).toBe(2);
   expect(result.conflictName).toBe('NoteConflictError');
-  expect(result.databaseVersion).toBe(2);
+  expect(result.databaseVersion).toBe(3);
   expect(result.hasReminderStore).toBe(true);
 });
 

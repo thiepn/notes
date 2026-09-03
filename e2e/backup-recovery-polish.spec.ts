@@ -127,7 +127,7 @@ test('validated recovery preview compares current and incoming libraries without
 
   const preview = page.getByLabel('Validated backup preview');
   await expect(preview).toBeVisible();
-  await expect(preview).toContainText('Backup v2 · Database v2');
+  await expect(preview).toContainText('Backup v2 · Database v3');
   await expect(preview).toContainText('Just now');
   const comparison = preview.getByRole('table', { name: 'Current library versus backup' });
   await expect(comparison).toBeVisible();
