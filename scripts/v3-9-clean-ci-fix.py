@@ -105,3 +105,37 @@ replace_once(
     """  useEffect(() => {\n    void refresh();\n  }, [refresh]);\n""",
     """  useEffect(() => {\n    let cancelled = false;\n    void readStorageHealth().then((nextHealth) => {\n      if (!cancelled) setHealth(nextHealth);\n    });\n    return () => {\n      cancelled = true;\n    };\n  }, []);\n""",
 )
+
+replace_once(
+    "src/features/notes/TextNoteComposer.tsx",
+    "  openRequestId?: number;\n",
+    "  openRequestId?: number | undefined;\n",
+)
+
+replace_once(
+    "src/features/storage/storageHealth.ts",
+    "  let unit = units[0];\n",
+    "  let unit: (typeof units)[number] = units[0];\n",
+)
+
+replace_once(
+    "src/features/backup/backupFormat.test.ts",
+    "    databaseVersion: 2,\n",
+    "    databaseVersion: 3,\n",
+)
+replace_once(
+    "src/features/backup/backupFormat.test.ts",
+    "    expect(prepared.document.databaseVersion).toBe(2);\n",
+    "    expect(prepared.document.databaseVersion).toBe(3);\n",
+)
+replace_once(
+    "src/features/backup/backupFormat.test.ts",
+    """  it('rejects a reminder that references a missing note', async () => {\n""",
+    """  it('accepts a previous database v2 backup and normalizes it to database v3', async () => {\n    const current = await validBackup();\n    const previous = { ...current, databaseVersion: 2 };\n    const prepared = await prepareBackup(previous);\n    expect(prepared.document.databaseVersion).toBe(3);\n    expect(prepared.document.data).toEqual(current.data);\n  });\n\n  it('rejects a reminder that references a missing note', async () => {\n""",
+)
+
+replace_once(
+    "src/features/backup/backupPresentation.test.ts",
+    """    expect(backupVersionLabel({ formatVersion: 2, databaseVersion: 2 } as BackupDocument)).toBe(\n      'Backup v2 · Database v2',\n    );\n""",
+    """    expect(backupVersionLabel({ formatVersion: 2, databaseVersion: 3 } as BackupDocument)).toBe(\n      'Backup v2 · Database v3',\n    );\n""",
+)
