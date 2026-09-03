@@ -52,7 +52,7 @@ const AttachmentPanel = lazy(() =>
 const voiceAttachmentsRepository = new VoiceAttachmentsRepository(notesDatabase);
 
 interface TextNoteComposerProps {
-  openRequestId?: number;
+  openRequestId?: number | undefined;
   repository: NotesRepository;
   attachmentsRepository: AttachmentsRepository;
   beforeSaved?: ((note: NoteRecord) => Promise<void>) | undefined;

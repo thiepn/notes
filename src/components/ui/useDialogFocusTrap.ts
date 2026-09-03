@@ -1,4 +1,4 @@
-import { useEffect, useRef, type RefObject } from 'react';
+import { useEffect, useEffectEvent, type RefObject } from 'react';
 
 const FOCUSABLE_SELECTOR = [
   'a[href]',
@@ -18,24 +18,21 @@ export function useDialogFocusTrap<
   TContainer extends HTMLElement,
   TInitial extends HTMLElement = HTMLElement,
 >(containerRef: RefObject<TContainer | null>, options: DialogFocusOptions<TInitial> = {}): void {
-  const onEscapeRef = useRef(options.onEscape);
-  onEscapeRef.current = options.onEscape;
-  const initialFocusRef = options.initialFocusRef;
-
-  useEffect(() => {
+  const setupDialog = useEffectEvent(() => {
     const container = containerRef.current;
     if (!container) return;
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const frame = window.requestAnimationFrame(() => {
-      const target = initialFocusRef?.current ?? focusableElements(container)[0] ?? container;
+      const target =
+        options.initialFocusRef?.current ?? focusableElements(container)[0] ?? container;
       target.focus();
     });
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && onEscapeRef.current) {
+      if (event.key === 'Escape' && options.onEscape) {
         event.preventDefault();
         event.stopPropagation();
-        onEscapeRef.current();
+        options.onEscape();
         return;
       }
       if (event.key !== 'Tab') return;
@@ -62,7 +59,9 @@ export function useDialogFocusTrap<
       document.removeEventListener('keydown', handleKeyDown, true);
       if (previous?.isConnected) window.requestAnimationFrame(() => previous.focus());
     };
-  }, [containerRef, initialFocusRef]);
+  });
+
+  useEffect(() => setupDialog(), []);
 }
 
 function focusableElements(container: HTMLElement): HTMLElement[] {

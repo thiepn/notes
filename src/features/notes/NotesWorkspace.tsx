@@ -296,14 +296,18 @@ export function NotesWorkspace({
 
   useEffect(() => {
     if (!captureRequest || mode !== 'notes') return;
-    if (captureRequest.kind === 'checklist') {
-      setTextCaptureRequestId(undefined);
-      setChecklistCaptureOpen(true);
-    } else {
-      setChecklistCaptureOpen(false);
-      setTextCaptureRequestId(captureRequest.id);
-    }
-    onCaptureRequestHandled?.(captureRequest.id);
+    const request = captureRequest;
+    const frame = window.requestAnimationFrame(() => {
+      if (request.kind === 'checklist') {
+        setTextCaptureRequestId(undefined);
+        setChecklistCaptureOpen(true);
+      } else {
+        setChecklistCaptureOpen(false);
+        setTextCaptureRequestId(request.id);
+      }
+      onCaptureRequestHandled?.(request.id);
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [captureRequest, mode, onCaptureRequestHandled]);
 
   const handleTogglePin = useCallback(

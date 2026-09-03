@@ -16,7 +16,7 @@ async function validBackup(): Promise<BackupDocument> {
   return {
     format: 'thiepn.notes.backup',
     formatVersion: 2,
-    databaseVersion: 2,
+    databaseVersion: 3,
     exportedAt: 123,
     data: {
       notes: [
@@ -154,9 +154,17 @@ describe('backup format', () => {
 
     const prepared = await prepareBackup(legacy);
     expect(prepared.document.formatVersion).toBe(2);
-    expect(prepared.document.databaseVersion).toBe(2);
+    expect(prepared.document.databaseVersion).toBe(3);
     expect(prepared.document.data.reminders).toEqual([]);
     expect(prepared.stats.reminders).toBe(0);
+  });
+
+  it('accepts a previous database v2 backup and normalizes it to database v3', async () => {
+    const current = await validBackup();
+    const previous = { ...current, databaseVersion: 2 };
+    const prepared = await prepareBackup(previous);
+    expect(prepared.document.databaseVersion).toBe(3);
+    expect(prepared.document.data).toEqual(current.data);
   });
 
   it('rejects a reminder that references a missing note', async () => {

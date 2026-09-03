@@ -17,8 +17,14 @@ export function StorageHealthSettings() {
   }, []);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    let cancelled = false;
+    void readStorageHealth().then((nextHealth) => {
+      if (!cancelled) setHealth(nextHealth);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const protect = async () => {
     setRequesting(true);

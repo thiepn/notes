@@ -43,8 +43,8 @@ describe('backup recovery presentation helpers', () => {
   });
 
   it('labels normalized backup/database versions', () => {
-    expect(backupVersionLabel({ formatVersion: 2, databaseVersion: 2 } as BackupDocument)).toBe(
-      'Backup v2 · Database v2',
+    expect(backupVersionLabel({ formatVersion: 2, databaseVersion: 3 } as BackupDocument)).toBe(
+      'Backup v2 · Database v3',
     );
   });
 
