@@ -41,6 +41,7 @@ Notes is a local-first, zero-friction notes application for `thiepn.dev/notes/`.
 8. Advanced features may not increase core capture friction.
 9. Local-only storage durability and backup health are product responsibilities, not implementation details.
 10. Scale regressions in search, rendering, attachments, or backups must be treated as reliability defects.
+11. Large libraries must not force all note cards or fuzzy-search scoring onto the main interaction path at once.
 
 ## Release hierarchy
 

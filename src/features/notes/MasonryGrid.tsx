@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 
 import type { ChecklistItemRecord, LabelRecord, NoteRecord, ReminderRecord } from '../../db';
 import {
@@ -8,6 +8,9 @@ import {
   type NoteSelectionIntent,
 } from './NoteCard';
 import type { NotesViewMode } from './viewMode';
+
+export const INITIAL_MOUNTED_NOTE_COUNT = 96;
+export const NOTE_MOUNT_BATCH_SIZE = 96;
 
 interface MasonryGridProps {
   notes: NoteRecord[];
@@ -26,6 +29,11 @@ interface MasonryGridProps {
   onSelectionIntent?: ((note: NoteRecord, intent: NoteSelectionIntent) => void) | undefined;
 }
 
+interface MountWindow {
+  scope: string;
+  limit: number;
+}
+
 export function MasonryGrid({
   notes,
   viewMode,
@@ -42,36 +50,87 @@ export function MasonryGrid({
   selectionActive = false,
   onSelectionIntent,
 }: MasonryGridProps) {
+  const [mountWindow, setMountWindow] = useState<MountWindow>({
+    scope: ariaLabel,
+    limit: INITIAL_MOUNTED_NOTE_COUNT,
+  });
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const activeLimit =
+    mountWindow.scope === ariaLabel ? mountWindow.limit : INITIAL_MOUNTED_NOTE_COUNT;
+  const mountedNotes = notes.slice(0, Math.min(notes.length, activeLimit));
+  const remaining = Math.max(0, notes.length - mountedNotes.length);
+
+  const mountMore = useCallback(() => {
+    setMountWindow((current) => {
+      const currentLimit = current.scope === ariaLabel ? current.limit : INITIAL_MOUNTED_NOTE_COUNT;
+      return {
+        scope: ariaLabel,
+        limit: Math.min(notes.length, currentLimit + NOTE_MOUNT_BATCH_SIZE),
+      };
+    });
+  }, [ariaLabel, notes.length]);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || remaining === 0 || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) mountMore();
+      },
+      { rootMargin: '800px 0px' },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [mountMore, remaining]);
+
   return (
-    <div className="note-grid" data-view={viewMode} role="list" aria-label={ariaLabel}>
-      {notes.map((note) => {
-        const reminderProps = remindersByNote ? { reminder: remindersByNote[note.id] ?? null } : {};
-        return (
-          <MasonryItem key={note.id} viewMode={viewMode}>
-            <NoteCard
-              note={note}
-              mode={mode}
-              actions={actions}
-              labels={labels}
-              selectedLabelIds={labelIdsByNote[note.id] ?? []}
-              checklistItems={checklistItemsByNote[note.id] ?? []}
-              {...reminderProps}
-              attachmentRefreshKey={attachmentRefreshByNote[note.id] ?? 0}
-              searchContext={searchContextByNote[note.id]}
-              selection={
-                onSelectionIntent
-                  ? {
-                      active: selectionActive,
-                      selected: selectedNoteIds?.has(note.id) ?? false,
-                      onIntent: onSelectionIntent,
-                    }
-                  : undefined
-              }
-            />
-          </MasonryItem>
-        );
-      })}
-    </div>
+    <>
+      <div
+        className="note-grid"
+        data-view={viewMode}
+        data-mounted-count={mountedNotes.length}
+        data-total-count={notes.length}
+        role="list"
+        aria-label={ariaLabel}
+      >
+        {mountedNotes.map((note) => {
+          const reminderProps = remindersByNote
+            ? { reminder: remindersByNote[note.id] ?? null }
+            : {};
+          return (
+            <MasonryItem key={note.id} viewMode={viewMode}>
+              <NoteCard
+                note={note}
+                mode={mode}
+                actions={actions}
+                labels={labels}
+                selectedLabelIds={labelIdsByNote[note.id] ?? []}
+                checklistItems={checklistItemsByNote[note.id] ?? []}
+                {...reminderProps}
+                attachmentRefreshKey={attachmentRefreshByNote[note.id] ?? 0}
+                searchContext={searchContextByNote[note.id]}
+                selection={
+                  onSelectionIntent
+                    ? {
+                        active: selectionActive,
+                        selected: selectedNoteIds?.has(note.id) ?? false,
+                        onIntent: onSelectionIntent,
+                      }
+                    : undefined
+                }
+              />
+            </MasonryItem>
+          );
+        })}
+      </div>
+      {remaining > 0 ? (
+        <div ref={sentinelRef} className="note-grid-progress">
+          <button type="button" onClick={mountMore}>
+            Show more notes <span>{remaining} remaining</span>
+          </button>
+        </div>
+      ) : null}
+    </>
   );
 }
 

@@ -74,3 +74,9 @@ The Settings → Data & advanced surface reports best-effort versus persistent b
 Grid/list view state is now coordinated by AppShell and passed explicitly to active workspaces. Global capture and search-focus requests are also represented as React state instead of locating rendered controls by accessible-name selectors. Focused-card keyboard commands remain DOM-aware because their target is intentionally the currently focused rendered card.
 
 Custom global dialogs use a shared focus-containment hook for Tab cycling, Escape handling where appropriate, initial focus, and focus restoration. This keeps overlay accessibility behavior consistent without adding a UI-framework dependency.
+
+## V4.0 large-library execution model
+
+Search scoring is isolated in a dedicated module Worker. The UI owns display/edit state while the worker owns a clone of the normalized searchable documents and returns only note IDs plus scores. SearchRepository supports single-note reconstruction so normal search-result mutations do not rebuild the whole database-derived index.
+
+Card rendering is progressively mounted in bounded batches. This keeps initial DOM nodes and per-card ResizeObservers proportional to the visible working set rather than the total library size while preserving the complete in-memory collection for sorting, selection, and data operations.
