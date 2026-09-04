@@ -67,6 +67,9 @@ export function AppHeader({
   const { lockEnabled, lock } = usePrivacy();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const moreButtonRef = useRef<HTMLButtonElement>(null);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+  const initialMoreFocusRef = useRef<'first' | 'last'>('first');
   const [moreOpen, setMoreOpen] = useState(false);
   const [searchHistoryOpen, setSearchHistoryOpen] = useState(false);
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
@@ -133,20 +136,57 @@ export function AppHeader({
   useEffect(() => {
     if (!moreOpen) return;
 
+    const focusFrame = window.requestAnimationFrame(() => {
+      const items = menuItems(moreMenuRef.current);
+      const target = initialMoreFocusRef.current === 'last' ? items.at(-1) : items[0];
+      target?.focus({ preventScroll: true });
+    });
+
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target;
       if (!(target instanceof Node) || menuRef.current?.contains(target)) return;
       setMoreOpen(false);
     };
+
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMoreOpen(false);
+      const menu = moreMenuRef.current;
+      if (!menu) return;
+
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        setMoreOpen(false);
+        window.requestAnimationFrame(() => moreButtonRef.current?.focus({ preventScroll: true }));
+        return;
+      }
+
+      if (!menu.contains(document.activeElement)) return;
+      const items = menuItems(menu);
+      if (items.length === 0) return;
+      const currentIndex = items.findIndex((item) => item === document.activeElement);
+      let nextIndex: number | null = null;
+
+      if (event.key === 'ArrowDown') {
+        nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % items.length;
+      } else if (event.key === 'ArrowUp') {
+        nextIndex = currentIndex <= 0 ? items.length - 1 : currentIndex - 1;
+      } else if (event.key === 'Home') {
+        nextIndex = 0;
+      } else if (event.key === 'End') {
+        nextIndex = items.length - 1;
+      }
+
+      if (nextIndex === null) return;
+      event.preventDefault();
+      items[nextIndex]?.focus({ preventScroll: true });
     };
 
     document.addEventListener('pointerdown', handlePointerDown, true);
-    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown, true);
     return () => {
+      window.cancelAnimationFrame(focusFrame);
       document.removeEventListener('pointerdown', handlePointerDown, true);
-      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keydown', handleKeyDown, true);
     };
   }, [moreOpen]);
 
@@ -154,6 +194,11 @@ export function AppHeader({
     if (searchFocusRequest <= 0) return;
     searchInputRef.current?.focus();
   }, [searchFocusRequest]);
+
+  const openMoreMenu = (initialFocus: 'first' | 'last' = 'first') => {
+    initialMoreFocusRef.current = initialFocus;
+    setMoreOpen(true);
+  };
 
   const chooseView = (view: 'grid' | 'list') => {
     onViewModeChange(view);
@@ -320,18 +365,51 @@ export function AppHeader({
         ) : null}
       </div>
 
-      <div className="header-actions" ref={menuRef}>
+      <div
+        className="header-actions"
+        ref={menuRef}
+        onBlurCapture={(event) => {
+          const next = event.relatedTarget;
+          if (moreOpen && (!(next instanceof Node) || !event.currentTarget.contains(next))) {
+            setMoreOpen(false);
+          }
+        }}
+      >
         <IconButton
+          ref={moreButtonRef}
           label="More options"
           tooltip="More options"
           aria-expanded={moreOpen}
-          onClick={() => setMoreOpen((open) => !open)}
+          aria-haspopup="menu"
+          aria-controls="header-more-menu"
+          onClick={() => {
+            if (moreOpen) {
+              setMoreOpen(false);
+            } else {
+              openMoreMenu('first');
+            }
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'ArrowDown') {
+              event.preventDefault();
+              openMoreMenu('first');
+            } else if (event.key === 'ArrowUp') {
+              event.preventDefault();
+              openMoreMenu('last');
+            }
+          }}
           data-testid="header-more-toggle"
         >
           <MoreHorizontal />
         </IconButton>
         {moreOpen ? (
-          <div className="header-more-menu" role="menu">
+          <div
+            ref={moreMenuRef}
+            className="header-more-menu"
+            id="header-more-menu"
+            role="menu"
+            aria-label="More options"
+          >
             <button
               type="button"
               role="menuitem"
@@ -381,4 +459,9 @@ export function AppHeader({
       </div>
     </header>
   );
+}
+
+function menuItems(menu: HTMLElement | null): HTMLButtonElement[] {
+  if (!menu) return [];
+  return Array.from(menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not([disabled])'));
 }

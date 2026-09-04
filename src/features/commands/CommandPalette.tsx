@@ -38,14 +38,44 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
     });
   }, [commands, query]);
 
-  const safeActiveIndex = filtered.length === 0 ? -1 : Math.min(activeIndex, filtered.length - 1);
+  const enabledIndexes = filtered.flatMap((command, index) => (command.disabled ? [] : [index]));
+  const safeActiveIndex =
+    enabledIndexes.length === 0
+      ? -1
+      : enabledIndexes.includes(activeIndex)
+        ? activeIndex
+        : (enabledIndexes[0] ?? -1);
+  const activeOptionId =
+    safeActiveIndex >= 0 ? `command-palette-option-${safeActiveIndex}` : undefined;
 
-  useDialogFocusTrap(dialogRef, { initialFocusRef: inputRef });
+  useDialogFocusTrap(dialogRef, { initialFocusRef: inputRef, onEscape: onClose });
 
   const execute = (command: CommandPaletteItem | undefined) => {
     if (!command || command.disabled) return;
     onClose();
     command.run();
+  };
+
+  const moveActive = (direction: 'next' | 'previous' | 'first' | 'last') => {
+    if (enabledIndexes.length === 0) return;
+    if (direction === 'first') {
+      setActiveIndex(enabledIndexes[0] ?? 0);
+      return;
+    }
+    if (direction === 'last') {
+      setActiveIndex(enabledIndexes.at(-1) ?? 0);
+      return;
+    }
+
+    const currentPosition = enabledIndexes.indexOf(safeActiveIndex);
+    if (direction === 'next') {
+      const nextPosition = currentPosition < 0 ? 0 : (currentPosition + 1) % enabledIndexes.length;
+      setActiveIndex(enabledIndexes[nextPosition] ?? 0);
+      return;
+    }
+
+    const previousPosition = currentPosition <= 0 ? enabledIndexes.length - 1 : currentPosition - 1;
+    setActiveIndex(enabledIndexes[previousPosition] ?? 0);
   };
 
   const handleLayerPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -62,31 +92,24 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
         aria-modal="true"
         aria-label="Command palette"
         onKeyDown={(event) => {
-          if (event.key === 'Escape') {
-            event.preventDefault();
-            onClose();
-            return;
-          }
           if (event.key === 'ArrowDown') {
             event.preventDefault();
-            if (filtered.length > 0) setActiveIndex((index) => (index + 1) % filtered.length);
+            moveActive('next');
             return;
           }
           if (event.key === 'ArrowUp') {
             event.preventDefault();
-            if (filtered.length > 0) {
-              setActiveIndex((index) => (index - 1 + filtered.length) % filtered.length);
-            }
+            moveActive('previous');
             return;
           }
           if (event.key === 'Home') {
             event.preventDefault();
-            if (filtered.length > 0) setActiveIndex(0);
+            moveActive('first');
             return;
           }
           if (event.key === 'End') {
             event.preventDefault();
-            if (filtered.length > 0) setActiveIndex(filtered.length - 1);
+            moveActive('last');
             return;
           }
           if (event.key === 'Enter') {
@@ -104,6 +127,8 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
             aria-label="Search commands"
             aria-controls="command-palette-results"
             aria-expanded="true"
+            aria-autocomplete="list"
+            aria-activedescendant={activeOptionId}
             autoComplete="off"
             placeholder="Type a command…"
             value={query}
@@ -115,9 +140,14 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
           <kbd>Esc</kbd>
         </div>
 
-        <div className="command-palette-results" id="command-palette-results" role="listbox">
+        <div
+          className="command-palette-results"
+          id="command-palette-results"
+          role="listbox"
+          aria-label="Commands"
+        >
           {filtered.length === 0 ? (
-            <div className="command-palette-empty">
+            <div className="command-palette-empty" role="status">
               <Command aria-hidden="true" />
               <span>No matching commands</span>
             </div>
@@ -130,13 +160,17 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
                 <div className="command-palette-entry" key={command.id}>
                   {showGroup ? <div className="command-palette-group">{command.group}</div> : null}
                   <button
+                    id={`command-palette-option-${index}`}
                     className="command-palette-item"
                     type="button"
                     role="option"
                     aria-selected={active}
                     data-active={active}
                     disabled={command.disabled}
-                    onMouseEnter={() => setActiveIndex(index)}
+                    tabIndex={-1}
+                    onMouseEnter={() => {
+                      if (!command.disabled) setActiveIndex(index);
+                    }}
                     onClick={() => execute(command)}
                   >
                     <span className="command-palette-copy">

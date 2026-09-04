@@ -1,0 +1,75 @@
+/* V4.2 — Interaction Consistency & Accessibility Hardening
+   Keep the V4.1 visual system legible when users request reduced motion or
+   operating-system forced colors/high contrast. */
+
+@media (prefers-reduced-motion: reduce) {
+  .note-card:hover,
+  .note-card:focus-within,
+  .note-card:has(.note-card-open:active),
+  .icon-button:active,
+  .nav-item:active,
+  .settings-nav-item:active {
+    transform: none !important;
+  }
+
+  .app-sidebar,
+  .header-more-menu,
+  .note-card-more-menu,
+  .command-palette,
+  .settings-dialog,
+  .search-history-popover,
+  .search-filters {
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (forced-colors: active) {
+  .search-shell:focus-within,
+  .note-card-open:focus-visible,
+  .icon-button:focus-visible,
+  .nav-item:focus-visible,
+  .settings-nav-item:focus-visible,
+  .settings-dialog button:focus-visible,
+  .settings-dialog input:focus-visible,
+  .settings-dialog select:focus-visible,
+  .command-palette-search input:focus-visible,
+  .command-palette-item[data-active='true'],
+  .header-more-menu [role='menuitem']:focus-visible,
+  .note-card-more-menu [role='menuitem']:focus-visible {
+    outline: 2px solid Highlight !important;
+    outline-offset: 2px !important;
+    box-shadow: none !important;
+  }
+
+  .note-card[data-selected='true'] {
+    border: 2px solid Highlight !important;
+    box-shadow: none !important;
+  }
+
+  .note-card-select[aria-pressed='true'] {
+    border-color: Highlight !important;
+    background: Highlight !important;
+    color: HighlightText !important;
+    forced-color-adjust: none;
+  }
+
+  .nav-item[data-active='true'],
+  .settings-nav-item[data-active='true'],
+  .search-inline-action[data-active='true'],
+  .search-filter-chip,
+  .note-label-chip {
+    border-color: CanvasText !important;
+  }
+
+  .search-filter-count {
+    border-color: Canvas !important;
+    background: Highlight !important;
+    color: HighlightText !important;
+    forced-color-adjust: none;
+  }
+
+  .settings-switch-row input[type='checkbox'],
+  .settings-choice-list input[type='radio'] {
+    forced-color-adjust: auto;
+  }
+}
