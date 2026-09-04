@@ -73,7 +73,7 @@ export function useDialogFocusTrap<
 
 function focusableElements(container: HTMLElement): HTMLElement[] {
   return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter((element) => {
-    if (element.hidden || element.getClientRects().length === 0) return false;
+    if (element.hidden || element.tabIndex < 0 || element.getClientRects().length === 0) return false;
     if (element.closest('[inert], [aria-hidden="true"]')) return false;
     return true;
   });
