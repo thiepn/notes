@@ -11,13 +11,18 @@ async function seedNote(page: Page, title = 'Accessible interaction note') {
   await page.evaluate(async (noteTitle) => {
     const db = await import('/notes/src/db/index.ts');
     const notes = new db.NotesRepository(db.notesDatabase);
-    await notes.create({ title: noteTitle, content: 'Keyboard and accessibility regression content.' });
+    await notes.create({
+      title: noteTitle,
+      content: 'Keyboard and accessibility regression content.',
+    });
   }, title);
   await page.reload();
   await waitForNotesWorkspace(page);
 }
 
-test('header More menu follows keyboard menu navigation and restores trigger focus', async ({ page }) => {
+test('header More menu follows keyboard menu navigation and restores trigger focus', async ({
+  page,
+}) => {
   await page.goto('./');
   await waitForNotesWorkspace(page);
 

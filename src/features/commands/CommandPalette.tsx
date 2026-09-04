@@ -74,8 +74,7 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
       return;
     }
 
-    const previousPosition =
-      currentPosition <= 0 ? enabledIndexes.length - 1 : currentPosition - 1;
+    const previousPosition = currentPosition <= 0 ? enabledIndexes.length - 1 : currentPosition - 1;
     setActiveIndex(enabledIndexes[previousPosition] ?? 0);
   };
 
