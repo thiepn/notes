@@ -1,0 +1,77 @@
+name: V4.2 interaction accessibility verifier
+
+on:
+  push:
+    branches:
+      - v4-2-interaction-consistency-accessibility
+
+permissions:
+  contents: write
+
+jobs:
+  verify-and-finalize:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Format V4.2 source
+        run: >-
+          npx prettier --write
+          src/components/ui/IconButton.tsx
+          src/components/ui/useDialogFocusTrap.ts
+          src/components/AppHeader.tsx
+          src/features/commands/CommandPalette.tsx
+          src/styles/interaction-accessibility.css
+          src/styles.css
+          e2e/interaction-accessibility.spec.ts
+          docs/INTERACTION_ACCESSIBILITY.md
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Production build and performance gates
+        run: npm run build
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: V4.2 focused browser regression
+        run: >-
+          npx playwright test
+          e2e/interaction-accessibility.spec.ts
+          e2e/commands.spec.ts
+          e2e/visual-system-polish.spec.ts
+          e2e/responsive.spec.ts
+
+      - name: Full browser regression suite
+        run: npm run e2e
+
+      - name: PWA offline certification
+        run: npm run e2e:pwa
+
+      - name: Commit verified V4.2
+        run: |
+          rm .github/workflows/v4-2-verify.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/ui/IconButton.tsx src/components/ui/useDialogFocusTrap.ts src/components/AppHeader.tsx src/features/commands/CommandPalette.tsx src/styles/interaction-accessibility.css src/styles.css e2e/interaction-accessibility.spec.ts docs/INTERACTION_ACCESSIBILITY.md .github/workflows/v4-2-verify.yml
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Finalize V4.2 interaction consistency and accessibility"
+          git push
