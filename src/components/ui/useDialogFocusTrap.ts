@@ -6,6 +6,7 @@ const FOCUSABLE_SELECTOR = [
   'input:not([disabled])',
   'select:not([disabled])',
   'textarea:not([disabled])',
+  '[contenteditable="true"]',
   '[tabindex]:not([tabindex="-1"])',
 ].join(',');
 
@@ -25,7 +26,7 @@ export function useDialogFocusTrap<
     const frame = window.requestAnimationFrame(() => {
       const target =
         options.initialFocusRef?.current ?? focusableElements(container)[0] ?? container;
-      target.focus();
+      target.focus({ preventScroll: true });
     });
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -39,17 +40,17 @@ export function useDialogFocusTrap<
       const focusable = focusableElements(container);
       if (focusable.length === 0) {
         event.preventDefault();
-        container.focus();
+        container.focus({ preventScroll: true });
         return;
       }
       const active = document.activeElement;
       const index = focusable.findIndex((element) => element === active);
       if (event.shiftKey && (index <= 0 || !container.contains(active))) {
         event.preventDefault();
-        focusable.at(-1)?.focus();
+        focusable.at(-1)?.focus({ preventScroll: true });
       } else if (!event.shiftKey && (index === focusable.length - 1 || index < 0)) {
         event.preventDefault();
-        focusable[0]?.focus();
+        focusable[0]?.focus({ preventScroll: true });
       }
     };
 
@@ -57,7 +58,13 @@ export function useDialogFocusTrap<
     return () => {
       window.cancelAnimationFrame(frame);
       document.removeEventListener('keydown', handleKeyDown, true);
-      if (previous?.isConnected) window.requestAnimationFrame(() => previous.focus());
+      if (!previous?.isConnected) return;
+      window.requestAnimationFrame(() => {
+        const active = document.activeElement;
+        const focusIsUnclaimed =
+          active === null || active === document.body || active === document.documentElement;
+        if (focusIsUnclaimed && previous.isConnected) previous.focus({ preventScroll: true });
+      });
     };
   });
 
@@ -65,7 +72,9 @@ export function useDialogFocusTrap<
 }
 
 function focusableElements(container: HTMLElement): HTMLElement[] {
-  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
-    (element) => !element.hidden && element.getClientRects().length > 0,
-  );
+  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter((element) => {
+    if (element.hidden || element.getClientRects().length === 0) return false;
+    if (element.closest('[inert], [aria-hidden="true"]')) return false;
+    return true;
+  });
 }
