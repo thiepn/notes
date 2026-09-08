@@ -290,17 +290,19 @@ async function updateUser(
     body: JSON.stringify(attributes),
   });
   const payload = (await response.json()) as SupabaseUser | { user?: SupabaseUser };
-  const user = 'user' in payload ? payload.user : payload;
-  if (!user || typeof user.id !== 'string') throw new Error('Supabase did not return the account.');
-  return user;
+  return extractUser(payload);
 }
 
 async function fetchCurrentUser(accessToken: string): Promise<SupabaseUser> {
   const response = await authenticatedRequest('/auth/v1/user', accessToken, { method: 'GET' });
   const payload = (await response.json()) as SupabaseUser | { user?: SupabaseUser };
-  const user = 'user' in payload ? payload.user : payload;
-  if (!user || typeof user.id !== 'string') throw new Error('Supabase did not return the account.');
-  return user;
+  return extractUser(payload);
+}
+
+function extractUser(payload: SupabaseUser | { user?: SupabaseUser }): SupabaseUser {
+  if ('id' in payload && typeof payload.id === 'string') return payload;
+  if ('user' in payload && payload.user && typeof payload.user.id === 'string') return payload.user;
+  throw new Error('Supabase did not return the account.');
 }
 
 async function ensureAuthenticated(session: SupabaseSession): Promise<void> {
