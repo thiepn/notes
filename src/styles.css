@@ -23,6 +23,7 @@
 @import './styles/reminders.css';
 @import './styles/privacy.css';
 @import './styles/settings.css';
+@import './styles/account-sync.css';
 @import './styles/pwa.css';
 @import './styles/ui-simplification.css';
 @import './styles/editor-interaction-polish.css';
