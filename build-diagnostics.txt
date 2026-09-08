@@ -10,68 +10,12 @@
 > @thiepn/notes@0.0.0 typecheck
 > tsc --noEmit
 
-[36mvite v8.2.2 [32mbuilding client environment for production...[36m[39m
-transforming...
-✓ 2044 modules transformed.
-rendering chunks...
-computing gzip size...
-dist/manifest.webmanifest                          0.55 kB
-dist/index.html                                    1.91 kB │ gzip:   0.78 kB
-dist/assets/search.worker-B-kCvob5.js              4.85 kB
-dist/assets/index-BXNTQOYk.css                   162.81 kB │ gzip:  25.42 kB
-dist/assets/triangle-alert-DtlmkoMT.js             0.26 kB │ gzip:   0.21 kB
-dist/assets/save-BMXFSc4u.js                       0.32 kB │ gzip:   0.22 kB
-dist/assets/bell-off-DW7n74wB.js                   0.36 kB │ gzip:   0.26 kB
-dist/assets/database-backup-CB0cisCF.js            0.43 kB │ gzip:   0.29 kB
-dist/assets/DrawingAttachmentButton-CLuswdlO.js    1.15 kB │ gzip:   0.66 kB
-dist/assets/VoiceAttachmentButton-CLeZ2UKY.js      1.18 kB │ gzip:   0.67 kB
-dist/assets/ConfirmDeleteDialog-DlqajluI.js        1.24 kB │ gzip:   0.60 kB
-dist/assets/rolldown-runtime-C0FnF6B9.js           1.29 kB │ gzip:   0.71 kB
-dist/assets/createLucideIcon-DoPLkHQh.js           1.37 kB │ gzip:   0.77 kB
-dist/assets/linkIntelligence-C1ZB2-33.js           3.02 kB │ gzip:   1.31 kB
-dist/assets/CommandPalette-Bzv3aQ-E.js             3.32 kB │ gzip:   1.33 kB
-dist/assets/workbox-window.prod.es5-Bd17z0YL.js    5.65 kB │ gzip:   2.20 kB
-dist/assets/syncEngine-CuHdhKNB.js                 5.94 kB │ gzip:   2.12 kB
-dist/assets/ChecklistComposer-CpCHmLaS.js          6.40 kB │ gzip:   2.44 kB
-dist/assets/DrawingDialog-BoOBzn_s.js              6.93 kB │ gzip:   2.60 kB
-dist/assets/PrivacySettingsDialog-C3Ob4Bjl.js      6.98 kB │ gzip:   2.07 kB
-dist/assets/ChecklistEditorDialog-v82lw8oL.js      7.52 kB │ gzip:   2.60 kB
-dist/assets/RemindersWorkspace-DaEKEo2L.js         7.69 kB │ gzip:   2.79 kB
-dist/assets/ChecklistEditorFields-BGj8_yTx.js      7.80 kB │ gzip:   2.71 kB
-dist/assets/OcrAttachmentControl-CGvq_I01.js       7.83 kB │ gzip:   2.71 kB
-dist/assets/jsx-runtime-CKeovgl0.js                7.89 kB │ gzip:   2.99 kB
-dist/assets/VoiceRecorderDialog-CFNoXpIf.js        9.12 kB │ gzip:   3.07 kB
-dist/assets/RevisionHistoryDialog-CM10UwgI.js     12.92 kB │ gzip:   3.84 kB
-dist/assets/NoteEditorDialog-DUPsIIEO.js          14.50 kB │ gzip:   4.82 kB
-dist/assets/AttachmentPanel-C2Jv6nZP.js           15.69 kB │ gzip:   4.80 kB
-dist/assets/src-SuYvKHvm.js                       17.24 kB │ gzip:   7.31 kB
-dist/assets/SettingsDialog-MUPAAN2b.js            18.47 kB │ gzip:   5.42 kB
-dist/assets/SearchWorkspace-C9CTYVTj.js           26.13 kB │ gzip:   8.41 kB
-dist/assets/BackupWorkspace-Ba0wgYSJ.js           61.74 kB │ gzip:  19.83 kB
-dist/assets/index-DrPHPILS.js                    534.22 kB │ gzip: 157.68 kB
-
-[32m✓ built in 479ms[39m
-[33m[plugin builtin:vite-reporter] 
-(!) Some chunks are larger than 500 kB after minification. Consider:
-- Using dynamic import() to code-split the application
-- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
-- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
-
-[36mPWA v1.3.0[39m
-mode      [35mgenerateSW[39m
-precache  [32m39 entries[39m [2m(947.61 KiB)[22m
-files generated
-  [2mdist/sw.js[22m
-  [2mdist/workbox-398fc23b.js[22m
-
-> @thiepn/notes@0.0.0 perf:check
-> node scripts/check-performance-budget.mjs
-
-file:///home/runner/work/notes/notes/scripts/check-performance-budget.mjs:19
-  throw new Error(`Entry JS ${entryBytes} B exceeds ${maxEntryBytes} B budget.`);
-        ^
-
-Error: Entry JS 534224 B exceeds 532480 B budget.
-    at file:///home/runner/work/notes/notes/scripts/check-performance-budget.mjs:19:9
-
-Node.js v24.20.0
+src/features/sync/SyncProvider.tsx(234,11): error TS2740: Type '{ status: SyncStatus; email: string | null; accessGranted: boolean; lastSyncedAt: number | null; message: string | null; lastResult: SyncResult | null; signIn: (email: string, password: string) => Promise<...>; signUp: (email: string, password: string) => Promise<...>; claimAccess: (setupCode: string) => Promise<......' is missing the following properties from type 'SyncContextValue': pendingEmail, recoveryMode, sessions, requestPasswordReset, and 10 more.
+src/features/sync/accountApi.ts(251,28): error TS2339: Property 'id' does not exist on type 'SupabaseUser | { user?: SupabaseUser; }'.
+  Property 'id' does not exist on type '{ user?: SupabaseUser; }'.
+src/features/sync/accountApi.ts(252,3): error TS2322: Type 'SupabaseUser | { user?: SupabaseUser; }' is not assignable to type 'SupabaseUser'.
+  Property 'id' is missing in type '{ user?: SupabaseUser; }' but required in type 'SupabaseUser'.
+src/features/sync/accountApi.ts(259,28): error TS2339: Property 'id' does not exist on type 'SupabaseUser | { user?: SupabaseUser; }'.
+  Property 'id' does not exist on type '{ user?: SupabaseUser; }'.
+src/features/sync/accountApi.ts(260,3): error TS2322: Type 'SupabaseUser | { user?: SupabaseUser; }' is not assignable to type 'SupabaseUser'.
+  Property 'id' is missing in type '{ user?: SupabaseUser; }' but required in type 'SupabaseUser'.
