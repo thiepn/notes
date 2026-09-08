@@ -41,7 +41,7 @@ export function App() {
   return (
     <ThemeProvider>
       <PrivacyProvider>
-        <Suspense fallback={<NotesRuntime />}>
+        <Suspense fallback={null}>
           <SyncProvider>
             <NotesRuntime />
           </SyncProvider>
