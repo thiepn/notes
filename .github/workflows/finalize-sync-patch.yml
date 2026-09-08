@@ -1,0 +1,49 @@
+name: Finalize sync patch
+
+on:
+  push:
+    branches: [feat/supabase-sync]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/supabase-sync
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - run: npm install --no-audit --no-fund
+      - name: Preserve failed sync entities for retry
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/features/sync/syncEngine.ts')
+          text = path.read_text()
+          old = """  const result: SyncResult = {\n    uploaded: 0,\n    downloaded: 0,\n    deletedRemote: 0,\n    deletedLocal: 0,\n    conflicts: 0,\n  };\n\n  const [localEntities, remoteRecords, shadow] = await Promise.all(["""
+          new = """  const result: SyncResult = {\n    uploaded: 0,\n    downloaded: 0,\n    deletedRemote: 0,\n    deletedLocal: 0,\n    conflicts: 0,\n  };\n  const failedKeys = new Set<string>();\n\n  const [localEntities, remoteRecords, shadow] = await Promise.all(["""
+          if old not in text:
+              raise SystemExit('Could not find sync result block')
+          text = text.replace(old, new, 1)
+          old = """    } catch (error) {\n      // Keep the prior shadow for this key so a later sync retries it instead of silently accepting loss.\n      console.error(`Notes sync could not reconcile ${key}.`, error);\n      result.conflicts += 1;\n    }\n  }\n\n  const [finalLocal, finalRemote] = await Promise.all([\n    buildLocalSnapshot(session.user.id),\n    listRemoteRecords(session),\n  ]);\n  await writeShadow(createShadow(finalLocal, finalRemote));\n"""
+          new = """    } catch (error) {\n      // Keep the prior shadow for this key so a later sync retries it instead of silently accepting loss.\n      failedKeys.add(key);\n      console.error(`Notes sync could not reconcile ${key}.`, error);\n      result.conflicts += 1;\n    }\n  }\n\n  const [finalLocal, finalRemote] = await Promise.all([\n    buildLocalSnapshot(session.user.id),\n    listRemoteRecords(session),\n  ]);\n  const nextShadow = createShadow(finalLocal, finalRemote);\n  for (const key of failedKeys) {\n    const previous = shadow[key];\n    if (previous) nextShadow[key] = previous;\n    else delete nextShadow[key];\n  }\n  await writeShadow(nextShadow);\n"""
+          if old not in text:
+              raise SystemExit('Could not find sync reconciliation block')
+          path.write_text(text.replace(old, new, 1))
+          PY
+      - run: npx prettier --write src/App.tsx src/features/sync src/features/settings/SettingsDialog.tsx
+      - run: npm run lint
+      - run: npm run typecheck
+      - name: Commit final patch
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/App.tsx src/features/sync src/features/settings/SettingsDialog.tsx
+          git commit -m "Harden Supabase sync reconciliation"
+          git push origin HEAD:feat/supabase-sync
