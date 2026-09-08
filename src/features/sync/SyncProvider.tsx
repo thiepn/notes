@@ -1,11 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { SyncContext, type SyncContextValue, type SyncStatus } from './SyncContext';
 import { synchronizeNotes, type SyncResult } from './syncEngine';
@@ -201,7 +194,9 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         if (!claimed) {
           setAccessGranted(false);
           setStatus('setup');
-          setMessage('The setup code is invalid, or the private Notes workspace is already claimed.');
+          setMessage(
+            'The setup code is invalid, or the private Notes workspace is already claimed.',
+          );
           return false;
         }
         setAccessGranted(true);

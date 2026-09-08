@@ -54,6 +54,7 @@ export async function synchronizeNotes(session: SupabaseSession): Promise<SyncRe
     deletedLocal: 0,
     conflicts: 0,
   };
+  const failedKeys = new Set<string>();
 
   const [localEntities, remoteRecords, shadow] = await Promise.all([
     buildLocalSnapshot(session.user.id),
@@ -115,6 +116,7 @@ export async function synchronizeNotes(session: SupabaseSession): Promise<SyncRe
       await resolveConcurrentChange(session, local, remote, result);
     } catch (error) {
       // Keep the prior shadow for this key so a later sync retries it instead of silently accepting loss.
+      failedKeys.add(key);
       console.error(`Notes sync could not reconcile ${key}.`, error);
       result.conflicts += 1;
     }
@@ -124,7 +126,13 @@ export async function synchronizeNotes(session: SupabaseSession): Promise<SyncRe
     buildLocalSnapshot(session.user.id),
     listRemoteRecords(session),
   ]);
-  await writeShadow(createShadow(finalLocal, finalRemote));
+  const nextShadow = createShadow(finalLocal, finalRemote);
+  for (const key of failedKeys) {
+    const previous = shadow[key];
+    if (previous) nextShadow[key] = previous;
+    else delete nextShadow[key];
+  }
+  await writeShadow(nextShadow);
 
   if (result.downloaded > 0 || result.deletedLocal > 0) {
     window.dispatchEvent(new CustomEvent('notes-cloud-sync-applied'));

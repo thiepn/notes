@@ -3,13 +3,7 @@ import { createContext, useContext } from 'react';
 import type { SyncResult } from './syncEngine';
 
 export type SyncStatus =
-  | 'local'
-  | 'connecting'
-  | 'setup'
-  | 'syncing'
-  | 'synced'
-  | 'offline'
-  | 'error';
+  'local' | 'connecting' | 'setup' | 'syncing' | 'synced' | 'offline' | 'error';
 
 export interface SyncContextValue {
   status: SyncStatus;

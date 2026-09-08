@@ -108,7 +108,11 @@ export function SyncSettings() {
               </button>
             </div>
           ) : null}
-          <button className="settings-secondary-action" type="button" onClick={() => void signOut()}>
+          <button
+            className="settings-secondary-action"
+            type="button"
+            onClick={() => void signOut()}
+          >
             Sign out of cloud sync
           </button>
         </>
