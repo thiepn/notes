@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { SyncContext, type SyncContextValue, type SyncStatus } from './SyncContext';
-import { synchronizeNotes, type SyncResult } from './syncEngine';
+import type { SyncResult } from './syncEngine';
 import {
   claimNotesSyncAccess,
   ensureFreshSession,
@@ -47,6 +47,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         try {
           const fresh = await ensureFreshSession(targetSession);
           if (fresh.access_token !== targetSession.access_token) updateSession(fresh);
+          const { synchronizeNotes } = await import('./syncEngine');
           const result = await synchronizeNotes(fresh);
           setLastResult(result);
           setLastSyncedAt(Date.now());
