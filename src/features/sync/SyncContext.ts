@@ -4,14 +4,7 @@ import type { AuthSessionInfo, DeleteAccountResult } from './accountApi';
 import type { SyncResult } from './syncEngine';
 
 export type SyncStatus =
-  | 'local'
-  | 'connecting'
-  | 'setup'
-  | 'recovery'
-  | 'syncing'
-  | 'synced'
-  | 'offline'
-  | 'error';
+  'local' | 'connecting' | 'setup' | 'recovery' | 'syncing' | 'synced' | 'offline' | 'error';
 
 export interface SyncContextValue {
   status: SyncStatus;
