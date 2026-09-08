@@ -10,7 +10,6 @@
 > @thiepn/notes@0.0.0 typecheck
 > tsc --noEmit
 
-src/features/sync/SyncProvider.tsx(234,11): error TS2740: Type '{ status: SyncStatus; email: string | null; accessGranted: boolean; lastSyncedAt: number | null; message: string | null; lastResult: SyncResult | null; signIn: (email: string, password: string) => Promise<...>; signUp: (email: string, password: string) => Promise<...>; claimAccess: (setupCode: string) => Promise<......' is missing the following properties from type 'SyncContextValue': pendingEmail, recoveryMode, sessions, requestPasswordReset, and 10 more.
 src/features/sync/accountApi.ts(251,28): error TS2339: Property 'id' does not exist on type 'SupabaseUser | { user?: SupabaseUser; }'.
   Property 'id' does not exist on type '{ user?: SupabaseUser; }'.
 src/features/sync/accountApi.ts(252,3): error TS2322: Type 'SupabaseUser | { user?: SupabaseUser; }' is not assignable to type 'SupabaseUser'.
