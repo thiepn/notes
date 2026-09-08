@@ -10,6 +10,10 @@
 > @thiepn/notes@0.0.0 typecheck
 > tsc --noEmit
 
+src/features/sync/SyncSettings.tsx(87,41): error TS2379: Argument of type '{ currentPassword: string | undefined; nonce: string | undefined; }' is not assignable to parameter of type '{ currentPassword?: string; nonce?: string; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'currentPassword' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
 src/features/sync/accountApi.ts(251,28): error TS2339: Property 'id' does not exist on type 'SupabaseUser | { user?: SupabaseUser; }'.
   Property 'id' does not exist on type '{ user?: SupabaseUser; }'.
 src/features/sync/accountApi.ts(252,3): error TS2322: Type 'SupabaseUser | { user?: SupabaseUser; }' is not assignable to type 'SupabaseUser'.
