@@ -27,10 +27,7 @@ export interface AuthSessionInfo {
 }
 
 export type DeleteAccountReason =
-  | 'shared_identity'
-  | 'not_authenticated'
-  | 'notes_access_required'
-  | 'unknown';
+  'shared_identity' | 'not_authenticated' | 'notes_access_required' | 'unknown';
 
 export interface DeleteAccountResult {
   deleted: boolean;
@@ -66,8 +63,7 @@ export async function consumeAuthCallback(): Promise<AuthCallbackResult | null> 
   const expiresAt =
     Number.isFinite(expiresAtParam) && expiresAtParam > 0
       ? expiresAtParam
-      : Math.floor(Date.now() / 1000) +
-        Math.max(60, Number.isFinite(expiresIn) ? expiresIn : 3600);
+      : Math.floor(Date.now() / 1000) + Math.max(60, Number.isFinite(expiresIn) ? expiresIn : 3600);
 
   return {
     type: callbackType,
@@ -101,8 +97,7 @@ export async function signUpAccount(
   }
 
   const expiresAt =
-    payload.expires_at ??
-    Math.floor(Date.now() / 1000) + Math.max(60, payload.expires_in ?? 3600);
+    payload.expires_at ?? Math.floor(Date.now() / 1000) + Math.max(60, payload.expires_in ?? 3600);
   return {
     user,
     session: {
@@ -341,9 +336,12 @@ async function authenticatedRequest(
 }
 
 async function responseError(response: Response): Promise<Error> {
-  const payload = (await response.json().catch(() => null)) as
-    | { message?: string; error?: string; error_description?: string; msg?: string }
-    | null;
+  const payload = (await response.json().catch(() => null)) as {
+    message?: string;
+    error?: string;
+    error_description?: string;
+    msg?: string;
+  } | null;
   return new Error(
     payload?.error_description ??
       payload?.message ??
