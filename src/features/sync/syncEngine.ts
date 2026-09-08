@@ -204,11 +204,7 @@ async function resolveConcurrentChange(
 async function pushLocal(session: SupabaseSession, local: LocalEntity): Promise<void> {
   let payload = local.payload;
   if (local.type === 'attachment' && local.attachment) {
-    const storagePath = await uploadAttachment(
-      session,
-      local.attachment.id,
-      local.attachment.data,
-    );
+    const storagePath = await uploadAttachment(session, local.attachment.id, local.attachment.data);
     payload = { ...payload, storagePath };
   }
 
@@ -274,7 +270,8 @@ async function applyRemote(session: SupabaseSession, remote: RemoteSyncRecord): 
       return;
     case 'attachment': {
       const storagePath = payload.storagePath;
-      if (typeof storagePath !== 'string') throw new Error('Cloud attachment is missing its storage path.');
+      if (typeof storagePath !== 'string')
+        throw new Error('Cloud attachment is missing its storage path.');
       const data = await downloadAttachment(session, storagePath);
       const { storagePath: _storagePath, ...metadata } = payload;
       void _storagePath;
@@ -331,7 +328,8 @@ async function buildLocalSnapshot(userId: string): Promise<LocalEntity[]> {
   for (const note of notes) entities.push(await entity('note', note.id, note, note.updatedAt));
   for (const item of checklistItems)
     entities.push(await entity('checklist_item', item.id, item, item.updatedAt));
-  for (const label of labels) entities.push(await entity('label', label.id, label, label.updatedAt));
+  for (const label of labels)
+    entities.push(await entity('label', label.id, label, label.updatedAt));
   for (const link of noteLabels) {
     const id = compositeId(link.noteId, link.labelId);
     entities.push(await entity('note_label', id, link, link.assignedAt));

@@ -23,12 +23,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import type { ThemePreference } from '../../theme/theme';
 
 export type SettingsSection =
-  | 'appearance'
-  | 'sync'
-  | 'privacy'
-  | 'notifications'
-  | 'search'
-  | 'advanced';
+  'appearance' | 'sync' | 'privacy' | 'notifications' | 'search' | 'advanced';
 
 interface SettingsDialogProps {
   initialSection?: SettingsSection;

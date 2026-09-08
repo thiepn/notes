@@ -4,13 +4,7 @@ const SESSION_STORAGE_KEY = 'notes.supabase.session.v1';
 const ATTACHMENT_BUCKET = 'notes-attachments';
 
 export type SyncEntityType =
-  | 'note'
-  | 'checklist_item'
-  | 'label'
-  | 'note_label'
-  | 'attachment'
-  | 'reminder'
-  | 'revision';
+  'note' | 'checklist_item' | 'label' | 'note_label' | 'attachment' | 'reminder' | 'revision';
 
 export interface SupabaseUser {
   id: string;
@@ -79,7 +73,10 @@ export function storeSession(session: SupabaseSession | null): void {
   }
 }
 
-export async function signInWithPassword(email: string, password: string): Promise<SupabaseSession> {
+export async function signInWithPassword(
+  email: string,
+  password: string,
+): Promise<SupabaseSession> {
   const response = await authRequest('/auth/v1/token?grant_type=password', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
@@ -126,7 +123,8 @@ export async function signOutSession(session: SupabaseSession): Promise<void> {
 
 export async function listRemoteRecords(session: SupabaseSession): Promise<RemoteSyncRecord[]> {
   const query = new URLSearchParams({
-    select: 'user_id,entity_type,entity_id,payload,payload_hash,client_updated_at,deleted_at,updated_at',
+    select:
+      'user_id,entity_type,entity_id,payload,payload_hash,client_updated_at,deleted_at,updated_at',
     user_id: `eq.${session.user.id}`,
   });
   const response = await request(`/rest/v1/notes_sync_records?${query}`, session.access_token);
@@ -137,11 +135,15 @@ export async function upsertRemoteRecord(
   session: SupabaseSession,
   record: Omit<RemoteSyncRecord, 'updated_at'>,
 ): Promise<void> {
-  const response = await request('/rest/v1/notes_sync_records?on_conflict=user_id,entity_type,entity_id', session.access_token, {
-    method: 'POST',
-    headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
-    body: JSON.stringify(record),
-  });
+  const response = await request(
+    '/rest/v1/notes_sync_records?on_conflict=user_id,entity_type,entity_id',
+    session.access_token,
+    {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify(record),
+    },
+  );
   await consumeEmptyResponse(response);
 }
 
@@ -178,7 +180,10 @@ export async function downloadAttachment(session: SupabaseSession, path: string)
   return response.blob();
 }
 
-export async function deleteAttachmentObject(session: SupabaseSession, path: string): Promise<void> {
+export async function deleteAttachmentObject(
+  session: SupabaseSession,
+  path: string,
+): Promise<void> {
   const response = await request(
     `/storage/v1/object/${ATTACHMENT_BUCKET}/${encodeStoragePath(path)}`,
     session.access_token,
@@ -202,7 +207,10 @@ async function authRequest(path: string, init: RequestInit): Promise<AuthRespons
   const payload = (await response.json().catch(() => ({}))) as AuthResponse;
   if (!response.ok) {
     throw new Error(
-      payload.error_description ?? payload.msg ?? payload.error ?? `Supabase request failed (${response.status}).`,
+      payload.error_description ??
+        payload.msg ??
+        payload.error ??
+        `Supabase request failed (${response.status}).`,
     );
   }
   return payload;
@@ -228,11 +236,16 @@ async function request(
 }
 
 async function responseError(response: Response): Promise<Error> {
-  const payload = (await response.json().catch(() => null)) as
-    | { message?: string; error?: string; msg?: string }
-    | null;
+  const payload = (await response.json().catch(() => null)) as {
+    message?: string;
+    error?: string;
+    msg?: string;
+  } | null;
   return new Error(
-    payload?.message ?? payload?.msg ?? payload?.error ?? `Supabase request failed (${response.status}).`,
+    payload?.message ??
+      payload?.msg ??
+      payload?.error ??
+      `Supabase request failed (${response.status}).`,
   );
 }
 
@@ -245,7 +258,8 @@ function parseSession(response: AuthResponse): SupabaseSession {
     throw new Error('Supabase did not return an authenticated session.');
   }
   const expiresAt =
-    response.expires_at ?? Math.floor(Date.now() / 1000) + Math.max(60, response.expires_in ?? 3600);
+    response.expires_at ??
+    Math.floor(Date.now() / 1000) + Math.max(60, response.expires_in ?? 3600);
   return {
     access_token: response.access_token,
     refresh_token: response.refresh_token,

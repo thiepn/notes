@@ -28,7 +28,8 @@ export function SyncSettings() {
       <div className="settings-group-copy">
         <strong>Cross-device sync</strong>
         <span>
-          Notes remain available offline in this browser and sync through your private Supabase account data when signed in.
+          Notes remain available offline in this browser and sync through your private Supabase
+          account data when signed in.
         </span>
       </div>
 
@@ -45,7 +46,11 @@ export function SyncSettings() {
           </small>
         </span>
         {signedIn ? (
-          <button type="button" disabled={busy || status === 'syncing'} onClick={() => void syncNow()}>
+          <button
+            type="button"
+            disabled={busy || status === 'syncing'}
+            onClick={() => void syncNow()}
+          >
             <RefreshCw aria-hidden="true" /> Sync now
           </button>
         ) : null}
@@ -106,7 +111,9 @@ export function SyncSettings() {
       )}
 
       <p>
-        First sign-in merges this device’s existing local library with the cloud library. Device-only settings such as theme, privacy-lock passcode, and search history are not uploaded.
+        First sign-in merges this device’s existing local library with the cloud library.
+        Device-only settings such as theme, privacy-lock passcode, and search history are not
+        uploaded.
       </p>
     </section>
   );

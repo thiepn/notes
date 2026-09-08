@@ -73,7 +73,11 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         setLastResult(result);
         setLastSyncedAt(Date.now());
         setStatus('synced');
-        setMessage(result.conflicts > 0 ? `${result.conflicts} sync conflict${result.conflicts === 1 ? '' : 's'} resolved conservatively.` : null);
+        setMessage(
+          result.conflicts > 0
+            ? `${result.conflicts} sync conflict${result.conflicts === 1 ? '' : 's'} resolved conservatively.`
+            : null,
+        );
       } catch (error) {
         setStatus(navigator.onLine ? 'error' : 'offline');
         setMessage(error instanceof Error ? error.message : 'Notes could not sync.');
@@ -197,7 +201,17 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       signOut,
       syncNow,
     }),
-    [lastResult, lastSyncedAt, message, session?.user.email, signIn, signOut, signUp, status, syncNow],
+    [
+      lastResult,
+      lastSyncedAt,
+      message,
+      session?.user.email,
+      signIn,
+      signOut,
+      signUp,
+      status,
+      syncNow,
+    ],
   );
 
   return <SyncContext.Provider value={value}>{children}</SyncContext.Provider>;
