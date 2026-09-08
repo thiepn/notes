@@ -37,6 +37,15 @@ export interface DeleteAccountResult {
   reason: DeleteAccountReason | null;
 }
 
+interface SignupResponse {
+  access_token?: string;
+  refresh_token?: string;
+  expires_in?: number;
+  expires_at?: number;
+  token_type?: string;
+  user?: SupabaseUser;
+}
+
 export async function consumeAuthCallback(): Promise<AuthCallbackResult | null> {
   if (typeof window === 'undefined' || window.location.hash.length <= 1) return null;
 
@@ -57,7 +66,8 @@ export async function consumeAuthCallback(): Promise<AuthCallbackResult | null> 
   const expiresAt =
     Number.isFinite(expiresAtParam) && expiresAtParam > 0
       ? expiresAtParam
-      : Math.floor(Date.now() / 1000) + Math.max(60, Number.isFinite(expiresIn) ? expiresIn : 3600);
+      : Math.floor(Date.now() / 1000) +
+        Math.max(60, Number.isFinite(expiresIn) ? expiresIn : 3600);
 
   return {
     type: callbackType,
@@ -67,6 +77,39 @@ export async function consumeAuthCallback(): Promise<AuthCallbackResult | null> 
       refresh_token: refreshToken!,
       expires_at: expiresAt,
       token_type: params.get('token_type') ?? 'bearer',
+      user,
+    },
+  };
+}
+
+export async function signUpAccount(
+  email: string,
+  password: string,
+): Promise<{ session: SupabaseSession | null; user: SupabaseUser | null }> {
+  const redirectTo = authRedirect('confirm');
+  const response = await authRequest(
+    `/auth/v1/signup?redirect_to=${encodeURIComponent(redirectTo)}`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ email: email.trim(), password }),
+    },
+  );
+  const payload = (await response.json()) as SignupResponse;
+  const user = payload.user ?? null;
+  if (!payload.access_token || !payload.refresh_token || !user) {
+    return { session: null, user };
+  }
+
+  const expiresAt =
+    payload.expires_at ??
+    Math.floor(Date.now() / 1000) + Math.max(60, payload.expires_in ?? 3600);
+  return {
+    user,
+    session: {
+      access_token: payload.access_token,
+      refresh_token: payload.refresh_token,
+      expires_at: expiresAt,
+      token_type: payload.token_type ?? 'bearer',
       user,
     },
   };
