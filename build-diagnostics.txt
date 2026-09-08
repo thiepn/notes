@@ -23,33 +23,34 @@ dist/assets/triangle-alert-DtlmkoMT.js             0.26 kB │ gzip:   0.21 kB
 dist/assets/save-BMXFSc4u.js                       0.32 kB │ gzip:   0.22 kB
 dist/assets/bell-off-DW7n74wB.js                   0.36 kB │ gzip:   0.26 kB
 dist/assets/database-backup-CB0cisCF.js            0.43 kB │ gzip:   0.29 kB
-dist/assets/DrawingAttachmentButton-DsPa3WCB.js    1.15 kB │ gzip:   0.66 kB
-dist/assets/VoiceAttachmentButton-DFOaUeS_.js      1.18 kB │ gzip:   0.67 kB
+dist/assets/DrawingAttachmentButton-CLuswdlO.js    1.15 kB │ gzip:   0.66 kB
+dist/assets/VoiceAttachmentButton-CLeZ2UKY.js      1.18 kB │ gzip:   0.67 kB
 dist/assets/ConfirmDeleteDialog-DlqajluI.js        1.24 kB │ gzip:   0.60 kB
 dist/assets/rolldown-runtime-C0FnF6B9.js           1.29 kB │ gzip:   0.71 kB
 dist/assets/createLucideIcon-DoPLkHQh.js           1.37 kB │ gzip:   0.77 kB
-dist/assets/linkIntelligence-Blpgzx9T.js           3.02 kB │ gzip:   1.31 kB
-dist/assets/CommandPalette-CsBtPTPo.js             3.32 kB │ gzip:   1.33 kB
+dist/assets/linkIntelligence-C1ZB2-33.js           3.02 kB │ gzip:   1.31 kB
+dist/assets/CommandPalette-Bzv3aQ-E.js             3.32 kB │ gzip:   1.33 kB
 dist/assets/workbox-window.prod.es5-Bd17z0YL.js    5.65 kB │ gzip:   2.20 kB
-dist/assets/ChecklistComposer-BaHXwBR1.js          6.40 kB │ gzip:   2.43 kB
-dist/assets/DrawingDialog-DSpvqjCw.js              6.93 kB │ gzip:   2.60 kB
-dist/assets/PrivacySettingsDialog-BFByKfbj.js      6.98 kB │ gzip:   2.07 kB
-dist/assets/ChecklistEditorDialog-Cvxm4o-Z.js      7.52 kB │ gzip:   2.59 kB
-dist/assets/RemindersWorkspace-BLAAL8ga.js         7.68 kB │ gzip:   2.78 kB
-dist/assets/ChecklistEditorFields-DrHFLKj9.js      7.80 kB │ gzip:   2.71 kB
-dist/assets/OcrAttachmentControl-DCorOLcm.js       7.83 kB │ gzip:   2.71 kB
+dist/assets/syncEngine-CuHdhKNB.js                 5.94 kB │ gzip:   2.12 kB
+dist/assets/ChecklistComposer-CpCHmLaS.js          6.40 kB │ gzip:   2.44 kB
+dist/assets/DrawingDialog-BoOBzn_s.js              6.93 kB │ gzip:   2.60 kB
+dist/assets/PrivacySettingsDialog-C3Ob4Bjl.js      6.98 kB │ gzip:   2.07 kB
+dist/assets/ChecklistEditorDialog-v82lw8oL.js      7.52 kB │ gzip:   2.60 kB
+dist/assets/RemindersWorkspace-DaEKEo2L.js         7.69 kB │ gzip:   2.79 kB
+dist/assets/ChecklistEditorFields-BGj8_yTx.js      7.80 kB │ gzip:   2.71 kB
+dist/assets/OcrAttachmentControl-CGvq_I01.js       7.83 kB │ gzip:   2.71 kB
 dist/assets/jsx-runtime-CKeovgl0.js                7.89 kB │ gzip:   2.99 kB
-dist/assets/VoiceRecorderDialog-BiZGrEp2.js        9.12 kB │ gzip:   3.07 kB
-dist/assets/RevisionHistoryDialog-CUPwutb7.js     12.92 kB │ gzip:   3.84 kB
-dist/assets/NoteEditorDialog-Dbe7_HmU.js          14.50 kB │ gzip:   4.81 kB
-dist/assets/AttachmentPanel--lRJ-ukI.js           15.69 kB │ gzip:   4.80 kB
+dist/assets/VoiceRecorderDialog-CFNoXpIf.js        9.12 kB │ gzip:   3.07 kB
+dist/assets/RevisionHistoryDialog-CM10UwgI.js     12.92 kB │ gzip:   3.84 kB
+dist/assets/NoteEditorDialog-DUPsIIEO.js          14.50 kB │ gzip:   4.82 kB
+dist/assets/AttachmentPanel-C2Jv6nZP.js           15.69 kB │ gzip:   4.80 kB
 dist/assets/src-SuYvKHvm.js                       17.24 kB │ gzip:   7.31 kB
-dist/assets/SettingsDialog-PFDsASgm.js            18.47 kB │ gzip:   5.42 kB
-dist/assets/SearchWorkspace-BkMnwJma.js           26.12 kB │ gzip:   8.40 kB
-dist/assets/BackupWorkspace-CkjHh4Ph.js           61.74 kB │ gzip:  19.82 kB
-dist/assets/index-ntOAOEpP.js                    539.96 kB │ gzip: 159.37 kB
+dist/assets/SettingsDialog-MUPAAN2b.js            18.47 kB │ gzip:   5.42 kB
+dist/assets/SearchWorkspace-C9CTYVTj.js           26.13 kB │ gzip:   8.41 kB
+dist/assets/BackupWorkspace-Ba0wgYSJ.js           61.74 kB │ gzip:  19.83 kB
+dist/assets/index-DrPHPILS.js                    534.22 kB │ gzip: 157.68 kB
 
-[32m✓ built in 513ms[39m
+[32m✓ built in 479ms[39m
 [33m[plugin builtin:vite-reporter] 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
@@ -58,7 +59,7 @@ dist/assets/index-ntOAOEpP.js                    539.96 kB │ gzip: 159.37 kB
 
 [36mPWA v1.3.0[39m
 mode      [35mgenerateSW[39m
-precache  [32m38 entries[39m [2m(947.39 KiB)[22m
+precache  [32m39 entries[39m [2m(947.61 KiB)[22m
 files generated
   [2mdist/sw.js[22m
   [2mdist/workbox-398fc23b.js[22m
@@ -70,7 +71,7 @@ file:///home/runner/work/notes/notes/scripts/check-performance-budget.mjs:19
   throw new Error(`Entry JS ${entryBytes} B exceeds ${maxEntryBytes} B budget.`);
         ^
 
-Error: Entry JS 539962 B exceeds 532480 B budget.
+Error: Entry JS 534224 B exceeds 532480 B budget.
     at file:///home/runner/work/notes/notes/scripts/check-performance-budget.mjs:19:9
 
 Node.js v24.20.0
