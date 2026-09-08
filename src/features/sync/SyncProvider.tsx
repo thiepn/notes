@@ -11,7 +11,6 @@ import {
   refreshSession,
   signInWithPassword,
   signOutSession,
-  signUpWithPassword,
   storeSession,
   type SupabaseSession,
 } from './supabaseApi';
@@ -228,7 +227,8 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       setStatus('connecting');
       setMessage(null);
       try {
-        const result = await signUpWithPassword(email.trim(), password);
+        const { signUpAccount } = await import('./accountApi');
+        const result = await signUpAccount(email.trim(), password);
         if (result.session) {
           updateSession(result.session);
           setRecoveryMode(false);
