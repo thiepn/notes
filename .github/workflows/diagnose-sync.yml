@@ -19,12 +19,12 @@ jobs:
         with:
           node-version-file: .nvmrc
       - run: npm install --no-audit --no-fund
-      - name: Capture lint output
-        run: npm run lint > sync-diagnostics.txt 2>&1 || true
+      - name: Capture TypeScript output
+        run: npm run typecheck > sync-diagnostics.txt 2>&1 || true
       - name: Commit diagnostics
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add sync-diagnostics.txt
-          git commit -m "Capture sync lint diagnostics" || exit 0
+          git commit -m "Capture sync TypeScript diagnostics" || exit 0
           git push origin HEAD:feat/supabase-sync
