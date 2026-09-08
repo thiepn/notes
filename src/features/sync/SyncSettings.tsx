@@ -1,12 +1,24 @@
 import { useState } from 'react';
-import { Cloud, CloudOff, RefreshCw } from 'lucide-react';
+import { Cloud, CloudOff, KeyRound, RefreshCw } from 'lucide-react';
 
 import { syncStatusLabel, useSync } from './SyncContext';
 
 export function SyncSettings() {
-  const { status, email, lastSyncedAt, message, signIn, signUp, signOut, syncNow } = useSync();
+  const {
+    status,
+    email,
+    accessGranted,
+    lastSyncedAt,
+    message,
+    signIn,
+    signUp,
+    claimAccess,
+    signOut,
+    syncNow,
+  } = useSync();
   const [formEmail, setFormEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [setupCode, setSetupCode] = useState('');
   const [busy, setBusy] = useState(false);
 
   const signedIn = email !== null;
@@ -18,6 +30,16 @@ export function SyncSettings() {
       setPassword('');
     } catch {
       // Provider surfaces the actionable error message.
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitSetupCode = async () => {
+    setBusy(true);
+    try {
+      const claimed = await claimAccess(setupCode);
+      if (claimed) setSetupCode('');
     } finally {
       setBusy(false);
     }
@@ -35,7 +57,7 @@ export function SyncSettings() {
 
       <div className="settings-setting-row">
         <span className="settings-row-icon" aria-hidden="true">
-          {signedIn ? <Cloud /> : <CloudOff />}
+          {signedIn && accessGranted ? <Cloud /> : <CloudOff />}
         </span>
         <span>
           <strong>{syncStatusLabel(status)}</strong>
@@ -45,7 +67,7 @@ export function SyncSettings() {
               : 'Sign in with the same account on each device to share one notes library.'}
           </small>
         </span>
-        {signedIn ? (
+        {signedIn && accessGranted ? (
           <button
             type="button"
             disabled={busy || status === 'syncing'}
@@ -59,9 +81,37 @@ export function SyncSettings() {
       {message ? <p role="status">{message}</p> : null}
 
       {signedIn ? (
-        <button className="settings-secondary-action" type="button" onClick={() => void signOut()}>
-          Sign out of cloud sync
-        </button>
+        <>
+          {!accessGranted ? (
+            <div className="settings-choice-list">
+              <label>
+                <span>
+                  <strong>One-time setup code</strong>
+                  <small>
+                    Required only for the first account that claims this private Notes workspace.
+                  </small>
+                </span>
+                <input
+                  type="password"
+                  autoComplete="off"
+                  value={setupCode}
+                  onChange={(event) => setSetupCode(event.target.value)}
+                />
+              </label>
+              <button
+                className="settings-secondary-action"
+                type="button"
+                disabled={busy || setupCode.trim().length < 12}
+                onClick={() => void submitSetupCode()}
+              >
+                <KeyRound aria-hidden="true" /> Claim private workspace
+              </button>
+            </div>
+          ) : null}
+          <button className="settings-secondary-action" type="button" onClick={() => void signOut()}>
+            Sign out of cloud sync
+          </button>
+        </>
       ) : (
         <div className="settings-choice-list">
           <label>
@@ -111,9 +161,8 @@ export function SyncSettings() {
       )}
 
       <p>
-        First sign-in merges this device’s existing local library with the cloud library.
-        Device-only settings such as theme, privacy-lock passcode, and search history are not
-        uploaded.
+        First sync merges this device’s existing local library with the cloud library. Device-only
+        settings such as theme, privacy-lock passcode, and search history are not uploaded.
       </p>
     </section>
   );
