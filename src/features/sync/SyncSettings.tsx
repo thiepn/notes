@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Cloud, CloudOff, RefreshCw } from 'lucide-react';
 
-import { syncStatusLabel, useSync } from './SyncProvider';
+import { syncStatusLabel, useSync } from './SyncContext';
 
 export function SyncSettings() {
   const { status, email, lastSyncedAt, message, signIn, signUp, signOut, syncNow } = useSync();
