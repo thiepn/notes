@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import {
   BellRing,
+  Cloud,
   DatabaseBackup,
   EyeOff,
   LockKeyhole,
@@ -17,10 +18,17 @@ import { usePrivacy } from '../privacy/PrivacyContext';
 import { ReminderNotificationSettings } from '../reminders/ReminderNotificationSettings';
 import { clearRecentSearches, readRecentSearches } from '../search/searchHistory';
 import { StorageHealthSettings } from '../storage/StorageHealthSettings';
+import { SyncSettings } from '../sync/SyncSettings';
 import { useTheme } from '../../theme/ThemeContext';
 import type { ThemePreference } from '../../theme/theme';
 
-export type SettingsSection = 'appearance' | 'privacy' | 'notifications' | 'search' | 'advanced';
+export type SettingsSection =
+  | 'appearance'
+  | 'sync'
+  | 'privacy'
+  | 'notifications'
+  | 'search'
+  | 'advanced';
 
 interface SettingsDialogProps {
   initialSection?: SettingsSection;
@@ -40,6 +48,12 @@ const SECTIONS: Array<{
     label: 'Appearance',
     description: 'Theme and visual behavior',
     icon: Palette,
+  },
+  {
+    id: 'sync',
+    label: 'Account & sync',
+    description: 'Cross-device cloud sync',
+    icon: Cloud,
   },
   {
     id: 'privacy',
@@ -168,6 +182,8 @@ export function SettingsDialog({
                 </div>
               </section>
             ) : null}
+
+            {section === 'sync' ? <SyncSettings /> : null}
 
             {section === 'privacy' ? (
               <>
