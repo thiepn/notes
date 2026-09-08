@@ -1,4 +1,4 @@
 
-> @thiepn/notes@0.0.0 lint
-> eslint .
+> @thiepn/notes@0.0.0 typecheck
+> tsc --noEmit
 
