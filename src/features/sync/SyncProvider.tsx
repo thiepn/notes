@@ -21,7 +21,9 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<SupabaseSession | null>(() => readStoredSession());
   const [accessGranted, setAccessGranted] = useState(false);
   const [recoveryMode, setRecoveryMode] = useState(false);
-  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
+  const [pendingEmail, setPendingEmail] = useState<string | null>(
+    () => session?.user.new_email ?? null,
+  );
   const [sessions, setSessions] = useState<AuthSessionInfo[]>([]);
   const [status, setStatus] = useState<SyncStatus>(() => (session ? 'connecting' : 'local'));
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
@@ -32,6 +34,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
   const updateSession = useCallback((next: SupabaseSession | null) => {
     setSession(next);
+    setPendingEmail(next?.user.new_email ?? null);
     storeSession(next);
   }, []);
 
@@ -163,6 +166,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
           } else if (callback.type === 'signup') {
             setMessage('Email address confirmed.');
           }
+          window.dispatchEvent(new CustomEvent('notes-open-sync-settings'));
           return;
         }
 
@@ -300,7 +304,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       const { updateAccountEmail } = await import('./accountApi');
       const user = await updateAccountEmail(fresh, email.trim());
       updateSession({ ...fresh, user });
-      setPendingEmail(email.trim());
+      setPendingEmail(user.new_email ?? email.trim());
       setMessage('Email change requested. Follow the confirmation link sent by Supabase.');
     },
     [session, updateSession],

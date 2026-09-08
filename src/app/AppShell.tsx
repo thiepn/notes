@@ -6,6 +6,7 @@ import { AppSidebar, type AppSection } from '../components/AppSidebar';
 import { LabelsRepository, notesDatabase, type LabelRecord } from '../db';
 import type { CommandPaletteItem } from '../features/commands/CommandPalette';
 import { LabelManagerDialog } from '../features/notes/LabelManagerDialog';
+import type { SettingsSection } from '../features/settings/SettingsDialog';
 import {
   EMPTY_NAVIGATION_STATS,
   loadNavigationStats,
@@ -103,6 +104,8 @@ export function AppShell() {
   const [labelManagerOpen, setLabelManagerOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsInitialSection, setSettingsInitialSection] =
+    useState<SettingsSection>('appearance');
   const [privacyLockSettingsOpen, setPrivacyLockSettingsOpen] = useState(false);
   const [sidebarCompact, setSidebarCompact] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -174,6 +177,15 @@ export function AppShell() {
       window.removeEventListener('notes-reminders-changed', handleReminderChanged);
     };
   }, [refreshNavigationStats]);
+
+  useEffect(() => {
+    const openSyncSettings = () => {
+      setSettingsInitialSection('sync');
+      setSettingsOpen(true);
+    };
+    window.addEventListener('notes-open-sync-settings', openSyncSettings);
+    return () => window.removeEventListener('notes-open-sync-settings', openSyncSettings);
+  }, []);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia(MOBILE_QUERY);
@@ -519,6 +531,7 @@ export function AppShell() {
       ],
       run: () => {
         setCommandPaletteOpen(false);
+        setSettingsInitialSection('appearance');
         setSettingsOpen(true);
       },
     },
@@ -529,7 +542,10 @@ export function AppShell() {
       <AppHeader
         onMenu={handleMenu}
         onCommandPalette={() => setCommandPaletteOpen(true)}
-        onSettings={() => setSettingsOpen(true)}
+        onSettings={() => {
+          setSettingsInitialSection('appearance');
+          setSettingsOpen(true);
+        }}
         onViewModeChange={handleViewMode}
         searchFocusRequest={searchFocusRequest}
         searchQuery={searchQuery}
@@ -641,6 +657,7 @@ export function AppShell() {
       {settingsOpen ? (
         <Suspense fallback={<div className="deferred-settings-loading">Loading settings…</div>}>
           <SettingsDialog
+            initialSection={settingsInitialSection}
             onClose={() => setSettingsOpen(false)}
             onOpenBackup={() => {
               setSettingsOpen(false);
@@ -660,6 +677,7 @@ export function AppShell() {
             lockOnly
             onClose={() => {
               setPrivacyLockSettingsOpen(false);
+              setSettingsInitialSection('privacy');
               setSettingsOpen(true);
             }}
           />

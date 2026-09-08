@@ -9,6 +9,7 @@ export type SyncEntityType =
 export interface SupabaseUser {
   id: string;
   email?: string;
+  new_email?: string;
 }
 
 export interface SupabaseSession {
