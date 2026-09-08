@@ -1,0 +1,22 @@
+name: Diagnose account sync E2E
+
+on:
+  push:
+    branches: [feat/supabase-sync]
+
+permissions:
+  contents: read
+
+jobs:
+  account-sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - run: npm install --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Account sync browser certification
+        run: npx playwright test e2e/account-sync.spec.ts --project=chromium --reporter=line --workers=1
