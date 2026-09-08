@@ -121,6 +121,25 @@ export async function signOutSession(session: SupabaseSession): Promise<void> {
   }
 }
 
+export async function hasNotesSyncAccess(session: SupabaseSession): Promise<boolean> {
+  const response = await request('/rest/v1/rpc/has_notes_sync_access', session.access_token, {
+    method: 'POST',
+    body: '{}',
+  });
+  return Boolean((await response.json()) as boolean);
+}
+
+export async function claimNotesSyncAccess(
+  session: SupabaseSession,
+  setupCode: string,
+): Promise<boolean> {
+  const response = await request('/rest/v1/rpc/claim_notes_sync_access', session.access_token, {
+    method: 'POST',
+    body: JSON.stringify({ p_code: setupCode }),
+  });
+  return Boolean((await response.json()) as boolean);
+}
+
 export async function listRemoteRecords(session: SupabaseSession): Promise<RemoteSyncRecord[]> {
   const query = new URLSearchParams({
     select:
