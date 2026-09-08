@@ -10,7 +10,9 @@ import {
 import { SyncContext, type SyncContextValue, type SyncStatus } from './SyncContext';
 import { synchronizeNotes, type SyncResult } from './syncEngine';
 import {
+  claimNotesSyncAccess,
   ensureFreshSession,
+  hasNotesSyncAccess,
   readStoredSession,
   refreshSession,
   signInWithPassword,
@@ -24,6 +26,7 @@ const AUTO_SYNC_MS = 15_000;
 
 export function SyncProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<SupabaseSession | null>(() => readStoredSession());
+  const [accessGranted, setAccessGranted] = useState(false);
   const [status, setStatus] = useState<SyncStatus>(() => (session ? 'connecting' : 'local'));
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -76,13 +79,32 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     [updateSession],
   );
 
+  const activateSession = useCallback(
+    async (targetSession: SupabaseSession) => {
+      const granted = await hasNotesSyncAccess(targetSession);
+      setAccessGranted(granted);
+      if (!granted) {
+        setStatus('setup');
+        setMessage('This account has not claimed the private Notes workspace yet.');
+        return;
+      }
+      await runSync(targetSession);
+    },
+    [runSync],
+  );
+
   const syncNow = useCallback(async () => {
     if (!session) {
       setStatus('local');
       return;
     }
+    if (!accessGranted) {
+      setStatus('setup');
+      setMessage('Enter the one-time setup code to enable this Notes workspace.');
+      return;
+    }
     await runSync(session);
-  }, [runSync, session]);
+  }, [accessGranted, runSync, session]);
 
   useEffect(() => {
     const initialSession = initialSessionRef.current;
@@ -93,11 +115,12 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       .then(async (fresh) => {
         if (cancelled) return;
         updateSession(fresh);
-        await runSync(fresh);
+        await activateSession(fresh);
       })
       .catch(() => {
         if (cancelled) return;
         updateSession(null);
+        setAccessGranted(false);
         setStatus('local');
         setMessage('Your saved cloud session expired. Sign in again to resume sync.');
       });
@@ -105,10 +128,10 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [runSync, updateSession]);
+  }, [activateSession, updateSession]);
 
   useEffect(() => {
-    if (!session) return;
+    if (!session || !accessGranted) return;
     const interval = window.setInterval(() => {
       if (document.visibilityState === 'visible') void syncNow();
     }, AUTO_SYNC_MS);
@@ -121,7 +144,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [session, syncNow]);
+  }, [accessGranted, session, syncNow]);
 
   const signIn = useCallback(
     async (email: string, password: string) => {
@@ -130,14 +153,15 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       try {
         const next = await signInWithPassword(email.trim(), password);
         updateSession(next);
-        await runSync(next);
+        await activateSession(next);
       } catch (error) {
+        setAccessGranted(false);
         setStatus('local');
         setMessage(error instanceof Error ? error.message : 'Sign-in failed.');
         throw error;
       }
     },
-    [runSync, updateSession],
+    [activateSession, updateSession],
   );
 
   const signUp = useCallback(
@@ -148,24 +172,55 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         const result = await signUpWithPassword(email.trim(), password);
         if (result.session) {
           updateSession(result.session);
-          await runSync(result.session);
+          await activateSession(result.session);
           return 'signed-in';
         }
+        setAccessGranted(false);
         setStatus('local');
-        setMessage('Account created. Confirm the email, then sign in to enable sync.');
+        setMessage('Account created. Confirm the email, then sign in to continue setup.');
         return 'confirm-email';
       } catch (error) {
+        setAccessGranted(false);
         setStatus('local');
         setMessage(error instanceof Error ? error.message : 'Account creation failed.');
         throw error;
       }
     },
-    [runSync, updateSession],
+    [activateSession, updateSession],
+  );
+
+  const claimAccess = useCallback(
+    async (setupCode: string): Promise<boolean> => {
+      if (!session) return false;
+      setStatus('connecting');
+      setMessage(null);
+      try {
+        const fresh = await ensureFreshSession(session);
+        if (fresh.access_token !== session.access_token) updateSession(fresh);
+        const claimed = await claimNotesSyncAccess(fresh, setupCode.trim());
+        if (!claimed) {
+          setAccessGranted(false);
+          setStatus('setup');
+          setMessage('The setup code is invalid, or the private Notes workspace is already claimed.');
+          return false;
+        }
+        setAccessGranted(true);
+        await runSync(fresh);
+        return true;
+      } catch (error) {
+        setAccessGranted(false);
+        setStatus(navigator.onLine ? 'error' : 'offline');
+        setMessage(error instanceof Error ? error.message : 'Workspace setup failed.');
+        return false;
+      }
+    },
+    [runSync, session, updateSession],
   );
 
   const signOut = useCallback(async () => {
     const current = session;
     updateSession(null);
+    setAccessGranted(false);
     setStatus('local');
     setLastSyncedAt(null);
     setLastResult(null);
@@ -183,15 +238,19 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     () => ({
       status,
       email: session?.user.email ?? null,
+      accessGranted,
       lastSyncedAt,
       message,
       lastResult,
       signIn,
       signUp,
+      claimAccess,
       signOut,
       syncNow,
     }),
     [
+      accessGranted,
+      claimAccess,
       lastResult,
       lastSyncedAt,
       message,
