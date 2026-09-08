@@ -1,0 +1,61 @@
+name: Patch account sync certification helper
+
+on:
+  push:
+    branches: [feat/supabase-sync]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/supabase-sync
+      - name: Make settings helper callback-aware
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('e2e/account-sync.spec.ts')
+          text = path.read_text()
+          old = '''async function openSyncSettings(page: Page) {
+            await page.getByTestId('header-more-toggle').click();
+            await page.getByRole('menuitem', { name: 'Settings' }).click();
+            await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
+            await page.getByRole('button', { name: /Account & sync/u }).click();
+            await expect(page.getByRole('heading', { name: 'Account & sync' })).toBeVisible();
+          }
+          '''
+          new = '''async function openSyncSettings(page: Page) {
+            const dialog = page.getByRole('dialog', { name: 'Settings' });
+            if (!(await dialog.isVisible())) {
+              await page.getByTestId('header-more-toggle').click();
+              await page.getByRole('menuitem', { name: 'Settings' }).click();
+              await expect(dialog).toBeVisible();
+            }
+
+            const heading = page.getByRole('heading', { name: 'Account & sync' });
+            if (!(await heading.isVisible())) {
+              await page.getByRole('button', { name: /Account & sync/u }).click();
+            }
+            await expect(heading).toBeVisible();
+          }
+          '''
+          if old not in text:
+              raise SystemExit('Expected helper block was not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+      - name: Commit certification update
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add e2e/account-sync.spec.ts
+          git diff --cached --quiet && exit 0
+          git commit -m 'Make account sync test callback-aware'
+          git push origin HEAD:feat/supabase-sync
