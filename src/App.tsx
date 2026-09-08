@@ -5,11 +5,7 @@ import { PwaStatus } from './app/PwaStatus';
 import { PrivacyGate } from './features/privacy/PrivacyGate';
 import { PrivacyProvider } from './features/privacy/PrivacyProvider';
 import { ReminderNotificationCoordinator } from './features/reminders/ReminderNotificationCoordinator';
-import {
-  SyncContext,
-  type SyncContextValue,
-  useSync,
-} from './features/sync/SyncContext';
+import { SyncContext, type SyncContextValue, useSync } from './features/sync/SyncContext';
 import { ThemeProvider } from './theme/ThemeProvider';
 
 const SyncProvider = lazy(() =>
