@@ -1,7 +1,5 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -9,6 +7,7 @@ import {
   type ReactNode,
 } from 'react';
 
+import { SyncContext, type SyncContextValue, type SyncStatus } from './SyncContext';
 import { synchronizeNotes, type SyncResult } from './syncEngine';
 import {
   ensureFreshSession,
@@ -21,21 +20,6 @@ import {
   type SupabaseSession,
 } from './supabaseApi';
 
-export type SyncStatus = 'local' | 'connecting' | 'syncing' | 'synced' | 'offline' | 'error';
-
-interface SyncContextValue {
-  status: SyncStatus;
-  email: string | null;
-  lastSyncedAt: number | null;
-  message: string | null;
-  lastResult: SyncResult | null;
-  signIn(email: string, password: string): Promise<void>;
-  signUp(email: string, password: string): Promise<'signed-in' | 'confirm-email'>;
-  signOut(): Promise<void>;
-  syncNow(): Promise<void>;
-}
-
-const SyncContext = createContext<SyncContextValue | null>(null);
 const AUTO_SYNC_MS = 15_000;
 
 export function SyncProvider({ children }: { children: ReactNode }) {
@@ -45,61 +29,71 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const [message, setMessage] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<SyncResult | null>(null);
   const syncPromiseRef = useRef<Promise<void> | null>(null);
+  const initialSessionRef = useRef(session);
 
   const updateSession = useCallback((next: SupabaseSession | null) => {
     setSession(next);
     storeSession(next);
   }, []);
 
+  const runSync = useCallback(
+    async (targetSession: SupabaseSession) => {
+      if (!navigator.onLine) {
+        setStatus('offline');
+        setMessage('Offline. Changes are saved locally and will sync when you reconnect.');
+        return;
+      }
+      if (syncPromiseRef.current) return syncPromiseRef.current;
+
+      const operation = (async () => {
+        setStatus('syncing');
+        setMessage(null);
+        try {
+          const fresh = await ensureFreshSession(targetSession);
+          if (fresh.access_token !== targetSession.access_token) updateSession(fresh);
+          const result = await synchronizeNotes(fresh);
+          setLastResult(result);
+          setLastSyncedAt(Date.now());
+          setStatus('synced');
+          setMessage(
+            result.conflicts > 0
+              ? `${result.conflicts} sync conflict${result.conflicts === 1 ? '' : 's'} resolved conservatively.`
+              : null,
+          );
+        } catch (error) {
+          setStatus(navigator.onLine ? 'error' : 'offline');
+          setMessage(error instanceof Error ? error.message : 'Notes could not sync.');
+        }
+      })();
+
+      syncPromiseRef.current = operation;
+      try {
+        await operation;
+      } finally {
+        syncPromiseRef.current = null;
+      }
+    },
+    [updateSession],
+  );
+
   const syncNow = useCallback(async () => {
     if (!session) {
       setStatus('local');
       return;
     }
-    if (!navigator.onLine) {
-      setStatus('offline');
-      setMessage('Offline. Changes are saved locally and will sync when you reconnect.');
-      return;
-    }
-    if (syncPromiseRef.current) return syncPromiseRef.current;
-
-    const operation = (async () => {
-      setStatus('syncing');
-      setMessage(null);
-      try {
-        const fresh = await ensureFreshSession(session);
-        if (fresh.access_token !== session.access_token) updateSession(fresh);
-        const result = await synchronizeNotes(fresh);
-        setLastResult(result);
-        setLastSyncedAt(Date.now());
-        setStatus('synced');
-        setMessage(
-          result.conflicts > 0
-            ? `${result.conflicts} sync conflict${result.conflicts === 1 ? '' : 's'} resolved conservatively.`
-            : null,
-        );
-      } catch (error) {
-        setStatus(navigator.onLine ? 'error' : 'offline');
-        setMessage(error instanceof Error ? error.message : 'Notes could not sync.');
-      }
-    })();
-
-    syncPromiseRef.current = operation;
-    try {
-      await operation;
-    } finally {
-      syncPromiseRef.current = null;
-    }
-  }, [session, updateSession]);
+    await runSync(session);
+  }, [runSync, session]);
 
   useEffect(() => {
-    if (!session) return;
+    const initialSession = initialSessionRef.current;
+    if (!initialSession) return;
+
     let cancelled = false;
-    void refreshSession(session)
-      .then((fresh) => {
+    void refreshSession(initialSession)
+      .then(async (fresh) => {
         if (cancelled) return;
         updateSession(fresh);
-        setStatus('connecting');
+        await runSync(fresh);
       })
       .catch(() => {
         if (cancelled) return;
@@ -107,17 +101,11 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         setStatus('local');
         setMessage('Your saved cloud session expired. Sign in again to resume sync.');
       });
+
     return () => {
       cancelled = true;
     };
-    // Refresh the persisted session once when the provider mounts.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (!session) return;
-    void syncNow();
-  }, [session?.access_token, syncNow]);
+  }, [runSync, updateSession]);
 
   useEffect(() => {
     if (!session) return;
@@ -142,13 +130,14 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       try {
         const next = await signInWithPassword(email.trim(), password);
         updateSession(next);
+        await runSync(next);
       } catch (error) {
         setStatus('local');
         setMessage(error instanceof Error ? error.message : 'Sign-in failed.');
         throw error;
       }
     },
-    [updateSession],
+    [runSync, updateSession],
   );
 
   const signUp = useCallback(
@@ -159,6 +148,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         const result = await signUpWithPassword(email.trim(), password);
         if (result.session) {
           updateSession(result.session);
+          await runSync(result.session);
           return 'signed-in';
         }
         setStatus('local');
@@ -170,7 +160,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         throw error;
       }
     },
-    [updateSession],
+    [runSync, updateSession],
   );
 
   const signOut = useCallback(async () => {
@@ -215,27 +205,4 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   );
 
   return <SyncContext.Provider value={value}>{children}</SyncContext.Provider>;
-}
-
-export function useSync(): SyncContextValue {
-  const value = useContext(SyncContext);
-  if (!value) throw new Error('useSync must be used inside SyncProvider.');
-  return value;
-}
-
-export function syncStatusLabel(status: SyncStatus): string {
-  switch (status) {
-    case 'local':
-      return 'Local only';
-    case 'connecting':
-      return 'Connecting';
-    case 'syncing':
-      return 'Syncing…';
-    case 'synced':
-      return 'Synced';
-    case 'offline':
-      return 'Offline';
-    case 'error':
-      return 'Sync error';
-  }
 }
