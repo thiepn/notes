@@ -14,11 +14,18 @@ function json(route: Route, payload: unknown, status = 200) {
 }
 
 async function openSyncSettings(page: Page) {
-  await page.getByTestId('header-more-toggle').click();
-  await page.getByRole('menuitem', { name: 'Settings' }).click();
-  await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
-  await page.getByRole('button', { name: /Account & sync/u }).click();
-  await expect(page.getByRole('heading', { name: 'Account & sync' })).toBeVisible();
+  const dialog = page.getByRole('dialog', { name: 'Settings' });
+  if (!(await dialog.isVisible())) {
+    await page.getByTestId('header-more-toggle').click();
+    await page.getByRole('menuitem', { name: 'Settings' }).click();
+    await expect(dialog).toBeVisible();
+  }
+
+  const heading = page.getByRole('heading', { name: 'Account & sync' });
+  if (!(await heading.isVisible())) {
+    await page.getByRole('button', { name: /Account & sync/u }).click();
+  }
+  await expect(heading).toBeVisible();
 }
 
 async function fillSignedOutCredentials(page: Page) {
