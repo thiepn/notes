@@ -136,7 +136,8 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       try {
         if (
           typeof window !== 'undefined' &&
-          (window.location.hash.includes('access_token=') || window.location.hash.includes('error='))
+          (window.location.hash.includes('access_token=') ||
+            window.location.hash.includes('error='))
         ) {
           const { consumeAuthCallback } = await import('./accountApi');
           const callback = await consumeAuthCallback();
@@ -322,10 +323,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   }, [session]);
 
   const changePassword = useCallback(
-    async (
-      password: string,
-      options: { currentPassword?: string; nonce?: string } = {},
-    ) => {
+    async (password: string, options: { currentPassword?: string; nonce?: string } = {}) => {
       if (!session) throw new Error('Open a valid recovery link or sign in first.');
       const fresh = await ensureFreshSession(session);
       const { updateAccountPassword } = await import('./accountApi');
