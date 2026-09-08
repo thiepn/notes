@@ -327,7 +327,9 @@ export function SyncSettings() {
               <label>
                 <span>
                   <strong>Current password</strong>
-                  <small>Provide it when your project requires current-password verification.</small>
+                  <small>
+                    Provide it when your project requires current-password verification.
+                  </small>
                 </span>
                 <input
                   type="password"
@@ -391,8 +393,12 @@ export function SyncSettings() {
                       <MonitorSmartphone />
                     </span>
                     <span>
-                      <strong>{authSession.is_current ? 'This session' : 'Signed-in session'}</strong>
-                      <small>{sessionSummary(authSession.user_agent, authSession.updated_at)}</small>
+                      <strong>
+                        {authSession.is_current ? 'This session' : 'Signed-in session'}
+                      </strong>
+                      <small>
+                        {sessionSummary(authSession.user_agent, authSession.updated_at)}
+                      </small>
                     </span>
                   </div>
                 ))}
