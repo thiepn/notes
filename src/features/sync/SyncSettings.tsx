@@ -83,11 +83,11 @@ export function SyncSettings() {
 
   const submitPassword = async () => {
     if (newPassword !== confirmPassword || newPassword.length < 8) return;
+    const options: { currentPassword?: string; nonce?: string } = {};
+    if (!recoveryMode && currentPassword) options.currentPassword = currentPassword;
+    if (reauthNonce) options.nonce = reauthNonce;
     await runBusy(async () => {
-      await changePassword(newPassword, {
-        currentPassword: recoveryMode ? undefined : currentPassword || undefined,
-        nonce: reauthNonce || undefined,
-      });
+      await changePassword(newPassword, options);
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
@@ -392,9 +392,7 @@ export function SyncSettings() {
                     </span>
                     <span>
                       <strong>{authSession.is_current ? 'This session' : 'Signed-in session'}</strong>
-                      <small>
-                        {sessionSummary(authSession.user_agent, authSession.updated_at)}
-                      </small>
+                      <small>{sessionSummary(authSession.user_agent, authSession.updated_at)}</small>
                     </span>
                   </div>
                 ))}
