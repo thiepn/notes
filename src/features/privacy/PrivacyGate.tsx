@@ -31,7 +31,7 @@ export function PrivacyGate({ children }: { children: ReactNode }) {
       const valid = await unlock(passcode);
       if (!valid) {
         setPasscode('');
-        setErrorMessage('Incorrect passcode. Repeated failures temporarily delay new attempts.');
+        setErrorMessage('Incorrect passcode.');
         return;
       }
       setPasscode('');
@@ -66,7 +66,8 @@ export function PrivacyGate({ children }: { children: ReactNode }) {
           </label>
           {blocked ? (
             <p className="privacy-error" role="status">
-              Too many attempts. Try again in {blockedSeconds} {blockedSeconds === 1 ? 'second' : 'seconds'}.
+              Too many attempts. Try again in {blockedSeconds}{' '}
+              {blockedSeconds === 1 ? 'second' : 'seconds'}.
             </p>
           ) : errorMessage ? (
             <p className="privacy-error" role="alert">
