@@ -1,7 +1,4 @@
-/* V4.2 — Interaction Consistency & Accessibility Hardening
-   Keep the V4.1 visual system legible when users request reduced motion or
-   operating-system forced colors/high contrast. */
-
+/* Shared reduced-motion and forced-colors contract. */
 @media (prefers-reduced-motion: reduce) {
   .note-card:hover,
   .note-card:focus-within,

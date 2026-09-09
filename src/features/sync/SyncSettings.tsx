@@ -52,15 +52,21 @@ export function SyncSettings() {
   const [deleteCloudConfirm, setDeleteCloudConfirm] = useState('');
   const [deleteAccountConfirm, setDeleteAccountConfirm] = useState('');
   const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const signedIn = email !== null;
 
   const runBusy = async (operation: () => Promise<void>) => {
     setBusy(true);
+    setActionError(null);
     try {
       await operation();
-    } catch {
-      // Provider surfaces the actionable error message.
+    } catch (error) {
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : 'The action could not be completed. Please try again.',
+      );
     } finally {
       setBusy(false);
     }
@@ -97,6 +103,11 @@ export function SyncSettings() {
 
   return (
     <>
+      {actionError ? (
+        <p role="alert" className="settings-error">
+          {actionError}
+        </p>
+      ) : null}
       <section className="settings-group" aria-label="Cloud sync">
         <div className="settings-group-copy">
           <strong>Cross-device sync</strong>
@@ -129,7 +140,7 @@ export function SyncSettings() {
           ) : null}
         </div>
 
-        {message ? <p role="status">{message}</p> : null}
+        {message && !actionError && !busy ? <p role="status">{message}</p> : null}
 
         {signedIn && !accessGranted ? (
           <div className="settings-choice-list">

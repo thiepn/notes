@@ -21,6 +21,8 @@ import {
   X,
 } from 'lucide-react';
 
+import { useDialogFocusTrap } from '../../components/ui/useDialogFocusTrap';
+
 import {
   isPreviewableImageMimeType,
   isVoiceAudioMimeType,
@@ -596,6 +598,8 @@ function AttachmentLightbox({
   onIndexChange(index: number): void;
   onClose(): void;
 }) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocusTrap(dialogRef, { onEscape: onClose });
   const attachment = attachments[index];
   const url = useBlobUrl(attachment?.data ?? null);
   const [dimensions, setDimensions] = useState<{
@@ -647,6 +651,8 @@ function AttachmentLightbox({
 
   return (
     <div
+      ref={dialogRef}
+      tabIndex={-1}
       className="attachment-lightbox-layer"
       role="dialog"
       aria-modal="true"

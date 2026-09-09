@@ -1,3 +1,5 @@
+import { useDialogFocusTrap } from '../../components/ui/useDialogFocusTrap';
+import { NoteDocumentTools } from './NoteDocumentTools';
 import {
   useCallback,
   useEffect,
@@ -67,6 +69,9 @@ export function NoteEditorDialog({
   onConvertToChecklist,
   onClose,
 }: NoteEditorDialogProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const [focused, setFocused] = useState(false);
+  useDialogFocusTrap(dialogRef);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const [historyNote, setHistoryNote] = useState<NoteRecord | null>(null);
   const [pendingHistoryResult, setPendingHistoryResult] = useState<HistoricalResult | null>(null);
@@ -240,6 +245,10 @@ export function NoteEditorDialog({
     <>
       <div className="note-editor-layer" onPointerDown={handleLayerPointerDown}>
         <div
+          ref={dialogRef}
+          tabIndex={-1}
+          data-editing-note={note.id}
+          data-focus={focused}
           className="note-editor-dialog note-editor-dialog-simplified"
           data-color={note.color}
           role="dialog"
@@ -247,6 +256,7 @@ export function NoteEditorDialog({
           aria-label="Edit note"
           onKeyDown={handleKeyDown}
         >
+          <NoteDocumentTools note={draftNote} focused={focused} onFocusChange={setFocused} />
           <input
             className="note-editor-title"
             type="text"

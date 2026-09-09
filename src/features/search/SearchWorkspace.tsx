@@ -129,6 +129,14 @@ export function SearchWorkspace({
   }, []);
 
   useEffect(() => {
+    const refresh = () => {
+      void reloadIndex().catch(() => undefined);
+    };
+    window.addEventListener('notes-cloud-sync-applied', refresh);
+    return () => window.removeEventListener('notes-cloud-sync-applied', refresh);
+  }, [reloadIndex]);
+
+  useEffect(() => {
     let cancelled = false;
     void searchRepository
       .loadIndex()

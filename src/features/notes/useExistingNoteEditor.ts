@@ -142,7 +142,7 @@ export function useExistingNoteEditor({
       clearTimer();
       timerRef.current = setTimeout(() => {
         timerRef.current = null;
-        void persistLatest();
+        void persistLatest().catch(() => undefined);
       }, AUTOSAVE_DELAY_MS);
     },
     [clearTimer, persistLatest],
@@ -190,7 +190,7 @@ export function useExistingNoteEditor({
 
   const retrySave = useCallback(() => {
     clearTimer();
-    void persistLatest();
+    void persistLatest().catch(() => undefined);
   }, [clearTimer, persistLatest]);
 
   useEffect(() => {
@@ -203,14 +203,14 @@ export function useExistingNoteEditor({
 
   useEffect(() => {
     if (!initialEditor.journal) return;
-    void persistLatest();
+    void persistLatest().catch(() => undefined);
   }, [initialEditor.journal, persistLatest]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState !== 'hidden') return;
       clearTimer();
-      void persistLatest();
+      void persistLatest().catch(() => undefined);
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);

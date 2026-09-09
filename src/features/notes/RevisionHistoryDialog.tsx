@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useDialogFocusTrap } from '../../components/ui/useDialogFocusTrap';
+import {
+  useRef,
+  useEffect,
+  useMemo,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import { Clock3, Copy, History, RotateCcw, Undo2, X } from 'lucide-react';
 
 import { IconButton } from '../../components/ui/IconButton';
@@ -33,6 +40,8 @@ export function RevisionHistoryDialog({
   onRestored,
   onCopied,
 }: RevisionHistoryDialogProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocusTrap(dialogRef);
   const [entries, setEntries] = useState<RevisionEntry[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -151,6 +160,8 @@ export function RevisionHistoryDialog({
   return (
     <div className="revision-history-layer" onPointerDown={handleLayerPointerDown}>
       <div
+        ref={dialogRef}
+        tabIndex={-1}
         className="revision-history-dialog"
         role="dialog"
         aria-modal="true"

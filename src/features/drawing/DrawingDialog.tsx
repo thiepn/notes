@@ -1,3 +1,4 @@
+import { useDialogFocusTrap } from '../../components/ui/useDialogFocusTrap';
 import {
   useCallback,
   useEffect,
@@ -36,6 +37,8 @@ interface DrawingDialogProps {
 }
 
 export function DrawingDialog({ onSave, onClose }: DrawingDialogProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocusTrap(dialogRef);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const activeStrokeRef = useRef<DrawingStroke | null>(null);
   const [strokes, setStrokes] = useState<DrawingStroke[]>([]);
@@ -166,6 +169,8 @@ export function DrawingDialog({ onSave, onClose }: DrawingDialogProps) {
 
   return (
     <div
+      ref={dialogRef}
+      tabIndex={-1}
       className="drawing-dialog-layer"
       role="dialog"
       aria-modal="true"

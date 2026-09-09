@@ -1,13 +1,15 @@
-import { notesDatabase } from '../../db';
-import type {
-  AttachmentRecord,
-  ChecklistItemRecord,
-  LabelRecord,
-  NoteLabelRecord,
-  NoteRecord,
-  ReminderRecord,
-  RevisionRecord,
-} from '../../db';
+import { notesDatabase, RevisionsRepository } from '../../db';
+import {
+  attachmentRecordSchema,
+  noteRecordSchema,
+  checklistItemRecordSchema,
+  labelRecordSchema,
+  noteLabelRecordSchema,
+  reminderRecordSchema,
+  revisionRecordSchema,
+} from '../../db/validation';
+import { acknowledgedShadow, type SyncShadow } from './syncState';
+import type { AttachmentRecord } from '../../db';
 import {
   deleteAttachmentObject,
   downloadAttachment,
@@ -19,7 +21,7 @@ import {
   upsertRemoteRecord,
 } from './supabaseApi';
 
-const SYNC_SHADOW_KEY = 'sync.supabase.shadow.v1';
+const SYNC_SHADOW_KEY = 'sync.supabase.shadow.v2';
 
 interface LocalEntity {
   key: string;
@@ -31,35 +33,47 @@ interface LocalEntity {
   attachment?: AttachmentRecord;
 }
 
-interface ShadowEntry {
-  localHash: string | null;
-  remoteHash: string | null;
-}
-
-type SyncShadow = Record<string, ShadowEntry>;
-
 export interface SyncResult {
   uploaded: number;
   downloaded: number;
   deletedRemote: number;
   deletedLocal: number;
   conflicts: number;
+  failed: number;
+  deferred: number;
 }
 
-export async function synchronizeNotes(session: SupabaseSession): Promise<SyncResult> {
+export async function synchronizeNotes(
+  session: SupabaseSession,
+  isCurrent: () => boolean = () => true,
+): Promise<SyncResult> {
+  if (navigator.locks)
+    return navigator.locks.request(`notes-sync:${session.user.id}`, () =>
+      synchronizeUnlocked(session, isCurrent),
+    );
+  return synchronizeUnlocked(session, isCurrent);
+}
+
+async function synchronizeUnlocked(
+  session: SupabaseSession,
+  isCurrent: () => boolean,
+): Promise<SyncResult> {
+  if (!isCurrent()) throw new Error('Sync cancelled because the account changed.');
   const result: SyncResult = {
     uploaded: 0,
     downloaded: 0,
     deletedRemote: 0,
     deletedLocal: 0,
     conflicts: 0,
+    failed: 0,
+    deferred: 0,
   };
   const failedKeys = new Set<string>();
 
   const [localEntities, remoteRecords, shadow] = await Promise.all([
     buildLocalSnapshot(session.user.id),
     listRemoteRecords(session),
-    readShadow(),
+    readShadow(session.user.id),
   ]);
 
   const localByKey = new Map(localEntities.map((entity) => [entity.key, entity]));
@@ -70,6 +84,23 @@ export async function synchronizeNotes(session: SupabaseSession): Promise<SyncRe
     const local = localByKey.get(key);
     const remote = remoteByKey.get(key);
     const previous = shadow[key];
+    if (!isCurrent()) throw new Error('Sync cancelled because the account changed.');
+    const noteId =
+      local?.type === 'note'
+        ? local.id
+        : remote?.entity_type === 'note'
+          ? remote.entity_id
+          : (local?.payload.noteId ?? remote?.payload?.noteId);
+    if (
+      typeof noteId === 'string' &&
+      Array.from(document.querySelectorAll<HTMLElement>('[data-editing-note]')).some(
+        (node) => node.dataset.editingNote === noteId,
+      )
+    ) {
+      failedKeys.add(key);
+      result.deferred += 1;
+      continue;
+    }
     const localSignature = local?.hash ?? null;
     const remoteSignature = remote ? signatureForRemote(remote) : null;
 
@@ -118,7 +149,7 @@ export async function synchronizeNotes(session: SupabaseSession): Promise<SyncRe
       // Keep the prior shadow for this key so a later sync retries it instead of silently accepting loss.
       failedKeys.add(key);
       console.error(`Notes sync could not reconcile ${key}.`, error);
-      result.conflicts += 1;
+      result.failed += 1;
     }
   }
 
@@ -126,13 +157,16 @@ export async function synchronizeNotes(session: SupabaseSession): Promise<SyncRe
     buildLocalSnapshot(session.user.id),
     listRemoteRecords(session),
   ]);
-  const nextShadow = createShadow(finalLocal, finalRemote);
-  for (const key of failedKeys) {
-    const previous = shadow[key];
-    if (previous) nextShadow[key] = previous;
-    else delete nextShadow[key];
+  if (!isCurrent()) throw new Error('Sync cancelled because the account changed.');
+  const observed = createShadow(finalLocal, finalRemote);
+  for (const [key, entry] of Object.entries(observed)) {
+    const agrees =
+      entry.localHash === entry.remoteHash ||
+      (entry.localHash === null && entry.remoteHash?.startsWith('deleted:'));
+    if (!agrees && !failedKeys.has(key)) result.deferred += 1;
   }
-  await writeShadow(nextShadow);
+  const nextShadow = acknowledgedShadow(observed, shadow, failedKeys);
+  await writeShadow(session.user.id, nextShadow);
 
   if (result.downloaded > 0 || result.deletedLocal > 0) {
     window.dispatchEvent(new CustomEvent('notes-cloud-sync-applied'));
@@ -256,37 +290,57 @@ async function tombstoneRemote(session: SupabaseSession, remote: RemoteSyncRecor
 async function applyRemote(session: SupabaseSession, remote: RemoteSyncRecord): Promise<void> {
   if (!remote.payload) return;
   const payload = remote.payload;
+  if (remote.user_id !== session.user.id)
+    throw new Error('Cloud record belongs to a different account.');
+  const payloadId =
+    remote.entity_type === 'note_label' ? `${payload.noteId}::${payload.labelId}` : payload.id;
+  if (payloadId !== remote.entity_id)
+    throw new Error('Cloud record identity does not match its payload.');
+  if ((await hashPayload(payload)) !== remote.payload_hash)
+    throw new Error('Cloud record checksum failed. Local data was kept.');
 
   switch (remote.entity_type) {
-    case 'note':
-      await notesDatabase.notes.put(payload as unknown as NoteRecord);
+    case 'note': {
+      const valid = noteRecordSchema.parse(payload);
+      const previous = await notesDatabase.notes.get(valid.id);
+      if (
+        previous &&
+        (previous.title !== valid.title ||
+          previous.content !== valid.content ||
+          previous.type !== valid.type)
+      ) {
+        await new RevisionsRepository(notesDatabase).checkpoint(valid.id, 'edit');
+      }
+      await notesDatabase.notes.put(valid);
       return;
+    }
+
     case 'checklist_item':
-      await notesDatabase.checklistItems.put(payload as unknown as ChecklistItemRecord);
+      await notesDatabase.checklistItems.put(checklistItemRecordSchema.parse(payload));
       return;
     case 'label':
-      await notesDatabase.labels.put(payload as unknown as LabelRecord);
+      await notesDatabase.labels.put(labelRecordSchema.parse(payload));
       return;
     case 'note_label':
-      await notesDatabase.noteLabels.put(payload as unknown as NoteLabelRecord);
+      await notesDatabase.noteLabels.put(noteLabelRecordSchema.parse(payload));
       return;
     case 'reminder':
-      await notesDatabase.reminders.put(payload as unknown as ReminderRecord);
+      await notesDatabase.reminders.put(reminderRecordSchema.parse(payload));
       return;
     case 'revision':
-      await notesDatabase.revisions.put(payload as unknown as RevisionRecord);
+      await notesDatabase.revisions.put(revisionRecordSchema.parse(payload));
       return;
     case 'attachment': {
       const storagePath = payload.storagePath;
-      if (typeof storagePath !== 'string')
+      if (storagePath !== `${session.user.id}/${remote.entity_id}`)
         throw new Error('Cloud attachment is missing its storage path.');
       const data = await downloadAttachment(session, storagePath);
       const { storagePath: _storagePath, ...metadata } = payload;
       void _storagePath;
-      await notesDatabase.attachments.put({
-        ...(metadata as unknown as Omit<AttachmentRecord, 'data'>),
-        data,
-      });
+      const attachment = attachmentRecordSchema.parse({ ...metadata, data });
+      if (data.size !== attachment.size)
+        throw new Error('Cloud attachment size did not match. Please retry.');
+      await notesDatabase.attachments.put(attachment);
       return;
     }
   }
@@ -396,8 +450,8 @@ function createShadow(local: LocalEntity[], remote: RemoteSyncRecord[]): SyncSha
   return shadow;
 }
 
-async function readShadow(): Promise<SyncShadow> {
-  const setting = await notesDatabase.settings.get(SYNC_SHADOW_KEY);
+async function readShadow(userId: string): Promise<SyncShadow> {
+  const setting = await notesDatabase.settings.get(`${SYNC_SHADOW_KEY}:${userId}`);
   if (!setting) return {};
   try {
     const parsed = JSON.parse(setting.value) as unknown;
@@ -407,9 +461,9 @@ async function readShadow(): Promise<SyncShadow> {
   }
 }
 
-async function writeShadow(shadow: SyncShadow): Promise<void> {
+async function writeShadow(userId: string, shadow: SyncShadow): Promise<void> {
   await notesDatabase.settings.put({
-    key: SYNC_SHADOW_KEY,
+    key: `${SYNC_SHADOW_KEY}:${userId}`,
     value: JSON.stringify(shadow),
     updatedAt: Date.now(),
   });

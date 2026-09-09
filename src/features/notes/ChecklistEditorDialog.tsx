@@ -1,3 +1,5 @@
+import { useDialogFocusTrap } from '../../components/ui/useDialogFocusTrap';
+import { NoteDocumentTools } from './NoteDocumentTools';
 import {
   useCallback,
   useEffect,
@@ -101,6 +103,9 @@ export function ChecklistEditorDialog({
   const [moreOpen, setMoreOpen] = useState(false);
   const [attachmentsOpen, setAttachmentsOpen] = useState(false);
 
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const [focused, setFocused] = useState(false);
+  useDialogFocusTrap(dialogRef);
   const pendingDraftRef = useRef<ChecklistDraft>(initial.draft);
   const noteRef = useRef(note);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -347,6 +352,10 @@ export function ChecklistEditorDialog({
     <>
       <div className="note-editor-layer" onPointerDown={handleLayerPointerDown}>
         <div
+          ref={dialogRef}
+          tabIndex={-1}
+          data-editing-note={note.id}
+          data-focus={focused}
           className="note-editor-dialog checklist-editor-dialog note-editor-dialog-simplified"
           data-color={note.color}
           role="dialog"
@@ -354,6 +363,12 @@ export function ChecklistEditorDialog({
           aria-label="Edit checklist"
           onKeyDown={handleKeyDown}
         >
+          <NoteDocumentTools
+            note={{ ...note, title: draft.title }}
+            items={draft.items}
+            focused={focused}
+            onFocusChange={setFocused}
+          />
           <ChecklistEditorFields
             title={draft.title}
             items={draft.items}

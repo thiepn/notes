@@ -1,3 +1,9 @@
+## V5 — Paper & Ink
+
+A redesigned notebook workspace with paper/graphite light and dark themes, direct search and capture, mobile navigation, persistent sorting, current-draft Markdown export, writing-focus mode, and explicit cloud status. Existing local data and media tools are preserved.
+
+See [the V5 audit and design contract](docs/V5_AUDIT.md) for implemented fixes, test coverage, and synchronization limitations.
+
 # Notes
 
 A local-first, zero-friction notes PWA designed to match Google Keep's capture speed while improving privacy, portability, recovery, search, and desktop ergonomics.

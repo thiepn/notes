@@ -1,3 +1,13 @@
+export class SupabaseRequestError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+  ) {
+    super(message);
+    this.name = 'SupabaseRequestError';
+  }
+}
+
 const SUPABASE_URL = 'https://hycegznamzjhwinegaai.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_1rZzRPzfLMaAH5pIgCwIjA_19UPMIsR';
 const SESSION_STORAGE_KEY = 'notes.supabase.session.v1';
@@ -53,6 +63,7 @@ export function readStoredSession(): SupabaseSession | null {
       typeof parsed.access_token !== 'string' ||
       typeof parsed.refresh_token !== 'string' ||
       typeof parsed.expires_at !== 'number' ||
+      !Number.isFinite(parsed.expires_at) ||
       !parsed.user ||
       typeof parsed.user.id !== 'string'
     ) {
@@ -100,12 +111,19 @@ export async function signUpWithPassword(
   return { session: parseSession(response), user: response.user };
 }
 
-export async function refreshSession(session: SupabaseSession): Promise<SupabaseSession> {
-  const response = await authRequest('/auth/v1/token?grant_type=refresh_token', {
+const refreshRequests = new Map<string, Promise<SupabaseSession>>();
+
+export function refreshSession(session: SupabaseSession): Promise<SupabaseSession> {
+  const existing = refreshRequests.get(session.refresh_token);
+  if (existing) return existing;
+  const operation = authRequest('/auth/v1/token?grant_type=refresh_token', {
     method: 'POST',
     body: JSON.stringify({ refresh_token: session.refresh_token }),
-  });
-  return parseSession(response);
+  })
+    .then(parseSession)
+    .finally(() => refreshRequests.delete(session.refresh_token));
+  refreshRequests.set(session.refresh_token, operation);
+  return operation;
 }
 
 export async function ensureFreshSession(session: SupabaseSession): Promise<SupabaseSession> {
@@ -118,7 +136,7 @@ export async function signOutSession(session: SupabaseSession): Promise<void> {
   try {
     await request('/auth/v1/logout?scope=local', session.access_token, { method: 'POST' });
   } finally {
-    storeSession(null);
+    if (readStoredSession()?.access_token === session.access_token) storeSession(null);
   }
 }
 
@@ -142,13 +160,38 @@ export async function claimNotesSyncAccess(
 }
 
 export async function listRemoteRecords(session: SupabaseSession): Promise<RemoteSyncRecord[]> {
+  const records: RemoteSyncRecord[] = [];
+  let cursor = '';
   const query = new URLSearchParams({
     select:
       'user_id,entity_type,entity_id,payload,payload_hash,client_updated_at,deleted_at,updated_at',
     user_id: `eq.${session.user.id}`,
+    order: 'entity_type.asc,entity_id.asc',
+    limit: '500',
   });
-  const response = await request(`/rest/v1/notes_sync_records?${query}`, session.access_token);
-  return (await response.json()) as RemoteSyncRecord[];
+  // Keyset pagination avoids the API row cap and offset shifts while other devices write.
+  // Continue to an empty page: a project may configure a lower cap than our requested limit.
+  for (let page = 0; page < 2000; page += 1) {
+    const response = await request(`/rest/v1/notes_sync_records?${query}`, session.access_token);
+    const rows = (await response.json()) as RemoteSyncRecord[];
+    if (!Array.isArray(rows)) throw new Error('Cloud sync returned an invalid record list.');
+    if (rows.length === 0) return records;
+    const last = rows.at(-1)!;
+    if (rows.some((row) => row.user_id !== session.user.id))
+      throw new Error('Cloud sync returned a different account’s record.');
+    if (!/^[a-z_]+$/.test(last.entity_type) || !/^[a-zA-Z0-9:-]+$/.test(last.entity_id))
+      throw new Error('Cloud sync returned an invalid record cursor.');
+    const next = `${last.entity_type}:${last.entity_id}`;
+    if (next === cursor)
+      throw new Error('Cloud pagination did not advance. No changes were applied.');
+    records.push(...rows);
+    cursor = next;
+    query.set(
+      'or',
+      `(entity_type.gt.${last.entity_type},and(entity_type.eq.${last.entity_type},entity_id.gt.${last.entity_id}))`,
+    );
+  }
+  throw new Error('The cloud library exceeded the safe fetch limit. No changes were applied.');
 }
 
 export async function upsertRemoteRecord(
@@ -218,6 +261,7 @@ export async function deleteAttachmentObject(
 async function authRequest(path: string, init: RequestInit): Promise<AuthResponse> {
   const response = await fetch(`${SUPABASE_URL}${path}`, {
     ...init,
+    signal: init.signal ?? AbortSignal.timeout(30_000),
     headers: {
       apikey: SUPABASE_PUBLISHABLE_KEY,
       'Content-Type': 'application/json',
@@ -226,11 +270,12 @@ async function authRequest(path: string, init: RequestInit): Promise<AuthRespons
   });
   const payload = (await response.json().catch(() => ({}))) as AuthResponse;
   if (!response.ok) {
-    throw new Error(
+    throw new SupabaseRequestError(
       payload.error_description ??
         payload.msg ??
         payload.error ??
         `Supabase request failed (${response.status}).`,
+      response.status,
     );
   }
   return payload;
@@ -244,6 +289,7 @@ async function request(
 ): Promise<Response> {
   const response = await fetch(`${SUPABASE_URL}${path}`, {
     ...init,
+    signal: init.signal ?? AbortSignal.timeout(30_000),
     headers: {
       apikey: SUPABASE_PUBLISHABLE_KEY,
       Authorization: `Bearer ${accessToken}`,
@@ -261,11 +307,12 @@ async function responseError(response: Response): Promise<Error> {
     error?: string;
     msg?: string;
   } | null;
-  return new Error(
+  return new SupabaseRequestError(
     payload?.message ??
       payload?.msg ??
       payload?.error ??
       `Supabase request failed (${response.status}).`,
+    response.status,
   );
 }
 

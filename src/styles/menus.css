@@ -1,0 +1,151 @@
+.header-actions,
+.note-composer-menu-slot,
+.note-editor-menu-slot,
+.note-card-action-slot {
+  position: relative;
+}
+.header-more-menu,
+.note-composer-tools-menu,
+.note-editor-tools-menu,
+.note-editor-more-menu,
+.note-card-more-menu {
+  position: absolute;
+  z-index: 90;
+  display: grid;
+  min-width: 220px;
+  gap: 2px;
+  padding: 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
+.header-more-menu {
+  top: calc(100% + 8px);
+  right: 0;
+}
+.note-composer-tools-menu {
+  top: calc(100% + 8px);
+  right: 0;
+}
+.note-composer-tools-menu-expanded,
+.note-editor-tools-menu,
+.note-editor-more-menu {
+  top: auto;
+  bottom: calc(100% + 8px);
+  left: 0;
+  right: auto;
+}
+.note-editor-more-menu,
+.note-card-more-menu {
+  bottom: calc(100% + 8px);
+  left: auto;
+  right: 0;
+}
+.header-more-menu button,
+.note-composer-tools-menu button,
+.note-editor-tools-menu button,
+.note-editor-more-menu button,
+.note-card-more-menu button {
+  display: flex;
+  width: 100%;
+  min-height: 40px;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  text-align: left;
+  white-space: normal;
+}
+.header-more-menu button:hover,
+.note-composer-tools-menu button:hover,
+.note-editor-tools-menu button:hover,
+.note-editor-more-menu button:hover,
+.note-card-more-menu button:hover {
+  background: var(--surface-subtle);
+}
+.header-more-menu button svg,
+.note-composer-tools-menu button svg,
+.note-editor-tools-menu button svg,
+.note-editor-more-menu button svg,
+.note-card-more-menu button svg {
+  width: 17px;
+  height: 17px;
+}
+.header-more-menu button span {
+  flex: 1;
+}
+.header-more-menu kbd,
+.header-more-menu small {
+  color: var(--text-muted);
+  font: 10px var(--font-mono);
+}
+.note-composer-menu-control,
+.note-editor-menu-control {
+  width: 100%;
+}
+.rich-text-compact-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.rich-text-compact-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.rich-text-compact-button svg {
+  width: 15px;
+  height: 15px;
+}
+.rich-text-compact-button:hover,
+.rich-text-compact-button[aria-expanded='true'],
+.rich-text-compact-button[aria-pressed='true'] {
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+@media (max-width: 767px) {
+  .header-more-menu {
+    position: fixed;
+    top: 50px;
+    right: 12px;
+    width: min(270px, calc(100vw - 24px));
+  }
+  .note-editor-tools-menu,
+  .note-editor-more-menu,
+  .note-composer-tools-menu-expanded {
+    position: fixed;
+    top: auto;
+    bottom: calc(76px + env(safe-area-inset-bottom));
+    left: 12px;
+    right: 12px;
+    width: auto;
+    min-width: 0;
+    max-height: min(60dvh, 400px);
+    overflow: auto;
+  }
+  .header-more-menu button,
+  .note-composer-tools-menu button,
+  .note-editor-tools-menu button,
+  .note-editor-more-menu button,
+  .note-card-more-menu button {
+    min-height: 44px;
+  }
+  .rich-text-compact-button {
+    min-height: 40px;
+  }
+}

@@ -34,6 +34,7 @@ import {
 } from './NoteCard';
 import { TextNoteComposer } from './TextNoteComposer';
 import type { NotesViewMode } from './viewMode';
+import { NOTE_SORT_KEY, readNoteSort, sortDocuments, type NoteSort } from './noteSort';
 
 const notesRepository = new NotesRepository(notesDatabase);
 const labelsRepository = new LabelsRepository(notesDatabase);
@@ -146,16 +147,45 @@ export function NotesWorkspace({
     anchorId: null,
   });
 
+  const [sort, setSort] = useState<NoteSort>(readNoteSort);
+  const chooseSort = (value: NoteSort) => {
+    setSort(value);
+    try {
+      localStorage.setItem(NOTE_SORT_KEY, value);
+    } catch {
+      /* In-memory sorting remains available. */
+    }
+  };
+
   const showToast = useCallback((message: string, undo?: () => Promise<void>) => {
     const id = crypto.randomUUID();
     setToast(undo ? { id, message, undo } : { id, message });
   }, []);
 
+  const collectionScopeRef = useRef(0);
+  useEffect(
+    () => () => {
+      collectionScopeRef.current += 1;
+    },
+    [mode, filterLabelId],
+  );
   const refreshCollection = useCallback(async () => {
+    const scope = collectionScopeRef.current;
     const loadedCollection = await loadCollection(mode, filterLabelId);
+    if (scope !== collectionScopeRef.current) return;
     setCollection({ mode, filterLabelId, ...loadedCollection, loaded: true });
     onCollectionChanged?.();
   }, [filterLabelId, mode, onCollectionChanged]);
+
+  useEffect(() => {
+    const refresh = () => {
+      void refreshCollection().catch(() =>
+        showToast('Cloud changes could not be displayed. Reload to retry.'),
+      );
+    };
+    window.addEventListener('notes-cloud-sync-applied', refresh);
+    return () => window.removeEventListener('notes-cloud-sync-applied', refresh);
+  }, [refreshCollection, showToast]);
 
   useEffect(() => {
     let cancelled = false;
@@ -495,8 +525,12 @@ export function NotesWorkspace({
   );
 
   const visibleNotes = useMemo(
-    () => notes.filter((note) => note.id !== activeCaptureNoteId),
-    [activeCaptureNoteId, notes],
+    () =>
+      sortDocuments(
+        notes.filter((note) => note.id !== activeCaptureNoteId),
+        sort,
+      ),
+    [activeCaptureNoteId, notes, sort],
   );
   const pinnedNotes = useMemo(
     () => (mode === 'notes' ? visibleNotes.filter((note) => note.pinnedAt !== null) : []),
@@ -818,25 +852,39 @@ export function NotesWorkspace({
               <span className="notes-count">
                 {visibleNotes.length} {visibleNotes.length === 1 ? 'note' : 'notes'}
               </span>
-              <div className="notes-view-toggle" role="group" aria-label="Note view">
-                <IconButton
-                  className="notes-view-button"
-                  label="Grid view"
-                  aria-pressed={viewMode === 'grid'}
-                  data-active={viewMode === 'grid'}
-                  onClick={() => onViewModeChange('grid')}
-                >
-                  <LayoutGrid />
-                </IconButton>
-                <IconButton
-                  className="notes-view-button"
-                  label="List view"
-                  aria-pressed={viewMode === 'list'}
-                  data-active={viewMode === 'list'}
-                  onClick={() => onViewModeChange('list')}
-                >
-                  <Rows3 />
-                </IconButton>
+              <div className="notes-toolbar-controls">
+                <label className="notes-sort">
+                  <span>Sort</span>
+                  <select
+                    aria-label="Sort notes"
+                    value={sort}
+                    onChange={(event) => chooseSort(event.target.value as NoteSort)}
+                  >
+                    <option value="updated">Last edited</option>
+                    <option value="created">Date created</option>
+                    <option value="title">Title A–Z</option>
+                  </select>
+                </label>
+                <div className="notes-view-toggle" role="group" aria-label="Note view">
+                  <IconButton
+                    className="notes-view-button"
+                    label="Grid view"
+                    aria-pressed={viewMode === 'grid'}
+                    data-active={viewMode === 'grid'}
+                    onClick={() => onViewModeChange('grid')}
+                  >
+                    <LayoutGrid />
+                  </IconButton>
+                  <IconButton
+                    className="notes-view-button"
+                    label="List view"
+                    aria-pressed={viewMode === 'list'}
+                    data-active={viewMode === 'list'}
+                    onClick={() => onViewModeChange('list')}
+                  >
+                    <Rows3 />
+                  </IconButton>
+                </div>
               </div>
             </div>
           )}

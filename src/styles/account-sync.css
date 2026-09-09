@@ -1,59 +1,26 @@
 .settings-choice-list label:has(input[type='email']),
 .settings-choice-list label:has(input[type='password']),
 .settings-choice-list label:has(input[type='text']) {
-  grid-template-columns: minmax(0, 1fr) minmax(190px, 0.9fr);
-  cursor: default;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  padding: 0;
+  border: 0;
+  gap: 8px;
 }
-
 .settings-choice-list input[type='email'],
 .settings-choice-list input[type='password'],
 .settings-choice-list input[type='text'],
 .settings-select-row input[type='text'] {
   width: 100%;
   min-width: 0;
-  min-height: 40px;
-  padding: 0 11px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
   background: var(--surface);
   color: var(--text);
-  font: inherit;
-  font-size: var(--text-sm);
+  font-size: 16px;
 }
-
-.settings-choice-list input[type='email']:focus-visible,
-.settings-choice-list input[type='password']:focus-visible,
-.settings-choice-list input[type='text']:focus-visible,
-.settings-select-row input[type='text']:focus-visible {
-  border-color: var(--accent-strong);
-  outline: 2px solid color-mix(in srgb, var(--accent-strong) 28%, transparent);
-  outline-offset: 1px;
-}
-
-.settings-secondary-action:disabled {
-  cursor: default;
-  opacity: 0.5;
-}
-
 .settings-group[aria-label='Signed-in sessions'] .settings-setting-row {
-  min-height: 58px;
-}
-
-.settings-group[aria-label='Cloud data deletion'] .settings-select-row {
-  align-items: end;
-}
-
-@media (max-width: 700px) {
-  .settings-choice-list label:has(input[type='email']),
-  .settings-choice-list label:has(input[type='password']),
-  .settings-choice-list label:has(input[type='text']) {
-    grid-template-columns: 1fr;
-  }
-
-  .settings-choice-list input[type='email'],
-  .settings-choice-list input[type='password'],
-  .settings-choice-list input[type='text'],
-  .settings-select-row input[type='text'] {
-    min-height: 44px;
-  }
+  border-bottom: 1px solid var(--border);
 }

@@ -27,7 +27,7 @@ async function themeTokens(page: import('@playwright/test').Page) {
   });
 }
 
-test('V4.1 uses intentionally designed light and dark tonal palettes', async ({ page }) => {
+test('V5 uses intentionally designed light and dark tonal palettes', async ({ page }) => {
   await page.goto('./');
   await page.evaluate(() => localStorage.setItem('notes.theme', 'light'));
   await page.reload();
@@ -36,11 +36,11 @@ test('V4.1 uses intentionally designed light and dark tonal palettes', async ({ 
     .poll(() => themeTokens(page))
     .toEqual({
       theme: 'light',
-      background: '#f7f7f5',
-      surface: '#ffffff',
-      surfaceSubtle: '#f1f1ee',
-      text: '#222220',
-      yellow: '#fff6d6',
+      background: '#f6f3ed',
+      surface: '#fffdf8',
+      surfaceSubtle: '#eeebe4',
+      text: '#282724',
+      yellow: '#f6f0d5',
     });
 
   await page.evaluate(() => localStorage.setItem('notes.theme', 'dark'));
@@ -50,15 +50,17 @@ test('V4.1 uses intentionally designed light and dark tonal palettes', async ({ 
     .poll(() => themeTokens(page))
     .toEqual({
       theme: 'dark',
-      background: '#17181a',
-      surface: '#1f2023',
-      surfaceSubtle: '#242629',
-      text: '#f1f1ef',
-      yellow: '#34301f',
+      background: '#191b1d',
+      surface: '#222527',
+      surfaceSubtle: '#2b2e30',
+      text: '#eee9df',
+      yellow: '#333125',
     });
 });
 
-test('cards, navigation, search, and settings use the quieter V4.1 hierarchy', async ({ page }) => {
+test('cards, navigation, search, and settings use the Paper & Ink V5 hierarchy', async ({
+  page,
+}) => {
   await seedNote(page);
   await page.reload();
 
@@ -72,8 +74,8 @@ test('cards, navigation, search, and settings use the quieter V4.1 hierarchy', a
       shadow: styles.boxShadow,
     };
   });
-  expect(cardStyle.radius).toBe('15px');
-  expect(cardStyle.shadow).not.toBe('none');
+  expect(cardStyle.radius).toBe('3px');
+  expect(cardStyle.shadow).toBe('none');
 
   const countStyle = await page
     .locator('.nav-count')
@@ -103,8 +105,8 @@ test('cards, navigation, search, and settings use the quieter V4.1 hierarchy', a
   );
   const privacySwitch = dialog.locator(".settings-switch-row input[type='checkbox']").first();
   await expect(privacySwitch).toBeVisible();
-  expect(await privacySwitch.evaluate((element) => getComputedStyle(element).width)).toBe('38px');
-  expect(await privacySwitch.evaluate((element) => getComputedStyle(element).height)).toBe('22px');
+  expect(await privacySwitch.evaluate((element) => getComputedStyle(element).width)).toBe('20px');
+  expect(await privacySwitch.evaluate((element) => getComputedStyle(element).height)).toBe('20px');
 });
 
 test('mobile cards expose one quiet overflow path instead of a persistent action toolbar', async ({
@@ -124,5 +126,5 @@ test('mobile cards expose one quiet overflow path instead of a persistent action
   await expect(card.getByRole('button', { name: /More actions:/ })).toBeVisible();
 
   const cardRadius = await card.evaluate((element) => getComputedStyle(element).borderRadius);
-  expect(cardRadius).toBe('13px');
+  expect(cardRadius).toBe('3px');
 });

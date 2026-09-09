@@ -149,6 +149,13 @@ export function NoteCard({
     [],
   );
 
+  const pressOriginRef = useRef<{ x: number; y: number } | null>(null);
+  const handlePointerMove = (event: ReactPointerEvent<HTMLElement>) => {
+    const origin = pressOriginRef.current;
+    if (origin && Math.hypot(event.clientX - origin.x, event.clientY - origin.y) > 12)
+      clearLongPress();
+  };
+
   const clearLongPress = () => {
     if (longPressTimerRef.current === null) return;
     clearTimeout(longPressTimerRef.current);
@@ -162,6 +169,7 @@ export function NoteCard({
 
     longPressTriggeredRef.current = false;
     clearLongPress();
+    pressOriginRef.current = { x: event.clientX, y: event.clientY };
     longPressTimerRef.current = setTimeout(() => {
       longPressTimerRef.current = null;
       longPressTriggeredRef.current = true;
@@ -204,6 +212,7 @@ export function NoteCard({
       data-has-reminder={effectiveReminder !== null}
       data-preview-hidden={hidePreviews}
       onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
       onPointerUp={clearLongPress}
       onPointerCancel={clearLongPress}
       onPointerLeave={clearLongPress}
@@ -272,6 +281,19 @@ export function NoteCard({
           />
         </div>
       )}
+
+      {!hidePreviews && !selectionActive ? (
+        <time
+          className="note-card-date"
+          dateTime={new Date(note.updatedAt).toISOString()}
+          title={`Last edited ${new Date(note.updatedAt).toLocaleString()}`}
+        >
+          {new Date(note.updatedAt).toLocaleDateString(undefined, {
+            day: 'numeric',
+            month: 'short',
+          })}
+        </time>
+      ) : null}
 
       {!selectionActive && mode === 'notes' ? (
         <div className="note-card-pin-action note-card-direct-secondary">

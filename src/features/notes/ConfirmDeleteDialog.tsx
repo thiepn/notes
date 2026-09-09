@@ -1,4 +1,5 @@
-import { useEffect, type PointerEvent as ReactPointerEvent } from 'react';
+import { useDialogFocusTrap } from '../../components/ui/useDialogFocusTrap';
+import { useRef, useEffect, type PointerEvent as ReactPointerEvent } from 'react';
 
 interface ConfirmDeleteDialogProps {
   title?: string;
@@ -13,6 +14,8 @@ export function ConfirmDeleteDialog({
   onCancel,
   onConfirm,
 }: ConfirmDeleteDialogProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocusTrap(dialogRef);
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -39,6 +42,8 @@ export function ConfirmDeleteDialog({
   return (
     <div className="confirm-dialog-layer" onPointerDown={handleLayerPointerDown}>
       <div
+        ref={dialogRef}
+        tabIndex={-1}
         className="confirm-dialog"
         role="alertdialog"
         aria-modal="true"
