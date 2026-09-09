@@ -777,7 +777,7 @@ function buildSearchContext(document: SearchDocument, query: string): string | n
         .join(' · '),
     );
   }
-  if (field === 'content') {
+  if (field === 'body') {
     return formatSearchContext('Body', richTextToPlainText(document.note.content));
   }
   return null;
