@@ -5,6 +5,9 @@ on:
     paths: [.github/workflows/v5-hardening.yml]
 permissions:
   contents: write
+concurrency:
+  group: notes-v5-hardening
+  cancel-in-progress: true
 jobs:
   hardening:
     runs-on: ubuntu-latest
@@ -16,28 +19,52 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
-      - name: Apply checksum-verified source changes
-        env:
-          PATCH: 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
+      - name: Apply explicit regression repairs
         run: |
           python3 <<'PY'
-          import os,base64,zlib,json,hashlib
           from pathlib import Path
-          data=zlib.decompress(base64.b64decode(os.environ['PATCH'],validate=True))
-          assert hashlib.sha256(data).hexdigest()=='0745ebbb9179244008398cbcfbc81348af666ca49b5808073611ea980f8322f3'
-          root=Path.cwd(); changes=[]
-          for x in json.loads(data):
-              p=(root/x['p']).resolve()
-              assert p.is_relative_to(root) and '.git' not in p.relative_to(root).parts
-              before=p.read_bytes(); assert hashlib.sha256(before).hexdigest()==x['b'],x['p']
-              lines=before.decode().splitlines(keepends=True)
-              for i,j,s in reversed(x['e']): lines[i:j]=[s]
-              after=''.join(lines).encode();assert hashlib.sha256(after).hexdigest()==x['a'],x['p']
-              changes.append((p,after))
-          for p,after in changes:p.write_bytes(after)
-          print('Verified and applied',len(changes),'source changes')
+          def replace(path, old, new, count=1):
+              p=Path(path); text=p.read_text()
+              assert text.count(old)==count, (path, old, text.count(old))
+              p.write_text(text.replace(old,new))
+          for text in ['Setup required', 'Synced', 'Password recovery']:
+              old="page.getByText('"+text+"'"+("" if text=='Setup required' else ", { exact: true }")+")"
+              new="page.locator('section[aria-label=\"Cloud sync\"]').getByText('"+text+"', { exact: true })"
+              replace('e2e/account-sync.spec.ts',old,new)
+          replace('e2e/settings-consolidation.spec.ts','advanced data tools leave permanent sidebar chrome and remain reachable from settings and commands','data tools remain reachable from the new sidebar shortcut, settings, and commands')
+          replace('e2e/settings-consolidation.spec.ts',"await expect(sidebar.getByRole('button', { name: /Backup/u })).toHaveCount(0);","await sidebar.getByRole('button', { name: 'Backup & import', exact: true }).click();\n  await expect(page.getByRole('heading', { name: 'Backup', level: 1 })).toBeVisible();")
+          p=Path('e2e/v5-redesign.spec.ts');p.write_text(p.read_text().replace('fullPage: true','fullPage: false'))
+          replace('e2e/v5-redesign.spec.ts','      await noPageOverflow(page);\n      await page.screenshot({\n        path: testInfo.outputPath(`account-${theme}-${width}.png`)', '''      const lastAction = dialog.getByRole('button', { name: 'Resend verification', exact: true });
+                await lastAction.scrollIntoViewIfNeeded();
+                await expect(lastAction).toBeInViewport({ ratio: 1 });
+                await expect(dialog.getByRole('button', { name: 'Close settings' })).toBeInViewport({ ratio: 1 });
+                await noPageOverflow(page);
+                await page.screenshot({
+                  path: testInfo.outputPath(`account-${theme}-${width}.png`)''')
+          replace('e2e/organization-navigation-polish.spec.ts',"  await alphaCard\n    .getByRole('button', { name: 'Archive note: Active Alpha' })\n    .click({ force: true });","  await alphaCard.hover();\n  await alphaCard.getByRole('button', { name: 'Archive note: Active Alpha' }).click();")
+          replace('e2e/interaction-accessibility.spec.ts', "  const focusStyle = await search.evaluate((element) => {\n    const styles = getComputedStyle(element);\n    return { style: styles.outlineStyle, width: styles.outlineWidth };\n  });\n  expect(focusStyle.style).toBe('solid');\n  expect(focusStyle.width).toBe('2px');", "  await expect(search).toHaveCSS('outline-style', 'solid');\n  await expect(search).toHaveCSS('outline-width', '2px');")
+          replace('e2e/shell.spec.ts',"async ({ page }) => {\n  for (const viewport of VIEWPORTS)","async ({ page }, testInfo) => {\n  for (const viewport of VIEWPORTS)")
+          replace('e2e/shell.spec.ts','    expect(dimensions.body).toBeLessThanOrEqual(dimensions.viewport);', '''    if (dimensions.body > dimensions.viewport || dimensions.document > dimensions.viewport) {
+                const overflow = await page.evaluate(() => Array.from(document.querySelectorAll('*')).flatMap((node) => {
+                  const rect = node.getBoundingClientRect();
+                  return rect.right > innerWidth + 0.1 && rect.width > 0 ? [{ tag: node.tagName, class: node.className, right: rect.right, width: rect.width, position: getComputedStyle(node).position }] : [];
+                }));
+                await testInfo.attach('overflow-diagnostics', { body: JSON.stringify({dimensions, overflow}), contentType: 'application/json' });
+                console.log('Overflow diagnostics:', JSON.stringify({dimensions, overflow}));
+              }
+              expect(dimensions.body).toBeLessThanOrEqual(dimensions.viewport);''')
+          replace('src/styles/attachments.css','.attachment-file-input {\n  position: absolute;','.attachment-file-input {\n  position: absolute;\n  top: 0;\n  left: 0;\n  padding: 0;\n  border: 0;')
+          replace('src/styles/shell.css','--header-height: 112px;','--header-height: 112px;\n    --mobile-drawer-width: min(300px, calc(100vw - 48px));')
+          replace('src/styles/shell.css','width: min(300px, calc(100vw - 36px));','width: var(--mobile-drawer-width);')
+          replace('src/styles/shell.css','inset: var(--header-height) 0 0;','inset: var(--header-height) 0 0 var(--mobile-drawer-width);\n    padding: 0;')
+          replace('src/components/ui/useDialogFocusTrap.ts','  const setupDialog = useEffectEvent(() => {', "  const handleEscape = useEffectEvent((event: KeyboardEvent) => {\n    if (!options.onEscape) return;\n    event.preventDefault();\n    event.stopPropagation();\n    options.onEscape();\n  });\n  const setupDialog = useEffectEvent(() => {")
+          replace('src/components/ui/useDialogFocusTrap.ts',"if (event.key === 'Escape' && options.onEscape) {\n        event.preventDefault();\n        event.stopPropagation();\n        options.onEscape();", "if (event.key === 'Escape') {\n        handleEscape(event);")
+          replace('playwright.pwa.config.ts',"  testDir: './pwa-e2e',","  testDir: './pwa-e2e',\n  outputDir: './pwa-test-results',")
+          p=Path('.gitignore');p.write_text(p.read_text()+'\npwa-test-results/\n')
           PY
       - run: npm ci --no-audit --no-fund
+      - name: Format edited files
+        run: npx prettier --write e2e/account-sync.spec.ts e2e/settings-consolidation.spec.ts e2e/v5-redesign.spec.ts e2e/organization-navigation-polish.spec.ts e2e/interaction-accessibility.spec.ts e2e/shell.spec.ts src/styles/attachments.css src/styles/shell.css src/components/ui/useDialogFocusTrap.ts playwright.pwa.config.ts
       - run: npm run lint && npm run typecheck && npm test && npm run build
       - name: Commit source changes
         run: |
