@@ -1,0 +1,25 @@
+name: P2 full browser diagnostic
+on:
+  push:
+    branches: [diag/p2-full-regression]
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Full suite without retries, fail fast
+        run: npx playwright test --retries=0 --max-failures=8 --reporter=line
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: p2-full-regression-diagnostic
+          path: test-results
+          retention-days: 2
