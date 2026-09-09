@@ -1,9 +1,13 @@
 export const PRIVACY_PREFERENCES_KEY = 'notes.privacy.preferences.v1';
 export const PRIVACY_CREDENTIAL_KEY = 'notes.privacy.credential.v1';
+export const PRIVACY_ATTEMPT_KEY = 'notes.privacy.attempts.v1';
+export const PRIVACY_LOCK_SIGNAL_KEY = 'notes.privacy.lock-signal.v1';
 
-export const PRIVACY_LOCK_ITERATIONS = 120_000;
+export const PRIVACY_LOCK_ITERATIONS = 600_000;
 export const PRIVACY_MIN_PASSCODE_LENGTH = 4;
 export const PRIVACY_MAX_PASSCODE_LENGTH = 128;
+export const PRIVACY_ATTEMPT_RESET_MS = 15 * 60_000;
+export const PRIVACY_MAX_UNLOCK_DELAY_MS = 60_000;
 
 export interface PrivacyPreferences {
   hidePreviews: boolean;
@@ -16,6 +20,13 @@ export interface PrivacyCredential {
   salt: string;
   hash: string;
   iterations: number;
+}
+
+export interface PrivacyAttemptState {
+  version: 1;
+  failures: number;
+  lastFailureAt: number;
+  blockedUntil: number;
 }
 
 export interface PrivacyNotificationSource {
@@ -89,7 +100,8 @@ export function readPrivacyCredential(): PrivacyCredential | null {
       !/^[0-9a-f]{64}$/u.test(value.hash) ||
       typeof value.iterations !== 'number' ||
       !Number.isInteger(value.iterations) ||
-      value.iterations < 10_000
+      value.iterations < 10_000 ||
+      value.iterations > 10_000_000
     ) {
       return null;
     }
@@ -110,6 +122,81 @@ export function writePrivacyCredential(credential: PrivacyCredential): void {
 
 export function clearPrivacyCredential(): void {
   getStorage()?.removeItem(PRIVACY_CREDENTIAL_KEY);
+}
+
+export function privacyCredentialNeedsUpgrade(credential: PrivacyCredential): boolean {
+  return credential.iterations < PRIVACY_LOCK_ITERATIONS;
+}
+
+export function readPrivacyAttemptState(now = Date.now()): PrivacyAttemptState | null {
+  const storage = getStorage();
+  if (!storage) return null;
+  try {
+    const raw = storage.getItem(PRIVACY_ATTEMPT_KEY);
+    if (!raw) return null;
+    const value = JSON.parse(raw) as Partial<PrivacyAttemptState>;
+    if (
+      value.version !== 1 ||
+      typeof value.failures !== 'number' ||
+      !Number.isSafeInteger(value.failures) ||
+      value.failures < 1 ||
+      value.failures > 1_000 ||
+      typeof value.lastFailureAt !== 'number' ||
+      !Number.isSafeInteger(value.lastFailureAt) ||
+      value.lastFailureAt < 0 ||
+      typeof value.blockedUntil !== 'number' ||
+      !Number.isSafeInteger(value.blockedUntil) ||
+      value.blockedUntil < value.lastFailureAt ||
+      value.blockedUntil > value.lastFailureAt + PRIVACY_MAX_UNLOCK_DELAY_MS
+    ) {
+      return null;
+    }
+    if (now - value.lastFailureAt >= PRIVACY_ATTEMPT_RESET_MS) return null;
+    return {
+      version: 1,
+      failures: value.failures,
+      lastFailureAt: value.lastFailureAt,
+      blockedUntil: value.blockedUntil,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function privacyUnlockDelayMs(failures: number): number {
+  if (failures < 3) return 0;
+  if (failures === 3) return 2_000;
+  if (failures === 4) return 5_000;
+  if (failures === 5) return 15_000;
+  if (failures === 6) return 30_000;
+  return PRIVACY_MAX_UNLOCK_DELAY_MS;
+}
+
+export function registerPrivacyUnlockFailure(now = Date.now()): PrivacyAttemptState {
+  const previous = readPrivacyAttemptState(now);
+  const failures = (previous?.failures ?? 0) + 1;
+  const state: PrivacyAttemptState = {
+    version: 1,
+    failures,
+    lastFailureAt: now,
+    blockedUntil: now + privacyUnlockDelayMs(failures),
+  };
+  getStorage()?.setItem(PRIVACY_ATTEMPT_KEY, JSON.stringify(state));
+  return state;
+}
+
+export function clearPrivacyUnlockFailures(): void {
+  getStorage()?.removeItem(PRIVACY_ATTEMPT_KEY);
+}
+
+export function broadcastPrivacyLock(): void {
+  const storage = getStorage();
+  if (!storage) return;
+  const randomPart = globalThis.crypto?.randomUUID?.() ?? `${Math.random()}`;
+  storage.setItem(
+    PRIVACY_LOCK_SIGNAL_KEY,
+    JSON.stringify({ version: 1, id: randomPart, requestedAt: Date.now() }),
+  );
 }
 
 export function supportsPrivacyLock(): boolean {
