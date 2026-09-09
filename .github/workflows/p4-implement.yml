@@ -1,6 +1,9 @@
 name: P4 integrated implementation
 
 on:
+  push:
+    branches: [feat/p4-capture-checklists-everyday]
+    paths: [.github/workflows/p4-implement.yml]
   pull_request:
     branches: [main]
     paths: [.github/workflows/p4-implement.yml]
@@ -10,7 +13,7 @@ permissions:
 
 jobs:
   implement:
-    if: github.head_ref == 'feat/p4-capture-checklists-everyday'
+    if: github.event_name == 'push' || github.head_ref == 'feat/p4-capture-checklists-everyday'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -105,5 +108,3 @@ jobs:
             git commit -m "Implement P4 capture, checklist and everyday operations"
             git push origin HEAD:feat/p4-capture-checklists-everyday
           fi
-
-# Trigger: lint-safe capture intent implementation.
