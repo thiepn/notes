@@ -1,4 +1,4 @@
-import { useRef, type ChangeEvent } from 'react';
+import { useRef, type ChangeEvent, type ReactNode, type Ref } from 'react';
 import { Camera, ImagePlus, ListChecks, Mic, PencilLine, StickyNote, X } from 'lucide-react';
 
 import { IconButton } from '../../components/ui/IconButton';
@@ -27,9 +27,12 @@ export function CaptureMenu({ onClose, onCapture }: CaptureMenuProps) {
   };
 
   return (
-    <div className="capture-menu-layer" onPointerDown={(event) => {
-      if (event.target === event.currentTarget) onClose();
-    }}>
+    <div
+      className="capture-menu-layer"
+      onPointerDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
       <div
         ref={dialogRef}
         className="capture-menu"
@@ -107,9 +110,7 @@ export function CaptureMenu({ onClose, onCapture }: CaptureMenuProps) {
           onChange={(event) => chooseFiles('scan', event)}
         />
 
-        <p className="capture-menu-hint">
-          C creates text instantly · Shift+C creates a checklist
-        </p>
+        <p className="capture-menu-hint">C creates text instantly · Shift+C creates a checklist</p>
       </div>
     </div>
   );
@@ -122,8 +123,8 @@ function CaptureAction({
   description,
   onClick,
 }: {
-  buttonRef?: React.Ref<HTMLButtonElement>;
-  icon: React.ReactNode;
+  buttonRef?: Ref<HTMLButtonElement>;
+  icon: ReactNode;
   label: string;
   description: string;
   onClick(): void;
