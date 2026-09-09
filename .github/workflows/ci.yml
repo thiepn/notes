@@ -27,7 +27,7 @@ jobs:
           node-version-file: .nvmrc
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
       - name: Format check
         run: npm run format:check || (npx prettier --write . && git diff --exit-code -- .)
@@ -52,3 +52,13 @@ jobs:
 
       - name: PWA offline certification
         run: npm run e2e:pwa
+
+      - name: Retain browser diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-diagnostics-${{ github.run_id }}
+          path: |
+            test-results
+            playwright-report
+          retention-days: 7
