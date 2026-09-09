@@ -27,7 +27,7 @@ export function rankQuickOpenNotes(
       const title = normalizeKnowledgeText(note.title);
       if (!title || !terms.every((term) => title.includes(term))) return [];
 
-      let score = 500;
+      let score: number;
       if (title === phrase) score = 1_000;
       else if (title.startsWith(phrase)) score = 900;
       else if (title.includes(phrase)) score = 800;
