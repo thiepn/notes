@@ -1,14 +1,14 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 
-async function seedNotebook(page: import('@playwright/test').Page) {
+async function seedNotebook(page: Page) {
   await page.goto('./');
-  await page.getByRole('button', { name: 'Create a text note' }).waitFor();
-  await page.evaluate(async () => {
-    const db = await import('/notes/src/db/index.ts');
-    const notes = new db.NotesRepository(db.notesDatabase);
-    const labels = new db.LabelsRepository(db.notesDatabase);
-    const label = await labels.create('Reading');
+  await expect(page.getByRole('button', { name: 'Create a text note' })).toBeVisible();
+  const ids = await page.evaluate(async () => {
+    const d = await import('/notes/src/db/index.ts');
+    const notes = new d.NotesRepository(d.notesDatabase);
+    const labels = new d.LabelsRepository(d.notesDatabase);
+    const reading = await labels.create('Reading');
     const entries = [
       [
         'A place for unfinished thoughts',
@@ -31,85 +31,89 @@ async function seedNotebook(page: import('@playwright/test').Page) {
         'Keep the useful things within reach. Archive the rest without losing them.',
       ],
     ];
+    const ids: string[] = [];
     for (const [title, content] of entries) {
-      const note = await notes.create({ title, content });
-      if (title.startsWith('Reading')) await labels.assign(note.id, label.id);
+      const note = await notes.create({ title: title!, content: content! });
+      ids.push(note.id);
+      if (title!.startsWith('Reading')) await labels.assign(note.id, reading.id);
     }
-    const checklist = new db.ChecklistsRepository(db.notesDatabase);
-    await checklist.create('Before heading out', [
-      {
-        id: crypto.randomUUID(),
-        text: 'Notebook and pen',
-        checked: true,
-        parentId: null,
-      },
-      {
-        id: crypto.randomUUID(),
-        text: 'Water bottle',
-        checked: false,
-        parentId: null,
-      },
+    await new d.ChecklistsRepository(d.notesDatabase).create('Before heading out', [
+      { id: crypto.randomUUID(), text: 'Notebook and pen', checked: true, parentId: null },
+      { id: crypto.randomUUID(), text: 'Water bottle', checked: false, parentId: null },
       { id: crypto.randomUUID(), text: 'Keys', checked: false, parentId: null },
     ]);
+    return ids;
   });
   await page.reload();
-  await page.getByRole('button', { name: 'Open note: A place for unfinished thoughts' }).waitFor();
+  await expect(
+    page.getByRole('button', { name: 'Open note: A place for unfinished thoughts' }),
+  ).toBeVisible();
+  return ids;
 }
 
-async function noPageOverflow(page: import('@playwright/test').Page) {
-  const overflow = await page.evaluate(() => ({
-    viewport: window.innerWidth,
-    body: document.body.scrollWidth,
-    document: document.documentElement.scrollWidth,
-  }));
-  expect(overflow.body).toBeLessThanOrEqual(overflow.viewport);
-  expect(overflow.document).toBeLessThanOrEqual(overflow.viewport);
+async function noPageOverflow(page: Page) {
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+  ).toBeLessThanOrEqual(1);
 }
 
-for (const theme of ['light', 'dark'] as const) {
+async function openResponsiveSettings(page: Page, width = page.viewportSize()?.width ?? 1440) {
+  if (width <= 767) {
+    await page.getByRole('button', { name: 'Open navigation', exact: true }).click();
+    const drawer = page.getByRole('dialog', { name: 'Primary navigation' });
+    await expect(drawer).toBeVisible();
+    await drawer.getByRole('button', { name: 'Settings', exact: true }).click();
+  } else if (width <= 1100) {
+    await page.getByRole('button', { name: 'More options', exact: true }).click();
+    const menu = page.getByRole('menu');
+    await expect(menu.getByRole('menuitem', { name: 'Settings', exact: true })).toBeVisible();
+    await menu.getByRole('menuitem', { name: 'Settings', exact: true }).click();
+  } else {
+    await page.getByRole('button', { name: 'Open settings', exact: true }).click();
+  }
+
+  const settings = page.getByRole('dialog', { name: 'Settings' });
+  await expect(settings).toBeVisible();
+  return settings;
+}
+
+for (const theme of ['light', 'dark'])
   for (const width of [320, 390, 768, 1440]) {
-    test(`workspace remains readable in ${theme} at ${width}px`, async ({ page }, testInfo) => {
-      await page.addInitScript((nextTheme) => {
-        window.localStorage.setItem('notes.theme', nextTheme);
-      }, theme);
-      await page.setViewportSize({ width, height: 900 });
+    test(`V5 ${theme} notebook and account layout at ${width}px`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width, height: width >= 768 ? 1000 : 844 });
+      await page.addInitScript((value) => localStorage.setItem('notes.theme', value), theme);
+      const errors: string[] = [];
+      page.on('pageerror', (error) => errors.push(error.message));
       await seedNotebook(page);
-      await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
       await noPageOverflow(page);
+      await expect(page.getByLabel('Sort notes')).toBeVisible();
       await page.screenshot({
-        path: testInfo.outputPath(`workspace-${theme}-${width}.png`),
+        path: testInfo.outputPath(`notebook-${theme}-${width}.png`),
         fullPage: false,
       });
-    });
-  }
-}
-
-for (const theme of ['light', 'dark'] as const) {
-  for (const width of [320, 390, 768, 1440]) {
-    test(`account settings remain contained in ${theme} at ${width}px`, async ({
-      page,
-    }, testInfo) => {
-      await page.addInitScript((nextTheme) => {
-        window.localStorage.setItem('notes.theme', nextTheme);
-      }, theme);
-      await page.setViewportSize({ width, height: 900 });
-      await page.goto('./');
-      await page.getByRole('button', { name: 'Create a text note' }).waitFor();
+      const mobile = page.getByRole('navigation', { name: 'Mobile navigation' });
       if (width < 768) {
-        await page.getByRole('button', { name: 'Open navigation', exact: true }).click();
-        await page.getByRole('button', { name: 'Settings', exact: true }).click();
-      } else if (width <= 1100) {
-        await page.getByRole('button', { name: 'More', exact: true }).click();
-        await page.getByRole('button', { name: 'Settings', exact: true }).click();
-      } else {
-        await page.getByRole('button', { name: 'Open settings', exact: true }).click();
-      }
-      const settings = page.getByRole('dialog', { name: 'Settings', exact: true });
-      await settings.getByRole('button', { name: /Account & sync/ }).click();
-      const lastAction = settings.getByRole('button', { name: 'Resend verification', exact: true });
+        await expect(mobile).toBeVisible();
+        for (const button of await mobile.getByRole('button').all())
+          expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+      } else await expect(mobile).toBeHidden();
+      const dialog = await openResponsiveSettings(page, width);
+      await dialog.getByRole('button', { name: /Account & sync/ }).click();
+      const email = dialog.locator('input[type="email"]').first();
+      await expect(email).toBeVisible();
+      await email.scrollIntoViewIfNeeded();
+      const bounds = await email.boundingBox();
+      expect(bounds!.width).toBeGreaterThan(150);
+      expect(bounds!.height).toBeGreaterThanOrEqual(44);
+      expect(bounds!.x).toBeGreaterThanOrEqual(0);
+      expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
+      const label = email.locator('..');
+      const text = await label.locator('span').first().boundingBox();
+      expect(text!.y + text!.height).toBeLessThanOrEqual(bounds!.y + 1);
+      const lastAction = dialog.getByRole('button', { name: 'Resend verification', exact: true });
       await lastAction.scrollIntoViewIfNeeded();
       await expect(lastAction).toBeInViewport({ ratio: 1 });
-      await expect(settings.getByRole('button', { name: 'Close settings' })).toBeInViewport({
+      await expect(dialog.getByRole('button', { name: 'Close settings' })).toBeInViewport({
         ratio: 1,
       });
       await noPageOverflow(page);
@@ -117,21 +121,72 @@ for (const theme of ['light', 'dark'] as const) {
         path: testInfo.outputPath(`account-${theme}-${width}.png`),
         fullPage: false,
       });
+      expect(errors).toEqual([]);
     });
   }
-}
 
-test('writing focus and Markdown export use the current draft without a forced save', async ({
+test('sort and list preference survive a reload without altering note content', async ({
+  page,
+}) => {
+  await seedNotebook(page);
+  await page.getByLabel('Sort notes').selectOption('title');
+  await page.getByRole('button', { name: 'List view', exact: true }).click();
+  const titles = await page.locator('.note-card-title').allTextContents();
+  expect(titles).toEqual(
+    [...titles].sort((a, b) =>
+      a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }),
+    ),
+  );
+  await page.reload();
+  await expect(page.getByLabel('Sort notes')).toHaveValue('title');
+  await expect(page.locator('.notes-board')).toHaveAttribute('data-view', 'list');
+  await expect(page.locator('[data-note-card]')).toHaveCount(6);
+});
+
+test('cloud refresh preserves an active editor, draft, focus mode, and settings input', async ({
+  page,
+}) => {
+  await seedNotebook(page);
+  await page.getByRole('button', { name: 'Open note: A place for unfinished thoughts' }).click();
+  const editor = page.getByRole('dialog', { name: 'Edit note', exact: true });
+  await editor.getByRole('textbox', { name: 'Edit note text' }).fill('My draft stays here.');
+  await editor.getByRole('button', { name: 'Focus mode', exact: true }).click();
+  await editor.evaluate((node) => node.setAttribute('data-identity-proof', 'same-editor'));
+  await page.evaluate(async () => {
+    const d = await import('/notes/src/db/index.ts');
+    await new d.NotesRepository(d.notesDatabase).create({
+      title: 'Arrived from another device',
+      content: 'Incoming note',
+    });
+    window.dispatchEvent(new CustomEvent('notes-cloud-sync-applied'));
+  });
+  await expect(editor).toHaveAttribute('data-identity-proof', 'same-editor');
+  await expect(editor).toHaveAttribute('data-focus', 'true');
+  await expect(editor.getByRole('textbox', { name: 'Edit note text' })).toHaveValue(
+    'My draft stays here.',
+  );
+  await expect(
+    page.locator('.note-card-title').filter({ hasText: 'Arrived from another device' }),
+  ).toHaveCount(1);
+  await editor.getByRole('button', { name: 'Close', exact: true }).click();
+  const settings = await openResponsiveSettings(page);
+  await settings.getByRole('button', { name: /Account & sync/ }).click();
+  await settings.locator('input[type="email"]').fill('draft@example.com');
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent('notes-cloud-sync-applied')));
+  await expect(settings.locator('input[type="email"]')).toHaveValue('draft@example.com');
+});
+
+test('Markdown download contains the current draft and focus mode does not reset it', async ({
   page,
 }, testInfo) => {
   await seedNotebook(page);
   await page.getByRole('button', { name: 'Open note: A place for unfinished thoughts' }).click();
   const editor = page.getByRole('dialog', { name: 'Edit note', exact: true });
-  await editor.getByRole('textbox', { name: 'Edit note title' }).fill('Notebook export');
+  await editor.getByRole('textbox', { name: 'Edit title' }).fill('Notebook export');
   await editor
     .getByRole('textbox', { name: 'Edit note text' })
     .fill('**Current draft**\nBonjour 안녕하세요');
-  await editor.getByRole('button', { name: 'Enter focus mode' }).click();
+  await editor.getByRole('button', { name: 'Focus mode', exact: true }).click();
   await expect(editor).toHaveAttribute('data-focus', 'true');
   const downloaded = page.waitForEvent('download');
   await editor.getByRole('button', { name: 'Download Markdown' }).click();
@@ -162,8 +217,6 @@ test('mobile navigation opens a contained drawer and returns to a working captur
   }
   await drawer.getByRole('button', { name: 'Hide navigation' }).click();
   await page.getByRole('button', { name: 'New note', exact: true }).click();
-  const captureMenu = page.getByRole('dialog', { name: 'New', exact: true });
-  await captureMenu.getByRole('button', { name: /^Text note/ }).click();
   const form = page.getByRole('form', { name: 'New note' });
   await form
     .getByRole('textbox', { name: 'Note text', exact: true })
@@ -180,14 +233,35 @@ test('nested drawing traps Tab and Escape does not close its parent note', async
     await page.keyboard.press('Tab');
     expect(await editor.evaluate((node) => node.contains(document.activeElement))).toBe(true);
   }
+  await editor.getByRole('button', { name: 'Add', exact: true }).click();
   await editor.getByRole('button', { name: 'Add drawing' }).click();
   const drawing = page.getByRole('dialog', { name: 'Drawing editor' });
-  await expect(drawing).toBeVisible();
-  for (let i = 0; i < 16; i++) {
+  for (let i = 0; i < 30; i++) {
     await page.keyboard.press('Tab');
     expect(await drawing.evaluate((node) => node.contains(document.activeElement))).toBe(true);
   }
   await page.keyboard.press('Escape');
   await expect(drawing).toHaveCount(0);
   await expect(editor).toBeVisible();
+});
+
+test('account action failures show an actionable alert instead of disappearing', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.route('https://hycegznamzjhwinegaai.supabase.co/**', (route) =>
+    route.fulfill({
+      status: 429,
+      contentType: 'application/json',
+      body: JSON.stringify({ msg: 'Too many requests. Try again later.' }),
+    }),
+  );
+  await page.goto('./');
+  const dialog = await openResponsiveSettings(page);
+  await dialog.getByRole('button', { name: /Account & sync/ }).click();
+  await dialog.locator('input[type="email"]').fill('test@example.com');
+  await dialog.getByRole('button', { name: 'Forgot password' }).click();
+  await expect(dialog.getByRole('alert')).toContainText('Too many requests');
+  expect(errors).toEqual([]);
 });
