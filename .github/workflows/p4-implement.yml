@@ -2,18 +2,16 @@ name: P4 integrated implementation
 
 on:
   push:
-    branches: [feat/p4-capture-checklists-everyday]
-    paths: [.github/workflows/p4-implement.yml]
-  pull_request:
-    branches: [main]
-    paths: [.github/workflows/p4-implement.yml]
+    branches:
+      - feat/p4-capture-checklists-everyday
+    paths:
+      - .github/workflows/p4-implement.yml
 
 permissions:
   contents: write
 
 jobs:
   implement:
-    if: github.event_name == 'push' || github.head_ref == 'feat/p4-capture-checklists-everyday'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -25,78 +23,12 @@ jobs:
         with:
           node-version-file: .nvmrc
       - run: npm ci --no-audit --no-fund
-      - name: Apply P4 source patches
-        run: |
-          if grep -q "openCaptureMenu" src/app/AppShell.tsx; then
-            echo "P4 source patch already applied."
-          else
-            python3 tools/prepare_p4_patcher_v2.py
-            python3 tools/apply_p4_shell.py
-            python3 tools/apply_p4_notes.py
-            python3 tools/apply_p4_checklists.py
-            python3 tools/apply_p4_styles.py
-          fi
-          python3 <<'PY'
-          from pathlib import Path
-          path = Path('src/features/notes/TextNoteComposer.tsx')
-          text = path.read_text()
-          old = '''  useEffect(() => {
-    const request = captureRequest;
-    if (!request || lastCaptureRequestIdRef.current === request.id) return;
-    lastCaptureRequestIdRef.current = request.id;
-    openCapture();
-
-    if (request.kind === 'drawing') {
-      setQuickDrawingOpen(true);
-      return;
-    }
-    if (request.kind === 'voice') {
-      setQuickVoiceOpen(true);
-      return;
-    }
-    if (request.kind === 'image' || request.kind === 'scan') {
-      const files = request.files ?? [];
-      if (request.kind === 'scan') setExpandedToolsOpen(true);
-      if (files.length > 0) void handleQuickImages(files);
-    }
-  }, [captureRequest, handleQuickImages, openCapture]);
-'''
-          new = '''  useEffect(() => {
-    const request = captureRequest;
-    if (!request || lastCaptureRequestIdRef.current === request.id) return;
-    lastCaptureRequestIdRef.current = request.id;
-    const frame = window.requestAnimationFrame(() => {
-      openCapture();
-      if (request.kind === 'drawing') {
-        setQuickDrawingOpen(true);
-        return;
-      }
-      if (request.kind === 'voice') {
-        setQuickVoiceOpen(true);
-        return;
-      }
-      if (request.kind === 'image' || request.kind === 'scan') {
-        const files = request.files ?? [];
-        if (request.kind === 'scan') setExpandedToolsOpen(true);
-        if (files.length > 0) void handleQuickImages(files);
-      }
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [captureRequest, handleQuickImages, openCapture]);
-'''
-          if old in text:
-            path.write_text(text.replace(old, new, 1))
-          elif new not in text:
-            raise RuntimeError('P4 capture intent effect shape was not found.')
-          PY
-          npx prettier --write src e2e docs
-      - name: Verify integrated implementation
-        run: |
-          npm run foundation:check
-          npm run lint
-          npm run typecheck
-          npm test
-          npm run build
+      - name: Prepare P4 source
+        run: python3 tools/apply_p4_all.py
+      - name: Format P4 source
+        run: npx prettier --write src e2e docs
+      - name: Verify P4 source
+        run: npm run foundation:check && npm run lint && npm run typecheck && npm test && npm run build
       - name: Commit P4 source
         run: |
           git config user.name "thiepn"
