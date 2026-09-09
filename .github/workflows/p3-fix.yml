@@ -41,3 +41,5 @@ jobs:
           git add src/app/AppShell.tsx
           git commit -m "Schedule P3 label reconciliation outside effect body"
           git push origin HEAD:feat/p3-organization-model
+
+# Updated once to trigger the pull-request workflow after file creation.
