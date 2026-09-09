@@ -235,7 +235,10 @@ export function AppShell() {
   }, [clearSearch, refreshLabels, refreshNavigationStats]);
 
   useEffect(() => {
-    void refreshLabels().catch(() => undefined);
+    const initialRefresh = window.setTimeout(() => {
+      void refreshLabels().catch(() => undefined);
+    }, 0);
+    return () => window.clearTimeout(initialRefresh);
   }, [refreshLabels]);
 
   useEffect(() => {
