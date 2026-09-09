@@ -69,7 +69,7 @@ for (const theme of ['light', 'dark'])
       await expect(page.getByLabel('Sort notes')).toBeVisible();
       await page.screenshot({
         path: testInfo.outputPath(`notebook-${theme}-${width}.png`),
-        fullPage: true,
+        fullPage: false,
       });
       const mobile = page.getByRole('navigation', { name: 'Mobile navigation' });
       if (width < 768) {
@@ -91,10 +91,16 @@ for (const theme of ['light', 'dark'])
       const label = email.locator('..');
       const text = await label.locator('span').first().boundingBox();
       expect(text!.y + text!.height).toBeLessThanOrEqual(bounds!.y + 1);
+      const lastAction = dialog.getByRole('button', { name: 'Resend verification', exact: true });
+      await lastAction.scrollIntoViewIfNeeded();
+      await expect(lastAction).toBeInViewport({ ratio: 1 });
+      await expect(dialog.getByRole('button', { name: 'Close settings' })).toBeInViewport({
+        ratio: 1,
+      });
       await noPageOverflow(page);
       await page.screenshot({
         path: testInfo.outputPath(`account-${theme}-${width}.png`),
-        fullPage: true,
+        fullPage: false,
       });
       expect(errors).toEqual([]);
     });
@@ -171,7 +177,7 @@ test('Markdown download contains the current draft and focus mode does not reset
   expect(await readFile((await file.path())!, 'utf8')).toBe(
     '# Notebook export\n\n**Current draft**\nBonjour 안녕하세요\n',
   );
-  await page.screenshot({ path: testInfo.outputPath('writing-focus.png'), fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath('writing-focus.png'), fullPage: false });
   await editor.getByRole('button', { name: 'Exit focus mode' }).click();
   await expect(editor.getByRole('textbox', { name: 'Edit note text' })).toHaveValue(
     '**Current draft**\nBonjour 안녕하세요',

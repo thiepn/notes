@@ -4,6 +4,7 @@ const isCi = Boolean(process.env.CI);
 
 export default defineConfig({
   testDir: './pwa-e2e',
+  outputDir: './pwa-test-results',
   fullyParallel: false,
   forbidOnly: isCi,
   retries: isCi ? 1 : 0,

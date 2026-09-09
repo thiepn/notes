@@ -512,6 +512,7 @@
 @media (max-width: 767px) {
   :root {
     --header-height: 112px;
+    --mobile-drawer-width: min(300px, calc(100vw - 48px));
   }
   .app-header {
     position: sticky;
@@ -569,7 +570,7 @@
     top: var(--header-height);
     bottom: 0;
     left: 0;
-    width: min(300px, calc(100vw - 36px));
+    width: var(--mobile-drawer-width);
     height: calc(100dvh - var(--header-height));
     padding: 24px 16px max(24px, env(safe-area-inset-bottom));
     z-index: var(--z-sidebar);
@@ -582,7 +583,8 @@
   }
   .sidebar-backdrop {
     position: fixed;
-    inset: var(--header-height) 0 0;
+    inset: var(--header-height) 0 0 var(--mobile-drawer-width);
+    padding: 0;
     z-index: var(--z-scrim);
     background: var(--scrim);
     border: 0;

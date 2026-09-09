@@ -112,10 +112,6 @@ test('reduced-motion and forced-colors requests preserve interaction visibility 
 
   const search = page.getByRole('search');
   await search.getByRole('searchbox', { name: 'Search notes' }).focus();
-  const focusStyle = await search.evaluate((element) => {
-    const styles = getComputedStyle(element);
-    return { style: styles.outlineStyle, width: styles.outlineWidth };
-  });
-  expect(focusStyle.style).toBe('solid');
-  expect(focusStyle.width).toBe('2px');
+  await expect(search).toHaveCSS('outline-style', 'solid');
+  await expect(search).toHaveCSS('outline-width', '2px');
 });

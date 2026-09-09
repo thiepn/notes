@@ -9,3 +9,5 @@ public/ocr/
 .DS_Store
 .vscode/
 .idea/
+
+pwa-test-results/

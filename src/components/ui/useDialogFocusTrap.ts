@@ -20,6 +20,12 @@ export function useDialogFocusTrap<
   TContainer extends HTMLElement,
   TInitial extends HTMLElement = HTMLElement,
 >(containerRef: RefObject<TContainer | null>, options: DialogFocusOptions<TInitial> = {}): void {
+  const handleEscape = useEffectEvent((event: KeyboardEvent) => {
+    if (!options.onEscape) return;
+    event.preventDefault();
+    event.stopPropagation();
+    options.onEscape();
+  });
   const setupDialog = useEffectEvent(() => {
     const container = containerRef.current;
     if (!container || options.enabled === false) return;
@@ -40,10 +46,8 @@ export function useDialogFocusTrap<
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!isTopmost() || event.defaultPrevented) return;
-      if (event.key === 'Escape' && options.onEscape) {
-        event.preventDefault();
-        event.stopPropagation();
-        options.onEscape();
+      if (event.key === 'Escape') {
+        handleEscape(event);
         return;
       }
       if (event.key !== 'Tab') return;

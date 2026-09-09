@@ -46,13 +46,14 @@ test('notification permission UI lives in Settings rather than the Reminders wor
   await expect(page.locator('.reminder-notification-banner')).toHaveCount(0);
 });
 
-test('advanced data tools leave permanent sidebar chrome and remain reachable from settings and commands', async ({
+test('data tools remain reachable from the new sidebar shortcut, settings, and commands', async ({
   page,
 }) => {
   await page.goto('./');
   const sidebar = page.getByTestId('app-sidebar');
   await expect(sidebar.getByText('Tools', { exact: true })).toHaveCount(0);
-  await expect(sidebar.getByRole('button', { name: /Backup/u })).toHaveCount(0);
+  await sidebar.getByRole('button', { name: 'Backup & import', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Backup', level: 1 })).toBeVisible();
 
   const settings = await openSettings(page);
   await settings.getByRole('button', { name: 'Data & advanced' }).click();
