@@ -134,6 +134,7 @@ export function AppShell() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFilters, setSearchFilters] = useState<SearchFilters>({ ...DEFAULT_SEARCH_FILTERS });
   const [searchFiltersOpen, setSearchFiltersOpen] = useState(false);
+  const [searchDestinationOpen, setSearchDestinationOpen] = useState(false);
   const [searchFocusRequest, setSearchFocusRequest] = useState(0);
   const [captureRequest, setCaptureRequest] = useState<CaptureRequest | null>(null);
   const captureRequestIdRef = useRef(0);
@@ -150,7 +151,11 @@ export function AppShell() {
       : desktopSidebarPreference === 'compact';
 
   const searchFiltersActive = hasSearchFilters(searchFilters);
-  const searchActive = Boolean(searchQuery.trim()) || searchFiltersActive || searchFiltersOpen;
+  const searchActive =
+    searchDestinationOpen ||
+    Boolean(searchQuery.trim()) ||
+    searchFiltersActive ||
+    searchFiltersOpen;
 
   const refreshLabels = useCallback(async () => {
     setLabels(await labelsRepository.list());
@@ -187,6 +192,7 @@ export function AppShell() {
   }, [recoveryMode]);
 
   const clearSearch = useCallback(() => {
+    setSearchDestinationOpen(false);
     setSearchQuery('');
     setSearchFilters({ ...DEFAULT_SEARCH_FILTERS });
     setSearchFiltersOpen(false);
@@ -353,16 +359,13 @@ export function AppShell() {
 
   const focusSearch = useCallback(() => {
     setCommandPaletteOpen(false);
-    setSearchFocusRequest((request) => request + 1);
-  }, []);
-
-  const openSearch = useCallback(() => {
-    setCommandPaletteOpen(false);
-    setSearchFiltersOpen(true);
+    setSearchDestinationOpen(true);
     setSearchFocusRequest((request) => request + 1);
     setMobileSidebarOpen(false);
     setTabletSidebarExpanded(false);
   }, []);
+
+  const openSearch = focusSearch;
 
   const openLabelManager = useCallback(() => {
     setCommandPaletteOpen(false);

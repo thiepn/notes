@@ -108,9 +108,12 @@ test('mobile bottom navigation owns primary navigation and drawer owns secondary
     expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
   }
 
-  await mobileNav.getByRole('button', { name: 'Find a note' }).click();
-  await expect(page.getByRole('heading', { name: 'Search', level: 1 })).toBeVisible();
+  const searchDestination = mobileNav.getByRole('button', { name: 'Find a note' });
+  await searchDestination.click();
+  await expect(searchDestination).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('.search-results-toolbar')).toBeVisible();
   await expect(page.getByRole('searchbox', { name: 'Search notes' })).toBeFocused();
+  await expect(page.getByRole('region', { name: 'Search filters' })).toHaveCount(0);
 
   await mobileNav.getByRole('button', { name: 'Show reminders' }).click();
   await expect(page.getByRole('heading', { name: 'Reminders', level: 1 })).toBeVisible();
