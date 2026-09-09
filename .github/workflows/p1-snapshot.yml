@@ -1,22 +1,129 @@
-name: P1 foundation workspace
+name: P1 foundation source application
 on:
   push:
     branches: [feat/p1-foundation]
     paths: [.github/workflows/p1-snapshot.yml]
 permissions:
-  contents: read
+  contents: write
+concurrency:
+  group: notes-p1-foundation-source
+  cancel-in-progress: true
 jobs:
-  snapshot:
+  apply:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
-      - name: Package source
-        run: |
-          mkdir -p /tmp/p1
-          git archive --format=tar.gz HEAD > /tmp/p1/source.tar.gz
-      - uses: actions/upload-artifact@v4
         with:
-          name: notes-p1-source
-          path: /tmp/p1/source.tar.gz
-          retention-days: 2
+          ref: feat/p1-foundation
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - name: Apply explicit P1 source cleanup
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+          root=Path.cwd()
+          def f(rel): return root/rel
+          def rep(rel,old,new,count=1):
+              p=f(rel); text=p.read_text(); actual=text.count(old)
+              assert actual==count,(rel,actual,count,old)
+              p.write_text(text.replace(old,new))
+          def pre(rel,line):
+              p=f(rel); text=p.read_text()
+              if line not in text:p.write_text(line+'\n'+text)
+
+          f('src/app/events.ts').write_text("""export const APP_EVENTS = {
+            cloudSyncApplied: 'notes-cloud-sync-applied',
+            remindersChanged: 'notes-reminders-changed',
+            openSyncSettings: 'notes-open-sync-settings',
+            searchHistoryChanged: 'notes-search-history-changed',
+          } as const;
+
+          export type AppEventName = keyof typeof APP_EVENTS;
+
+          export function dispatchAppEvent(name: AppEventName): void {
+            window.dispatchEvent(new Event(APP_EVENTS[name]));
+          }
+
+          export function subscribeAppEvent(name: AppEventName, listener: () => void): () => void {
+            const eventName = APP_EVENTS[name];
+            window.addEventListener(eventName, listener);
+            return () => window.removeEventListener(eventName, listener);
+          }
+          """)
+          pre('src/app/AppShell.tsx',"import { subscribeAppEvent } from './events';")
+          pre('src/components/AppHeader.tsx',"import { subscribeAppEvent } from '../app/events';")
+          for rel in ['src/features/reminders/RemindersWorkspace.tsx','src/features/reminders/ReminderNotificationCoordinator.tsx','src/features/notes/NotesWorkspace.tsx','src/features/notes/NoteCard.tsx','src/features/search/SearchWorkspace.tsx']:
+              pre(rel,"import { subscribeAppEvent } from '../../app/events';")
+          for rel in ['src/features/sync/SyncIndicator.tsx','src/features/sync/SyncProvider.tsx','src/features/sync/syncEngine.ts']:
+              pre(rel,"import { dispatchAppEvent } from '../../app/events';")
+
+          rep('src/app/AppShell.tsx',"    window.addEventListener('notes-cloud-sync-applied', refresh);","    const unsubscribeCloudSync = subscribeAppEvent('cloudSyncApplied', refresh);")
+          rep('src/app/AppShell.tsx',"    return () => window.removeEventListener('notes-cloud-sync-applied', refresh);","    return unsubscribeCloudSync;")
+          rep('src/app/AppShell.tsx',"    window.addEventListener('notes-reminders-changed', handleReminderChanged);","    const unsubscribeReminderChanged = subscribeAppEvent('remindersChanged', handleReminderChanged);")
+          rep('src/app/AppShell.tsx',"      window.removeEventListener('notes-reminders-changed', handleReminderChanged);","      unsubscribeReminderChanged();")
+          rep('src/app/AppShell.tsx',"    window.addEventListener('notes-open-sync-settings', openSyncSettings);","    const unsubscribeOpenSync = subscribeAppEvent('openSyncSettings', openSyncSettings);")
+          rep('src/app/AppShell.tsx',"    return () => window.removeEventListener('notes-open-sync-settings', openSyncSettings);","    return unsubscribeOpenSync;")
+          rep('src/components/AppHeader.tsx',"    window.addEventListener('notes-search-history-changed', reloadSaved);","    const unsubscribeSearchHistory = subscribeAppEvent('searchHistoryChanged', reloadSaved);")
+          rep('src/components/AppHeader.tsx',"      window.removeEventListener('notes-search-history-changed', reloadSaved);","      unsubscribeSearchHistory();")
+          rep('src/features/reminders/RemindersWorkspace.tsx',"    window.addEventListener('notes-cloud-sync-applied', refresh);","    const unsubscribeCloudSync = subscribeAppEvent('cloudSyncApplied', refresh);")
+          rep('src/features/reminders/RemindersWorkspace.tsx',"    return () => window.removeEventListener('notes-cloud-sync-applied', refresh);","    return unsubscribeCloudSync;")
+          rep('src/features/reminders/RemindersWorkspace.tsx',"    window.addEventListener('notes-reminders-changed', handleChanged);","    const unsubscribeReminderChanged = subscribeAppEvent('remindersChanged', handleChanged);")
+          rep('src/features/reminders/RemindersWorkspace.tsx',"      window.removeEventListener('notes-reminders-changed', handleChanged);","      unsubscribeReminderChanged();")
+          rep('src/features/reminders/ReminderNotificationCoordinator.tsx',"    window.addEventListener('notes-reminders-changed', handleReminderChanged);","    const unsubscribeReminderChanged = subscribeAppEvent('remindersChanged', handleReminderChanged);")
+          rep('src/features/reminders/ReminderNotificationCoordinator.tsx',"      window.removeEventListener('notes-reminders-changed', handleReminderChanged);","      unsubscribeReminderChanged();")
+          rep('src/features/notes/NotesWorkspace.tsx',"    window.addEventListener('notes-cloud-sync-applied', refresh);","    const unsubscribeCloudSync = subscribeAppEvent('cloudSyncApplied', refresh);")
+          rep('src/features/notes/NotesWorkspace.tsx',"    return () => window.removeEventListener('notes-cloud-sync-applied', refresh);","    return unsubscribeCloudSync;")
+          rep('src/features/notes/NoteCard.tsx',"    window.addEventListener('notes-reminders-changed', handleChanged);","    const unsubscribeReminderChanged = subscribeAppEvent('remindersChanged', handleChanged);")
+          rep('src/features/notes/NoteCard.tsx',"      window.removeEventListener('notes-reminders-changed', handleChanged);","      unsubscribeReminderChanged();")
+          rep('src/features/search/SearchWorkspace.tsx',"    window.addEventListener('notes-cloud-sync-applied', refresh);","    const unsubscribeCloudSync = subscribeAppEvent('cloudSyncApplied', refresh);")
+          rep('src/features/search/SearchWorkspace.tsx',"    return () => window.removeEventListener('notes-cloud-sync-applied', refresh);","    return unsubscribeCloudSync;")
+          rep('src/features/search/SearchWorkspace.tsx',"    window.addEventListener('notes-reminders-changed', handleReminderChanged);","    const unsubscribeReminderChanged = subscribeAppEvent('remindersChanged', handleReminderChanged);")
+          rep('src/features/search/SearchWorkspace.tsx',"    return () => window.removeEventListener('notes-reminders-changed', handleReminderChanged);","    return unsubscribeReminderChanged;")
+          f('src/features/reminders/reminderEvents.ts').write_text("""import { dispatchAppEvent } from '../../app/events';
+
+          export function dispatchReminderChanged(): void {
+            dispatchAppEvent('remindersChanged');
+          }
+          """)
+          rep('src/features/sync/SyncIndicator.tsx',"onClick={() => window.dispatchEvent(new CustomEvent('notes-open-sync-settings'))}","onClick={() => dispatchAppEvent('openSyncSettings')}")
+          rep('src/features/sync/SyncProvider.tsx',"window.dispatchEvent(new CustomEvent('notes-open-sync-settings'));","dispatchAppEvent('openSyncSettings');",2)
+          rep('src/features/sync/syncEngine.ts',"window.dispatchEvent(new CustomEvent('notes-cloud-sync-applied'));","dispatchAppEvent('cloudSyncApplied');")
+
+          search=f('src/styles/search.css').read_text().rstrip()+"\n\n/* Retrieval states and mobile filter presentation. */\n"+re.sub(r'^/\* V3\.2 — Retrieval & Search Polish \*/\s*','',f('src/styles/retrieval-search-polish.css').read_text()).strip()+"\n"
+          f('src/styles/search.css').write_text(search);f('src/styles/retrieval-search-polish.css').unlink()
+          f('src/styles/settings.css').write_text(f('src/styles/settings.css').read_text().rstrip()+"\n\n/* Account and sync fields share the Settings form contract. */\n"+f('src/styles/account-sync.css').read_text().strip()+"\n");f('src/styles/account-sync.css').unlink()
+          f('src/styles/base.css').write_text(f('src/styles/base.css').read_text().rstrip()+"\n\n"+f('src/styles/interaction-accessibility.css').read_text().strip()+"\n");f('src/styles/interaction-accessibility.css').unlink()
+          f('src/styles/utilities.css').write_text("/* Shared deferred-loading utilities. Keep structural feature CSS in its owning stylesheet. */\n"+f('src/styles/performance.css').read_text());f('src/styles/performance.css').unlink()
+          entry=f('src/styles.css').read_text().replace("@import './styles/performance.css';","@import './styles/utilities.css';")
+          for line in ["@import './styles/retrieval-search-polish.css';\n","@import './styles/account-sync.css';\n","@import './styles/interaction-accessibility.css';\n"]:entry=entry.replace(line,'')
+          f('src/styles.css').write_text(entry)
+          rep('src/styles/shell.css',"grid-template-columns: var(--sidebar-width) minmax(180px, 560px) 1fr;","grid-template-columns: var(--sidebar-width) minmax(180px, 560px) minmax(max-content, 1fr);")
+
+          tokens=f('src/styles/tokens.css').read_text()
+          tokens=tokens.replace('  --focus: #a13826;\n','''  --focus: #a13826;\n  --danger: #c5221f;\n  --danger-strong: #b42318;\n  --danger-soft: #f8e2df;\n  --warning: #b54708;\n  --warning-strong: #a15c00;\n  --warning-soft: #f7ead8;\n  --success: #198754;\n  --success-strong: #14804a;\n  --success-soft: #e1efe7;\n''')
+          tokens=tokens.replace('  --focus: #ffb5a0;\n','''  --focus: #ffb5a0;\n  --danger: #ff7b72;\n  --danger-strong: #ff9b93;\n  --danger-soft: #3b2523;\n  --warning: #e9a34b;\n  --warning-strong: #ffc36c;\n  --warning-soft: #382e21;\n  --success: #55c487;\n  --success-strong: #7bd99e;\n  --success-soft: #20352a;\n''')
+          f('src/styles/tokens.css').write_text(tokens)
+          colors={'#b42318':'var(--danger-strong)','#b3261e':'var(--danger-strong)','#c5221f':'var(--danger)','#b54708':'var(--warning)','#a15c00':'var(--warning-strong)','#14804a':'var(--success-strong)'}
+          for path in f('src/styles').glob('*.css'):
+              if path.name=='tokens.css':continue
+              text=path.read_text()
+              for old,new in colors.items():text=text.replace(old,new)
+              path.write_text(text)
+          PY
+      - run: npm ci --no-audit --no-fund
+      - name: Format changed production sources
+        run: npx prettier --write src/app src/components/AppHeader.tsx src/features/reminders src/features/notes/NoteCard.tsx src/features/notes/NotesWorkspace.tsx src/features/search/SearchWorkspace.tsx src/features/sync src/styles.css src/styles
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Commit verified production foundation
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src
+          git commit -m 'P1: consolidate design ownership and application event boundaries'
+          git push origin HEAD:feat/p1-foundation
