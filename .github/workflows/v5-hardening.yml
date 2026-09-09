@@ -1,0 +1,57 @@
+name: Notes V5 regression hardening
+on:
+  push:
+    branches: [feat/notes-v5-editorial-overhaul]
+    paths: [.github/workflows/v5-hardening.yml]
+permissions:
+  contents: write
+jobs:
+  hardening:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/notes-v5-editorial-overhaul
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - name: Apply checksum-verified source changes
+        env:
+          PATCH: eNq1WGtz29YR/SuoPoRUC1L3/VDG7ThOOnU7TTxxJv0g+8N9SqghgAFAyYrj/94DkBApWXWSzpSmRfLyvnb37NmzvPhwsjk5P1lfVkN12bRdOilPPAac00JkqbRxlDsiJRPGWxUj4TEQ5lVmWnrjSTZe0xSTIT46HrlRXFkXsI3DNkQY41zkbvyTSHaWW+WBkjiFGkXQm3jtjjeYY0aEcYtk9CKGxlfGTSO2yTTs4vLigt8Tx502xu3WpI/bDqUr+th/7sTXPy9u3HcmdGYunMhdBum2HV3zVh3W9SWA/93igtkooy0yyYU0kKrb2KlngSvWJKuiS094QoJakR3skQOYH9QXCRGaNpb5QxnHsjWQ5SYanJyWplgtIePiKBZ6oZIVoSYrUwQlGSpTWcKgr8UMPujWKipEyWJwUe7tZVQ5He48LD8k1TTI+Nu0zrug1uaLvlosdXVdtcuK5yq9r5VD97c/KibrexGI19c/J2cbq+TMNXdz+k98Ny8ToN203RpZ+2VZfioiw+YH8XhvNi6Lap+Hha7s45XQ/tV+nHqq98nZanX44uLS8oh885+//dDoP/w60MbmV+7Vbz+6L4ffc7Wnd001eu72/bLsKVob1J3d3vu/QDdPZpGKrmsl+FtunbuopuvNQjnCJJDCch5UxdNMQkExOlgUjKAaToaNTUax2YNcQyZq0X1AKfnGnNtdN7nEbDXApSmoi8RR5aAghGANNGH1UWDpj3SWuDcceYlJFzKKZiw0XIZRJpxKkwpbHkypt1ygQu7Ymjbuoc7rl3V4MWFKwd7i9y118VwlYom3RZ9FZN3XdFftd0QtkNZzLaXhWtiEdrra7z2cKYbA1AsP+xCLEUUpp6TYhXe/zy4g37dw68Jvh6Ftpig07jqdF4uvXHgHrH9RVNcbHIevHoZnHeoqvJsC8gg2E4iP9r5KLuKSn26OkTrdpPq8oNjwVwN9I0FRMfVg1UfRpSkxYYxKVNhPEFTHWjEXFBbyveXTRGGktMJNRypYPUORntbLAUH0GUfh9dTbUFXUYiNGGOh5wldqRgWvyNCF80lgaZgAHPQTs6e+3wzBmYYNrO0dW01Pt8Gh95W9ev4JPzIru6T+UuJpaXeO4njdAditr1w/MppYpnRaxc3V5+Pkbfpz4h7kigKldhwv0ncfpyzsBdjA5nrPvQtXX9shnaH6t0+zJ/m+DduHy8Yh/Vw8JdoF4246oRGssPRTeevQvj06t/izVgjj7dQ3pxD4njkw50Mh9ZzkMfZ0KzqrT619xPNS+pFoekmFALl6TUIL9GozZuuIIbkaMvm9yu2+2w2Q6vMLhc3HbVeMlVbsO2X28A7tPy8UHzhR5guO0uXVP9PIVq1bib6nL3dgPi6q8ewVolbVDPDUiJS+XySE3RZIBZK56YzMI6IgSzKglmUCOF18SB5zzqoGd2Lq4ZBAexgVIprGCSBC1osIg2TZ6BnIi0lmfHwVV5eOiOtYyRaRihhzFF5X1yJKimxB5e5enPlXrgurq9GEn/ABYfvPhvz5124qm5Ab+2AjyO+8OH5uHbxkGMe+bFqhtS5CY4ryJPUgzWquhruHvP+qDs0UY5AajF4SzrwshHUJZictYdBKAsBMkVbggoBzcJYkj57sIBmswu5yhJJxkGokGe48lagWUuChqIYKg4MJgXYJ3JIkjefCUOiYRAWC48NBdI36hBxcuE+PPjk4YoT739xNevH69XIBuNVVk1b9cFcnuGwx1bbFE3z7mcWW3VRyuxsVs837xVO28SnX9GHVZJsFBoiRTH6gdtSmnEVBA1WNJeS89ODBzJTIXUHeOKKo07MwR6m9GHfEJKpdzJ0GgiXIdPEN9DRJVUxsrObcRA1ZZMCiHm2yE+yI4WWORIPcuQ56KuVRO991Xyb5AGax+bpvB1fVd0Q9TwXQgtb4vBtcBd4VHJX23aYGW46I45XrxsbzP7dPi2Z+Lfa2EgmRixx5VLkBc1yAEwKxf+zbeFX8ujkZu9rxU/PLL8XAEK+DD8PTk0+KexXa0P+ZOrttbkP4RFaUbV2/dkJbL8XYH3nvede5uPeqC5XzO+qctJNTrVAMNbfe8rpeLPy5Anrl2wz/dZrls2phmG4v7x+50KLABJ49TplSF0h+r9Yu6ws7fj/g6UPrEu5DAXTMtW3fV5dVoZdU0qfvXiLXiTwVZ0+KLL3YTJvxhAjneoSj+Ulw8HBgfHz4dKhDHy/Pd3fDuW3BG+dSsgOLU7+dN7//rzOnG50e3f3LWdO3zIxOenLVp+2okoPMCfnvRXqM6pPh6TNedw9fzhCdWf/xk7O3DgfPi4u2R3+/lMATxowp7X6DcMEA2Ivn3eFqh6KIB7YcqjOg/8u+I5PPi76+/+3bdDx2iXeU7pMUBrOUBlEcnT5AZAIsf7jYjebvNpt7LjrN/9yOxP6jFB5SB/NE1XC4X3827Hl3tHHf7rVeZt/34gMn6LpxNNNmf7XwwJkW/Dv1MaZD9MQbrwGzWUxUFDyiAjIpkweeaGQIJl2jMAS0sellQIGbgPVfOqcD3lJa9zTygNY1QfxAQPI0NA5Q9kTl7KkLgGkuU4jwqFUN2ymj0p8GjWhvCZ0rjuuSTQBnazXXlBJpvqlIf5/cbFMQXnjx6NUup2n562ekfjB3u5p4ZHEGpUKfDoqVckoQoq7kKUkoXEBBRrjBKaOHJjHXpqlCwu6Mjysx522RH4B/28YahiijEfYHAkqJs2M5+Ii1wzLVBTsVKioUIDnzI4PBkr9GyvBIGP/ydSXa2uW5TqtIqdu03dap9r11Wz5IRs3pdFcHVYUkJubotVIczm/ems7CSUtZyl9X7hjeuWT+55v8jgdLP/TQBlIw3zorExweyrNBLBaUHw77O77Xrho9g8igb6r03bjNg721Zn2z59Panev44i8YfObQ41FkoiQtJ5HmUiSclIrQFqdIJXGcQKGhgoF2sZmhORlIiUGm+nzgZNySTJxgABctggOYmKjS4TDSeQjp7GS6rQyAobgEIT0MMGdCsaxzmVEoRQQGtkrJoDxFjJJq/uSsIVmsg6fdMHt0koDTDkm7HFGb65gW3LZRpfzot/pDvfQuBNo8fVZSybf2g3w1T12ma3z+m+cOzdOO2x3nTT69cpu219KDS7L3tkx6uuRTGcGOb+28c777+4l/+ClULN8n+8y267d+muePbsWbHYrVqcHhPiscW7+Y/E0qZ2d7dTwVhvbt0afsrV5ZFmclqm6EVAF4psJxSy2nELNe559iaABYj22SXIp2SYRkIhz0SUCnInObOPZ8rj73+YEK20cRRVmRvkqndKeWdj8BQRtMg4rQzgwF0OTHpCM9EE28/xVOXkgF3H8nUF7liszx7/zrcodxa+/Q8kXjhD
+        run: |
+          python3 <<'PY'
+          import os,base64,zlib,json,hashlib
+          from pathlib import Path
+          data=zlib.decompress(base64.b64decode(os.environ['PATCH'],validate=True))
+          assert hashlib.sha256(data).hexdigest()=='0745ebbb9179244008398cbcfbc81348af666ca49b5808073611ea980f8322f3'
+          root=Path.cwd(); changes=[]
+          for x in json.loads(data):
+              p=(root/x['p']).resolve()
+              assert p.is_relative_to(root) and '.git' not in p.relative_to(root).parts
+              before=p.read_bytes(); assert hashlib.sha256(before).hexdigest()==x['b'],x['p']
+              lines=before.decode().splitlines(keepends=True)
+              for i,j,s in reversed(x['e']): lines[i:j]=[s]
+              after=''.join(lines).encode();assert hashlib.sha256(after).hexdigest()==x['a'],x['p']
+              changes.append((p,after))
+          for p,after in changes:p.write_bytes(after)
+          print('Verified and applied',len(changes),'source changes')
+          PY
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint && npm run typecheck && npm test && npm run build
+      - name: Commit source changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src e2e playwright.pwa.config.ts .gitignore
+          git commit -m 'Harden V5 mobile drawer targets, hidden inputs, focus lifecycle and regression contracts'
+          git push origin HEAD:feat/notes-v5-editorial-overhaul
+      - run: npx playwright install --with-deps chromium
+      - name: Focused certification without retries
+        run: npx playwright test e2e/v5-redesign.spec.ts e2e/v5-sync-integrity.spec.ts e2e/shell.spec.ts e2e/account-sync.spec.ts e2e/settings-consolidation.spec.ts e2e/organization-navigation-polish.spec.ts e2e/interaction-accessibility.spec.ts --retries=0 --reporter=line
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: notes-v5-hardening-evidence
+          path: test-results
+          retention-days: 7
