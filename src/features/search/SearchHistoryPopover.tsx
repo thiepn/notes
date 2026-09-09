@@ -39,6 +39,7 @@ export function SearchHistoryPopover({
                 key={search.id}
                 search={search}
                 kind="saved"
+                savedSearchId={search.id}
                 onApply={() => onApply(search)}
                 onRemove={() => onRemoveSaved(search.id)}
               />
@@ -76,11 +77,13 @@ export function SearchHistoryPopover({
 function SearchHistoryRow({
   search,
   kind,
+  savedSearchId,
   onApply,
   onRemove,
 }: {
   search: SearchSnapshot;
   kind: 'saved' | 'recent';
+  savedSearchId?: string;
   onApply(): void;
   onRemove?: (() => void) | undefined;
 }) {
@@ -91,6 +94,7 @@ function SearchHistoryRow({
         className="search-history-apply"
         type="button"
         aria-label={`Open ${kind} search: ${summary.title}`}
+        data-saved-search-id={savedSearchId}
         onClick={onApply}
       >
         <strong>{summary.title}</strong>

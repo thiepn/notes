@@ -1,3 +1,4 @@
+import { dispatchAppEvent } from '../../app/events';
 import { NotesRepository, notesDatabase } from '../../db';
 
 const notesRepository = new NotesRepository(notesDatabase);
@@ -24,6 +25,36 @@ export async function requestLinkedNoteOpen(noteId: string): Promise<boolean> {
   navigationButton?.click();
 
   return openCardWhenAvailable(noteId);
+}
+
+export async function requestSavedSearchOpen(searchId: string): Promise<boolean> {
+  if (!searchId) return false;
+
+  await nextFrame();
+  document.querySelector<HTMLButtonElement>('.search-reset')?.click();
+  await nextFrame();
+
+  const openFilterButton = document.querySelector<HTMLButtonElement>(
+    'button[aria-label="Search filters"][aria-expanded="true"]',
+  );
+  openFilterButton?.click();
+
+  dispatchAppEvent('searchHistoryChanged');
+  const searchInput = document.querySelector<HTMLInputElement>('input[aria-label="Search notes"]');
+  if (!searchInput) return false;
+  searchInput.focus();
+
+  const selector = `[data-saved-search-id="${CSS.escape(searchId)}"]`;
+  for (let attempt = 0; attempt < OPEN_ATTEMPTS; attempt += 1) {
+    const button = document.querySelector<HTMLButtonElement>(selector);
+    if (button) {
+      button.click();
+      return true;
+    }
+    if (document.activeElement !== searchInput) searchInput.focus();
+    await delay(OPEN_RETRY_MS);
+  }
+  return false;
 }
 
 async function openCardWhenAvailable(noteId: string): Promise<boolean> {
