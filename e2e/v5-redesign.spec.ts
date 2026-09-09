@@ -57,6 +57,26 @@ async function noPageOverflow(page: Page) {
   ).toBeLessThanOrEqual(1);
 }
 
+async function openResponsiveSettings(page: Page, width = page.viewportSize()?.width ?? 1440) {
+  if (width <= 767) {
+    await page.getByRole('button', { name: 'Open navigation', exact: true }).click();
+    const drawer = page.getByRole('dialog', { name: 'Primary navigation' });
+    await expect(drawer).toBeVisible();
+    await drawer.getByRole('button', { name: 'Settings', exact: true }).click();
+  } else if (width <= 1100) {
+    await page.getByRole('button', { name: 'More options', exact: true }).click();
+    const menu = page.getByRole('menu');
+    await expect(menu.getByRole('menuitem', { name: 'Settings', exact: true })).toBeVisible();
+    await menu.getByRole('menuitem', { name: 'Settings', exact: true }).click();
+  } else {
+    await page.getByRole('button', { name: 'Open settings', exact: true }).click();
+  }
+
+  const settings = page.getByRole('dialog', { name: 'Settings' });
+  await expect(settings).toBeVisible();
+  return settings;
+}
+
 for (const theme of ['light', 'dark'])
   for (const width of [320, 390, 768, 1440]) {
     test(`V5 ${theme} notebook and account layout at ${width}px`, async ({ page }, testInfo) => {
@@ -77,8 +97,7 @@ for (const theme of ['light', 'dark'])
         for (const button of await mobile.getByRole('button').all())
           expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
       } else await expect(mobile).toBeHidden();
-      await page.getByRole('button', { name: 'Open settings', exact: true }).click();
-      const dialog = page.getByRole('dialog', { name: 'Settings' });
+      const dialog = await openResponsiveSettings(page, width);
       await dialog.getByRole('button', { name: /Account & sync/ }).click();
       const email = dialog.locator('input[type="email"]').first();
       await expect(email).toBeVisible();
@@ -150,8 +169,7 @@ test('cloud refresh preserves an active editor, draft, focus mode, and settings 
     page.locator('.note-card-title').filter({ hasText: 'Arrived from another device' }),
   ).toHaveCount(1);
   await editor.getByRole('button', { name: 'Close', exact: true }).click();
-  await page.getByRole('button', { name: 'Open settings', exact: true }).click();
-  const settings = page.getByRole('dialog', { name: 'Settings' });
+  const settings = await openResponsiveSettings(page);
   await settings.getByRole('button', { name: /Account & sync/ }).click();
   await settings.locator('input[type="email"]').fill('draft@example.com');
   await page.evaluate(() => window.dispatchEvent(new CustomEvent('notes-cloud-sync-applied')));
@@ -240,8 +258,7 @@ test('account action failures show an actionable alert instead of disappearing',
     }),
   );
   await page.goto('./');
-  await page.getByRole('button', { name: 'Open settings', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'Settings' });
+  const dialog = await openResponsiveSettings(page);
   await dialog.getByRole('button', { name: /Account & sync/ }).click();
   await dialog.locator('input[type="email"]').fill('test@example.com');
   await dialog.getByRole('button', { name: 'Forgot password' }).click();
