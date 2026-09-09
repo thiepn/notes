@@ -294,7 +294,7 @@
 }
 
 .ocr-error {
-  color: #b42318 !important;
+  color: var(--danger-strong) !important;
 }
 
 .attachment-ocr-button {

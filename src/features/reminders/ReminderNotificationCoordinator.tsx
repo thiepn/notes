@@ -1,3 +1,4 @@
+import { subscribeAppEvent } from '../../app/events';
 import { useEffect } from 'react';
 
 import { NotesRepository, RemindersRepository, notesDatabase } from '../../db';
@@ -46,14 +47,14 @@ export function ReminderNotificationCoordinator() {
     const handleReminderChanged = () => void checkDue();
 
     window.addEventListener('focus', handleFocus);
-    window.addEventListener('notes-reminders-changed', handleReminderChanged);
+    const unsubscribeReminderChanged = subscribeAppEvent('remindersChanged', handleReminderChanged);
     document.addEventListener('visibilitychange', handleVisibility);
     void checkDue();
 
     return () => {
       window.clearInterval(interval);
       window.removeEventListener('focus', handleFocus);
-      window.removeEventListener('notes-reminders-changed', handleReminderChanged);
+      unsubscribeReminderChanged();
       document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [locked, privateNotifications]);

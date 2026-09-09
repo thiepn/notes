@@ -181,7 +181,7 @@
 }
 
 .checklist-row-delete:hover {
-  color: #b42318;
+  color: var(--danger-strong);
 }
 
 .checklist-options {

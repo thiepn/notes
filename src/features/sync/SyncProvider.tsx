@@ -1,3 +1,4 @@
+import { dispatchAppEvent } from '../../app/events';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { SyncContext, type SyncContextValue, type SyncStatus } from './SyncContext';
@@ -191,7 +192,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
             setStatus('recovery');
             setMessage('Password recovery verified. Choose a new password below.');
             // Do not merge data or run background sync before the replacement password is set.
-            window.dispatchEvent(new CustomEvent('notes-open-sync-settings'));
+            dispatchAppEvent('openSyncSettings');
             return;
           }
           await activateSession(callback.session);
@@ -202,7 +203,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
           } else if (callback.type === 'signup') {
             setMessage('Email address confirmed.');
           }
-          window.dispatchEvent(new CustomEvent('notes-open-sync-settings'));
+          dispatchAppEvent('openSyncSettings');
           return;
         }
 

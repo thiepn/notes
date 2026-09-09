@@ -1,3 +1,4 @@
+import { dispatchAppEvent } from '../../app/events';
 import { Cloud, CloudOff, RefreshCw, ShieldCheck } from 'lucide-react';
 import { syncStatusLabel, useSync } from './SyncContext';
 
@@ -18,7 +19,7 @@ export function SyncIndicator() {
       data-status={status}
       aria-label={`Account and sync: ${label}`}
       title={detail}
-      onClick={() => window.dispatchEvent(new CustomEvent('notes-open-sync-settings'))}
+      onClick={() => dispatchAppEvent('openSyncSettings')}
     >
       {status === 'offline' || status === 'error' ? (
         <CloudOff aria-hidden="true" />

@@ -1,3 +1,4 @@
+import { dispatchAppEvent } from '../../app/events';
 import { notesDatabase, RevisionsRepository } from '../../db';
 import {
   attachmentRecordSchema,
@@ -169,7 +170,7 @@ async function synchronizeUnlocked(
   await writeShadow(session.user.id, nextShadow);
 
   if (result.downloaded > 0 || result.deletedLocal > 0) {
-    window.dispatchEvent(new CustomEvent('notes-cloud-sync-applied'));
+    dispatchAppEvent('cloudSyncApplied');
   }
   return result;
 }

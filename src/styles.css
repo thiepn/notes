@@ -17,11 +17,8 @@
 @import './styles/reminders.css';
 @import './styles/privacy.css';
 @import './styles/pwa.css';
-@import './styles/performance.css';
-@import './styles/retrieval-search-polish.css';
+@import './styles/utilities.css';
 @import './styles/shell.css';
 @import './styles/notes.css';
 @import './styles/menus.css';
 @import './styles/settings.css';
-@import './styles/account-sync.css';
-@import './styles/interaction-accessibility.css';

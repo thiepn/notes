@@ -1,3 +1,4 @@
+import { subscribeAppEvent } from '../app/events';
 import { useEffect, useRef, useState } from 'react';
 import {
   BookmarkCheck,
@@ -99,10 +100,10 @@ export function AppHeader({
       });
     };
     reloadSaved();
-    window.addEventListener('notes-search-history-changed', reloadSaved);
+    const unsubscribeSearchHistory = subscribeAppEvent('searchHistoryChanged', reloadSaved);
     return () => {
       cancelled = true;
-      window.removeEventListener('notes-search-history-changed', reloadSaved);
+      unsubscribeSearchHistory();
     };
   }, []);
 

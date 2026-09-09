@@ -129,7 +129,7 @@
 
 .backup-button-danger {
   justify-self: start;
-  background: #b3261e;
+  background: var(--danger-strong);
   color: #fff;
 }
 
@@ -216,12 +216,12 @@
 }
 
 .backup-restore-warning {
-  border: 1px solid color-mix(in srgb, #b3261e 28%, transparent);
-  background: color-mix(in srgb, #b3261e 7%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--danger-strong) 28%, transparent);
+  background: color-mix(in srgb, var(--danger-strong) 7%, var(--surface));
 }
 
 .backup-restore-warning svg {
-  color: #b3261e;
+  color: var(--danger-strong);
 }
 
 .backup-restore-warning div,
@@ -373,15 +373,15 @@
   display: flex;
   gap: 9px;
   align-items: flex-start;
-  border: 1px solid color-mix(in srgb, #a15c00 26%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warning-strong) 26%, transparent);
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, #a15c00 7%, var(--surface));
+  background: color-mix(in srgb, var(--warning-strong) 7%, var(--surface));
   padding: 11px 12px;
 }
 
 .keep-import-storage-warning svg {
   margin-top: 1px;
-  color: #a15c00;
+  color: var(--warning-strong);
 }
 
 .keep-import-warnings {
@@ -406,7 +406,7 @@
 }
 
 .keep-import-warnings summary svg {
-  color: #a15c00;
+  color: var(--warning-strong);
 }
 
 .keep-import-warnings ul {
@@ -480,8 +480,8 @@
 }
 
 .backup-error {
-  background: color-mix(in srgb, #b3261e 9%, var(--surface));
-  color: #b3261e;
+  background: color-mix(in srgb, var(--danger-strong) 9%, var(--surface));
+  color: var(--danger-strong);
 }
 
 .backup-details {
@@ -662,12 +662,12 @@
 }
 
 .backup-comparison td[data-delta='more'] {
-  color: #14804a;
+  color: var(--success-strong);
   font-weight: 700;
 }
 
 .backup-comparison td[data-delta='less'] {
-  color: #a15c00;
+  color: var(--warning-strong);
   font-weight: 700;
 }
 

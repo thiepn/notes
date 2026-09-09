@@ -128,8 +128,8 @@
 }
 
 .voice-recorder-icon[data-state='recording'] {
-  background: color-mix(in srgb, #c5221f 12%, var(--surface));
-  color: #c5221f;
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+  color: var(--danger);
   animation: voice-recording-pulse 1.5s ease-in-out infinite;
 }
 
@@ -139,13 +139,13 @@
 }
 
 .voice-recorder-icon[data-state='error'] {
-  background: color-mix(in srgb, #b42318 10%, var(--surface));
-  color: #b42318;
+  background: color-mix(in srgb, var(--danger-strong) 10%, var(--surface));
+  color: var(--danger-strong);
 }
 
 @keyframes voice-recording-pulse {
   50% {
-    box-shadow: 0 0 0 12px color-mix(in srgb, #c5221f 7%, transparent);
+    box-shadow: 0 0 0 12px color-mix(in srgb, var(--danger) 7%, transparent);
   }
 }
 
@@ -185,8 +185,8 @@
 }
 
 .voice-recording-controls .voice-stop-button {
-  background: color-mix(in srgb, #c5221f 12%, var(--surface));
-  color: #b42318;
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+  color: var(--danger-strong);
 }
 
 .voice-review {
@@ -210,7 +210,7 @@
 
 .voice-error,
 .voice-attachment-error {
-  color: #b42318;
+  color: var(--danger-strong);
   font-size: var(--text-sm);
 }
 
@@ -362,7 +362,7 @@ html[data-theme='dark'] .voice-dialog-footer .voice-save-button {
 }
 
 .attachment-audio-actions button[aria-label^='Confirm remove'] {
-  color: #b42318;
+  color: var(--danger-strong);
 }
 
 .attachment-audio-actions button:hover,
@@ -375,7 +375,7 @@ html[data-theme='dark'] .voice-dialog-footer .voice-save-button {
 
 .attachment-audio-actions button[aria-label^='Confirm remove']:hover,
 .attachment-audio-actions button[aria-label^='Confirm remove']:focus-visible {
-  color: #b42318;
+  color: var(--danger-strong);
 }
 
 .attachment-audio-actions svg {

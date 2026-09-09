@@ -1,3 +1,4 @@
+import { subscribeAppEvent } from '../../app/events';
 import {
   useEffect,
   useRef,
@@ -115,11 +116,11 @@ export function NoteCard({
       });
     };
     const handleChanged = () => load();
-    window.addEventListener('notes-reminders-changed', handleChanged);
+    const unsubscribeReminderChanged = subscribeAppEvent('remindersChanged', handleChanged);
     load();
     return () => {
       cancelled = true;
-      window.removeEventListener('notes-reminders-changed', handleChanged);
+      unsubscribeReminderChanged();
     };
   }, [note.id, reminder]);
 

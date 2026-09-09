@@ -1,3 +1,4 @@
+import { subscribeAppEvent } from './events';
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { Bell, Menu, NotebookPen, Plus, Search } from 'lucide-react';
 import { SyncIndicator } from '../features/sync/SyncIndicator';
@@ -152,8 +153,8 @@ export function AppShell() {
       void refreshLabels().catch(() => undefined);
       void refreshNavigationStats();
     };
-    window.addEventListener('notes-cloud-sync-applied', refresh);
-    return () => window.removeEventListener('notes-cloud-sync-applied', refresh);
+    const unsubscribeCloudSync = subscribeAppEvent('cloudSyncApplied', refresh);
+    return unsubscribeCloudSync;
   }, [refreshLabels, refreshNavigationStats]);
 
   useEffect(() => {
@@ -201,10 +202,10 @@ export function AppShell() {
   useEffect(() => {
     const initialRefresh = window.setTimeout(() => void refreshNavigationStats(), 0);
     const handleReminderChanged = () => void refreshNavigationStats();
-    window.addEventListener('notes-reminders-changed', handleReminderChanged);
+    const unsubscribeReminderChanged = subscribeAppEvent('remindersChanged', handleReminderChanged);
     return () => {
       window.clearTimeout(initialRefresh);
-      window.removeEventListener('notes-reminders-changed', handleReminderChanged);
+      unsubscribeReminderChanged();
     };
   }, [refreshNavigationStats]);
 
@@ -213,8 +214,8 @@ export function AppShell() {
       setSettingsInitialSection('sync');
       setSettingsOpen(true);
     };
-    window.addEventListener('notes-open-sync-settings', openSyncSettings);
-    return () => window.removeEventListener('notes-open-sync-settings', openSyncSettings);
+    const unsubscribeOpenSync = subscribeAppEvent('openSyncSettings', openSyncSettings);
+    return unsubscribeOpenSync;
   }, []);
 
   useEffect(() => {
