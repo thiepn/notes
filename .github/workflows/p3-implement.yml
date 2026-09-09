@@ -1,0 +1,38 @@
+name: P3 integrated implementation
+
+on:
+  push:
+    branches: [feat/p3-organization-model]
+    paths: [.github/workflows/p3-implement.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  implement:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/p3-organization-model
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - run: npm ci --no-audit --no-fund
+      - name: Apply P3 source patch
+        run: python3 tools/apply_p3.py
+      - name: Format P3 changes
+        run: npx prettier --write src e2e docs
+      - name: Commit integrated P3 implementation
+        run: |
+          git config user.name "thiepn"
+          git config user.email "junsosmart@gmail.com"
+          git add src e2e docs
+          if git diff --cached --quiet; then
+            echo "No implementation changes to commit."
+          else
+            git commit -m "Implement P3 organization model"
+            git push origin HEAD:feat/p3-organization-model
+          fi
