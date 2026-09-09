@@ -1,0 +1,38 @@
+name: P4 final targeted certification
+
+on:
+  push:
+    branches:
+      - diag/p4-final-certification
+    paths:
+      - .github/workflows/p4-final.yml
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: P4 capture, checklist, attachment, and selection regressions without retries
+        run: >-
+          npx playwright test
+          e2e/p4-capture-operations.spec.ts
+          e2e/capture.spec.ts
+          e2e/capture-mobile-polish.spec.ts
+          e2e/checklists.spec.ts
+          e2e/attachments.spec.ts
+          e2e/selection.spec.ts
+          --retries=0 --reporter=line
+      - name: Updated V5 mobile capture contract without retries
+        run: >-
+          npx playwright test e2e/v5-redesign.spec.ts
+          --grep "mobile navigation opens a contained drawer"
+          --retries=0 --reporter=line
