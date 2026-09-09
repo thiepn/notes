@@ -77,7 +77,9 @@ test('search lifecycle changes refresh global collection counts immediately', as
   await expect(page.getByRole('heading', { name: 'Archived', level: 2 })).toBeVisible();
 });
 
-test('label management exposes usage and refreshes an already-open search index', async ({ page }) => {
+test('label management exposes usage and refreshes an already-open search index', async ({
+  page,
+}) => {
   await page.goto('./');
   await waitForNotes(page);
   const noteId = await page.evaluate(async () => {

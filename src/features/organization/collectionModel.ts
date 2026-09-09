@@ -4,14 +4,13 @@ export type OrganizationLifecycle = 'notes' | 'archive' | 'trash';
 export type OrganizationSearchStatus = 'any' | 'active' | 'pinned' | 'archived';
 
 export type OrganizationCollection =
-  | { kind: 'notes' }
-  | { kind: 'label'; labelId: string }
-  | { kind: 'archive' }
-  | { kind: 'trash' };
+  { kind: 'notes' } | { kind: 'label'; labelId: string } | { kind: 'archive' } | { kind: 'trash' };
 
 type LifecycleNote = Pick<NoteRecord, 'archivedAt' | 'trashedAt' | 'pinnedAt'>;
 
-export function noteLifecycle(note: Pick<LifecycleNote, 'archivedAt' | 'trashedAt'>): OrganizationLifecycle {
+export function noteLifecycle(
+  note: Pick<LifecycleNote, 'archivedAt' | 'trashedAt'>,
+): OrganizationLifecycle {
   if (note.trashedAt !== null) return 'trash';
   return note.archivedAt !== null ? 'archive' : 'notes';
 }
@@ -44,7 +43,9 @@ export function resolveOrganizationCollection(
   return null;
 }
 
-export function organizationCollectionMode(collection: OrganizationCollection): OrganizationLifecycle {
+export function organizationCollectionMode(
+  collection: OrganizationCollection,
+): OrganizationLifecycle {
   return collection.kind === 'label' ? 'notes' : collection.kind;
 }
 

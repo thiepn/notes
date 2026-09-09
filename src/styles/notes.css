@@ -754,3 +754,49 @@
 .note-card[data-color='gray'] {
   background: var(--note-gray);
 }
+
+.notes-collection-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.notes-collection-actions button {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.notes-collection-actions button:hover,
+.notes-collection-actions button:focus-visible {
+  border-color: var(--border-strong);
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.notes-collection-actions .notes-collection-action-danger {
+  color: var(--danger-strong);
+}
+
+@media (max-width: 767px) {
+  .notes-toolbar-controls {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .notes-collection-actions {
+    order: 3;
+    width: 100%;
+  }
+
+  .notes-collection-actions button {
+    min-height: 44px;
+    flex: 1;
+  }
+}
