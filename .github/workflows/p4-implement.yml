@@ -1,0 +1,53 @@
+name: P4 integrated implementation
+
+on:
+  pull_request:
+    branches: [main]
+    paths: [.github/workflows/p4-implement.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  implement:
+    if: github.head_ref == 'feat/p4-capture-checklists-everyday'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/p4-capture-checklists-everyday
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - run: npm ci --no-audit --no-fund
+      - name: Apply P4 source patches
+        run: |
+          if grep -q "openCaptureMenu" src/app/AppShell.tsx; then
+            echo "P4 source patch already applied."
+          else
+            python3 tools/apply_p4_shell.py
+            python3 tools/apply_p4_notes.py
+            python3 tools/apply_p4_checklists.py
+            python3 tools/apply_p4_styles.py
+          fi
+          npx prettier --write src e2e docs
+      - name: Verify integrated implementation
+        run: |
+          npm run foundation:check
+          npm run lint
+          npm run typecheck
+          npm test
+          npm run build
+      - name: Commit P4 source
+        run: |
+          git config user.name "thiepn"
+          git config user.email "junsosmart@gmail.com"
+          git add src e2e docs
+          if git diff --cached --quiet; then
+            echo "No source changes to commit."
+          else
+            git commit -m "Implement P4 capture, checklist and everyday operations"
+            git push origin HEAD:feat/p4-capture-checklists-everyday
+          fi
