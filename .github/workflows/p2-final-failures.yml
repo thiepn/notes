@@ -1,0 +1,20 @@
+name: P2 resolved-regression certification
+on:
+  push:
+    branches: [diag/p2-final-failures]
+    paths: [.github/workflows/p2-final-failures.yml]
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Re-run every previously failing responsive regression without retries
+        run: npx playwright test e2e/capture-mobile-polish.spec.ts e2e/settings-consolidation.spec.ts e2e/v5-redesign.spec.ts e2e/p2-shell-responsive.spec.ts --retries=0 --reporter=line
