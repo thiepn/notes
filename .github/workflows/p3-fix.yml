@@ -1,0 +1,43 @@
+name: P3 lint correction
+
+on:
+  pull_request:
+    branches: [main]
+    paths: [.github/workflows/p3-fix.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.head_ref == 'feat/p3-organization-model'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/p3-organization-model
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - run: npm ci --no-audit --no-fund
+      - name: Patch initial label reconciliation
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          path = Path('src/app/AppShell.tsx')
+          text = path.read_text()
+          old = """  useEffect(() => {\n    void refreshLabels().catch(() => undefined);\n  }, [refreshLabels]);\n"""
+          new = """  useEffect(() => {\n    const initialRefresh = window.setTimeout(() => {\n      void refreshLabels().catch(() => undefined);\n    }, 0);\n    return () => window.clearTimeout(initialRefresh);\n  }, [refreshLabels]);\n"""
+          assert text.count(old) == 1
+          path.write_text(text.replace(old, new, 1))
+          PY
+          npx prettier --write src/app/AppShell.tsx
+      - name: Commit lint correction
+        run: |
+          git config user.name "thiepn"
+          git config user.email "junsosmart@gmail.com"
+          git add src/app/AppShell.tsx
+          git commit -m "Schedule P3 label reconciliation outside effect body"
+          git push origin HEAD:feat/p3-organization-model
