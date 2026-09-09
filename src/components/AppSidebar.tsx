@@ -128,10 +128,9 @@ export function AppSidebar({
           const active =
             id === 'search'
               ? searchActive
-              : !searchActive &&
-                activeSection === id &&
-                (id !== 'notes' || activeLabelId === null);
-          const count = id === 'notes' ? counts.notes : id === 'reminders' ? counts.reminders : null;
+              : !searchActive && activeSection === id && (id !== 'notes' || activeLabelId === null);
+          const count =
+            id === 'notes' ? counts.notes : id === 'reminders' ? counts.reminders : null;
           const activate = () => {
             if (id === 'search') onSearch();
             else onNavigate(id);

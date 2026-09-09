@@ -95,7 +95,13 @@ test('mobile bottom navigation owns primary navigation and drawer owns secondary
   await page.goto('./');
 
   const mobileNav = page.getByRole('navigation', { name: 'Mobile navigation' });
-  for (const name of ['Show notes', 'Find a note', 'New note', 'Show reminders', 'Open navigation']) {
+  for (const name of [
+    'Show notes',
+    'Find a note',
+    'New note',
+    'Show reminders',
+    'Open navigation',
+  ]) {
     const control = mobileNav.getByRole('button', { name });
     await expect(control).toBeVisible();
     const box = await control.boundingBox();
