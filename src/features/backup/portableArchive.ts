@@ -11,7 +11,28 @@ export interface PortableAttachmentEntry {
   name: string;
   mimeType: string;
   size: number;
+  sourceChecksum: string;
   sha256: string;
+  createdAt: number;
+}
+
+export interface PortableLabelEntry {
+  id: string;
+  name: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface PortableReminderEntry {
+  id: string;
+  dueAt: number;
+  timeZone: string;
+  status: string;
+  createdAt: number;
+  updatedAt: number;
+  completedAt: number | null;
+  dismissedAt: number | null;
+  lastNotifiedAt: number | null;
 }
 
 export interface PortableNoteEntry {
@@ -26,12 +47,10 @@ export interface PortableNoteEntry {
   pinnedAt: number | null;
   archivedAt: number | null;
   trashedAt: number | null;
+  position: number;
+  revision: number;
   labels: string[];
-  reminder: {
-    dueAt: number;
-    timeZone: string;
-    status: string;
-  } | null;
+  reminder: PortableReminderEntry | null;
   attachments: PortableAttachmentEntry[];
 }
 
@@ -54,6 +73,7 @@ export interface PortableArchiveManifest {
     attachments: number;
     reminders: number;
   };
+  labels: PortableLabelEntry[];
   notes: PortableNoteEntry[];
 }
 
@@ -132,6 +152,7 @@ export async function buildPortableArchive(document: BackupDocument): Promise<Po
         attachment.mimeType,
       );
       const path = `attachments/${note.id}/${filename}`;
+      if (files[path]) throw new Error(`Portable export generated a duplicate path: ${path}`);
       files[path] = new Uint8Array(await source.data.arrayBuffer());
       attachmentEntries.push({
         id: attachment.id,
@@ -139,7 +160,9 @@ export async function buildPortableArchive(document: BackupDocument): Promise<Po
         name: attachment.name ?? filename,
         mimeType: attachment.mimeType,
         size: attachment.size,
+        sourceChecksum: attachment.checksum,
         sha256: attachment.dataSha256,
+        createdAt: attachment.createdAt,
       });
       attachmentLinks.push(
         `- [${escapeMarkdownLinkLabel(attachment.name ?? filename)}](../${path})`,
@@ -163,9 +186,21 @@ export async function buildPortableArchive(document: BackupDocument): Promise<Po
       pinnedAt: note.pinnedAt,
       archivedAt: note.archivedAt,
       trashedAt: note.trashedAt,
+      position: note.position,
+      revision: note.revision,
       labels: [...labels],
       reminder: reminder
-        ? { dueAt: reminder.dueAt, timeZone: reminder.timeZone, status: reminder.status }
+        ? {
+            id: reminder.id,
+            dueAt: reminder.dueAt,
+            timeZone: reminder.timeZone,
+            status: reminder.status,
+            createdAt: reminder.createdAt,
+            updatedAt: reminder.updatedAt,
+            completedAt: reminder.completedAt,
+            dismissedAt: reminder.dismissedAt,
+            lastNotifiedAt: reminder.lastNotifiedAt,
+          }
         : null,
       attachments: attachmentEntries,
     });
@@ -191,6 +226,14 @@ export async function buildPortableArchive(document: BackupDocument): Promise<Po
       databaseVersion: prepared.document.databaseVersion,
     },
     counts,
+    labels: [...data.labels]
+      .sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id))
+      .map((label) => ({
+        id: label.id,
+        name: label.name,
+        createdAt: label.createdAt,
+        updatedAt: label.updatedAt,
+      })),
     notes: manifestNotes,
   };
 
@@ -226,9 +269,15 @@ export function portableNoteFilename(title: string, id: string): string {
 }
 
 function portableAttachmentFilename(name: string | null, id: string, mimeType: string): string {
-  if (name?.trim()) return portablePathSegment(name, 140);
-  const extension = extensionForMimeType(mimeType);
-  return `attachment-${id.slice(0, 8)}${extension}`;
+  const suffix = `--${id.slice(0, 8)}`;
+  if (!name?.trim()) return `attachment${suffix}${extensionForMimeType(mimeType)}`;
+
+  const clean = portablePathSegment(name, 120);
+  const lastDot = clean.lastIndexOf('.');
+  if (lastDot > 0 && lastDot < clean.length - 1 && clean.length - lastDot <= 16) {
+    return `${clean.slice(0, lastDot)}${suffix}${clean.slice(lastDot)}`;
+  }
+  return `${clean}${suffix}${extensionForMimeType(mimeType)}`;
 }
 
 function portablePathSegment(value: string, maxBytes: number): string {
@@ -270,9 +319,24 @@ function portableNoteMarkdown(
     `reminder: ${JSON.stringify(
       reminder
         ? {
+            id: reminder.id,
             dueAt: new Date(reminder.dueAt).toISOString(),
             timeZone: reminder.timeZone,
             status: reminder.status,
+            createdAt: new Date(reminder.createdAt).toISOString(),
+            updatedAt: new Date(reminder.updatedAt).toISOString(),
+            completedAt:
+              reminder.completedAt === null
+                ? null
+                : new Date(reminder.completedAt).toISOString(),
+            dismissedAt:
+              reminder.dismissedAt === null
+                ? null
+                : new Date(reminder.dismissedAt).toISOString(),
+            lastNotifiedAt:
+              reminder.lastNotifiedAt === null
+                ? null
+                : new Date(reminder.lastNotifiedAt).toISOString(),
           }
         : null,
     )}`,
@@ -293,7 +357,7 @@ function noteLifecycle(
 }
 
 function portableReadme(manifest: PortableArchiveManifest): string {
-  return `# Notes portable archive\n\nThis ZIP is a human-readable export of a Notes library. It is designed for inspection, migration, and long-term portability rather than exact in-app disaster recovery.\n\n- Exported: ${new Date(manifest.exportedAt).toISOString()}\n- Notes: ${manifest.counts.notes} (${manifest.counts.active} active, ${manifest.counts.archived} archived, ${manifest.counts.trashed} trashed)\n- Checklist rows: ${manifest.counts.checklistItems}\n- Labels: ${manifest.counts.labels}\n- Attachments: ${manifest.counts.attachments}\n- Reminders: ${manifest.counts.reminders}\n\n## Layout\n\n- \`notes/\` contains one Markdown file per note, including YAML-compatible front matter with IDs, timestamps, lifecycle state, labels, and reminder metadata.\n- \`attachments/\` contains original attachment bytes grouped by note ID.\n- \`manifest.json\` records every note path and attachment SHA-256 digest.\n\nUse the separate full Notes JSON backup for exact restore into Notes. The portable archive intentionally excludes internal revision history and database settings.\n`;
+  return `# Notes portable archive\n\nThis ZIP is a human-readable export of a Notes library. It is designed for inspection, migration, and long-term portability rather than exact in-app disaster recovery.\n\n- Exported: ${new Date(manifest.exportedAt).toISOString()}\n- Notes: ${manifest.counts.notes} (${manifest.counts.active} active, ${manifest.counts.archived} archived, ${manifest.counts.trashed} trashed)\n- Checklist rows: ${manifest.counts.checklistItems}\n- Labels: ${manifest.counts.labels}\n- Attachments: ${manifest.counts.attachments}\n- Reminders: ${manifest.counts.reminders}\n\n## Layout\n\n- \`notes/\` contains one Markdown file per note, including YAML-compatible front matter with IDs, timestamps, lifecycle state, labels, and reminder metadata.\n- \`attachments/\` contains original attachment bytes grouped by note ID.\n- \`manifest.json\` records label definitions, every note path, full reminder metadata, and attachment identity/checksum information.\n\nUse the separate full Notes JSON backup for exact restore into Notes. The portable archive intentionally excludes internal revision history and database settings.\n`;
 }
 
 function extensionForMimeType(mimeType: string): string {
