@@ -32,6 +32,9 @@ jobs:
       - name: Format check
         run: npm run format:check || (npx prettier --write . && git diff --exit-code -- .)
 
+      - name: Foundation contract
+        run: npm run foundation:check
+
       - name: Lint
         run: npm run lint
 
