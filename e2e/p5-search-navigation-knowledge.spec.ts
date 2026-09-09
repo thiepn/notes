@@ -70,7 +70,7 @@ test('saved searches are runnable as smart collections from the command palette'
   await page.getByRole('button', { name: 'Save search' }).click();
   await page.getByRole('button', { name: 'Reset' }).click();
 
-  await page.keyboard.press('Control+K');
+  await page.getByRole('button', { name: 'Open command palette' }).click();
   const palette = page.getByRole('dialog', { name: 'Command palette' });
   await palette.getByRole('combobox', { name: 'Search commands' }).fill('P5 Smart Alpha');
   const collection = palette.getByRole('option', { name: /Smart collection: P5 Smart Alpha/u });
