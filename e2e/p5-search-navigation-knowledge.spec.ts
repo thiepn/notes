@@ -10,8 +10,14 @@ test('command palette quick-opens active and archived notes by title', async ({ 
   const ids = await page.evaluate(async () => {
     const db = await import('/notes/src/db/index.ts');
     const notes = new db.NotesRepository(db.notesDatabase);
-    const active = await notes.create({ title: 'P5 Navigation Atlas', content: 'Quick-open target' });
-    const archived = await notes.create({ title: 'P5 Archive Atlas', content: 'Archived quick-open target' });
+    const active = await notes.create({
+      title: 'P5 Navigation Atlas',
+      content: 'Quick-open target',
+    });
+    const archived = await notes.create({
+      title: 'P5 Archive Atlas',
+      content: 'Archived quick-open target',
+    });
     await notes.archive(archived.id, archived.revision);
     return { active: active.id, archived: archived.id };
   });
@@ -26,7 +32,9 @@ test('command palette quick-opens active and archived notes by title', async ({ 
   await target.click();
 
   let editor = page.getByRole('dialog', { name: 'Edit note' });
-  await expect(editor.getByRole('textbox', { name: 'Edit title' })).toHaveValue('P5 Navigation Atlas');
+  await expect(editor.getByRole('textbox', { name: 'Edit title' })).toHaveValue(
+    'P5 Navigation Atlas',
+  );
   await expect(page.locator(`[data-editing-note="${ids.active}"]`)).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(editor).toBeHidden();
@@ -44,7 +52,9 @@ test('command palette quick-opens active and archived notes by title', async ({ 
   await expect(page.getByRole('heading', { name: 'Archive', level: 1 })).toBeVisible();
 });
 
-test('saved searches are runnable as smart collections from the command palette', async ({ page }) => {
+test('saved searches are runnable as smart collections from the command palette', async ({
+  page,
+}) => {
   await page.goto('./');
   await page.evaluate(async () => {
     const db = await import('/notes/src/db/index.ts');
