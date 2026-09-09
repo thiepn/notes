@@ -22,7 +22,7 @@
   z-index: var(--z-header);
   min-height: var(--header-height);
   display: grid;
-  grid-template-columns: var(--sidebar-width) minmax(180px, 560px) 1fr;
+  grid-template-columns: var(--sidebar-width) minmax(180px, 560px) minmax(max-content, 1fr);
   align-items: center;
   gap: 24px;
   padding: 0 24px 0 0;
