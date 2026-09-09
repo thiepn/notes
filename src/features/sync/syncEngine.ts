@@ -9,6 +9,7 @@ import {
   reminderRecordSchema,
   revisionRecordSchema,
 } from '../../db/validation';
+import { preserveSyncConflictCopy, type ConflictCopySource } from './conflictPreservation';
 import { acknowledgedShadow, type SyncShadow } from './syncState';
 import type { AttachmentRecord } from '../../db';
 import {
@@ -40,6 +41,7 @@ export interface SyncResult {
   deletedRemote: number;
   deletedLocal: number;
   conflicts: number;
+  conflictCopies: number;
   failed: number;
   deferred: number;
 }
@@ -66,6 +68,7 @@ async function synchronizeUnlocked(
     deletedRemote: 0,
     deletedLocal: 0,
     conflicts: 0,
+    conflictCopies: 0,
     failed: 0,
     deferred: 0,
   };
@@ -107,7 +110,7 @@ async function synchronizeUnlocked(
 
     try {
       if (!previous) {
-        await reconcileInitial(session, local, remote, result);
+        await reconcileInitial(session, local, remote, remoteRecords, result);
         continue;
       }
 
@@ -145,7 +148,7 @@ async function synchronizeUnlocked(
       }
 
       result.conflicts += 1;
-      await resolveConcurrentChange(session, local, remote, result);
+      await resolveConcurrentChange(session, local, remote, remoteRecords, result);
     } catch (error) {
       // Keep the prior shadow for this key so a later sync retries it instead of silently accepting loss.
       failedKeys.add(key);
@@ -169,7 +172,7 @@ async function synchronizeUnlocked(
   const nextShadow = acknowledgedShadow(observed, shadow, failedKeys);
   await writeShadow(session.user.id, nextShadow);
 
-  if (result.downloaded > 0 || result.deletedLocal > 0) {
+  if (result.downloaded > 0 || result.deletedLocal > 0 || result.conflictCopies > 0) {
     dispatchAppEvent('cloudSyncApplied');
   }
   return result;
@@ -179,6 +182,7 @@ async function reconcileInitial(
   session: SupabaseSession,
   local: LocalEntity | undefined,
   remote: RemoteSyncRecord | undefined,
+  remoteRecords: RemoteSyncRecord[],
   result: SyncResult,
 ): Promise<void> {
   if (local && !remote) {
@@ -206,7 +210,16 @@ async function reconcileInitial(
 
   if (local.hash === remote.payload_hash) return;
   result.conflicts += 1;
-  if (local.updatedAt > remote.client_updated_at) {
+  const localWins = local.updatedAt > remote.client_updated_at;
+  await preserveNoteConflict(
+    session.user.id,
+    local,
+    remote,
+    remoteRecords,
+    localWins ? 'cloud' : 'this-device',
+    result,
+  );
+  if (localWins) {
     await pushLocal(session, local);
     result.uploaded += 1;
   } else {
@@ -219,6 +232,7 @@ async function resolveConcurrentChange(
   session: SupabaseSession,
   local: LocalEntity | undefined,
   remote: RemoteSyncRecord | undefined,
+  remoteRecords: RemoteSyncRecord[],
   result: SyncResult,
 ): Promise<void> {
   // When one side deleted while the other side changed, preserve the surviving content.
@@ -235,13 +249,41 @@ async function resolveConcurrentChange(
   }
   if (!local || !remote || remote.deleted_at !== null) return;
 
-  if (local.updatedAt > remote.client_updated_at) {
+  const localWins = local.updatedAt > remote.client_updated_at;
+  await preserveNoteConflict(
+    session.user.id,
+    local,
+    remote,
+    remoteRecords,
+    localWins ? 'cloud' : 'this-device',
+    result,
+  );
+  if (localWins) {
     await pushLocal(session, local);
     result.uploaded += 1;
   } else {
     await applyRemote(session, remote);
     result.downloaded += 1;
   }
+}
+
+async function preserveNoteConflict(
+  userId: string,
+  local: LocalEntity,
+  remote: RemoteSyncRecord,
+  remoteRecords: RemoteSyncRecord[],
+  source: ConflictCopySource,
+  result: SyncResult,
+): Promise<void> {
+  if (local.type !== 'note' || remote.entity_type !== 'note') return;
+  await preserveSyncConflictCopy({
+    noteId: local.id,
+    source,
+    expectedUserId: userId,
+    remoteNote: remote,
+    remoteRecords,
+  });
+  result.conflictCopies += 1;
 }
 
 async function pushLocal(session: SupabaseSession, local: LocalEntity): Promise<void> {
