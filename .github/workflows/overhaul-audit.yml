@@ -1,4 +1,4 @@
-name: Notes V5 audit workspace
+name: Notes V5 visual audit
 on:
   push:
     branches: [feat/notes-v5-editorial-overhaul]
@@ -6,7 +6,7 @@ on:
 permissions:
   contents: read
 jobs:
-  snapshot:
+  baseline:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -15,16 +15,51 @@ jobs:
         with:
           node-version-file: .nvmrc
       - run: npm ci --no-audit --no-fund
-      - run: npx playwright install chromium
-      - name: Package audit workspace
+      - run: npx playwright install --with-deps chromium
+      - name: Capture baseline
         run: |
-          mkdir -p /tmp/notes-audit
-          git archive --format=tar.gz HEAD > /tmp/notes-audit/source.tar.gz
-          tar -czf /tmp/notes-audit/dependencies.tar.gz node_modules
-          cp "$(command -v node)" /tmp/notes-audit/node
-          tar -czf /tmp/notes-audit/browsers.tar.gz -C "$HOME/.cache" ms-playwright
+          npm run dev -- --host 127.0.0.1 --port 4173 > /tmp/vite.log 2>&1 &
+          for i in {1..60}; do curl -fsS http://127.0.0.1:4173/notes/ > /dev/null && break || sleep 1; done
+          mkdir -p audit
+          node --input-type=module <<'JS'
+          import { chromium } from '@playwright/test';
+          const browser = await chromium.launch();
+          const page = await browser.newPage({viewport:{width:1440,height:1000}});
+          const errors=[];
+          page.on('pageerror',error=>errors.push(error.message));
+          await page.route('https://*.supabase.co/**',route=>route.fulfill({status:503,body:'Offline audit'}));
+          await page.goto('http://127.0.0.1:4173/notes/');
+          await page.getByRole('button',{name:'Create a text note'}).waitFor();
+          await page.evaluate(async()=>{
+            const d=await import('/notes/src/db/index.ts');
+            const n=new d.NotesRepository(d.notesDatabase);
+            const labels=new d.LabelsRepository(d.notesDatabase);
+            const label=await labels.create('Reading');
+            const entries=[['A place for unfinished thoughts','Write the idea down before trying to organize it. A notebook should make room for thinking, not ask for a system first.'],['On learning a language','Small conversations, repeated often.\n\n- Listen with attention\n- Ask better questions\n- Write one useful sentence'],['Reading for the weekend','## The next chapter\n\nA few pages, a pencil, and enough time to follow an interesting thought.'],['Questions worth keeping','What did I learn today?\nWhat still needs an answer?\nWhat should I try next?'],['A simpler workspace','Keep the useful things within reach. Archive the rest without losing them.']];
+            for(const [title,content] of entries){const note=await n.create({title,content});if(title.startsWith('Reading'))await labels.assign(note.id,label.id);}
+            const c=new d.ChecklistsRepository(d.notesDatabase);
+            await c.create('Before heading out',[{id:crypto.randomUUID(),text:'Notebook and pen',checked:true,parentId:null},{id:crypto.randomUUID(),text:'Water bottle',checked:false,parentId:null},{id:crypto.randomUUID(),text:'Keys',checked:false,parentId:null}]);
+          });
+          await page.reload();
+          await page.getByRole('button',{name:'Open note: A place for unfinished thoughts'}).waitFor();
+          await page.screenshot({path:'audit/baseline-desktop.png',fullPage:true});
+          await page.getByRole('button',{name:'Open note: A place for unfinished thoughts'}).click();
+          await page.getByRole('dialog').first().waitFor();
+          await page.screenshot({path:'audit/baseline-editor.png',fullPage:true});
+          await page.keyboard.press('Escape');
+          await page.setViewportSize({width:390,height:844});
+          await page.screenshot({path:'audit/baseline-mobile.png',fullPage:true});
+          await page.setViewportSize({width:1440,height:1000});
+          await page.getByRole('button',{name:'More options',exact:true}).click();
+          await page.getByRole('menuitem',{name:'Settings',exact:true}).click();
+          await page.getByRole('button',{name:/Account & sync/}).click();
+          await page.screenshot({path:'audit/baseline-sync.png',fullPage:true});
+          console.log(JSON.stringify({errors}));
+          await browser.close();
+          JS
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: notes-v5-audit-workspace
-          path: /tmp/notes-audit
-          retention-days: 3
+          name: notes-v5-baseline-visuals
+          path: audit
+          retention-days: 7
