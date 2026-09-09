@@ -164,7 +164,7 @@
 
 .reminder-error {
   margin: 0;
-  color: #b42318;
+  color: var(--danger-strong);
   font-size: var(--text-xs);
 }
 
@@ -240,13 +240,13 @@
 }
 
 .note-card-reminder[data-overdue='true'] {
-  background: color-mix(in srgb, #b42318 10%, transparent);
-  color: #b42318;
+  background: color-mix(in srgb, var(--danger-strong) 10%, transparent);
+  color: var(--danger-strong);
 }
 
 .note-card-reminder[data-status='completed'] {
-  background: color-mix(in srgb, #14804a 10%, transparent);
-  color: #14804a;
+  background: color-mix(in srgb, var(--success-strong) 10%, transparent);
+  color: var(--success-strong);
 }
 
 .note-card-reminder[data-status='dismissed'] {
@@ -320,7 +320,7 @@
 }
 
 .reminder-notification-banner[data-state='blocked'] > svg {
-  color: #b42318;
+  color: var(--danger-strong);
 }
 
 @media (max-width: 640px) {

@@ -1,3 +1,5 @@
+import { dispatchAppEvent } from '../../app/events';
+
 export function dispatchReminderChanged(): void {
-  window.dispatchEvent(new CustomEvent('notes-reminders-changed'));
+  dispatchAppEvent('remindersChanged');
 }

@@ -391,3 +391,31 @@
     min-height: 44px;
   }
 }
+
+/* Account and sync fields share the Settings form contract. */
+.settings-choice-list label:has(input[type='email']),
+.settings-choice-list label:has(input[type='password']),
+.settings-choice-list label:has(input[type='text']) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  padding: 0;
+  border: 0;
+  gap: 8px;
+}
+.settings-choice-list input[type='email'],
+.settings-choice-list input[type='password'],
+.settings-choice-list input[type='text'],
+.settings-select-row input[type='text'] {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 16px;
+}
+.settings-group[aria-label='Signed-in sessions'] .settings-setting-row {
+  border-bottom: 1px solid var(--border);
+}

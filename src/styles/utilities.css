@@ -1,3 +1,4 @@
+/* Shared deferred-loading utilities. Keep structural feature CSS in its owning stylesheet. */
 .deferred-workspace-loading,
 .deferred-note-surface,
 .deferred-composer-tool {

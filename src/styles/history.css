@@ -252,8 +252,8 @@
 }
 
 .revision-history-error {
-  color: #b42318;
-  background: color-mix(in srgb, #b42318 8%, var(--surface));
+  color: var(--danger-strong);
+  background: color-mix(in srgb, var(--danger-strong) 8%, var(--surface));
 }
 
 .revision-history-status {

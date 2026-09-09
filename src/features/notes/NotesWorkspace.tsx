@@ -1,3 +1,4 @@
+import { subscribeAppEvent } from '../../app/events';
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LayoutGrid, NotebookPen, Rows3 } from 'lucide-react';
 
@@ -183,8 +184,8 @@ export function NotesWorkspace({
         showToast('Cloud changes could not be displayed. Reload to retry.'),
       );
     };
-    window.addEventListener('notes-cloud-sync-applied', refresh);
-    return () => window.removeEventListener('notes-cloud-sync-applied', refresh);
+    const unsubscribeCloudSync = subscribeAppEvent('cloudSyncApplied', refresh);
+    return unsubscribeCloudSync;
   }, [refreshCollection, showToast]);
 
   useEffect(() => {

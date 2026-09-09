@@ -289,7 +289,7 @@
 
 .label-manager-error {
   margin: -6px 0 0;
-  color: #b42318;
+  color: var(--danger-strong);
   font-size: var(--text-xs);
 }
 
@@ -351,7 +351,7 @@
 }
 
 .label-delete-confirmation button:first-of-type {
-  color: #b42318;
+  color: var(--danger-strong);
 }
 
 .label-manager-empty {

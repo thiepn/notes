@@ -1,3 +1,4 @@
+import { subscribeAppEvent } from '../../app/events';
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { Bell, LayoutGrid, Rows3 } from 'lucide-react';
 
@@ -97,8 +98,8 @@ export function RemindersWorkspace({
     const refresh = () => {
       void reload().catch(() => undefined);
     };
-    window.addEventListener('notes-cloud-sync-applied', refresh);
-    return () => window.removeEventListener('notes-cloud-sync-applied', refresh);
+    const unsubscribeCloudSync = subscribeAppEvent('cloudSyncApplied', refresh);
+    return unsubscribeCloudSync;
   }, [reload]);
 
   useEffect(() => {
@@ -112,10 +113,10 @@ export function RemindersWorkspace({
         }
       });
     const handleChanged = () => void reload();
-    window.addEventListener('notes-reminders-changed', handleChanged);
+    const unsubscribeReminderChanged = subscribeAppEvent('remindersChanged', handleChanged);
     return () => {
       cancelled = true;
-      window.removeEventListener('notes-reminders-changed', handleChanged);
+      unsubscribeReminderChanged();
     };
   }, [reload, showToast]);
 

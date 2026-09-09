@@ -1,3 +1,4 @@
+import { subscribeAppEvent } from '../../app/events';
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LayoutGrid, Rows3, SearchX, X } from 'lucide-react';
 
@@ -132,8 +133,8 @@ export function SearchWorkspace({
     const refresh = () => {
       void reloadIndex().catch(() => undefined);
     };
-    window.addEventListener('notes-cloud-sync-applied', refresh);
-    return () => window.removeEventListener('notes-cloud-sync-applied', refresh);
+    const unsubscribeCloudSync = subscribeAppEvent('cloudSyncApplied', refresh);
+    return unsubscribeCloudSync;
   }, [reloadIndex]);
 
   useEffect(() => {
@@ -161,8 +162,8 @@ export function SearchWorkspace({
     const handleReminderChanged = () => {
       void reloadIndex().catch(() => showToast('Search index could not be refreshed.'));
     };
-    window.addEventListener('notes-reminders-changed', handleReminderChanged);
-    return () => window.removeEventListener('notes-reminders-changed', handleReminderChanged);
+    const unsubscribeReminderChanged = subscribeAppEvent('remindersChanged', handleReminderChanged);
+    return unsubscribeReminderChanged;
   }, [reloadIndex, showToast]);
 
   useEffect(() => {

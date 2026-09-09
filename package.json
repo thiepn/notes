@@ -19,6 +19,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "foundation:check": "node scripts/check-foundation-contract.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
