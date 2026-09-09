@@ -385,6 +385,7 @@ export function ChecklistComposer({
   return (
     <div
       ref={composerRef}
+      data-editing-note={attachmentNoteId ?? undefined}
       className="note-composer checklist-composer note-composer-simplified"
       role="form"
       aria-label="New checklist"

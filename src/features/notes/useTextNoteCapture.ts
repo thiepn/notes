@@ -202,7 +202,7 @@ export function useTextNoteCapture({
 
       timerRef.current = setTimeout(() => {
         timerRef.current = null;
-        void persistLatest();
+        void persistLatest().catch(() => undefined);
       }, AUTOSAVE_DELAY_MS);
     },
     [clearTimer, persistLatest],
@@ -270,7 +270,7 @@ export function useTextNoteCapture({
 
   const retrySave = useCallback(() => {
     clearTimer();
-    void persistLatest();
+    void persistLatest().catch(() => undefined);
   }, [clearTimer, persistLatest]);
 
   useEffect(() => {
@@ -307,7 +307,7 @@ export function useTextNoteCapture({
       return;
     }
 
-    void persistLatest();
+    void persistLatest().catch(() => undefined);
   }, [
     initialCapture.journal,
     onRemoved,
@@ -323,7 +323,7 @@ export function useTextNoteCapture({
       if (!isMeaningfulDraft(pendingDraftRef.current)) return;
 
       clearTimer();
-      void persistLatest();
+      void persistLatest().catch(() => undefined);
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);

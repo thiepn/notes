@@ -4,6 +4,7 @@ const isCi = Boolean(process.env.CI);
 
 export default defineConfig({
   testDir: './pwa-e2e',
+  outputDir: './pwa-test-results',
   fullyParallel: false,
   forbidOnly: isCi,
   retries: isCi ? 1 : 0,
@@ -11,7 +12,8 @@ export default defineConfig({
   reporter: 'line',
   use: {
     baseURL: 'http://127.0.0.1:4174/notes/',
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
   },
   projects: [
     {

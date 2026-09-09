@@ -11,7 +11,7 @@ const VIEWPORTS = [
   { width: 1920, height: 1080 },
 ];
 
-test('shell remains horizontally stable across target breakpoints', async ({ page }) => {
+test('shell remains horizontally stable across target breakpoints', async ({ page }, testInfo) => {
   for (const viewport of VIEWPORTS) {
     await page.setViewportSize(viewport);
     await page.goto('./');
@@ -22,6 +22,29 @@ test('shell remains horizontally stable across target breakpoints', async ({ pag
       viewport: window.innerWidth,
     }));
 
+    if (dimensions.body > dimensions.viewport || dimensions.document > dimensions.viewport) {
+      const overflow = await page.evaluate(() =>
+        Array.from(document.querySelectorAll('*')).flatMap((node) => {
+          const rect = node.getBoundingClientRect();
+          return rect.right > innerWidth + 0.1 && rect.width > 0
+            ? [
+                {
+                  tag: node.tagName,
+                  class: node.className,
+                  right: rect.right,
+                  width: rect.width,
+                  position: getComputedStyle(node).position,
+                },
+              ]
+            : [];
+        }),
+      );
+      await testInfo.attach('overflow-diagnostics', {
+        body: JSON.stringify({ dimensions, overflow }),
+        contentType: 'application/json',
+      });
+      console.log('Overflow diagnostics:', JSON.stringify({ dimensions, overflow }));
+    }
     expect(dimensions.body).toBeLessThanOrEqual(dimensions.viewport);
     expect(dimensions.document).toBeLessThanOrEqual(dimensions.viewport);
     await expect(page.getByRole('heading', { name: 'Notes', level: 1 })).toBeVisible();

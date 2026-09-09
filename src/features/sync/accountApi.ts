@@ -307,6 +307,7 @@ async function ensureAuthenticated(session: SupabaseSession): Promise<void> {
 async function authRequest(path: string, init: RequestInit): Promise<Response> {
   const response = await fetch(`${SUPABASE_URL}${path}`, {
     ...init,
+    signal: init.signal ?? AbortSignal.timeout(30_000),
     headers: {
       apikey: SUPABASE_PUBLISHABLE_KEY,
       'Content-Type': 'application/json',
@@ -324,6 +325,7 @@ async function authenticatedRequest(
 ): Promise<Response> {
   const response = await fetch(`${SUPABASE_URL}${path}`, {
     ...init,
+    signal: init.signal ?? AbortSignal.timeout(30_000),
     headers: {
       apikey: SUPABASE_PUBLISHABLE_KEY,
       Authorization: `Bearer ${accessToken}`,

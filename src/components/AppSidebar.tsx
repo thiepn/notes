@@ -1,5 +1,19 @@
-import { useState } from 'react';
-import { Archive, Bell, Lightbulb, Pencil, Search, ShieldCheck, Tag, Trash2 } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { useDialogFocusTrap } from './ui/useDialogFocusTrap';
+import { SyncIndicator } from '../features/sync/SyncIndicator';
+import {
+  Archive,
+  Bell,
+  Lightbulb,
+  Pencil,
+  Search,
+  Command,
+  DatabaseBackup,
+  Plus,
+  Tag,
+  Trash2,
+  X,
+} from 'lucide-react';
 
 import type { LabelRecord } from '../db';
 import type { NavigationStats } from '../features/organization/navigationStats';
@@ -17,6 +31,9 @@ interface AppSidebarProps {
   onNavigate: (section: AppSection) => void;
   onLabelNavigate: (labelId: string) => void;
   onManageLabels: () => void;
+  onCreateNote: () => void;
+  onCommands: () => void;
+  onCloseNavigation: () => void;
 }
 
 const PRIMARY_NAVIGATION = [
@@ -40,7 +57,12 @@ export function AppSidebar({
   onNavigate,
   onLabelNavigate,
   onManageLabels,
+  onCreateNote,
+  onCommands,
+  onCloseNavigation,
 }: AppSidebarProps) {
+  const sidebarRef = useRef<HTMLElement>(null);
+  useDialogFocusTrap(sidebarRef, { enabled: mobile && mobileOpen });
   const [labelQuery, setLabelQuery] = useState('');
   const showLabelSearch = labels.length >= 6 && !compact;
   const normalizedLabelQuery = showLabelSearch ? labelQuery.trim().toLocaleLowerCase() : '';
@@ -55,8 +77,12 @@ export function AppSidebar({
 
   return (
     <aside
+      ref={sidebarRef}
+      tabIndex={-1}
       className="app-sidebar"
       id="app-navigation"
+      role={mobile && mobileOpen ? 'dialog' : undefined}
+      aria-modal={mobile && mobileOpen ? true : undefined}
       aria-label="Primary navigation"
       aria-hidden={mobile && !mobileOpen}
       data-compact={compact}
@@ -64,13 +90,33 @@ export function AppSidebar({
       data-testid="app-sidebar"
       inert={mobile && !mobileOpen}
     >
+      {mobile ? (
+        <div className="sidebar-mobile-heading">
+          <strong>Notebook</strong>
+          <button type="button" aria-label="Hide navigation" onClick={onCloseNavigation}>
+            <X aria-hidden="true" />
+          </button>
+        </div>
+      ) : null}
       <nav className="sidebar-nav">
+        <button
+          type="button"
+          className="sidebar-capture"
+          onClick={onCreateNote}
+          aria-label="Write a new note"
+        >
+          <Plus aria-hidden="true" />
+          <span>New note</span>
+          <kbd>C</kbd>
+        </button>
+        <p className="sidebar-eyebrow">Workspace</p>
         {PRIMARY_NAVIGATION.map(({ id, label, icon: Icon }) => {
           const active = activeSection === id && (id !== 'notes' || activeLabelId === null);
           const count = id === 'notes' ? counts.notes : counts.reminders;
           return (
             <button
               className="nav-item"
+              aria-label={label}
               type="button"
               data-active={active}
               aria-current={active ? 'page' : undefined}
@@ -123,6 +169,7 @@ export function AppSidebar({
                   return (
                     <button
                       className="nav-item sidebar-label-item"
+                      aria-label={label.name}
                       type="button"
                       data-active={active}
                       aria-current={active ? 'page' : undefined}
@@ -159,6 +206,7 @@ export function AppSidebar({
             return (
               <button
                 className="nav-item"
+                aria-label={label}
                 type="button"
                 data-active={active}
                 aria-current={active ? 'page' : undefined}
@@ -174,14 +222,27 @@ export function AppSidebar({
             );
           })}
         </div>
-      </nav>
-
-      <div className="sidebar-footer">
-        <ShieldCheck aria-hidden="true" />
-        <div>
-          <strong>Local-first</strong>
-          <span>Stored on this device</span>
+        <div className="sidebar-section">
+          <button
+            type="button"
+            className="nav-item"
+            aria-label="Backup & import"
+            data-active={activeSection === 'backup'}
+            aria-current={activeSection === 'backup' ? 'page' : undefined}
+            onClick={() => onNavigate('backup')}
+          >
+            <DatabaseBackup aria-hidden="true" />
+            <span className="nav-label">Backup & import</span>
+          </button>
+          <button type="button" className="nav-item" aria-label="Commands" onClick={onCommands}>
+            <Command aria-hidden="true" />
+            <span className="nav-label">Commands</span>
+            <kbd>Ctrl K</kbd>
+          </button>
         </div>
+      </nav>
+      <div className="sidebar-footer">
+        <SyncIndicator />
       </div>
     </aside>
   );

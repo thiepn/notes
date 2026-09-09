@@ -94,6 +94,14 @@ export function RemindersWorkspace({
   }, []);
 
   useEffect(() => {
+    const refresh = () => {
+      void reload().catch(() => undefined);
+    };
+    window.addEventListener('notes-cloud-sync-applied', refresh);
+    return () => window.removeEventListener('notes-cloud-sync-applied', refresh);
+  }, [reload]);
+
+  useEffect(() => {
     let cancelled = false;
     void Promise.resolve()
       .then(reload)

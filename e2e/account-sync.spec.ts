@@ -122,14 +122,18 @@ test.describe('Supabase account and sync', () => {
     const authSection = await fillSignedOutCredentials(page);
     await authSection.getByRole('button', { name: 'Sign in' }).click();
 
-    await expect(page.getByText('Setup required')).toBeVisible();
+    await expect(
+      page.locator('section[aria-label="Cloud sync"]').getByText('Setup required', { exact: true }),
+    ).toBeVisible();
     const claimInput = page.locator('section[aria-label="Cloud sync"] input[type="password"]');
     await expect(claimInput).toBeVisible();
     await claimInput.fill('one-time-private-code');
     await page.getByRole('button', { name: 'Claim private workspace' }).click();
 
     expect(claimedCode).toBe('one-time-private-code');
-    await expect(page.getByText('Synced', { exact: true })).toBeVisible();
+    await expect(
+      page.locator('section[aria-label="Cloud sync"]').getByText('Synced', { exact: true }),
+    ).toBeVisible();
     await expect(page.getByText('Certification Browser')).toBeVisible();
 
     const cloudDeleteInput = page
@@ -179,7 +183,11 @@ test.describe('Supabase account and sync', () => {
     await expect.poll(() => page.url()).not.toContain('#');
 
     await openSyncSettings(page);
-    await expect(page.getByText('Password recovery', { exact: true })).toBeVisible();
+    await expect(
+      page
+        .locator('section[aria-label="Cloud sync"]')
+        .getByText('Password recovery', { exact: true }),
+    ).toBeVisible();
     const recovery = page.locator('section[aria-label="Password recovery"]');
     const passwordFields = recovery.locator('input[type="password"]');
     await passwordFields.nth(0).fill('new secure password 123');

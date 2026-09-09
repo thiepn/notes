@@ -1,3 +1,4 @@
+import { useDialogFocusTrap } from '../../components/ui/useDialogFocusTrap';
 import {
   useCallback,
   useEffect,
@@ -28,6 +29,8 @@ interface OcrDialogProps {
 
 export function OcrDialog({ attachment, onAppend, onClose }: OcrDialogProps) {
   const [language, setLanguage] = useState<OcrLanguage>(readOcrLanguage);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocusTrap(dialogRef);
   const initialLanguageRef = useRef(language);
   const [phase, setPhase] = useState<OcrPhase>('running');
   const [progress, setProgress] = useState<OcrProgress>({
@@ -137,6 +140,8 @@ export function OcrDialog({ attachment, onAppend, onClose }: OcrDialogProps) {
 
   return (
     <div
+      ref={dialogRef}
+      tabIndex={-1}
       className="ocr-dialog-layer"
       role="dialog"
       aria-modal="true"

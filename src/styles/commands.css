@@ -6,8 +6,7 @@
   align-items: start;
   justify-items: center;
   padding: min(14vh, 120px) var(--space-4) var(--space-4);
-  background: rgb(17 19 24 / 34%);
-  backdrop-filter: blur(4px);
+  background: var(--scrim);
 }
 
 .command-palette {
@@ -15,9 +14,9 @@
   max-height: min(70vh, 620px);
   overflow: hidden;
   border: 1px solid var(--border-strong);
-  border-radius: 20px;
+  border-radius: var(--radius-md);
   background: var(--surface);
-  box-shadow: 0 24px 80px rgb(17 19 24 / 26%);
+  box-shadow: var(--shadow-dialog);
   color: var(--text);
 }
 

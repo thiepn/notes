@@ -78,6 +78,7 @@ export function TextNoteComposer({
   const lastOpenRequestIdRef = useRef<number | undefined>(undefined);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const captureTriggerRef = useRef<HTMLButtonElement>(null);
+  const restoreCaptureFocusRef = useRef(false);
   const quickImageInputRef = useRef<HTMLInputElement>(null);
   const expandedImageInputRef = useRef<HTMLInputElement>(null);
   const [attachmentRefreshKey, setAttachmentRefreshKey] = useState(0);
@@ -236,10 +237,16 @@ export function TextNoteComposer({
   };
 
   const finishAndRestoreFocus = useCallback(async () => {
+    restoreCaptureFocusRef.current = true;
     const finished = await finishCapture();
-    if (!finished) return;
-    window.requestAnimationFrame(() => captureTriggerRef.current?.focus());
+    if (!finished) restoreCaptureFocusRef.current = false;
   }, [finishCapture]);
+
+  useLayoutEffect(() => {
+    if (expanded || !restoreCaptureFocusRef.current) return;
+    restoreCaptureFocusRef.current = false;
+    captureTriggerRef.current?.focus({ preventScroll: true });
+  }, [expanded]);
 
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Escape') {
@@ -346,6 +353,7 @@ export function TextNoteComposer({
   ) : (
     <div
       ref={composerRef}
+      data-editing-note={activeNoteId ?? undefined}
       className="note-composer note-composer-simplified"
       role="form"
       aria-label="New note"

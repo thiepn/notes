@@ -11,6 +11,7 @@ const FOCUSABLE_SELECTOR = [
 ].join(',');
 
 interface DialogFocusOptions<TInitial extends HTMLElement> {
+  enabled?: boolean;
   onEscape?: () => void;
   initialFocusRef?: RefObject<TInitial | null>;
 }
@@ -19,21 +20,34 @@ export function useDialogFocusTrap<
   TContainer extends HTMLElement,
   TInitial extends HTMLElement = HTMLElement,
 >(containerRef: RefObject<TContainer | null>, options: DialogFocusOptions<TInitial> = {}): void {
+  const handleEscape = useEffectEvent((event: KeyboardEvent) => {
+    if (!options.onEscape) return;
+    event.preventDefault();
+    event.stopPropagation();
+    options.onEscape();
+  });
   const setupDialog = useEffectEvent(() => {
     const container = containerRef.current;
-    if (!container) return;
+    if (!container || options.enabled === false) return;
+    const isTopmost = () => {
+      const dialogs = Array.from(
+        document.querySelectorAll<HTMLElement>('[aria-modal="true"]'),
+      ).filter((node) => node.getClientRects().length > 0);
+      const top = dialogs.at(-1);
+      return !top || top === container;
+    };
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const frame = window.requestAnimationFrame(() => {
+      if (!isTopmost() || container.contains(document.activeElement)) return;
       const target =
         options.initialFocusRef?.current ?? focusableElements(container)[0] ?? container;
       target.focus({ preventScroll: true });
     });
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && options.onEscape) {
-        event.preventDefault();
-        event.stopPropagation();
-        options.onEscape();
+      if (!isTopmost() || event.defaultPrevented) return;
+      if (event.key === 'Escape') {
+        handleEscape(event);
         return;
       }
       if (event.key !== 'Tab') return;
@@ -68,7 +82,7 @@ export function useDialogFocusTrap<
     };
   });
 
-  useEffect(() => setupDialog(), []);
+  useEffect(() => setupDialog(), [options.enabled]);
 }
 
 function focusableElements(container: HTMLElement): HTMLElement[] {
@@ -77,6 +91,7 @@ function focusableElements(container: HTMLElement): HTMLElement[] {
       if (element.hidden || element.tabIndex < 0 || element.getClientRects().length === 0)
         return false;
       if (element.closest('[inert], [aria-hidden="true"]')) return false;
+      if (getComputedStyle(element).visibility === 'hidden') return false;
       return true;
     },
   );

@@ -1,3 +1,4 @@
+import { useDialogFocusTrap } from '../../components/ui/useDialogFocusTrap';
 import {
   useCallback,
   useEffect,
@@ -24,6 +25,8 @@ interface VoiceRecorderDialogProps {
 }
 
 export function VoiceRecorderDialog({ onSave, onClose }: VoiceRecorderDialogProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocusTrap(dialogRef);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -243,6 +246,8 @@ export function VoiceRecorderDialog({ onSave, onClose }: VoiceRecorderDialogProp
 
   return (
     <div
+      ref={dialogRef}
+      tabIndex={-1}
       className="voice-dialog-layer"
       role="dialog"
       aria-modal="true"

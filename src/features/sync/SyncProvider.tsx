@@ -8,7 +8,7 @@ import {
   ensureFreshSession,
   hasNotesSyncAccess,
   readStoredSession,
-  refreshSession,
+  SupabaseRequestError,
   signInWithPassword,
   signOutSession,
   storeSession,
@@ -31,8 +31,18 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const [lastResult, setLastResult] = useState<SyncResult | null>(null);
   const syncPromiseRef = useRef<Promise<void> | null>(null);
   const initialSessionRef = useRef(session);
+  const sessionRef = useRef(session);
+  const sessionEpochRef = useRef(0);
+  const initialCallbackRef = useRef<Promise<
+    import('./accountApi').AuthCallbackResult | null
+  > | null>(null);
+  const hasInitialCallbackRef = useRef(
+    window.location.hash.includes('access_token=') || window.location.hash.includes('error='),
+  );
 
   const updateSession = useCallback((next: SupabaseSession | null) => {
+    if (sessionRef.current?.user.id !== next?.user.id) sessionEpochRef.current += 1;
+    sessionRef.current = next;
     setSession(next);
     setPendingEmail(next?.user.new_email ?? null);
     storeSession(next);
@@ -56,7 +66,8 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const refreshSessionListFor = useCallback(async (targetSession: SupabaseSession) => {
     try {
       const { listAuthSessions } = await import('./accountApi');
-      setSessions(await listAuthSessions(targetSession));
+      const list = await listAuthSessions(targetSession);
+      if (sessionRef.current?.user.id === targetSession.user.id) setSessions(list);
     } catch {
       setSessions([]);
     }
@@ -71,23 +82,34 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       }
       if (syncPromiseRef.current) return syncPromiseRef.current;
 
+      const epoch = sessionEpochRef.current;
+      const isCurrent = () =>
+        epoch === sessionEpochRef.current && sessionRef.current?.user.id === targetSession.user.id;
       const operation = (async () => {
         setStatus('syncing');
         setMessage(null);
         try {
           const fresh = await ensureFreshSession(targetSession);
+          if (!isCurrent()) return;
           if (fresh.access_token !== targetSession.access_token) updateSession(fresh);
           const { synchronizeNotes } = await import('./syncEngine');
-          const result = await synchronizeNotes(fresh);
+          if (!isCurrent()) return;
+          const result = await synchronizeNotes(fresh, isCurrent);
+          if (!isCurrent()) return;
           setLastResult(result);
-          setLastSyncedAt(Date.now());
-          setStatus('synced');
+          if (!result.failed && !result.deferred) setLastSyncedAt(Date.now());
+          setStatus(result.failed ? 'error' : result.deferred ? 'pending' : 'synced');
           setMessage(
-            result.conflicts > 0
-              ? `${result.conflicts} sync conflict${result.conflicts === 1 ? '' : 's'} resolved conservatively.`
-              : null,
+            result.failed > 0
+              ? `${result.failed} records could not sync. Local data was kept; retry when ready.`
+              : result.deferred > 0
+                ? 'Changes are saved locally and pending sync. Close any open editor to finish; pending changes retry automatically.'
+                : result.conflicts > 0
+                  ? `${result.conflicts} sync conflict${result.conflicts === 1 ? '' : 's'} resolved conservatively.`
+                  : null,
           );
         } catch (error) {
+          if (!isCurrent()) return;
           setStatus(navigator.onLine ? 'error' : 'offline');
           setMessage(error instanceof Error ? error.message : 'Notes could not sync.');
         }
@@ -105,7 +127,13 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
   const activateSession = useCallback(
     async (targetSession: SupabaseSession) => {
+      const epoch = sessionEpochRef.current;
       const granted = await hasNotesSyncAccess(targetSession);
+      if (
+        epoch !== sessionEpochRef.current ||
+        sessionRef.current?.user.id !== targetSession.user.id
+      )
+        return;
       setAccessGranted(granted);
       if (!granted) {
         setSessions([]);
@@ -120,30 +148,35 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   );
 
   const syncNow = useCallback(async () => {
-    if (!session) {
-      setStatus('local');
+    if (!session || recoveryMode) return;
+    if (!navigator.onLine) {
+      setStatus('offline');
       return;
     }
-    if (!accessGranted) {
-      setStatus('setup');
-      setMessage('Enter the one-time setup code to enable this Notes workspace.');
-      return;
+    const epoch = sessionEpochRef.current;
+    try {
+      const fresh = await ensureFreshSession(session);
+      if (epoch !== sessionEpochRef.current) return;
+      if (fresh.access_token !== session.access_token) updateSession(fresh);
+      if (!accessGranted) await activateSession(fresh);
+      else await runSync(fresh);
+    } catch (error) {
+      if (epoch !== sessionEpochRef.current) return;
+      setStatus(navigator.onLine ? 'error' : 'offline');
+      setMessage(error instanceof Error ? error.message : 'Cloud sync could not reconnect.');
     }
-    await runSync(session);
-  }, [accessGranted, runSync, session]);
+  }, [accessGranted, activateSession, recoveryMode, runSync, session, updateSession]);
 
   useEffect(() => {
     let cancelled = false;
 
     const initialize = async () => {
       try {
-        if (
-          typeof window !== 'undefined' &&
-          (window.location.hash.includes('access_token=') ||
-            window.location.hash.includes('error='))
-        ) {
-          const { consumeAuthCallback } = await import('./accountApi');
-          const callback = await consumeAuthCallback();
+        if (hasInitialCallbackRef.current) {
+          initialCallbackRef.current ??= import('./accountApi').then(({ consumeAuthCallback }) =>
+            consumeAuthCallback(),
+          );
+          const callback = await initialCallbackRef.current;
           if (cancelled || !callback) return;
 
           if (callback.error || !callback.session) {
@@ -153,14 +186,17 @@ export function SyncProvider({ children }: { children: ReactNode }) {
           }
 
           updateSession(callback.session);
-          await activateSession(callback.session);
-          if (cancelled) return;
-
           if (callback.type === 'recovery') {
             setRecoveryMode(true);
             setStatus('recovery');
             setMessage('Password recovery verified. Choose a new password below.');
-          } else if (callback.type === 'email_change') {
+            // Do not merge data or run background sync before the replacement password is set.
+            window.dispatchEvent(new CustomEvent('notes-open-sync-settings'));
+            return;
+          }
+          await activateSession(callback.session);
+          if (cancelled) return;
+          if (callback.type === 'email_change') {
             setPendingEmail(null);
             setMessage('Email address updated.');
           } else if (callback.type === 'signup') {
@@ -172,17 +208,29 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
         const initialSession = initialSessionRef.current;
         if (!initialSession) return;
-        const fresh = await refreshSession(initialSession);
+        if (!navigator.onLine) {
+          setStatus('offline');
+          return;
+        }
+        const fresh = await ensureFreshSession(initialSession);
         if (cancelled) return;
         updateSession(fresh);
         await activateSession(fresh);
       } catch (error) {
         if (cancelled) return;
-        clearSessionState(
-          error instanceof Error
-            ? error.message
-            : 'Your saved cloud session expired. Sign in again to resume sync.',
-        );
+        if (
+          error instanceof SupabaseRequestError &&
+          (error.status === 400 || error.status === 401)
+        ) {
+          clearSessionState(
+            'Your cloud session expired. Sign in again; local notes are unchanged.',
+          );
+        } else {
+          setStatus(navigator.onLine ? 'error' : 'offline');
+          setMessage(
+            'Cloud connection unavailable. Your notes and saved sign-in remain on this device.',
+          );
+        }
       }
     };
 
@@ -193,7 +241,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   }, [activateSession, clearSessionState, updateSession]);
 
   useEffect(() => {
-    if (!session || !accessGranted || recoveryMode) return;
+    if (!session || recoveryMode) return;
     const interval = window.setInterval(() => {
       if (document.visibilityState === 'visible') void syncNow();
     }, AUTO_SYNC_MS);
@@ -362,13 +410,10 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const signOutAllDevices = useCallback(async () => {
     const current = session;
     if (!current) return;
-    try {
-      const fresh = await ensureFreshSession(current);
-      const { signOutScoped } = await import('./accountApi');
-      await signOutScoped(fresh, 'global');
-    } finally {
-      clearSessionState('Signed out on all devices. Local Notes data remains on this device.');
-    }
+    const fresh = await ensureFreshSession(current);
+    const { signOutScoped } = await import('./accountApi');
+    await signOutScoped(fresh, 'global');
+    clearSessionState('Signed out on all devices. Local Notes data remains on this device.');
   }, [clearSessionState, session]);
 
   const deleteCloudData = useCallback(async () => {

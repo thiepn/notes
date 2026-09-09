@@ -4,7 +4,15 @@ import type { AuthSessionInfo, DeleteAccountResult } from './accountApi';
 import type { SyncResult } from './syncEngine';
 
 export type SyncStatus =
-  'local' | 'connecting' | 'setup' | 'recovery' | 'syncing' | 'synced' | 'offline' | 'error';
+  | 'local'
+  | 'connecting'
+  | 'setup'
+  | 'recovery'
+  | 'syncing'
+  | 'pending'
+  | 'synced'
+  | 'offline'
+  | 'error';
 
 export interface SyncContextValue {
   status: SyncStatus;
@@ -57,6 +65,8 @@ export function syncStatusLabel(status: SyncStatus): string {
       return 'Password recovery';
     case 'syncing':
       return 'Syncing…';
+    case 'pending':
+      return 'Saved locally';
     case 'synced':
       return 'Synced';
     case 'offline':

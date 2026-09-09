@@ -1,11 +1,12 @@
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
-import { NotebookPen } from 'lucide-react';
+import { Bell, Menu, NotebookPen, Plus, Search } from 'lucide-react';
+import { SyncIndicator } from '../features/sync/SyncIndicator';
+import { useSync } from '../features/sync/SyncContext';
 
 import { AppHeader } from '../components/AppHeader';
 import { AppSidebar, type AppSection } from '../components/AppSidebar';
 import { LabelsRepository, notesDatabase, type LabelRecord } from '../db';
 import type { CommandPaletteItem } from '../features/commands/CommandPalette';
-import { LabelManagerDialog } from '../features/notes/LabelManagerDialog';
 import type { SettingsSection } from '../features/settings/SettingsDialog';
 import {
   EMPTY_NAVIGATION_STATS,
@@ -28,6 +29,12 @@ const MOBILE_QUERY = '(max-width: 767px)';
 const ACTIVE_SECTION_KEY = 'notes.active-section';
 const ACTIVE_LABEL_KEY = 'notes.active-label';
 const labelsRepository = new LabelsRepository(notesDatabase);
+
+const LabelManagerDialog = lazy(() =>
+  import('../features/notes/LabelManagerDialog').then((module) => ({
+    default: module.LabelManagerDialog,
+  })),
+);
 
 const BackupWorkspace = lazy(() =>
   import('../features/backup/BackupWorkspace').then((module) => ({
@@ -97,6 +104,7 @@ const SECTION_COPY: Record<
 };
 
 export function AppShell() {
+  const { recoveryMode } = useSync();
   const [activeSection, setActiveSection] = useState<AppSection>(() => readActiveSection());
   const [activeLabelId, setActiveLabelId] = useState<string | null>(() => readActiveLabelId());
   const [labels, setLabels] = useState<LabelRecord[]>([]);
@@ -134,6 +142,28 @@ export function AppShell() {
       // Navigation counts are derived convenience state and never block note access.
     }
   }, []);
+
+  const handleCollectionChanged = useCallback(() => {
+    void refreshNavigationStats();
+  }, [refreshNavigationStats]);
+
+  useEffect(() => {
+    const refresh = () => {
+      void refreshLabels().catch(() => undefined);
+      void refreshNavigationStats();
+    };
+    window.addEventListener('notes-cloud-sync-applied', refresh);
+    return () => window.removeEventListener('notes-cloud-sync-applied', refresh);
+  }, [refreshLabels, refreshNavigationStats]);
+
+  useEffect(() => {
+    if (!recoveryMode) return;
+    const frame = requestAnimationFrame(() => {
+      setSettingsInitialSection('sync');
+      setSettingsOpen(true);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [recoveryMode]);
 
   const clearSearch = useCallback(() => {
     setSearchQuery('');
@@ -539,8 +569,12 @@ export function AppShell() {
 
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#main-content">
+        Skip to notes
+      </a>
       <AppHeader
         onMenu={handleMenu}
+        navigationOpen={isMobile ? mobileSidebarOpen : !sidebarCompact}
         onCommandPalette={() => setCommandPaletteOpen(true)}
         onSettings={() => {
           setSettingsInitialSection('appearance');
@@ -578,6 +612,12 @@ export function AppShell() {
           onNavigate={handleNavigate}
           onLabelNavigate={handleLabelNavigate}
           onManageLabels={openLabelManager}
+          onCreateNote={() => prepareNotesCapture('text')}
+          onCommands={() => {
+            setMobileSidebarOpen(false);
+            setCommandPaletteOpen(true);
+          }}
+          onCloseNavigation={() => setMobileSidebarOpen(false)}
         />
 
         {isMobile && mobileSidebarOpen ? (
@@ -589,11 +629,16 @@ export function AppShell() {
           />
         ) : null}
 
-        <main className="app-main" id="main-content">
+        <main
+          className="app-main"
+          id="main-content"
+          tabIndex={-1}
+          inert={isMobile && mobileSidebarOpen}
+        >
           <div className={`workspace${searchActive ? ' workspace-search-active' : ''}`}>
             <header className="workspace-heading">
               <div>
-                <p className="workspace-kicker">Local workspace</p>
+                <p className="workspace-kicker">Your notebook</p>
                 <div className="workspace-title-line">
                   <h1>{section.title}</h1>
                   {activeWorkspaceCountLabel ? (
@@ -602,7 +647,16 @@ export function AppShell() {
                 </div>
                 <p>{section.description}</p>
               </div>
-              <span className="local-badge">Local only</span>
+              <div className="workspace-meta">
+                <time className="workspace-date" dateTime={new Date().toISOString().slice(0, 10)}>
+                  {new Date().toLocaleDateString(undefined, {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                  })}
+                </time>
+                <SyncIndicator />
+              </div>
             </header>
 
             {searchActive ? (
@@ -642,7 +696,7 @@ export function AppShell() {
                 onCaptureRequestHandled={(requestId) =>
                   setCaptureRequest((current) => (current?.id === requestId ? null : current))
                 }
-                onCollectionChanged={() => void refreshNavigationStats()}
+                onCollectionChanged={handleCollectionChanged}
               />
             ) : (
               <SectionPlaceholder
@@ -653,6 +707,50 @@ export function AppShell() {
           </div>
         </main>
       </div>
+
+      <nav className="mobile-navigation" aria-label="Mobile navigation" inert={mobileSidebarOpen}>
+        <button
+          type="button"
+          aria-label="Show notes"
+          aria-current={activeSection === 'notes' && !searchActive ? 'page' : undefined}
+          onClick={() => handleNavigate('notes')}
+        >
+          <NotebookPen aria-hidden="true" />
+          <span>Notes</span>
+        </button>
+        <button type="button" aria-label="Find a note" onClick={focusSearch}>
+          <Search aria-hidden="true" />
+          <span>Search</span>
+        </button>
+        <button
+          type="button"
+          className="mobile-create"
+          aria-label="New note"
+          onClick={() => prepareNotesCapture('text')}
+        >
+          <Plus aria-hidden="true" />
+          <span>New</span>
+        </button>
+        <button
+          type="button"
+          aria-label="Show reminders"
+          aria-current={activeSection === 'reminders' && !searchActive ? 'page' : undefined}
+          onClick={() => handleNavigate('reminders')}
+        >
+          <Bell aria-hidden="true" />
+          <span>Reminders</span>
+        </button>
+        <button
+          type="button"
+          aria-label="Open navigation"
+          aria-expanded={mobileSidebarOpen}
+          aria-controls="app-navigation"
+          onClick={handleMenu}
+        >
+          <Menu aria-hidden="true" />
+          <span>More</span>
+        </button>
+      </nav>
 
       {settingsOpen ? (
         <Suspense fallback={<div className="deferred-settings-loading">Loading settings…</div>}>

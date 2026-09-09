@@ -8,8 +8,8 @@ describe('APP_CONFIG', () => {
     expect(APP_CONFIG.productionUrl).toBe('https://thiepn.dev/notes/');
   });
 
-  it('keeps v1 local-first with cloud sync disabled', () => {
+  it('keeps local-first storage with optional cloud sync available', () => {
     expect(APP_CONFIG.storageMode).toBe('local-first');
-    expect(APP_CONFIG.cloudSyncEnabled).toBe(false);
+    expect(APP_CONFIG.cloudSyncEnabled).toBe(true);
   });
 });

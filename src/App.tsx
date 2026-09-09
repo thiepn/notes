@@ -52,17 +52,9 @@ function SyncBridge({ onValue }: { onValue(value: SyncContextValue): void }) {
 }
 
 function SyncedWorkspace() {
-  const [libraryVersion, setLibraryVersion] = useState(0);
-
-  useEffect(() => {
-    const handleCloudChanges = () => setLibraryVersion((version) => version + 1);
-    window.addEventListener('notes-cloud-sync-applied', handleCloudChanges);
-    return () => window.removeEventListener('notes-cloud-sync-applied', handleCloudChanges);
-  }, []);
-
   return (
     <PrivacyGate>
-      <AppShell key={libraryVersion} />
+      <AppShell />
       <PwaStatus />
     </PrivacyGate>
   );

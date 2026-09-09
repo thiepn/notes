@@ -35,6 +35,7 @@ const searchHistoryRepository = new SearchHistoryRepository(notesDatabase);
 
 interface AppHeaderProps {
   onMenu(): void;
+  navigationOpen: boolean;
   onCommandPalette(): void;
   onSettings(): void;
   onViewModeChange(view: 'grid' | 'list'): void;
@@ -51,6 +52,7 @@ interface AppHeaderProps {
 
 export function AppHeader({
   onMenu,
+  navigationOpen,
   onCommandPalette,
   onSettings,
   onViewModeChange,
@@ -222,6 +224,7 @@ export function AppHeader({
           tooltip="Toggle navigation"
           onClick={onMenu}
           aria-controls="app-navigation"
+          aria-expanded={navigationOpen}
           data-testid="navigation-toggle"
         >
           <Menu />
@@ -375,6 +378,12 @@ export function AppHeader({
           }
         }}
       >
+        <IconButton label="Open command palette" onClick={onCommandPalette}>
+          <Command />
+        </IconButton>
+        <IconButton label="Open settings" onClick={onSettings}>
+          <Settings2 />
+        </IconButton>
         <IconButton
           ref={moreButtonRef}
           label="More options"
