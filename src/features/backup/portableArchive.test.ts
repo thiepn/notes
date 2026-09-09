@@ -15,9 +15,11 @@ const CHILD = '44444444-4444-4444-8444-444444444444';
 const LABEL = '55555555-5555-4555-8555-555555555555';
 const ATTACHMENT = '66666666-6666-4666-8666-666666666666';
 const REMINDER = '77777777-7777-4777-8777-777777777777';
+const ATTACHMENT_2 = '88888888-8888-4888-8888-888888888888';
 
 async function fixture(): Promise<BackupDocument> {
   const bytes = new Uint8Array([1, 2, 3, 4, 5]);
+  const secondBytes = new Uint8Array([9, 8, 7]);
   return {
     format: 'thiepn.notes.backup',
     formatVersion: 2,
@@ -98,6 +100,17 @@ async function fixture(): Promise<BackupDocument> {
           dataSha256: await sha256Hex(bytes),
           createdAt: 170,
         },
+        {
+          id: ATTACHMENT_2,
+          noteId: TEXT_NOTE,
+          name: 'photo?.png',
+          mimeType: 'image/png',
+          size: secondBytes.byteLength,
+          checksum: 'second-source-checksum',
+          dataBase64: bytesToBase64(secondBytes),
+          dataSha256: await sha256Hex(secondBytes),
+          createdAt: 171,
+        },
       ],
       reminders: [
         {
@@ -132,23 +145,42 @@ describe('portable library archive', () => {
       trashed: 0,
       checklistItems: 2,
       labels: 1,
-      attachments: 1,
+      attachments: 2,
       reminders: 1,
     });
+    expect(built.manifest.labels).toEqual([
+      expect.objectContaining({ id: LABEL, name: 'Reference' }),
+    ]);
 
     const textEntry = built.manifest.notes.find((note) => note.id === TEXT_NOTE)!;
     expect(textEntry.labels).toEqual(['Reference']);
-    expect(textEntry.reminder).toMatchObject({ timeZone: 'Europe/Berlin', status: 'active' });
-    expect(textEntry.attachments).toHaveLength(1);
+    expect(textEntry.reminder).toMatchObject({
+      id: REMINDER,
+      timeZone: 'Europe/Berlin',
+      status: 'active',
+    });
+    expect(textEntry.attachments).toHaveLength(2);
     expect(textEntry.path).toBe(`notes/Travel - ideas--${TEXT_NOTE.slice(0, 8)}.md`);
-    expect(textEntry.attachments[0]?.path).toBe(`attachments/${TEXT_NOTE}/photo-.png`);
-    expect(Array.from(built.files[textEntry.attachments[0]!.path]!)).toEqual([1, 2, 3, 4, 5]);
+
+    const firstPath = `attachments/${TEXT_NOTE}/photo---${ATTACHMENT.slice(0, 8)}.png`;
+    const secondPath = `attachments/${TEXT_NOTE}/photo---${ATTACHMENT_2.slice(0, 8)}.png`;
+    expect(textEntry.attachments.map((attachment) => attachment.path)).toEqual([
+      firstPath,
+      secondPath,
+    ]);
+    expect(Array.from(built.files[firstPath]!)).toEqual([1, 2, 3, 4, 5]);
+    expect(Array.from(built.files[secondPath]!)).toEqual([9, 8, 7]);
+    expect(textEntry.attachments[0]).toMatchObject({
+      sourceChecksum: 'source-checksum',
+      createdAt: 170,
+    });
 
     const textMarkdown = decoder.decode(built.files[textEntry.path]);
     expect(textMarkdown).toContain('lifecycle: "active"');
     expect(textMarkdown).toContain('labels: ["Reference"]');
     expect(textMarkdown).toContain('Portable body with [[links]].');
-    expect(textMarkdown).toContain(`](../attachments/${TEXT_NOTE}/photo-.png)`);
+    expect(textMarkdown).toContain(`](../${firstPath})`);
+    expect(textMarkdown).toContain(`](../${secondPath})`);
 
     const checklistEntry = built.manifest.notes.find((note) => note.id === CHECKLIST_NOTE)!;
     expect(checklistEntry.lifecycle).toBe('archived');
@@ -158,9 +190,11 @@ describe('portable library archive', () => {
 
     const manifestFile = JSON.parse(decoder.decode(built.files['manifest.json'])) as {
       format: string;
+      labels: unknown[];
       notes: unknown[];
     };
     expect(manifestFile.format).toBe(NOTES_PORTABLE_FORMAT);
+    expect(manifestFile.labels).toHaveLength(1);
     expect(manifestFile.notes).toHaveLength(2);
     expect(decoder.decode(built.files['README.md'])).toContain('human-readable export');
   });
