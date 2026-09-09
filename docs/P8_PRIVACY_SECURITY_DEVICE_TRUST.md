@@ -45,15 +45,15 @@ Repeated incorrect unlocks now create a device-local attempt record.
 
 Delay schedule:
 
-| Consecutive failure | Delay |
-| ---: | ---: |
-| 1 | none |
-| 2 | none |
-| 3 | 2 seconds |
-| 4 | 5 seconds |
-| 5 | 15 seconds |
-| 6 | 30 seconds |
-| 7+ | 60 seconds maximum |
+| Consecutive failure |              Delay |
+| ------------------: | -----------------: |
+|                   1 |               none |
+|                   2 |               none |
+|                   3 |          2 seconds |
+|                   4 |          5 seconds |
+|                   5 |         15 seconds |
+|                   6 |         30 seconds |
+|                  7+ | 60 seconds maximum |
 
 The lock screen disables both the passcode field and submit button during an active cooldown and shows the remaining delay.
 
