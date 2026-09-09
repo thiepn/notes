@@ -178,6 +178,40 @@ export function toggleChecklistItem(
   return [...next.filter((candidate) => !blockIds.has(candidate.id)), ...block];
 }
 
+export function duplicateChecklistItem(
+  items: ChecklistDraftItem[],
+  itemId: string,
+): { items: ChecklistDraftItem[]; duplicatedId: string } {
+  const index = items.findIndex((item) => item.id === itemId);
+  if (index < 0) return { items, duplicatedId: '' };
+  const source = items[index];
+  if (!source) return { items, duplicatedId: '' };
+
+  if (source.parentId !== null) {
+    const duplicate = { ...source, id: crypto.randomUUID() };
+    const next = [...items];
+    next.splice(index + 1, 0, duplicate);
+    return { items: next, duplicatedId: duplicate.id };
+  }
+
+  const block = rootBlock(items, index);
+  const duplicateRoot = { ...source, id: crypto.randomUUID() };
+  const duplicateBlock = [duplicateRoot];
+  for (const child of block.slice(1)) {
+    duplicateBlock.push({ ...child, id: crypto.randomUUID(), parentId: duplicateRoot.id });
+  }
+  const next = [...items];
+  next.splice(index + block.length, 0, ...duplicateBlock);
+  return { items: next, duplicatedId: duplicateRoot.id };
+}
+
+export function setAllChecklistItemsChecked(
+  items: ChecklistDraftItem[],
+  checked: boolean,
+): ChecklistDraftItem[] {
+  return items.map((item) => (item.text.trim() ? { ...item, checked } : item));
+}
+
 export function clearCompletedChecklistItems(items: ChecklistDraftItem[]): ChecklistDraftItem[] {
   const removeIds = new Set(items.filter((item) => item.checked).map((item) => item.id));
   for (const item of items) {

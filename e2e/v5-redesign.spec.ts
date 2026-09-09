@@ -217,6 +217,8 @@ test('mobile navigation opens a contained drawer and returns to a working captur
   }
   await drawer.getByRole('button', { name: 'Hide navigation' }).click();
   await page.getByRole('button', { name: 'New note', exact: true }).click();
+  const captureMenu = page.getByRole('dialog', { name: 'New', exact: true });
+  await captureMenu.getByRole('button', { name: /^Text note/ }).click();
   const form = page.getByRole('form', { name: 'New note' });
   await form
     .getByRole('textbox', { name: 'Note text', exact: true })

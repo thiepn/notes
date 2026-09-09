@@ -3,11 +3,13 @@ import { describe, expect, it } from 'vitest';
 import type { ChecklistDraftItem } from '../../db';
 import {
   clearCompletedChecklistItems,
+  duplicateChecklistItem,
   indentChecklistItem,
   isMeaningfulChecklist,
   moveChecklistItem,
   outdentChecklistItem,
   reorderChecklistBefore,
+  setAllChecklistItemsChecked,
   toggleChecklistItem,
 } from './checklistModel';
 
@@ -59,6 +61,32 @@ describe('checklist model', () => {
     const next = toggleChecklistItem(items, 'b', true, true);
     expect(next.map((entry) => entry.id)).toEqual(['a', 'c', 'b', 'd']);
     expect(next.find((entry) => entry.id === 'b')).toMatchObject({ checked: true, parentId: 'a' });
+  });
+
+  it('duplicates a root together with its child block and remaps the copied parent', () => {
+    const items = [item('a', 'Parent'), item('b', 'Child', 'a'), item('c', 'Other')];
+    const duplicated = duplicateChecklistItem(items, 'a');
+    expect(duplicated.items).toHaveLength(5);
+    expect(duplicated.items.map((entry) => entry.text)).toEqual([
+      'Parent',
+      'Child',
+      'Parent',
+      'Child',
+      'Other',
+    ]);
+    const copiedRoot = duplicated.items[2];
+    const copiedChild = duplicated.items[3];
+    expect(copiedRoot?.id).not.toBe('a');
+    expect(copiedChild?.parentId).toBe(copiedRoot?.id);
+    expect(duplicated.duplicatedId).toBe(copiedRoot?.id);
+  });
+
+  it('checks or unchecks all meaningful items without changing empty rows', () => {
+    const blank = item('blank', '');
+    const next = setAllChecklistItemsChecked([item('a', 'A'), blank], true);
+    expect(next[0]?.checked).toBe(true);
+    expect(next[1]?.checked).toBe(false);
+    expect(setAllChecklistItemsChecked(next, false)[0]?.checked).toBe(false);
   });
 
   it('clearing a completed parent also removes its children', () => {
