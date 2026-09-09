@@ -37,7 +37,7 @@ test('mobile universal capture can start an image note and a scan exposes local 
 
   await page.getByRole('button', { name: 'New note', exact: true }).click();
   let menu = page.getByRole('dialog', { name: 'New', exact: true });
-  await menu.getByLabel('Choose images for new note').setInputFiles({
+  await menu.locator('input[type="file"][multiple]').setInputFiles({
     name: 'capture.png',
     mimeType: 'image/png',
     buffer: PNG,
@@ -48,7 +48,7 @@ test('mobile universal capture can start an image note and a scan exposes local 
 
   await page.getByRole('button', { name: 'New note', exact: true }).click();
   menu = page.getByRole('dialog', { name: 'New', exact: true });
-  await menu.getByLabel('Scan image for new note').setInputFiles({
+  await menu.locator('input[type="file"][capture="environment"]').setInputFiles({
     name: 'scan.png',
     mimeType: 'image/png',
     buffer: PNG,
