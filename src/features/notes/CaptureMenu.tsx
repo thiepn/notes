@@ -97,7 +97,8 @@ export function CaptureMenu({ onClose, onCapture }: CaptureMenuProps) {
           type="file"
           accept={NATIVE_IMAGE_ACCEPT}
           multiple
-          aria-label="Choose images for new note"
+          tabIndex={-1}
+          aria-hidden="true"
           onChange={(event) => chooseFiles('image', event)}
         />
         <input
@@ -106,7 +107,8 @@ export function CaptureMenu({ onClose, onCapture }: CaptureMenuProps) {
           type="file"
           accept={NATIVE_IMAGE_ACCEPT}
           capture="environment"
-          aria-label="Scan image for new note"
+          tabIndex={-1}
+          aria-hidden="true"
           onChange={(event) => chooseFiles('scan', event)}
         />
 
