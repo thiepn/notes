@@ -1,0 +1,94 @@
+name: Notes V5 certification
+on:
+  push:
+    branches: [feat/notes-v5-editorial-overhaul]
+    paths: [.github/workflows/v5-certify.yml]
+permissions:
+  contents: write
+concurrency:
+  group: notes-v5-certification
+  cancel-in-progress: true
+jobs:
+  certify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/notes-v5-editorial-overhaul
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - name: Verify and apply source bundle
+        run: |
+          python3 <<'PY'
+          import base64, hashlib, json, lzma, shutil
+          from pathlib import Path
+          root=Path.cwd()
+          encoded=''.join((root/'.v5-transfer'/f'{i}.b64').read_text().strip() for i in range(1,5))
+          data=lzma.decompress(base64.b64decode(encoded,validate=True))
+          assert hashlib.sha256(data).hexdigest()=='e5aaec71125ccb46aca1b056bb368f8f4c0b1f5a895240b416b5a168b4edb1b9', 'Source bundle checksum mismatch'
+          items=json.loads(data)
+          prepared=[]
+          for x in items:
+              p=(root/x['p']).resolve()
+              assert p.is_relative_to(root) and '.git' not in p.relative_to(root).parts
+              before=p.read_bytes() if p.exists() else None
+              assert (hashlib.sha256(before).hexdigest() if before is not None else None)==x['b'], 'Baseline changed: '+x['p']
+              if x.get('d'): after=None
+              elif 's' in x: after=x['s'].encode()
+              else:
+                  lines=before.decode().splitlines(keepends=True)
+                  for i,j,s in reversed(x['e']): lines[i:j]=[s]
+                  after=''.join(lines).encode()
+              assert (hashlib.sha256(after).hexdigest() if after is not None else None)==x['a'], 'Output checksum mismatch: '+x['p']
+              prepared.append((p,after))
+          for p,after in prepared:
+              if after is None: p.unlink()
+              else:
+                  p.parent.mkdir(parents=True,exist_ok=True)
+                  p.write_bytes(after)
+          shutil.rmtree(root/'.v5-transfer')
+          (root/'.github/workflows/overhaul-audit.yml').unlink(missing_ok=True)
+          (root/'.github/workflows/v5-certify.yml').unlink()
+          print(f'Applied and verified {len(items)} source files; removed temporary transfer and audit files.')
+          PY
+      - run: npm ci --no-audit --no-fund
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Commit verified sources to the isolated feature branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Notes V5: Paper & Ink redesign, document utilities, accessible navigation and sync integrity'
+          git push origin HEAD:feat/notes-v5-editorial-overhaul
+          git rev-parse HEAD
+      - run: npx playwright install --with-deps chromium
+      - name: V5 design and sync certification without retries
+        run: npx playwright test e2e/v5-redesign.spec.ts e2e/v5-sync-integrity.spec.ts --retries=0 --reporter=line --output=v5-test-results
+      - name: Full browser regressions
+        if: success() || failure()
+        run: npm run e2e -- --reporter=line
+      - name: PWA offline certification
+        if: success() || failure()
+        run: npm run e2e:pwa
+      - name: Package source snapshot
+        if: always()
+        run: |
+          mkdir -p certification
+          git rev-parse HEAD > certification/commit.txt
+          git archive --format=tar.gz HEAD > certification/source.tar.gz
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: notes-v5-certification
+          path: |
+            certification
+            v5-test-results
+            test-results
+            playwright-report
+          retention-days: 7
