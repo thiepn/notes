@@ -79,11 +79,7 @@ export function PrivacyProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (unlockBlockedUntil === null) return;
-    const remaining = unlockBlockedUntil - Date.now();
-    if (remaining <= 0) {
-      setUnlockBlockedUntil(null);
-      return;
-    }
+    const remaining = Math.max(0, unlockBlockedUntil - Date.now());
     const timer = window.setTimeout(() => setUnlockBlockedUntil(null), remaining);
     return () => window.clearTimeout(timer);
   }, [unlockBlockedUntil]);
