@@ -447,19 +447,33 @@ export function SearchWorkspace({
 
   const closeEditing = useCallback(() => {
     setEditing(null);
-    window.requestAnimationFrame(() => {
-      if (document.querySelector('[role="dialog"]')) return;
-      const noteId = searchOriginNoteIdRef.current;
-      const card = noteId
-        ? document.querySelector<HTMLElement>(`[data-note-id="${noteId}"]`)
-        : null;
-      const target = card?.querySelector<HTMLButtonElement>('.note-card-open');
-      if (target) {
-        target.focus();
-        return;
-      }
-      document.querySelector<HTMLInputElement>('input[aria-label="Search notes"]')?.focus();
-    });
+    let attempts = 0;
+    const focusWhenEditorCloses = () => {
+      window.requestAnimationFrame(() => {
+        const visibleModal = Array.from(
+          document.querySelectorAll<HTMLElement>('[aria-modal="true"]'),
+        ).some((node) => node.getClientRects().length > 0);
+        if (visibleModal && attempts < 4) {
+          attempts += 1;
+          focusWhenEditorCloses();
+          return;
+        }
+
+        const noteId = searchOriginNoteIdRef.current;
+        const card = noteId
+          ? document.querySelector<HTMLElement>(`[data-note-id="${noteId}"]`)
+          : null;
+        const target = card?.querySelector<HTMLButtonElement>('.note-card-open');
+        if (target) {
+          target.focus({ preventScroll: true });
+          return;
+        }
+        document
+          .querySelector<HTMLInputElement>('input[aria-label="Search notes"]')
+          ?.focus({ preventScroll: true });
+      });
+    };
+    focusWhenEditorCloses();
   }, []);
 
   const handleUndo = useCallback(() => {
@@ -763,22 +777,19 @@ function buildSearchContext(document: SearchDocument, query: string): string | n
         .join(' · '),
     );
   }
-  const body =
-    document.note.type === 'text'
-      ? richTextToPlainText(document.note.content)
-      : document.note.content;
-  return formatSearchContext('Text', body);
+  if (field === 'body') {
+    return formatSearchContext('Body', richTextToPlainText(document.note.content));
+  }
+  return null;
 }
 
 function formatSearchContext(label: string, value: string): string | null {
   const compact = value.replace(/\s+/gu, ' ').trim();
   if (!compact) return null;
-  const maximum = 150;
-  const excerpt =
-    compact.length > maximum ? `${compact.slice(0, maximum - 1).trimEnd()}…` : compact;
+  const excerpt = compact.length > 96 ? `${compact.slice(0, 93)}…` : compact;
   return `${label} · ${excerpt}`;
 }
 
 function capitalize(value: string): string {
-  return value ? `${value[0]?.toLocaleUpperCase() ?? ''}${value.slice(1)}` : value;
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
