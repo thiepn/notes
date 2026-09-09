@@ -9,6 +9,7 @@ export interface PrivacyContextValue {
   autoLockMinutes: number | null;
   lockEnabled: boolean;
   locked: boolean;
+  unlockBlockedUntil: number | null;
   setPreferences(next: Partial<PrivacyPreferences>): void;
   enableLock(passcode: string): Promise<void>;
   changePasscode(currentPasscode: string, nextPasscode: string): Promise<boolean>;
