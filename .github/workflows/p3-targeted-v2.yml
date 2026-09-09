@@ -1,0 +1,29 @@
+name: P3 targeted certification v2
+
+on:
+  push:
+    branches: [diag/p3-targeted-certification-v2]
+    paths: [.github/workflows/p3-targeted-v2.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: P3 organization and lifecycle regressions without retries
+        run: >-
+          npx playwright test
+          e2e/p3-organization-model.spec.ts
+          e2e/organization.spec.ts
+          e2e/organization-navigation-polish.spec.ts
+          e2e/lifecycle.spec.ts
+          --retries=0 --reporter=line
