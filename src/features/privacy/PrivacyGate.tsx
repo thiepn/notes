@@ -1,30 +1,43 @@
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { LockKeyhole, StickyNote } from 'lucide-react';
 
 import { usePrivacy } from './PrivacyContext';
 
 export function PrivacyGate({ children }: { children: ReactNode }) {
-  const { locked, unlock } = usePrivacy();
+  const { locked, unlock, unlockBlockedUntil } = usePrivacy();
   const [passcode, setPasscode] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
+  const [now, setNow] = useState(Date.now);
+
+  useEffect(() => {
+    if (!locked || unlockBlockedUntil === null) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 250);
+    return () => window.clearInterval(timer);
+  }, [locked, unlockBlockedUntil]);
 
   if (!locked) return children;
 
+  const blockedForMs = Math.max(0, (unlockBlockedUntil ?? 0) - now);
+  const blocked = blockedForMs > 0;
+  const blockedSeconds = Math.max(1, Math.ceil(blockedForMs / 1000));
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (checking || !passcode) return;
+    if (checking || blocked || !passcode) return;
     setChecking(true);
     setErrorMessage(null);
     try {
       const valid = await unlock(passcode);
       if (!valid) {
-        setErrorMessage('Incorrect passcode.');
+        setPasscode('');
+        setErrorMessage('Incorrect passcode. Repeated failures temporarily delay new attempts.');
         return;
       }
       setPasscode('');
     } finally {
       setChecking(false);
+      setNow(Date.now());
     }
   };
 
@@ -47,16 +60,21 @@ export function PrivacyGate({ children }: { children: ReactNode }) {
               type="password"
               autoComplete="current-password"
               value={passcode}
+              disabled={blocked}
               onChange={(event) => setPasscode(event.target.value)}
             />
           </label>
-          {errorMessage ? (
+          {blocked ? (
+            <p className="privacy-error" role="status">
+              Too many attempts. Try again in {blockedSeconds} {blockedSeconds === 1 ? 'second' : 'seconds'}.
+            </p>
+          ) : errorMessage ? (
             <p className="privacy-error" role="alert">
               {errorMessage}
             </p>
           ) : null}
-          <button type="submit" disabled={!passcode || checking}>
-            {checking ? 'Checking…' : 'Unlock'}
+          <button type="submit" disabled={!passcode || checking || blocked}>
+            {checking ? 'Checking…' : blocked ? 'Temporarily locked' : 'Unlock'}
           </button>
         </form>
         <p className="privacy-lock-disclaimer">
