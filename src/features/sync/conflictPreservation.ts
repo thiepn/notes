@@ -63,19 +63,20 @@ export async function preserveSyncConflictCopy({
   });
 
   const idMap = new Map(snapshot.items.map((item) => [item.id, idFactory()]));
-  const items = snapshot.note.type === 'checklist'
-    ? snapshot.items.map((item, position) =>
-        checklistItemRecordSchema.parse({
-          ...item,
-          id: idMap.get(item.id),
-          noteId: note.id,
-          parentId: item.parentId ? (idMap.get(item.parentId) ?? null) : null,
-          position,
-          createdAt: timestamp,
-          updatedAt: timestamp,
-        }),
-      )
-    : [];
+  const items =
+    snapshot.note.type === 'checklist'
+      ? snapshot.items.map((item, position) =>
+          checklistItemRecordSchema.parse({
+            ...item,
+            id: idMap.get(item.id),
+            noteId: note.id,
+            parentId: item.parentId ? (idMap.get(item.parentId) ?? null) : null,
+            position,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          }),
+        )
+      : [];
 
   await notesDatabase.transaction(
     'rw',
