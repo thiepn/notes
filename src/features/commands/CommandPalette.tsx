@@ -16,7 +16,11 @@ import {
   summarizeSearch,
   type SavedSearch,
 } from '../search/searchHistory';
-import { rankQuickOpenNotes, type QuickOpenNote } from './knowledgeCommands';
+import {
+  normalizeKnowledgeText,
+  rankQuickOpenNotes,
+  type QuickOpenNote,
+} from './knowledgeCommands';
 
 export interface CommandPaletteItem {
   id: string;
@@ -302,5 +306,5 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
 }
 
 function normalize(value: string): string {
-  return value.toLocaleLowerCase().trim().replace(/\s+/gu, ' ');
+  return normalizeKnowledgeText(value);
 }
