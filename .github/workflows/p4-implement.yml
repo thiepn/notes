@@ -105,3 +105,5 @@ jobs:
             git commit -m "Implement P4 capture, checklist and everyday operations"
             git push origin HEAD:feat/p4-capture-checklists-everyday
           fi
+
+# Trigger: lint-safe capture intent implementation.
