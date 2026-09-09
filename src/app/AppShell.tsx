@@ -1,4 +1,4 @@
-import { subscribeAppEvent } from './events';
+import { dispatchAppEvent, subscribeAppEvent } from './events';
 import {
   readDesktopSidebarPreference,
   resolveShellViewport,
@@ -21,12 +21,22 @@ import {
   loadNavigationStats,
   type NavigationStats,
 } from '../features/organization/navigationStats';
+import {
+  organizationCollectionLabelId,
+  organizationCollectionMode,
+  resolveOrganizationCollection,
+} from '../features/organization/collectionModel';
 import type { CaptureRequest } from '../features/notes/NotesWorkspace';
 import {
   readNotesViewMode,
   writeNotesViewMode,
   type NotesViewMode,
 } from '../features/notes/viewMode';
+import {
+  pruneRecentSearchLabels,
+  pruneSearchFiltersToLabels,
+  SearchHistoryRepository,
+} from '../features/search/searchHistory';
 import {
   DEFAULT_SEARCH_FILTERS,
   hasSearchFilters,
@@ -36,6 +46,7 @@ import {
 const ACTIVE_SECTION_KEY = 'notes.active-section';
 const ACTIVE_LABEL_KEY = 'notes.active-label';
 const labelsRepository = new LabelsRepository(notesDatabase);
+const searchHistoryRepository = new SearchHistoryRepository(notesDatabase);
 
 const LabelManagerDialog = lazy(() =>
   import('../features/notes/LabelManagerDialog').then((module) => ({
@@ -158,7 +169,23 @@ export function AppShell() {
     searchFiltersOpen;
 
   const refreshLabels = useCallback(async () => {
-    setLabels(await labelsRepository.list());
+    const storedLabels = await labelsRepository.list();
+    const validLabelIds = new Set(storedLabels.map((label) => label.id));
+    setLabels(storedLabels);
+    setActiveLabelId((current) => {
+      if (!current || validLabelIds.has(current)) return current;
+      persistActiveLabelId(null);
+      return null;
+    });
+    setSearchFilters((current) => pruneSearchFiltersToLabels(current, validLabelIds));
+
+    try {
+      await searchHistoryRepository.pruneMissingLabels(validLabelIds);
+      pruneRecentSearchLabels(validLabelIds);
+      dispatchAppEvent('searchHistoryChanged');
+    } catch {
+      // Invalid saved-search label references are recoverable convenience state.
+    }
   }, []);
 
   const refreshNavigationStats = useCallback(async () => {
@@ -208,22 +235,11 @@ export function AppShell() {
   }, [clearSearch, refreshLabels, refreshNavigationStats]);
 
   useEffect(() => {
-    let cancelled = false;
-
-    void labelsRepository.list().then((storedLabels) => {
-      if (cancelled) return;
-      setLabels(storedLabels);
-      setActiveLabelId((current) => {
-        if (!current || storedLabels.some((label) => label.id === current)) return current;
-        persistActiveLabelId(null);
-        return null;
-      });
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    const initialRefresh = window.setTimeout(() => {
+      void refreshLabels().catch(() => undefined);
+    }, 0);
+    return () => window.clearTimeout(initialRefresh);
+  }, [refreshLabels]);
 
   useEffect(() => {
     const initialRefresh = window.setTimeout(() => void refreshNavigationStats(), 0);
@@ -328,10 +344,6 @@ export function AppShell() {
 
   const handleDeleteLabel = async (labelId: string) => {
     await labelsRepository.delete(labelId);
-    setSearchFilters((current) => ({
-      ...current,
-      labelIds: current.labelIds.filter((id) => id !== labelId),
-    }));
     if (activeLabelId === labelId) {
       setActiveLabelId(null);
       setActiveSection('notes');
@@ -343,18 +355,20 @@ export function AppShell() {
 
   const prepareNotesCapture = useCallback(
     (kind: 'text' | 'checklist') => {
+      const captureLabelId =
+        !searchActive && activeSection === 'notes' && activeLabelId ? activeLabelId : null;
       clearSearch();
       setCommandPaletteOpen(false);
       setActiveSection('notes');
-      setActiveLabelId(null);
+      setActiveLabelId(captureLabelId);
       persistActiveSection('notes');
-      persistActiveLabelId(null);
+      persistActiveLabelId(captureLabelId);
       setMobileSidebarOpen(false);
       setTabletSidebarExpanded(false);
       captureRequestIdRef.current += 1;
       setCaptureRequest({ id: captureRequestIdRef.current, kind });
     },
-    [clearSearch],
+    [activeLabelId, activeSection, clearSearch, searchActive],
   );
 
   const focusSearch = useCallback(() => {
@@ -445,6 +459,16 @@ export function AppShell() {
   const activeLabel = activeLabelId
     ? (labels.find((label) => label.id === activeLabelId) ?? null)
     : null;
+  const organizationCollection = resolveOrganizationCollection(
+    activeSection,
+    activeLabel?.id ?? null,
+  );
+  const organizationMode = organizationCollection
+    ? organizationCollectionMode(organizationCollection)
+    : 'notes';
+  const organizationLabelId = organizationCollection
+    ? organizationCollectionLabelId(organizationCollection)
+    : null;
   const normalSection = activeLabel
     ? {
         title: activeLabel.name,
@@ -461,11 +485,7 @@ export function AppShell() {
         emptyDescription: 'Try a broader query or remove a filter.',
       }
     : normalSection;
-  const lifecycleSection =
-    activeLabel !== null ||
-    activeSection === 'notes' ||
-    activeSection === 'archive' ||
-    activeSection === 'trash';
+  const lifecycleSection = organizationCollection !== null;
 
   const activeWorkspaceCount =
     searchActive || activeSection === 'backup'
@@ -736,6 +756,7 @@ export function AppShell() {
                   onFiltersChange={setSearchFilters}
                   onCloseFilters={() => setSearchFiltersOpen(false)}
                   onClearSearch={clearSearch}
+                  onCollectionChanged={handleCollectionChanged}
                 />
               </Suspense>
             ) : activeSection === 'backup' ? (
@@ -753,9 +774,9 @@ export function AppShell() {
             ) : lifecycleSection ? (
               <Suspense fallback={<DeferredWorkspaceFallback label="Loading notes…" />}>
                 <NotesWorkspace
-                  mode={activeLabel ? 'notes' : activeSection}
+                  mode={organizationMode}
                   labels={labels}
-                  filterLabelId={activeLabel?.id ?? null}
+                  filterLabelId={organizationLabelId}
                   viewMode={viewMode}
                   onViewModeChange={handleViewMode}
                   captureRequest={captureRequest}
@@ -858,6 +879,7 @@ export function AppShell() {
         <Suspense fallback={null}>
           <LabelManagerDialog
             labels={labels}
+            counts={navigationStats.labels}
             onClose={() => setLabelManagerOpen(false)}
             onCreate={handleCreateLabel}
             onRename={handleRenameLabel}

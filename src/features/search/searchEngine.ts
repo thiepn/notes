@@ -1,4 +1,5 @@
 import type { ChecklistItemRecord, NoteRecord } from '../../db';
+import { isSearchableNote, matchesOrganizationSearchStatus } from '../organization/collectionModel';
 import type { SearchFilters, SearchStatusFilter, SearchTypeFilter } from './searchTypes';
 
 export interface SearchDocument {
@@ -191,9 +192,9 @@ export function searchDocuments(
   const results: SearchResult[] = [];
   for (const document of documents) {
     const { note } = document;
-    if (note.trashedAt !== null) continue;
-    if (!matchesStatus(note, filters.status)) continue;
-    if (!parsed.statuses.every((status) => matchesStatus(note, status))) continue;
+    if (!isSearchableNote(note)) continue;
+    if (!matchesOrganizationSearchStatus(note, filters.status)) continue;
+    if (!parsed.statuses.every((status) => matchesOrganizationSearchStatus(note, status))) continue;
     if (!matchesType(note, filters.type)) continue;
     if (!parsed.types.every((type) => note.type === type)) continue;
     if (selectedColors.size > 0 && !selectedColors.has(note.color)) continue;
@@ -399,15 +400,6 @@ function boundedLevenshtein(a: string, b: string, maxDistance: number): number {
   }
 
   return previous[b.length] ?? maxDistance + 1;
-}
-
-function matchesStatus(note: NoteRecord, status: SearchStatusFilter): boolean {
-  if (status === 'any') return note.trashedAt === null;
-  if (status === 'active') return note.archivedAt === null && note.trashedAt === null;
-  if (status === 'pinned') {
-    return note.pinnedAt !== null && note.archivedAt === null && note.trashedAt === null;
-  }
-  return note.archivedAt !== null && note.trashedAt === null;
 }
 
 function matchesType(note: NoteRecord, type: SearchTypeFilter): boolean {

@@ -4,6 +4,7 @@ import { useRef, useEffect, type PointerEvent as ReactPointerEvent } from 'react
 interface ConfirmDeleteDialogProps {
   title?: string;
   count?: number;
+  context?: 'selection' | 'trash';
   onCancel(): void;
   onConfirm(): void;
 }
@@ -11,6 +12,7 @@ interface ConfirmDeleteDialogProps {
 export function ConfirmDeleteDialog({
   title = '',
   count,
+  context = 'selection',
   onCancel,
   onConfirm,
 }: ConfirmDeleteDialogProps) {
@@ -32,12 +34,15 @@ export function ConfirmDeleteDialog({
     if (event.target === event.currentTarget) onCancel();
   };
 
+  const emptyingTrash = context === 'trash' && count !== undefined;
   const isBulk = count !== undefined && count > 1;
-  const description = isBulk
-    ? `${count} selected notes will be permanently deleted.`
-    : title
-      ? `“${title}” will be permanently deleted.`
-      : 'This note will be permanently deleted.';
+  const description = emptyingTrash
+    ? `${count} ${count === 1 ? 'note' : 'notes'} in Trash will be permanently deleted.`
+    : isBulk
+      ? `${count} selected notes will be permanently deleted.`
+      : title
+        ? `“${title}” will be permanently deleted.`
+        : 'This note will be permanently deleted.';
 
   return (
     <div className="confirm-dialog-layer" onPointerDown={handleLayerPointerDown}>
@@ -51,7 +56,11 @@ export function ConfirmDeleteDialog({
         aria-describedby="confirm-delete-description"
       >
         <h2 id="confirm-delete-title">
-          {isBulk ? `Delete ${count} notes permanently?` : 'Delete note permanently?'}
+          {emptyingTrash
+            ? 'Empty trash?'
+            : isBulk
+              ? `Delete ${count} notes permanently?`
+              : 'Delete note permanently?'}
         </h2>
         <p id="confirm-delete-description">{description} This cannot be undone.</p>
         <div className="confirm-dialog-actions">

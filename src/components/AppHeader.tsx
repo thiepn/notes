@@ -94,13 +94,16 @@ export function AppHeader({
 
   useEffect(() => {
     let cancelled = false;
-    const reloadSaved = () => {
+    const reloadHistory = () => {
       void searchHistoryRepository.listSaved().then((searches) => {
-        if (!cancelled) setSavedSearches(searches);
+        if (!cancelled) {
+          setSavedSearches(searches);
+          setRecentSearches(readRecentSearches());
+        }
       });
     };
-    reloadSaved();
-    const unsubscribeSearchHistory = subscribeAppEvent('searchHistoryChanged', reloadSaved);
+    reloadHistory();
+    const unsubscribeSearchHistory = subscribeAppEvent('searchHistoryChanged', reloadHistory);
     return () => {
       cancelled = true;
       unsubscribeSearchHistory();

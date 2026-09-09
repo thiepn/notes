@@ -1,5 +1,5 @@
 import { useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react';
-import { Check, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { Check, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 
 import { IconButton } from '../../components/ui/IconButton';
 import { useDialogFocusTrap } from '../../components/ui/useDialogFocusTrap';
@@ -7,6 +7,7 @@ import type { LabelRecord } from '../../db';
 
 interface LabelManagerDialogProps {
   labels: LabelRecord[];
+  counts: Record<string, number>;
   onClose(): void;
   onCreate(name: string): Promise<void>;
   onRename(labelId: string, name: string): Promise<void>;
@@ -15,12 +16,14 @@ interface LabelManagerDialogProps {
 
 export function LabelManagerDialog({
   labels,
+  counts,
   onClose,
   onCreate,
   onRename,
   onDelete,
 }: LabelManagerDialogProps) {
   const [newLabelName, setNewLabelName] = useState('');
+  const [labelQuery, setLabelQuery] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [deleteCandidateId, setDeleteCandidateId] = useState<string | null>(null);
@@ -28,6 +31,11 @@ export function LabelManagerDialog({
   const [busy, setBusy] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const newLabelRef = useRef<HTMLInputElement>(null);
+  const showLabelSearch = labels.length >= 6;
+  const normalizedLabelQuery = showLabelSearch ? labelQuery.trim().toLocaleLowerCase() : '';
+  const visibleLabels = normalizedLabelQuery
+    ? labels.filter((label) => label.name.toLocaleLowerCase().includes(normalizedLabelQuery))
+    : labels;
 
   useDialogFocusTrap(dialogRef, { onEscape: onClose, initialFocusRef: newLabelRef });
 
@@ -110,11 +118,28 @@ export function LabelManagerDialog({
           </p>
         ) : null}
 
+        {showLabelSearch ? (
+          <label className="label-manager-search">
+            <Search aria-hidden="true" />
+            <span className="sr-only">Find labels</span>
+            <input
+              type="search"
+              aria-label="Find labels"
+              placeholder="Find labels"
+              value={labelQuery}
+              onChange={(event) => setLabelQuery(event.target.value)}
+            />
+          </label>
+        ) : null}
+
         <div className="label-manager-list">
+          {labels.length > 0 && visibleLabels.length === 0 ? (
+            <p className="label-manager-empty">No matching labels.</p>
+          ) : null}
           {labels.length === 0 ? (
             <p className="label-manager-empty">No labels yet.</p>
           ) : (
-            labels.map((label) => {
+            visibleLabels.map((label) => {
               const editing = editingId === label.id;
               const deleting = deleteCandidateId === label.id;
 
@@ -178,6 +203,9 @@ export function LabelManagerDialog({
                   ) : (
                     <>
                       <span className="label-manager-name">{label.name}</span>
+                      <span className="label-manager-meta">
+                        {counts[label.id] ?? 0} {(counts[label.id] ?? 0) === 1 ? 'note' : 'notes'}
+                      </span>
                       <div className="label-manager-actions">
                         <IconButton
                           label={`Rename label ${label.name}`}

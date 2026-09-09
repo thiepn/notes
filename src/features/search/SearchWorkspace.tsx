@@ -14,6 +14,7 @@ import {
   type NoteColor,
   type NoteRecord,
 } from '../../db';
+import { noteLifecycle } from '../organization/collectionModel';
 import { LifecycleToast, type LifecycleToastState } from '../notes/LifecycleToast';
 import { MasonryGrid } from '../notes/MasonryGrid';
 import { type NoteCardActions, type NoteCollectionMode } from '../notes/NoteCard';
@@ -54,6 +55,7 @@ interface SearchWorkspaceProps {
   onFiltersChange(filters: SearchFilters): void;
   onCloseFilters(): void;
   onClearSearch(): void;
+  onCollectionChanged?: () => void;
 }
 
 interface EditingState {
@@ -71,6 +73,7 @@ export function SearchWorkspace({
   onFiltersChange,
   onCloseFilters,
   onClearSearch,
+  onCollectionChanged,
 }: SearchWorkspaceProps) {
   const [documents, setDocuments] = useState<SearchDocument[]>([]);
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -85,6 +88,11 @@ export function SearchWorkspace({
   const searchOriginNoteIdRef = useRef<string | null>(null);
   const searchClientRef = useRef<SearchWorkerClient | null>(null);
   const searchRequestIdRef = useRef(0);
+  const labelCatalogRevision = useMemo(
+    () => labels.map((label) => `${label.id}:${label.updatedAt}`).join('|'),
+    [labels],
+  );
+  const indexedLabelCatalogRevisionRef = useRef(labelCatalogRevision);
 
   const showToast = useCallback((message: string, undo?: () => Promise<void>) => {
     const id = crypto.randomUUID();
@@ -111,6 +119,16 @@ export function SearchWorkspace({
     replaceIndex(await searchRepository.loadIndex());
   }, [replaceIndex]);
 
+  useEffect(() => {
+    if (!loaded) {
+      indexedLabelCatalogRevisionRef.current = labelCatalogRevision;
+      return;
+    }
+    if (indexedLabelCatalogRevisionRef.current === labelCatalogRevision) return;
+    indexedLabelCatalogRevisionRef.current = labelCatalogRevision;
+    void reloadIndex().catch(() => showToast('Search labels could not be refreshed.'));
+  }, [labelCatalogRevision, loaded, reloadIndex, showToast]);
+
   const refreshDocument = useCallback(async (noteId: string) => {
     const document = await searchRepository.loadDocument(noteId);
     if (document) {
@@ -128,6 +146,14 @@ export function SearchWorkspace({
     }
     setIndexRevision((current) => current + 1);
   }, []);
+
+  const refreshOrganizationDocument = useCallback(
+    async (noteId: string) => {
+      await refreshDocument(noteId);
+      onCollectionChanged?.();
+    },
+    [onCollectionChanged, refreshDocument],
+  );
 
   useEffect(() => {
     const refresh = () => {
@@ -213,14 +239,14 @@ export function SearchWorkspace({
     () =>
       results
         .map((result) => result.document)
-        .filter((document) => document.note.archivedAt === null),
+        .filter((document) => noteLifecycle(document.note) === 'notes'),
     [results],
   );
   const archivedDocuments = useMemo(
     () =>
       results
         .map((result) => result.document)
-        .filter((document) => document.note.archivedAt !== null),
+        .filter((document) => noteLifecycle(document.note) === 'archive'),
     [results],
   );
   const documentsById = useMemo(
@@ -273,33 +299,33 @@ export function SearchWorkspace({
       const wasPinned = note.pinnedAt !== null;
       try {
         await notesRepository.archive(note.id, note.revision);
-        await refreshDocument(note.id);
+        await refreshOrganizationDocument(note.id);
         showToast('Note archived.', async () => {
           const restored = await notesRepository.unarchive(note.id);
           if (wasPinned) await notesRepository.setPinned(note.id, true, restored.revision);
-          await refreshDocument(note.id);
+          await refreshOrganizationDocument(note.id);
         });
       } catch {
         showToast('Note could not be archived.');
       }
     },
-    [refreshDocument, showToast],
+    [refreshOrganizationDocument, showToast],
   );
 
   const handleUnarchive = useCallback(
     async (note: NoteRecord) => {
       try {
         await notesRepository.unarchive(note.id, note.revision);
-        await refreshDocument(note.id);
+        await refreshOrganizationDocument(note.id);
         showToast('Note moved to Notes.', async () => {
           await notesRepository.archive(note.id);
-          await refreshDocument(note.id);
+          await refreshOrganizationDocument(note.id);
         });
       } catch {
         showToast('Note could not be unarchived.');
       }
     },
-    [refreshDocument, showToast],
+    [refreshOrganizationDocument, showToast],
   );
 
   const handleTrash = useCallback(
@@ -308,34 +334,34 @@ export function SearchWorkspace({
       const wasPinned = note.pinnedAt !== null;
       try {
         await notesRepository.trash(note.id, note.revision);
-        await refreshDocument(note.id);
+        await refreshOrganizationDocument(note.id);
         showToast('Note moved to trash.', async () => {
           const restored = await notesRepository.restore(note.id);
           if (wasArchived) await notesRepository.archive(note.id, restored.revision);
           else if (wasPinned) await notesRepository.setPinned(note.id, true, restored.revision);
-          await refreshDocument(note.id);
+          await refreshOrganizationDocument(note.id);
         });
       } catch {
         showToast('Note could not be moved to trash.');
       }
     },
-    [refreshDocument, showToast],
+    [refreshOrganizationDocument, showToast],
   );
 
   const handleDuplicate = useCallback(
     async (note: NoteRecord) => {
       try {
         const duplicate = await notesRepository.duplicate(note.id);
-        await refreshDocument(duplicate.id);
+        await refreshOrganizationDocument(duplicate.id);
         showToast('Note duplicated.', async () => {
           await notesRepository.deletePermanently(duplicate.id);
-          await refreshDocument(duplicate.id);
+          await refreshOrganizationDocument(duplicate.id);
         });
       } catch {
         showToast('Note could not be duplicated.');
       }
     },
-    [refreshDocument, showToast],
+    [refreshOrganizationDocument, showToast],
   );
 
   const handleSetColor = useCallback(
@@ -361,16 +387,16 @@ export function SearchWorkspace({
       const previous = documentsById.get(note.id)?.labelIds ?? [];
       try {
         await labelsRepository.setForNote(note.id, labelIds);
-        await refreshDocument(note.id);
+        await refreshOrganizationDocument(note.id);
         showToast('Labels updated.', async () => {
           await labelsRepository.setForNote(note.id, previous);
-          await refreshDocument(note.id);
+          await refreshOrganizationDocument(note.id);
         });
       } catch {
         showToast('Note labels could not be changed.');
       }
     },
-    [documentsById, refreshDocument, showToast],
+    [documentsById, refreshOrganizationDocument, showToast],
   );
 
   const actions = useMemo<NoteCardActions>(

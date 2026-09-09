@@ -64,3 +64,11 @@ A foundation change is complete only when formatting, the foundation contract, l
 Responsive shell state is owned by `AppShell` and normalized through `src/app/shellLayout.ts`. The three supported modes are mobile (<=767px), tablet (768–1100px), and desktop (>=1101px). Only the desktop expanded/compact preference persists. Tablet expansion and the mobile drawer are transient UI state and may never leak into durable note data or cloud synchronization.
 
 The sidebar remains a rendering boundary: it receives active destination, counts, responsive density, and action callbacks. It does not query viewport state or mutate navigation persistence itself. This keeps later editor routing and split-pane work independent from the shell's responsive mechanics.
+
+## P3 organization model
+
+Search, labels, Archive, and Trash share the lifecycle/collection contract in `src/features/organization/collectionModel.ts`. `AppShell` resolves Notes, a label projection, Archive, or Trash into that contract before rendering the notes workspace; Search reuses the same lifecycle classification and remains a derived Notes + Archive index that excludes Trash.
+
+Label catalog refresh is also a cross-surface reconciliation point: stale label IDs are removed from current, saved, and recent searches, and an open Search workspace rebuilds label metadata after rename/delete. Search lifecycle and label mutations notify the shell's derived navigation counts just like mutations from the normal notes workspace.
+
+P3 introduces no durable table, no database migration, no folder hierarchy, and no secondary search store. Whole-Trash Restore all and Empty trash use the existing bulk repository transactions; permanent deletion remains confirmation-gated.

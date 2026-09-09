@@ -138,6 +138,7 @@ export function NotesWorkspace({
   const [toast, setToast] = useState<LifecycleToastState | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<NoteRecord | null>(null);
   const [bulkDeleteIds, setBulkDeleteIds] = useState<string[] | null>(null);
+  const [bulkDeleteSource, setBulkDeleteSource] = useState<'selection' | 'trash'>('selection');
   const [attachmentRefreshByNote, setAttachmentRefreshByNote] = useState<Record<string, number>>(
     {},
   );
@@ -550,6 +551,23 @@ export function NotesWorkspace({
     [selectedNoteIds, visibleNotes],
   );
 
+  const handleRestoreAll = useCallback(async () => {
+    if (mode !== 'trash' || visibleNotes.length === 0) return;
+    const targets = toBulkTargets(visibleNotes);
+    const previous = toLifecycleStates(visibleNotes);
+    const count = visibleNotes.length;
+    try {
+      await bulkActionsRepository.restore(targets);
+      await refreshCollection();
+      showToast(`Restored ${count} ${count === 1 ? 'note' : 'notes'} to Notes.`, async () => {
+        await bulkActionsRepository.restoreLifecycle(previous);
+        await refreshCollection();
+      });
+    } catch {
+      showToast('Trash notes could not be restored.');
+    }
+  }, [mode, refreshCollection, showToast, visibleNotes]);
+
   const clearSelection = useCallback(() => {
     setSelection({ mode, filterLabelId, noteIds: new Set(), anchorId: null });
   }, [filterLabelId, mode]);
@@ -772,17 +790,25 @@ export function NotesWorkspace({
 
   const handleConfirmBulkDelete = useCallback(async () => {
     const noteIds = bulkDeleteIds;
+    const source = bulkDeleteSource;
     if (!noteIds || noteIds.length === 0) return;
     setBulkDeleteIds(null);
+    setBulkDeleteSource('selection');
     try {
       const deleted = await bulkActionsRepository.deletePermanently(noteIds);
       clearSelection();
       await refreshCollection();
-      showToast(`${deleted} ${deleted === 1 ? 'note' : 'notes'} deleted permanently.`);
+      showToast(
+        source === 'trash'
+          ? 'Trash emptied.'
+          : `${deleted} ${deleted === 1 ? 'note' : 'notes'} deleted permanently.`,
+      );
     } catch {
-      showToast('Selected notes could not be deleted.');
+      showToast(
+        source === 'trash' ? 'Trash could not be emptied.' : 'Selected notes could not be deleted.',
+      );
     }
-  }, [bulkDeleteIds, clearSelection, refreshCollection, showToast]);
+  }, [bulkDeleteIds, bulkDeleteSource, clearSelection, refreshCollection, showToast]);
 
   const editingNote = notes.find((note) => note.id === editingNoteId) ?? null;
   const emptyCopy = filterLabelId
@@ -841,7 +867,10 @@ export function NotesWorkspace({
                 onUnarchive={() => void handleBulkUnarchive()}
                 onTrash={() => void handleBulkTrash()}
                 onRestore={() => void handleBulkRestore()}
-                onDeletePermanently={() => setBulkDeleteIds(selectedNotes.map((note) => note.id))}
+                onDeletePermanently={() => {
+                  setBulkDeleteSource('selection');
+                  setBulkDeleteIds(selectedNotes.map((note) => note.id));
+                }}
                 onSetColor={(color) => void handleBulkSetColor(color)}
                 onSetLabelMembership={(labelId, assigned) =>
                   void handleBulkSetLabelMembership(labelId, assigned)
@@ -854,6 +883,23 @@ export function NotesWorkspace({
                 {visibleNotes.length} {visibleNotes.length === 1 ? 'note' : 'notes'}
               </span>
               <div className="notes-toolbar-controls">
+                {mode === 'trash' ? (
+                  <div className="notes-collection-actions" aria-label="Trash actions">
+                    <button type="button" onClick={() => void handleRestoreAll()}>
+                      Restore all
+                    </button>
+                    <button
+                      className="notes-collection-action-danger"
+                      type="button"
+                      onClick={() => {
+                        setBulkDeleteSource('trash');
+                        setBulkDeleteIds(visibleNotes.map((note) => note.id));
+                      }}
+                    >
+                      Empty trash
+                    </button>
+                  </div>
+                ) : null}
                 <label className="notes-sort">
                   <span>Sort</span>
                   <select
@@ -989,7 +1035,11 @@ export function NotesWorkspace({
         <Suspense fallback={null}>
           <ConfirmDeleteDialog
             count={bulkDeleteIds.length}
-            onCancel={() => setBulkDeleteIds(null)}
+            context={bulkDeleteSource}
+            onCancel={() => {
+              setBulkDeleteIds(null);
+              setBulkDeleteSource('selection');
+            }}
             onConfirm={() => void handleConfirmBulkDelete()}
           />
         </Suspense>

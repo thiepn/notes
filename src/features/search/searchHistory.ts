@@ -54,6 +54,13 @@ export class SearchHistoryRepository {
     return this.writeSaved(existing.filter((item) => item.id !== id));
   }
 
+  async pruneMissingLabels(validLabelIds: Iterable<string>): Promise<SavedSearch[]> {
+    const existing = await this.listSaved();
+    const next = pruneSearchEntries(existing, new Set(validLabelIds));
+    if (JSON.stringify(next) === JSON.stringify(existing)) return existing;
+    return this.writeSaved(next);
+  }
+
   private async writeSaved(searches: SavedSearch[]): Promise<SavedSearch[]> {
     const record = settingRecordSchema.parse({
       key: SAVED_SEARCHES_KEY,
@@ -112,6 +119,24 @@ export function clearRecentSearches(): RecentSearch[] {
   return [];
 }
 
+export function pruneRecentSearchLabels(validLabelIds: Iterable<string>): RecentSearch[] {
+  const existing = readRecentSearches();
+  const next = pruneSearchEntries(existing, new Set(validLabelIds));
+  if (JSON.stringify(next) === JSON.stringify(existing)) return existing;
+
+  try {
+    if (next.length === 0) window.localStorage.removeItem(RECENT_SEARCHES_KEY);
+    else
+      window.localStorage.setItem(
+        RECENT_SEARCHES_KEY,
+        JSON.stringify({ version: 1, searches: next }),
+      );
+  } catch {
+    // Recent searches are best-effort device-local history.
+  }
+  return next;
+}
+
 export function searchSignature(snapshot: SearchSnapshot): string {
   const normalized = normalizeSnapshot(snapshot);
   return JSON.stringify({
@@ -127,6 +152,16 @@ export function searchSignature(snapshot: SearchSnapshot): string {
 
 export function hasSearchSnapshot(snapshot: SearchSnapshot): boolean {
   return Boolean(snapshot.query.trim()) || hasSearchFilters(snapshot.filters);
+}
+
+export function pruneSearchFiltersToLabels(
+  filters: SearchFilters,
+  validLabelIds: Iterable<string>,
+): SearchFilters {
+  const valid = new Set(validLabelIds);
+  const labelIds = filters.labelIds.filter((id) => valid.has(id));
+  if (labelIds.length === filters.labelIds.length) return filters;
+  return { ...filters, labelIds };
 }
 
 export function summarizeSearch(snapshot: SearchSnapshot): {
@@ -160,6 +195,26 @@ export function summarizeSearch(snapshot: SearchSnapshot): {
   if (normalized.filters.after) parts.push(`after ${normalized.filters.after}`);
   if (normalized.filters.before) parts.push(`before ${normalized.filters.before}`);
   return { title, detail: parts.length > 0 ? parts.join(' · ') : null };
+}
+
+function pruneSearchEntries<T extends SearchSnapshot & { id: string }>(
+  searches: T[],
+  validLabelIds: Set<string>,
+): T[] {
+  const seen = new Set<string>();
+  const next: T[] = [];
+  for (const search of searches) {
+    const candidate = {
+      ...search,
+      filters: pruneSearchFiltersToLabels(search.filters, validLabelIds),
+    } as T;
+    if (!hasSearchSnapshot(candidate)) continue;
+    const signature = searchSignature(candidate);
+    if (seen.has(signature)) continue;
+    seen.add(signature);
+    next.push(candidate);
+  }
+  return next;
 }
 
 function normalizeSnapshot(snapshot: SearchSnapshot): SearchSnapshot {
