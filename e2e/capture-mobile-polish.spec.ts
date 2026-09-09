@@ -24,6 +24,7 @@ test.describe('V3.1 capture and mobile UX polish', () => {
     await page.reload();
 
     const trigger = page.getByRole('button', { name: 'Create a text note' });
+    await expect(page.locator('[data-note-card]')).toHaveCount(18);
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     await expect(trigger).toBeVisible();
 

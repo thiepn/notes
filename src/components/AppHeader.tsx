@@ -221,6 +221,7 @@ export function AppHeader({
     <header className="app-header">
       <div className="header-leading">
         <IconButton
+          className="header-navigation-action"
           label="Toggle navigation"
           tooltip="Toggle navigation"
           onClick={onMenu}
@@ -338,7 +339,7 @@ export function AppHeader({
         </button>
         {currentCanBeSaved ? (
           <button
-            className="search-inline-action"
+            className="search-inline-action search-save-action"
             type="button"
             aria-label={currentIsSaved ? 'Search saved' : 'Save search'}
             aria-pressed={currentIsSaved}
@@ -379,14 +380,19 @@ export function AppHeader({
           }
         }}
       >
-        <IconButton label="Open command palette" onClick={onCommandPalette}>
+        <IconButton
+          className="header-command-action"
+          label="Open command palette"
+          onClick={onCommandPalette}
+        >
           <Command />
         </IconButton>
-        <IconButton label="Open settings" onClick={onSettings}>
+        <IconButton className="header-settings-action" label="Open settings" onClick={onSettings}>
           <Settings2 />
         </IconButton>
         <IconButton
           ref={moreButtonRef}
+          className="header-more-action"
           label="More options"
           tooltip="More options"
           aria-expanded={moreOpen}

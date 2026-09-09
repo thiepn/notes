@@ -60,11 +60,11 @@ test('mobile navigation opens as an off-canvas drawer and closes from the backdr
   const sidebar = page.getByTestId('app-sidebar');
   await expect(sidebar).toHaveAttribute('data-open', 'false');
 
-  await page.getByTestId('navigation-toggle').click();
+  await page.getByRole('button', { name: 'Open navigation' }).click();
   await expect(sidebar).toHaveAttribute('data-open', 'true');
   await expect(sidebar).toBeVisible();
 
-  await page.getByRole('button', { name: 'Close navigation' }).click();
+  await sidebar.getByRole('button', { name: 'Hide navigation' }).click();
   await expect(sidebar).toHaveAttribute('data-open', 'false');
 });
 

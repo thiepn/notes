@@ -1,15 +1,14 @@
 import { useRef, useState } from 'react';
-import { useDialogFocusTrap } from './ui/useDialogFocusTrap';
-import { SyncIndicator } from '../features/sync/SyncIndicator';
 import {
   Archive,
   Bell,
-  Lightbulb,
-  Pencil,
-  Search,
   Command,
   DatabaseBackup,
+  Lightbulb,
+  Pencil,
   Plus,
+  Search,
+  Settings2,
   Tag,
   Trash2,
   X,
@@ -17,29 +16,36 @@ import {
 
 import type { LabelRecord } from '../db';
 import type { NavigationStats } from '../features/organization/navigationStats';
+import { SyncIndicator } from '../features/sync/SyncIndicator';
+import { useDialogFocusTrap } from './ui/useDialogFocusTrap';
 
 export type AppSection = 'notes' | 'reminders' | 'archive' | 'trash' | 'backup';
 
 interface AppSidebarProps {
   activeSection: AppSection;
   activeLabelId: string | null;
+  searchActive: boolean;
   labels: LabelRecord[];
   counts: NavigationStats;
   compact: boolean;
   mobileOpen: boolean;
   mobile: boolean;
+  tablet: boolean;
   onNavigate: (section: AppSection) => void;
+  onSearch: () => void;
   onLabelNavigate: (labelId: string) => void;
   onManageLabels: () => void;
   onCreateNote: () => void;
   onCommands: () => void;
+  onSettings: () => void;
   onCloseNavigation: () => void;
 }
 
-const PRIMARY_NAVIGATION = [
+const WORKSPACE_NAVIGATION = [
   { id: 'notes', label: 'Notes', icon: Lightbulb },
+  { id: 'search', label: 'Search', icon: Search },
   { id: 'reminders', label: 'Reminders', icon: Bell },
-] satisfies Array<{ id: AppSection; label: string; icon: typeof Lightbulb }>;
+] as const;
 
 const LIBRARY_NAVIGATION = [
   { id: 'archive', label: 'Archive', icon: Archive },
@@ -49,16 +55,20 @@ const LIBRARY_NAVIGATION = [
 export function AppSidebar({
   activeSection,
   activeLabelId,
+  searchActive,
   labels,
   counts,
   compact,
   mobileOpen,
   mobile,
+  tablet,
   onNavigate,
+  onSearch,
   onLabelNavigate,
   onManageLabels,
   onCreateNote,
   onCommands,
+  onSettings,
   onCloseNavigation,
 }: AppSidebarProps) {
   const sidebarRef = useRef<HTMLElement>(null);
@@ -87,47 +97,62 @@ export function AppSidebar({
       aria-hidden={mobile && !mobileOpen}
       data-compact={compact}
       data-open={mobileOpen}
+      data-tablet={tablet}
       data-testid="app-sidebar"
       inert={mobile && !mobileOpen}
     >
       {mobile ? (
         <div className="sidebar-mobile-heading">
-          <strong>Notebook</strong>
+          <strong>Navigation</strong>
           <button type="button" aria-label="Hide navigation" onClick={onCloseNavigation}>
             <X aria-hidden="true" />
           </button>
         </div>
       ) : null}
-      <nav className="sidebar-nav">
+
+      <nav className="sidebar-nav" aria-label="Notes navigation">
         <button
           type="button"
           className="sidebar-capture"
           onClick={onCreateNote}
           aria-label="Write a new note"
+          title={compact ? 'New note' : undefined}
         >
           <Plus aria-hidden="true" />
           <span>New note</span>
           <kbd>C</kbd>
         </button>
+
         <p className="sidebar-eyebrow">Workspace</p>
-        {PRIMARY_NAVIGATION.map(({ id, label, icon: Icon }) => {
-          const active = activeSection === id && (id !== 'notes' || activeLabelId === null);
-          const count = id === 'notes' ? counts.notes : counts.reminders;
+        {WORKSPACE_NAVIGATION.map(({ id, label, icon: Icon }) => {
+          const active =
+            id === 'search'
+              ? searchActive
+              : !searchActive && activeSection === id && (id !== 'notes' || activeLabelId === null);
+          const count =
+            id === 'notes' ? counts.notes : id === 'reminders' ? counts.reminders : null;
+          const activate = () => {
+            if (id === 'search') onSearch();
+            else onNavigate(id);
+          };
           return (
             <button
               className="nav-item"
               aria-label={label}
+              title={compact ? label : undefined}
               type="button"
               data-active={active}
               aria-current={active ? 'page' : undefined}
-              onClick={() => onNavigate(id)}
+              onClick={activate}
               key={id}
             >
               <Icon aria-hidden="true" />
               <span className="nav-label">{label}</span>
-              <span className="nav-count" aria-hidden="true">
-                {count}
-              </span>
+              {count !== null ? (
+                <span className="nav-count" aria-hidden="true">
+                  {count}
+                </span>
+              ) : null}
             </button>
           );
         })}
@@ -165,7 +190,7 @@ export function AppSidebar({
             visibleLabels.length > 0 ? (
               <div className="sidebar-label-list">
                 {visibleLabels.map((label) => {
-                  const active = activeLabelId === label.id;
+                  const active = !searchActive && activeLabelId === label.id;
                   return (
                     <button
                       className="nav-item sidebar-label-item"
@@ -201,12 +226,13 @@ export function AppSidebar({
             <span>Library</span>
           </div>
           {LIBRARY_NAVIGATION.map(({ id, label, icon: Icon }) => {
-            const active = activeSection === id && activeLabelId === null;
+            const active = !searchActive && activeSection === id && activeLabelId === null;
             const count = id === 'archive' ? counts.archive : counts.trash;
             return (
               <button
                 className="nav-item"
                 aria-label={label}
+                title={compact ? label : undefined}
                 type="button"
                 data-active={active}
                 aria-current={active ? 'page' : undefined}
@@ -222,25 +248,44 @@ export function AppSidebar({
             );
           })}
         </div>
-        <div className="sidebar-section">
+
+        <div className="sidebar-section sidebar-utilities-section">
           <button
             type="button"
             className="nav-item"
             aria-label="Backup & import"
-            data-active={activeSection === 'backup'}
-            aria-current={activeSection === 'backup' ? 'page' : undefined}
+            title={compact ? 'Backup & import' : undefined}
+            data-active={!searchActive && activeSection === 'backup'}
+            aria-current={!searchActive && activeSection === 'backup' ? 'page' : undefined}
             onClick={() => onNavigate('backup')}
           >
             <DatabaseBackup aria-hidden="true" />
             <span className="nav-label">Backup & import</span>
           </button>
-          <button type="button" className="nav-item" aria-label="Commands" onClick={onCommands}>
+          <button
+            type="button"
+            className="nav-item"
+            aria-label="Settings"
+            title={compact ? 'Settings' : undefined}
+            onClick={onSettings}
+          >
+            <Settings2 aria-hidden="true" />
+            <span className="nav-label">Settings</span>
+          </button>
+          <button
+            type="button"
+            className="nav-item"
+            aria-label="Commands"
+            title={compact ? 'Commands' : undefined}
+            onClick={onCommands}
+          >
             <Command aria-hidden="true" />
             <span className="nav-label">Commands</span>
             <kbd>Ctrl K</kbd>
           </button>
         </div>
       </nav>
+
       <div className="sidebar-footer">
         <SyncIndicator />
       </div>

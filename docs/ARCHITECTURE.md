@@ -58,3 +58,9 @@ Search scoring is worker-backed, large note collections mount progressively, OCR
 ## Release contract
 
 A foundation change is complete only when formatting, the foundation contract, lint, TypeScript, unit tests, production build/performance, full Chromium regression, and PWA/offline certification pass on the exact merge candidate.
+
+## P2 shell and responsive boundary
+
+Responsive shell state is owned by `AppShell` and normalized through `src/app/shellLayout.ts`. The three supported modes are mobile (<=767px), tablet (768–1100px), and desktop (>=1101px). Only the desktop expanded/compact preference persists. Tablet expansion and the mobile drawer are transient UI state and may never leak into durable note data or cloud synchronization.
+
+The sidebar remains a rendering boundary: it receives active destination, counts, responsive density, and action callbacks. It does not query viewport state or mutate navigation persistence itself. This keeps later editor routing and split-pane work independent from the shell's responsive mechanics.

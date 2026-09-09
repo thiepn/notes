@@ -1,4 +1,11 @@
 import { subscribeAppEvent } from './events';
+import {
+  readDesktopSidebarPreference,
+  resolveShellViewport,
+  writeDesktopSidebarPreference,
+  type DesktopSidebarPreference,
+  type ShellViewport,
+} from './shellLayout';
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { Bell, Menu, NotebookPen, Plus, Search } from 'lucide-react';
 import { SyncIndicator } from '../features/sync/SyncIndicator';
@@ -14,7 +21,7 @@ import {
   loadNavigationStats,
   type NavigationStats,
 } from '../features/organization/navigationStats';
-import { NotesWorkspace, type CaptureRequest } from '../features/notes/NotesWorkspace';
+import type { CaptureRequest } from '../features/notes/NotesWorkspace';
 import {
   readNotesViewMode,
   writeNotesViewMode,
@@ -26,7 +33,6 @@ import {
   type SearchFilters,
 } from '../features/search/searchTypes';
 
-const MOBILE_QUERY = '(max-width: 767px)';
 const ACTIVE_SECTION_KEY = 'notes.active-section';
 const ACTIVE_LABEL_KEY = 'notes.active-label';
 const labelsRepository = new LabelsRepository(notesDatabase);
@@ -40,6 +46,11 @@ const LabelManagerDialog = lazy(() =>
 const BackupWorkspace = lazy(() =>
   import('../features/backup/BackupWorkspace').then((module) => ({
     default: module.BackupWorkspace,
+  })),
+);
+const NotesWorkspace = lazy(() =>
+  import('../features/notes/NotesWorkspace').then((module) => ({
+    default: module.NotesWorkspace,
   })),
 );
 const CommandPalette = lazy(() =>
@@ -116,21 +127,35 @@ export function AppShell() {
   const [settingsInitialSection, setSettingsInitialSection] =
     useState<SettingsSection>('appearance');
   const [privacyLockSettingsOpen, setPrivacyLockSettingsOpen] = useState(false);
-  const [sidebarCompact, setSidebarCompact] = useState(false);
+  const [desktopSidebarPreference, setDesktopSidebarPreference] =
+    useState<DesktopSidebarPreference>(() => readDesktopSidebarPreference());
+  const [tabletSidebarExpanded, setTabletSidebarExpanded] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFilters, setSearchFilters] = useState<SearchFilters>({ ...DEFAULT_SEARCH_FILTERS });
   const [searchFiltersOpen, setSearchFiltersOpen] = useState(false);
+  const [searchDestinationOpen, setSearchDestinationOpen] = useState(false);
   const [searchFocusRequest, setSearchFocusRequest] = useState(0);
   const [captureRequest, setCaptureRequest] = useState<CaptureRequest | null>(null);
   const captureRequestIdRef = useRef(0);
   const [viewMode, setViewMode] = useState<NotesViewMode>(() => readNotesViewMode());
-  const [isMobile, setIsMobile] = useState(() =>
-    typeof window === 'undefined' ? false : window.matchMedia(MOBILE_QUERY).matches,
+  const [viewportMode, setViewportMode] = useState<ShellViewport>(() =>
+    typeof window === 'undefined' ? 'desktop' : resolveShellViewport(window.innerWidth),
   );
+  const isMobile = viewportMode === 'mobile';
+  const isTablet = viewportMode === 'tablet';
+  const sidebarCompact = isMobile
+    ? false
+    : isTablet
+      ? !tabletSidebarExpanded
+      : desktopSidebarPreference === 'compact';
 
   const searchFiltersActive = hasSearchFilters(searchFilters);
-  const searchActive = Boolean(searchQuery.trim()) || searchFiltersActive || searchFiltersOpen;
+  const searchActive =
+    searchDestinationOpen ||
+    Boolean(searchQuery.trim()) ||
+    searchFiltersActive ||
+    searchFiltersOpen;
 
   const refreshLabels = useCallback(async () => {
     setLabels(await labelsRepository.list());
@@ -167,6 +192,7 @@ export function AppShell() {
   }, [recoveryMode]);
 
   const clearSearch = useCallback(() => {
+    setSearchDestinationOpen(false);
     setSearchQuery('');
     setSearchFilters({ ...DEFAULT_SEARCH_FILTERS });
     setSearchFiltersOpen(false);
@@ -219,36 +245,45 @@ export function AppShell() {
   }, []);
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia(MOBILE_QUERY);
-    const handleChange = (event: MediaQueryListEvent) => {
-      setIsMobile(event.matches);
-      if (!event.matches) {
-        setMobileSidebarOpen(false);
-      }
+    const handleResize = () => {
+      const nextMode = resolveShellViewport(window.innerWidth);
+      setViewportMode(nextMode);
+      if (nextMode !== 'mobile') setMobileSidebarOpen(false);
+      if (nextMode !== 'tablet') setTabletSidebarExpanded(false);
     };
 
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
+    window.addEventListener('resize', handleResize, { passive: true });
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   useEffect(() => {
-    if (!mobileSidebarOpen) return;
+    if (!mobileSidebarOpen && !tabletSidebarExpanded) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMobileSidebarOpen(false);
+      if (event.key !== 'Escape') return;
+      if (isMobile) setMobileSidebarOpen(false);
+      if (isTablet) setTabletSidebarExpanded(false);
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [mobileSidebarOpen]);
+  }, [isMobile, isTablet, mobileSidebarOpen, tabletSidebarExpanded]);
 
   const handleMenu = () => {
     if (isMobile) {
       setMobileSidebarOpen((open) => !open);
       return;
     }
+    if (isTablet) {
+      setTabletSidebarExpanded((expanded) => !expanded);
+      return;
+    }
 
-    setSidebarCompact((compact) => !compact);
+    setDesktopSidebarPreference((current) => {
+      const next = current === 'expanded' ? 'compact' : 'expanded';
+      writeDesktopSidebarPreference(next);
+      return next;
+    });
   };
 
   const handleNavigate = useCallback(
@@ -260,9 +295,10 @@ export function AppShell() {
       persistActiveLabelId(null);
       setCommandPaletteOpen(false);
 
-      if (isMobile) setMobileSidebarOpen(false);
+      setMobileSidebarOpen(false);
+      setTabletSidebarExpanded(false);
     },
-    [clearSearch, isMobile],
+    [clearSearch],
   );
 
   const handleLabelNavigate = useCallback(
@@ -274,9 +310,10 @@ export function AppShell() {
       persistActiveLabelId(labelId);
       setCommandPaletteOpen(false);
 
-      if (isMobile) setMobileSidebarOpen(false);
+      setMobileSidebarOpen(false);
+      setTabletSidebarExpanded(false);
     },
-    [clearSearch, isMobile],
+    [clearSearch],
   );
 
   const handleCreateLabel = async (name: string) => {
@@ -312,6 +349,8 @@ export function AppShell() {
       setActiveLabelId(null);
       persistActiveSection('notes');
       persistActiveLabelId(null);
+      setMobileSidebarOpen(false);
+      setTabletSidebarExpanded(false);
       captureRequestIdRef.current += 1;
       setCaptureRequest({ id: captureRequestIdRef.current, kind });
     },
@@ -320,8 +359,13 @@ export function AppShell() {
 
   const focusSearch = useCallback(() => {
     setCommandPaletteOpen(false);
+    setSearchDestinationOpen(true);
     setSearchFocusRequest((request) => request + 1);
+    setMobileSidebarOpen(false);
+    setTabletSidebarExpanded(false);
   }, []);
+
+  const openSearch = focusSearch;
 
   const openLabelManager = useCallback(() => {
     setCommandPaletteOpen(false);
@@ -569,13 +613,23 @@ export function AppShell() {
   ];
 
   return (
-    <div className="app-shell">
+    <div
+      className="app-shell"
+      data-viewport={viewportMode}
+      data-sidebar={sidebarCompact ? 'compact' : 'expanded'}
+    >
       <a className="skip-link" href="#main-content">
         Skip to notes
       </a>
       <AppHeader
         onMenu={handleMenu}
-        navigationOpen={isMobile ? mobileSidebarOpen : !sidebarCompact}
+        navigationOpen={
+          isMobile
+            ? mobileSidebarOpen
+            : isTablet
+              ? tabletSidebarExpanded
+              : desktopSidebarPreference === 'expanded'
+        }
         onCommandPalette={() => setCommandPaletteOpen(true)}
         onSettings={() => {
           setSettingsInitialSection('appearance');
@@ -605,18 +659,28 @@ export function AppShell() {
         <AppSidebar
           activeSection={activeSection}
           activeLabelId={activeLabel?.id ?? null}
+          searchActive={searchActive}
           labels={labels}
           counts={navigationStats}
           compact={sidebarCompact}
           mobileOpen={mobileSidebarOpen}
           mobile={isMobile}
+          tablet={isTablet}
           onNavigate={handleNavigate}
+          onSearch={openSearch}
           onLabelNavigate={handleLabelNavigate}
           onManageLabels={openLabelManager}
           onCreateNote={() => prepareNotesCapture('text')}
           onCommands={() => {
             setMobileSidebarOpen(false);
+            setTabletSidebarExpanded(false);
             setCommandPaletteOpen(true);
+          }}
+          onSettings={() => {
+            setMobileSidebarOpen(false);
+            setTabletSidebarExpanded(false);
+            setSettingsInitialSection('appearance');
+            setSettingsOpen(true);
           }}
           onCloseNavigation={() => setMobileSidebarOpen(false)}
         />
@@ -687,18 +751,20 @@ export function AppShell() {
                 />
               </Suspense>
             ) : lifecycleSection ? (
-              <NotesWorkspace
-                mode={activeLabel ? 'notes' : activeSection}
-                labels={labels}
-                filterLabelId={activeLabel?.id ?? null}
-                viewMode={viewMode}
-                onViewModeChange={handleViewMode}
-                captureRequest={captureRequest}
-                onCaptureRequestHandled={(requestId) =>
-                  setCaptureRequest((current) => (current?.id === requestId ? null : current))
-                }
-                onCollectionChanged={handleCollectionChanged}
-              />
+              <Suspense fallback={<DeferredWorkspaceFallback label="Loading notes…" />}>
+                <NotesWorkspace
+                  mode={activeLabel ? 'notes' : activeSection}
+                  labels={labels}
+                  filterLabelId={activeLabel?.id ?? null}
+                  viewMode={viewMode}
+                  onViewModeChange={handleViewMode}
+                  captureRequest={captureRequest}
+                  onCaptureRequestHandled={(requestId) =>
+                    setCaptureRequest((current) => (current?.id === requestId ? null : current))
+                  }
+                  onCollectionChanged={handleCollectionChanged}
+                />
+              </Suspense>
             ) : (
               <SectionPlaceholder
                 title={section.emptyTitle}
@@ -719,7 +785,12 @@ export function AppShell() {
           <NotebookPen aria-hidden="true" />
           <span>Notes</span>
         </button>
-        <button type="button" aria-label="Find a note" onClick={focusSearch}>
+        <button
+          type="button"
+          aria-label="Find a note"
+          aria-current={searchActive ? 'page' : undefined}
+          onClick={openSearch}
+        >
           <Search aria-hidden="true" />
           <span>Search</span>
         </button>

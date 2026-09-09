@@ -1,12 +1,22 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
-async function openSettings(page: import('@playwright/test').Page) {
-  await page.getByRole('button', { name: 'More options' }).click();
-  const menu = page.getByRole('menu');
-  await expect(menu.getByRole('menuitem', { name: 'Settings' })).toBeVisible();
-  await expect(menu.getByRole('menuitem', { name: /appearance/u })).toHaveCount(0);
-  await expect(menu.getByRole('menuitem', { name: 'Privacy settings' })).toHaveCount(0);
-  await menu.getByRole('menuitem', { name: 'Settings' }).click();
+async function openSettings(page: Page) {
+  const width = page.viewportSize()?.width ?? 1280;
+
+  if (width <= 767) {
+    await page.getByRole('button', { name: 'Open navigation', exact: true }).click();
+    const drawer = page.getByRole('dialog', { name: 'Primary navigation' });
+    await expect(drawer).toBeVisible();
+    await drawer.getByRole('button', { name: 'Settings', exact: true }).click();
+  } else {
+    await page.getByRole('button', { name: 'More options' }).click();
+    const menu = page.getByRole('menu');
+    await expect(menu.getByRole('menuitem', { name: 'Settings' })).toBeVisible();
+    await expect(menu.getByRole('menuitem', { name: /appearance/u })).toHaveCount(0);
+    await expect(menu.getByRole('menuitem', { name: 'Privacy settings' })).toHaveCount(0);
+    await menu.getByRole('menuitem', { name: 'Settings' }).click();
+  }
+
   const settings = page.getByRole('dialog', { name: 'Settings' });
   await expect(settings).toBeVisible();
   return settings;
