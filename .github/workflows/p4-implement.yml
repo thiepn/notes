@@ -33,6 +33,59 @@ jobs:
             python3 tools/apply_p4_checklists.py
             python3 tools/apply_p4_styles.py
           fi
+          python3 <<'PY'
+          from pathlib import Path
+          path = Path('src/features/notes/TextNoteComposer.tsx')
+          text = path.read_text()
+          old = '''  useEffect(() => {
+    const request = captureRequest;
+    if (!request || lastCaptureRequestIdRef.current === request.id) return;
+    lastCaptureRequestIdRef.current = request.id;
+    openCapture();
+
+    if (request.kind === 'drawing') {
+      setQuickDrawingOpen(true);
+      return;
+    }
+    if (request.kind === 'voice') {
+      setQuickVoiceOpen(true);
+      return;
+    }
+    if (request.kind === 'image' || request.kind === 'scan') {
+      const files = request.files ?? [];
+      if (request.kind === 'scan') setExpandedToolsOpen(true);
+      if (files.length > 0) void handleQuickImages(files);
+    }
+  }, [captureRequest, handleQuickImages, openCapture]);
+'''
+          new = '''  useEffect(() => {
+    const request = captureRequest;
+    if (!request || lastCaptureRequestIdRef.current === request.id) return;
+    lastCaptureRequestIdRef.current = request.id;
+    const frame = window.requestAnimationFrame(() => {
+      openCapture();
+      if (request.kind === 'drawing') {
+        setQuickDrawingOpen(true);
+        return;
+      }
+      if (request.kind === 'voice') {
+        setQuickVoiceOpen(true);
+        return;
+      }
+      if (request.kind === 'image' || request.kind === 'scan') {
+        const files = request.files ?? [];
+        if (request.kind === 'scan') setExpandedToolsOpen(true);
+        if (files.length > 0) void handleQuickImages(files);
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [captureRequest, handleQuickImages, openCapture]);
+'''
+          if old in text:
+            path.write_text(text.replace(old, new, 1))
+          elif new not in text:
+            raise RuntimeError('P4 capture intent effect shape was not found.')
+          PY
           npx prettier --write src e2e docs
       - name: Verify integrated implementation
         run: |
