@@ -26,10 +26,7 @@ describe('bulk Markdown export', () => {
       [note('one', 'Same title'), note('two', 'Same title')],
       {},
     );
-    expect(entries.map((entry) => entry.filename)).toEqual([
-      'Same title.md',
-      'Same title (2).md',
-    ]);
+    expect(entries.map((entry) => entry.filename)).toEqual(['Same title.md', 'Same title (2).md']);
     expect(entries[0]?.markdown).toContain('# Same title');
     expect(entries[0]?.markdown).toContain('Body one');
   });

@@ -20,6 +20,7 @@ import {
 } from '../../db';
 import { appendOcrText } from '../ocr/ocr';
 import { RichTextEditor } from '../richText/RichTextEditor';
+import type { CaptureRequest } from './captureTypes';
 import { useTextNoteCapture } from './useTextNoteCapture';
 
 const DrawingAttachmentButton = lazy(() =>
@@ -52,7 +53,7 @@ const AttachmentPanel = lazy(() =>
 const voiceAttachmentsRepository = new VoiceAttachmentsRepository(notesDatabase);
 
 interface TextNoteComposerProps {
-  openRequestId?: number | undefined;
+  captureRequest?: CaptureRequest | null;
   repository: NotesRepository;
   attachmentsRepository: AttachmentsRepository;
   beforeSaved?: ((note: NoteRecord) => Promise<void>) | undefined;
@@ -64,7 +65,7 @@ interface TextNoteComposerProps {
 }
 
 export function TextNoteComposer({
-  openRequestId,
+  captureRequest,
   repository,
   attachmentsRepository,
   beforeSaved,
@@ -75,7 +76,7 @@ export function TextNoteComposer({
   onChecklistRequested,
 }: TextNoteComposerProps) {
   const composerRef = useRef<HTMLDivElement>(null);
-  const lastOpenRequestIdRef = useRef<number | undefined>(undefined);
+  const lastCaptureRequestIdRef = useRef<number | undefined>(undefined);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const captureTriggerRef = useRef<HTMLButtonElement>(null);
   const restoreCaptureFocusRef = useRef(false);
@@ -112,12 +113,6 @@ export function TextNoteComposer({
   useEffect(() => {
     onActiveNoteChange(activeNoteId);
   }, [activeNoteId, onActiveNoteChange]);
-
-  useEffect(() => {
-    if (openRequestId === undefined || lastOpenRequestIdRef.current === openRequestId) return;
-    lastOpenRequestIdRef.current = openRequestId;
-    openCapture();
-  }, [openCapture, openRequestId]);
 
   useEffect(() => {
     if (!expanded) return;
@@ -235,6 +230,29 @@ export function TextNoteComposer({
         : 'Voice recording added.',
     );
   };
+
+  useEffect(() => {
+    const request = captureRequest;
+    if (!request || lastCaptureRequestIdRef.current === request.id) return;
+    lastCaptureRequestIdRef.current = request.id;
+    const frame = window.requestAnimationFrame(() => {
+      openCapture();
+      if (request.kind === 'drawing') {
+        setQuickDrawingOpen(true);
+        return;
+      }
+      if (request.kind === 'voice') {
+        setQuickVoiceOpen(true);
+        return;
+      }
+      if (request.kind === 'image' || request.kind === 'scan') {
+        const files = request.files ?? [];
+        if (request.kind === 'scan') setExpandedToolsOpen(true);
+        if (files.length > 0) void handleQuickImages(files);
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [captureRequest, handleQuickImages, openCapture]);
 
   const finishAndRestoreFocus = useCallback(async () => {
     restoreCaptureFocusRef.current = true;

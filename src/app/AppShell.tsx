@@ -26,7 +26,7 @@ import {
   organizationCollectionMode,
   resolveOrganizationCollection,
 } from '../features/organization/collectionModel';
-import type { CaptureRequest } from '../features/notes/NotesWorkspace';
+import type { CaptureKind, CaptureRequest } from '../features/notes/captureTypes';
 import {
   readNotesViewMode,
   writeNotesViewMode,
@@ -52,6 +52,9 @@ const LabelManagerDialog = lazy(() =>
   import('../features/notes/LabelManagerDialog').then((module) => ({
     default: module.LabelManagerDialog,
   })),
+);
+const CaptureMenu = lazy(() =>
+  import('../features/notes/CaptureMenu').then((module) => ({ default: module.CaptureMenu })),
 );
 
 const BackupWorkspace = lazy(() =>
@@ -133,6 +136,7 @@ export function AppShell() {
   const [labels, setLabels] = useState<LabelRecord[]>([]);
   const [navigationStats, setNavigationStats] = useState<NavigationStats>(EMPTY_NAVIGATION_STATS);
   const [labelManagerOpen, setLabelManagerOpen] = useState(false);
+  const [captureMenuOpen, setCaptureMenuOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsInitialSection, setSettingsInitialSection] =
@@ -354,10 +358,11 @@ export function AppShell() {
   };
 
   const prepareNotesCapture = useCallback(
-    (kind: 'text' | 'checklist') => {
+    (kind: CaptureKind, files?: File[]) => {
       const captureLabelId =
         !searchActive && activeSection === 'notes' && activeLabelId ? activeLabelId : null;
       clearSearch();
+      setCaptureMenuOpen(false);
       setCommandPaletteOpen(false);
       setActiveSection('notes');
       setActiveLabelId(captureLabelId);
@@ -366,10 +371,21 @@ export function AppShell() {
       setMobileSidebarOpen(false);
       setTabletSidebarExpanded(false);
       captureRequestIdRef.current += 1;
-      setCaptureRequest({ id: captureRequestIdRef.current, kind });
+      setCaptureRequest({
+        id: captureRequestIdRef.current,
+        kind,
+        ...(files && files.length > 0 ? { files } : {}),
+      });
     },
     [activeLabelId, activeSection, clearSearch, searchActive],
   );
+
+  const openCaptureMenu = useCallback(() => {
+    setCommandPaletteOpen(false);
+    setMobileSidebarOpen(false);
+    setTabletSidebarExpanded(false);
+    setCaptureMenuOpen(true);
+  }, []);
 
   const focusSearch = useCallback(() => {
     setCommandPaletteOpen(false);
@@ -415,8 +431,14 @@ export function AppShell() {
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       if (keyboardShortcutsBlocked(event.target)) return;
 
+      const key = event.key.toLocaleLowerCase();
+      if (event.shiftKey && key === 'c') {
+        event.preventDefault();
+        prepareNotesCapture('checklist');
+        return;
+      }
+
       if (!event.shiftKey) {
-        const key = event.key.toLocaleLowerCase();
         if (key === 'c') {
           event.preventDefault();
           prepareNotesCapture('text');
@@ -532,8 +554,17 @@ export function AppShell() {
       label: 'New checklist',
       description: 'Create a checklist note',
       group: 'Create',
+      shortcut: 'Shift+C',
       keywords: ['list', 'tasks'],
       run: () => prepareNotesCapture('checklist'),
+    },
+    {
+      id: 'new-capture-menu',
+      label: 'New…',
+      description: 'Choose text, checklist, image, scan, drawing, or voice',
+      group: 'Create',
+      keywords: ['capture', 'image', 'scan', 'drawing', 'voice'],
+      run: openCaptureMenu,
     },
     {
       id: 'search-notes',
@@ -819,7 +850,8 @@ export function AppShell() {
           type="button"
           className="mobile-create"
           aria-label="New note"
-          onClick={() => prepareNotesCapture('text')}
+          aria-expanded={captureMenuOpen}
+          onClick={openCaptureMenu}
         >
           <Plus aria-hidden="true" />
           <span>New</span>
@@ -844,6 +876,15 @@ export function AppShell() {
           <span>More</span>
         </button>
       </nav>
+
+      {captureMenuOpen ? (
+        <Suspense fallback={null}>
+          <CaptureMenu
+            onClose={() => setCaptureMenuOpen(false)}
+            onCapture={(kind, files) => prepareNotesCapture(kind, files)}
+          />
+        </Suspense>
+      ) : null}
 
       {settingsOpen ? (
         <Suspense fallback={<div className="deferred-settings-loading">Loading settings…</div>}>

@@ -36,6 +36,8 @@ import {
 import { TextNoteComposer } from './TextNoteComposer';
 import type { NotesViewMode } from './viewMode';
 import { NOTE_SORT_KEY, readNoteSort, sortDocuments, type NoteSort } from './noteSort';
+import type { CaptureRequest } from './captureTypes';
+import { downloadMarkdownArchive } from './bulkExport';
 
 const notesRepository = new NotesRepository(notesDatabase);
 const labelsRepository = new LabelsRepository(notesDatabase);
@@ -59,11 +61,6 @@ const EMPTY_NOTES: NoteRecord[] = [];
 const EMPTY_LABEL_MAP: Record<string, string[]> = {};
 const EMPTY_CHECKLIST_MAP: Record<string, ChecklistItemRecord[]> = {};
 const EMPTY_SELECTION = new Set<string>();
-
-export interface CaptureRequest {
-  id: number;
-  kind: 'text' | 'checklist';
-}
 
 interface NotesWorkspaceProps {
   mode?: NoteCollectionMode;
@@ -134,7 +131,7 @@ export function NotesWorkspace({
   });
   const [activeCaptureNoteId, setActiveCaptureNoteId] = useState<string | null>(null);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
-  const [textCaptureRequestId, setTextCaptureRequestId] = useState<number | undefined>(undefined);
+  const [textCaptureRequest, setTextCaptureRequest] = useState<CaptureRequest | null>(null);
   const [toast, setToast] = useState<LifecycleToastState | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<NoteRecord | null>(null);
   const [bulkDeleteIds, setBulkDeleteIds] = useState<string[] | null>(null);
@@ -331,11 +328,11 @@ export function NotesWorkspace({
     const request = captureRequest;
     const frame = window.requestAnimationFrame(() => {
       if (request.kind === 'checklist') {
-        setTextCaptureRequestId(undefined);
+        setTextCaptureRequest(null);
         setChecklistCaptureOpen(true);
       } else {
         setChecklistCaptureOpen(false);
-        setTextCaptureRequestId(request.id);
+        setTextCaptureRequest(request);
       }
       onCaptureRequestHandled?.(request.id);
     });
@@ -788,6 +785,18 @@ export function NotesWorkspace({
     [clearSelection, labelIdsByNote, refreshCollection, selectedNotes, showToast],
   );
 
+  const handleBulkExport = useCallback(async () => {
+    if (selectedNotes.length === 0) return;
+    try {
+      await downloadMarkdownArchive(selectedNotes, checklistItemsByNote);
+      showToast(
+        `Exported ${selectedNotes.length} ${selectedNotes.length === 1 ? 'note' : 'notes'} as Markdown.`,
+      );
+    } catch {
+      showToast('Selected notes could not be exported.');
+    }
+  }, [checklistItemsByNote, selectedNotes, showToast]);
+
   const handleConfirmBulkDelete = useCallback(async () => {
     const noteIds = bulkDeleteIds;
     const source = bulkDeleteSource;
@@ -837,7 +846,7 @@ export function NotesWorkspace({
           </Suspense>
         ) : (
           <TextNoteComposer
-            openRequestId={textCaptureRequestId}
+            captureRequest={textCaptureRequest}
             repository={notesRepository}
             attachmentsRepository={attachmentsRepository}
             beforeSaved={prepareCapturedNote}
@@ -863,6 +872,7 @@ export function NotesWorkspace({
                 onClear={clearSelection}
                 onSelectAll={handleSelectAll}
                 onSetPinned={(pinned) => void handleBulkSetPinned(pinned)}
+                onExport={() => void handleBulkExport()}
                 onArchive={() => void handleBulkArchive()}
                 onUnarchive={() => void handleBulkUnarchive()}
                 onTrash={() => void handleBulkTrash()}

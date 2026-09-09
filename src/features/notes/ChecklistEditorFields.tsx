@@ -5,19 +5,31 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, GripVertical, Trash2 } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  CopyPlus,
+  GripVertical,
+  Plus,
+  Trash2,
+} from 'lucide-react';
 
 import { IconButton } from '../../components/ui/IconButton';
 import type { ChecklistDraftItem } from '../../db';
 import {
   checklistDepth,
   clearCompletedChecklistItems,
+  createChecklistDraftItem,
+  duplicateChecklistItem,
   indentChecklistItem,
   insertChecklistItemAfter,
   moveChecklistItem,
   outdentChecklistItem,
   removeChecklistItem,
   reorderChecklistBefore,
+  setAllChecklistItemsChecked,
   toggleChecklistItem,
 } from './checklistModel';
 
@@ -47,7 +59,13 @@ export function ChecklistEditorFields({
   const [focusItemId, setFocusItemId] = useState<string | null>(null);
   const inputRefs = useRef(new Map<string, HTMLInputElement>());
   const dragItemIdRef = useRef<string | null>(null);
-  const completedCount = useMemo(() => items.filter((item) => item.checked).length, [items]);
+  const meaningfulItems = useMemo(() => items.filter((item) => item.text.trim()), [items]);
+  const completedCount = useMemo(
+    () => meaningfulItems.filter((item) => item.checked).length,
+    [meaningfulItems],
+  );
+  const allMeaningfulComplete =
+    meaningfulItems.length > 0 && completedCount === meaningfulItems.length;
   const visibleItems = hideCompleted ? items.filter((item) => !item.checked) : items;
 
   useEffect(() => {
@@ -121,6 +139,15 @@ export function ChecklistEditorFields({
           if (firstVisible) setFocusItemId(firstVisible.id);
         }}
       />
+
+      {meaningfulItems.length > 0 ? (
+        <div className="checklist-progress" aria-label="Checklist progress">
+          <span>
+            {completedCount} of {meaningfulItems.length} completed
+          </span>
+          <progress value={completedCount} max={meaningfulItems.length} />
+        </div>
+      ) : null}
 
       <div className="checklist-items" role="list" aria-label="Checklist items">
         {visibleItems.map((item, visibleIndex) => {
@@ -223,6 +250,18 @@ export function ChecklistEditorFields({
                   <ArrowDown />
                 </IconButton>
                 <IconButton
+                  className="checklist-row-action"
+                  label={`Duplicate item ${visibleIndex + 1}`}
+                  onClick={() => {
+                    const duplicated = duplicateChecklistItem(items, item.id);
+                    if (!duplicated.duplicatedId) return;
+                    onItemsChange(duplicated.items);
+                    setFocusItemId(duplicated.duplicatedId);
+                  }}
+                >
+                  <CopyPlus />
+                </IconButton>
+                <IconButton
                   className="checklist-row-action checklist-row-delete"
                   label={`Delete item ${visibleIndex + 1}`}
                   disabled={items.length <= 1}
@@ -237,6 +276,29 @@ export function ChecklistEditorFields({
       </div>
 
       <div className="checklist-options">
+        <div className="checklist-primary-actions">
+          <button
+            type="button"
+            onClick={() => {
+              const added = createChecklistDraftItem();
+              onItemsChange([...items, added]);
+              setFocusItemId(added.id);
+            }}
+          >
+            <Plus aria-hidden="true" /> Add item
+          </button>
+          {meaningfulItems.length > 0 ? (
+            <button
+              type="button"
+              onClick={() =>
+                onItemsChange(setAllChecklistItemsChecked(items, !allMeaningfulComplete))
+              }
+            >
+              {allMeaningfulComplete ? 'Uncheck all' : 'Check all'}
+            </button>
+          ) : null}
+        </div>
+
         <label className="checklist-option-toggle">
           <input
             type="checkbox"

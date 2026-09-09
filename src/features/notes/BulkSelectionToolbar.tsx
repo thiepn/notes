@@ -3,6 +3,7 @@ import {
   Archive,
   Check,
   CheckCheck,
+  Download,
   Palette,
   Pin,
   PinOff,
@@ -25,6 +26,7 @@ interface BulkSelectionToolbarProps {
   onClear(): void;
   onSelectAll(): void;
   onSetPinned(pinned: boolean): void;
+  onExport(): void;
   onArchive(): void;
   onUnarchive(): void;
   onTrash(): void;
@@ -45,6 +47,7 @@ export function BulkSelectionToolbar({
   onClear,
   onSelectAll,
   onSetPinned,
+  onExport,
   onArchive,
   onUnarchive,
   onTrash,
@@ -110,6 +113,14 @@ export function BulkSelectionToolbar({
       </div>
 
       <div className="bulk-selection-actions">
+        <IconButton
+          className="bulk-selection-icon"
+          label="Export selected notes as Markdown"
+          onClick={onExport}
+        >
+          <Download />
+        </IconButton>
+
         {mode === 'notes' ? (
           <IconButton
             className="bulk-selection-icon"

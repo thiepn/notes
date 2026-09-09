@@ -28,7 +28,9 @@ test('mobile New is a universal capture menu and drawing opens directly', async 
   await expect(page.getByRole('form', { name: 'New note' })).toBeVisible();
 });
 
-test('mobile universal capture can start an image note and a scan exposes local OCR', async ({ page }) => {
+test('mobile universal capture can start an image note and a scan exposes local OCR', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('./');
   await waitForNotes(page);
@@ -63,7 +65,9 @@ test('Shift+C opens checklist capture without navigating through menus', async (
   await expect(page.getByRole('form', { name: 'New checklist' })).toBeVisible();
 });
 
-test('checklist progress, duplicate, add-item, and completion controls stay coherent', async ({ page }) => {
+test('checklist progress, duplicate, add-item, and completion controls stay coherent', async ({
+  page,
+}) => {
   await page.goto('./');
   await waitForNotes(page);
   await page.getByRole('button', { name: 'Create a checklist' }).click();
