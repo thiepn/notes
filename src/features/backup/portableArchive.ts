@@ -88,7 +88,9 @@ export interface PortableArchiveDownload {
   manifest: PortableArchiveManifest;
 }
 
-export async function buildPortableArchive(document: BackupDocument): Promise<PortableArchiveBuild> {
+export async function buildPortableArchive(
+  document: BackupDocument,
+): Promise<PortableArchiveBuild> {
   const prepared = await prepareBackup(document);
   const { data } = prepared.document;
   const encoder = new TextEncoder();
@@ -209,7 +211,8 @@ export async function buildPortableArchive(document: BackupDocument): Promise<Po
   const counts = {
     notes: data.notes.length,
     active: data.notes.filter((note) => note.archivedAt === null && note.trashedAt === null).length,
-    archived: data.notes.filter((note) => note.archivedAt !== null && note.trashedAt === null).length,
+    archived: data.notes.filter((note) => note.archivedAt !== null && note.trashedAt === null)
+      .length,
     trashed: data.notes.filter((note) => note.trashedAt !== null).length,
     checklistItems: data.checklistItems.length,
     labels: data.labels.length,
@@ -281,7 +284,10 @@ function portableAttachmentFilename(name: string | null, id: string, mimeType: s
 }
 
 function portablePathSegment(value: string, maxBytes: number): string {
-  const normalized = value.replace(/[<>:"/\\|?*\p{Cc}]/gu, '-').replace(/[. ]+$/u, '').trim();
+  const normalized = value
+    .replace(/[<>:"/\\|?*\p{Cc}]/gu, '-')
+    .replace(/[. ]+$/u, '')
+    .trim();
   const base = normalized || 'Untitled';
   const encoder = new TextEncoder();
   let result = '';
@@ -326,13 +332,9 @@ function portableNoteMarkdown(
             createdAt: new Date(reminder.createdAt).toISOString(),
             updatedAt: new Date(reminder.updatedAt).toISOString(),
             completedAt:
-              reminder.completedAt === null
-                ? null
-                : new Date(reminder.completedAt).toISOString(),
+              reminder.completedAt === null ? null : new Date(reminder.completedAt).toISOString(),
             dismissedAt:
-              reminder.dismissedAt === null
-                ? null
-                : new Date(reminder.dismissedAt).toISOString(),
+              reminder.dismissedAt === null ? null : new Date(reminder.dismissedAt).toISOString(),
             lastNotifiedAt:
               reminder.lastNotifiedAt === null
                 ? null
