@@ -28,9 +28,8 @@ jobs:
           encoded=''.join((root/'.v5-transfer'/f'{i}.b64').read_text().strip() for i in range(1,5))
           data=lzma.decompress(base64.b64decode(encoded,validate=True))
           assert hashlib.sha256(data).hexdigest()=='e5aaec71125ccb46aca1b056bb368f8f4c0b1f5a895240b416b5a168b4edb1b9', 'Source bundle checksum mismatch'
-          items=json.loads(data)
           prepared=[]
-          for x in items:
+          for x in json.loads(data):
               p=(root/x['p']).resolve()
               assert p.is_relative_to(root) and '.git' not in p.relative_to(root).parts
               before=p.read_bytes() if p.exists() else None
@@ -51,7 +50,7 @@ jobs:
           shutil.rmtree(root/'.v5-transfer')
           (root/'.github/workflows/overhaul-audit.yml').unlink(missing_ok=True)
           (root/'.github/workflows/v5-certify.yml').unlink()
-          print(f'Applied and verified {len(items)} source files; removed temporary transfer and audit files.')
+          print(f'Applied and verified {len(prepared)} files.')
           PY
       - run: npm ci --no-audit --no-fund
       - run: npm run format:check
@@ -59,22 +58,34 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
-      - name: Commit verified sources to the isolated feature branch
+      - name: Publish source files only to the isolated feature branch
+        continue-on-error: true
         run: |
+          git restore --source=HEAD -- .github/workflows
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
           git commit -m 'Notes V5: Paper & Ink redesign, document utilities, accessible navigation and sync integrity'
           git push origin HEAD:feat/notes-v5-editorial-overhaul
           git rev-parse HEAD
-      - run: npx playwright install --with-deps chromium
+      - name: Install browser
+        id: browser
+        run: npx playwright install --with-deps chromium
       - name: V5 design and sync certification without retries
+        id: targeted
         run: npx playwright test e2e/v5-redesign.spec.ts e2e/v5-sync-integrity.spec.ts --retries=0 --reporter=line --output=v5-test-results
+      - name: Retain early design evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: notes-v5-design-evidence
+          path: v5-test-results
+          retention-days: 7
       - name: Full browser regressions
-        if: success() || failure()
-        run: npm run e2e -- --reporter=line
+        if: ${{ !cancelled() && steps.browser.outcome == 'success' }}
+        run: npm run e2e -- --reporter=line --max-failures=8
       - name: PWA offline certification
-        if: success() || failure()
+        if: ${{ !cancelled() && steps.browser.outcome == 'success' }}
         run: npm run e2e:pwa
       - name: Package source snapshot
         if: always()
