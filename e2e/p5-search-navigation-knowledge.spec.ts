@@ -7,25 +7,41 @@ async function waitForNotes(page: Page) {
 
 test('command palette quick-opens active and archived notes by title', async ({ page }) => {
   await page.goto('./');
-  const noteId = await page.evaluate(async () => {
+  const ids = await page.evaluate(async () => {
     const db = await import('/notes/src/db/index.ts');
     const notes = new db.NotesRepository(db.notesDatabase);
-    const created = await notes.create({ title: 'P5 Navigation Atlas', content: 'Quick-open target' });
-    return created.id;
+    const active = await notes.create({ title: 'P5 Navigation Atlas', content: 'Quick-open target' });
+    const archived = await notes.create({ title: 'P5 Archive Atlas', content: 'Archived quick-open target' });
+    await notes.archive(archived.id, archived.revision);
+    return { active: active.id, archived: archived.id };
   });
   await page.reload();
   await waitForNotes(page);
 
   await page.keyboard.press('Control+K');
-  const palette = page.getByRole('dialog', { name: 'Command palette' });
+  let palette = page.getByRole('dialog', { name: 'Command palette' });
   await palette.getByRole('combobox', { name: 'Search commands' }).fill('navigation atlas');
-  const target = palette.getByRole('option', { name: /Open note: P5 Navigation Atlas/u });
+  let target = palette.getByRole('option', { name: /Open note: P5 Navigation Atlas/u });
   await expect(target).toBeVisible();
   await target.click();
 
-  const editor = page.getByRole('dialog', { name: 'Edit note' });
+  let editor = page.getByRole('dialog', { name: 'Edit note' });
   await expect(editor.getByRole('textbox', { name: 'Edit title' })).toHaveValue('P5 Navigation Atlas');
-  await expect(page.locator(`[data-editing-note="${noteId}"]`)).toBeVisible();
+  await expect(page.locator(`[data-editing-note="${ids.active}"]`)).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(editor).toBeHidden();
+
+  await page.keyboard.press('Control+K');
+  palette = page.getByRole('dialog', { name: 'Command palette' });
+  await palette.getByRole('combobox', { name: 'Search commands' }).fill('archive atlas');
+  target = palette.getByRole('option', { name: /Open note: P5 Archive Atlas/u });
+  await expect(target).toBeVisible();
+  await target.click();
+
+  editor = page.getByRole('dialog', { name: 'Edit note' });
+  await expect(editor.getByRole('textbox', { name: 'Edit title' })).toHaveValue('P5 Archive Atlas');
+  await expect(page.locator(`[data-editing-note="${ids.archived}"]`)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Archive', level: 1 })).toBeVisible();
 });
 
 test('saved searches are runnable as smart collections from the command palette', async ({ page }) => {
@@ -84,13 +100,13 @@ test('a missing WikiLink target can be created directly from Connections', async
     'P5 Missing Target',
   );
 
-  const state = await page.evaluate(async () => {
+  const state = await page.evaluate(async (sourceNoteId) => {
     const db = await import('/notes/src/db/index.ts');
     const notes = new db.NotesRepository(db.notesDatabase);
     const all = [...(await notes.listActive()), ...(await notes.listArchived())];
     return {
       targets: all.filter((note) => note.title === 'P5 Missing Target').length,
-      sourceContent: (await notes.require(arguments[0] as string)).content,
+      sourceContent: (await notes.require(sourceNoteId)).content,
     };
   }, sourceId);
   expect(state.targets).toBe(1);
