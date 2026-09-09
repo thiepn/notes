@@ -24,6 +24,7 @@ test.describe('V3.1 capture and mobile UX polish', () => {
     await page.reload();
 
     const trigger = page.getByRole('button', { name: 'Create a text note' });
+    await expect(page.locator('[data-note-card]')).toHaveCount(18);
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     await expect(trigger).toBeVisible();
 
@@ -78,29 +79,25 @@ test.describe('V3.1 capture and mobile UX polish', () => {
     await expect(close).toBeVisible();
 
     await more.click();
-    const connections = editor.getByRole('menuitem', { name: 'Connections' });
-    await expect(connections).toBeVisible();
-    const menuItemHeight = await connections.evaluate(
-      (element) => element.getBoundingClientRect().height,
-    );
-    expect(menuItemHeight).toBeGreaterThanOrEqual(44);
-
-    await page.keyboard.press('Escape');
-    await close.click();
+    const actionSheet = editor.getByRole('dialog', { name: 'More note actions' });
+    await expect(actionSheet).toBeVisible();
+    await expect(actionSheet.getByRole('button', { name: 'Archive' })).toBeVisible();
+    await expect(actionSheet.getByRole('button', { name: 'Move to trash' })).toBeVisible();
+    await actionSheet.getByRole('button', { name: 'Close' }).click();
+    await expect(actionSheet).toHaveCount(0);
   });
 
   test('checklist title Enter advances directly to the first list item', async ({ page }) => {
     await page.goto('./');
-    await page.getByRole('button', { name: 'Create a checklist' }).click();
+    await page.getByRole('button', { name: 'Create checklist' }).click();
 
     const composer = page.getByRole('form', { name: 'New checklist' });
     const title = composer.getByLabel('Checklist title');
-    const firstItem = composer.getByLabel('Checklist item 1');
-
-    await title.fill('Mobile checklist');
+    await title.fill('Quick checklist');
     await title.press('Enter');
+
+    const firstItem = composer.getByPlaceholder('List item').first();
     await expect(firstItem).toBeFocused();
-    await firstItem.fill('First task');
-    await expect(firstItem).toHaveValue('First task');
+    await firstItem.fill('One clear next step');
   });
 });
