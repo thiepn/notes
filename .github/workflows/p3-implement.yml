@@ -4,12 +4,16 @@ on:
   push:
     branches: [feat/p3-organization-model]
     paths: [.github/workflows/p3-implement.yml]
+  pull_request:
+    branches: [main]
+    paths: [.github/workflows/p3-implement.yml]
 
 permissions:
   contents: write
 
 jobs:
   implement:
+    if: github.event_name == 'push' || github.head_ref == 'feat/p3-organization-model'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
