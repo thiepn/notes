@@ -27,6 +27,7 @@ jobs:
           if grep -q "openCaptureMenu" src/app/AppShell.tsx; then
             echo "P4 source patch already applied."
           else
+            python3 tools/prepare_p4_patcher.py
             python3 tools/apply_p4_shell.py
             python3 tools/apply_p4_notes.py
             python3 tools/apply_p4_checklists.py
