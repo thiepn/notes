@@ -1,9 +1,6 @@
 name: P3 integrated implementation
 
 on:
-  push:
-    branches: [feat/p3-organization-model]
-    paths: [.github/workflows/p3-implement.yml]
   pull_request:
     branches: [main]
     paths: [.github/workflows/p3-implement.yml]
@@ -13,7 +10,7 @@ permissions:
 
 jobs:
   implement:
-    if: github.event_name == 'push' || github.head_ref == 'feat/p3-organization-model'
+    if: github.head_ref == 'feat/p3-organization-model'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -26,9 +23,15 @@ jobs:
           node-version-file: .nvmrc
       - run: npm ci --no-audit --no-fund
       - name: Apply P3 source patch
-        run: python3 tools/apply_p3.py
-      - name: Format P3 changes
-        run: npx prettier --write src e2e docs
+        run: |
+          if grep -q "organizationCollectionLabelId" src/app/AppShell.tsx; then
+            echo "P3 source patch already applied."
+            exit 0
+          fi
+          python3 tools/apply_p3_shell.py
+          python3 tools/apply_p3_search.py
+          python3 tools/apply_p3_ui.py
+          npx prettier --write src e2e docs
       - name: Commit integrated P3 implementation
         run: |
           git config user.name "thiepn"
