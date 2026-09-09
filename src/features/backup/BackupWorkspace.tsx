@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
 import {
+  Archive,
   Clock3,
   DatabaseBackup,
   Download,
@@ -27,6 +28,7 @@ import {
   type LastManualBackup,
 } from './backupPresentation';
 import { BackupRepository, backupFilename } from './backupRepository';
+import { downloadPortableArchive } from './portableArchive';
 
 const backupRepository = new BackupRepository(notesDatabase);
 
@@ -45,7 +47,7 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
   const inputRef = useRef<HTMLInputElement>(null);
   const [selected, setSelected] = useState<SelectedBackup | null>(null);
   const [confirmed, setConfirmed] = useState(false);
-  const [busy, setBusy] = useState<'export' | 'inspect' | 'restore' | null>(null);
+  const [busy, setBusy] = useState<'export' | 'portable' | 'inspect' | 'restore' | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [currentStats, setCurrentStats] = useState<BackupStats | null>(null);
@@ -102,6 +104,24 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
       setCurrentStats(backup.stats);
       setStatusMessage(
         `Full backup downloaded as ${backup.filename} (${formatBackupBytes(fileBytes)}). ${backup.stats.totalRecords} database records were validated.`,
+      );
+    } catch (error) {
+      setErrorMessage(toErrorMessage(error));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const downloadPortableLibrary = async () => {
+    setBusy('portable');
+    setErrorMessage(null);
+    setStatusMessage(null);
+    try {
+      const backup = await backupRepository.exportBackup();
+      const portable = await downloadPortableArchive(backup.document);
+      setCurrentStats(backup.stats);
+      setStatusMessage(
+        `Portable archive downloaded as ${portable.filename} (${formatBackupBytes(portable.byteLength)}). ${portable.manifest.counts.notes} notes and ${portable.manifest.counts.attachments} attachments were validated and exported.`,
       );
     } catch (error) {
       setErrorMessage(toErrorMessage(error));
@@ -220,6 +240,37 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
         >
           <Download aria-hidden="true" />
           {busy === 'export' ? 'Building backup…' : 'Download full backup'}
+        </button>
+      </section>
+
+      <section className="backup-card" aria-labelledby="backup-portable-title">
+        <div className="backup-card-icon" aria-hidden="true">
+          <Archive />
+        </div>
+        <div className="backup-card-copy">
+          <p className="backup-eyebrow">Human-readable portability</p>
+          <h2 id="backup-portable-title">Export a portable library</h2>
+          <p>
+            Download every note as Markdown together with original attachment files and an
+            inspectable manifest containing lifecycle state, labels, reminders, paths, and
+            attachment checksums.
+          </p>
+          <div className="backup-assurance">
+            <ShieldCheck aria-hidden="true" />
+            <span>
+              Notes builds this ZIP from the same validated, consistent snapshot used for disaster
+              recovery. The archive does not replace the full JSON backup for exact restoration.
+            </span>
+          </div>
+        </div>
+        <button
+          className="backup-button backup-button-secondary"
+          type="button"
+          disabled={busy !== null}
+          onClick={() => void downloadPortableLibrary()}
+        >
+          <Archive aria-hidden="true" />
+          {busy === 'portable' ? 'Building portable archive…' : 'Download portable archive'}
         </button>
       </section>
 
@@ -367,10 +418,12 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
       <section className="backup-details" aria-labelledby="backup-details-title">
         <h2 id="backup-details-title">Portability and recovery</h2>
         <p>
-          Full backups replace and recover the complete local Notes library, including reminders.
-          Google Keep import is intentionally different: it adds validated Takeout notes to the
-          existing library, merges labels by normalized name, preserves recognized source state and
-          attachments, and records imported sources so the same Keep export is not duplicated later.
+          Full JSON backups are the exact recovery format. Portable ZIP archives expose the library
+          as Markdown, original attachment files, and an inspectable manifest for migration and
+          long-term access. Google Keep import is intentionally different: it adds validated Takeout
+          notes to the existing library, merges labels by normalized name, preserves recognized
+          source state and attachments, and records imported sources so the same Keep export is not
+          duplicated later.
         </p>
       </section>
     </div>
