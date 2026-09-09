@@ -19,9 +19,13 @@ import {
 const DARK_MEDIA_QUERY = '(prefers-color-scheme: dark)';
 
 export function ThemeProvider({ children }: PropsWithChildren) {
-  const [preference, setPreferenceState] = useState<ThemePreference>(() =>
-    typeof window === 'undefined' ? 'system' : readThemePreference(window.localStorage),
-  );
+  const [preference, setPreferenceState] = useState<ThemePreference>(() => {
+    try {
+      return typeof window === 'undefined' ? 'system' : readThemePreference(window.localStorage);
+    } catch {
+      return 'system';
+    }
+  });
   const [systemPrefersDark, setSystemPrefersDark] = useState(() =>
     typeof window === 'undefined' ? false : window.matchMedia(DARK_MEDIA_QUERY).matches,
   );
@@ -40,7 +44,7 @@ export function ThemeProvider({ children }: PropsWithChildren) {
     document.documentElement.style.colorScheme = resolvedTheme;
 
     const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-    themeColor?.setAttribute('content', resolvedTheme === 'dark' ? '#111318' : '#f6f7f9');
+    themeColor?.setAttribute('content', resolvedTheme === 'dark' ? '#191b1d' : '#f6f3ed');
   }, [resolvedTheme]);
 
   const setPreference = useCallback((nextPreference: ThemePreference) => {

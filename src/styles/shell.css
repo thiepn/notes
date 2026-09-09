@@ -609,6 +609,7 @@
     padding: 24px 16px calc(90px + env(safe-area-inset-bottom));
   }
   .workspace-heading {
+    flex-wrap: wrap;
     margin-bottom: 24px;
     gap: 12px;
   }
@@ -675,6 +676,7 @@
 }
 
 .workspace-meta {
+  flex: 0 0 auto;
   display: grid;
   justify-items: end;
   align-content: start;

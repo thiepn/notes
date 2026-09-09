@@ -60,5 +60,6 @@ jobs:
           name: browser-diagnostics-${{ github.run_id }}
           path: |
             test-results
+            pwa-test-results
             playwright-report
           retention-days: 7

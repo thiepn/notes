@@ -17,8 +17,8 @@ export default defineConfig({
         start_url: '/notes/',
         scope: '/notes/',
         display: 'standalone',
-        background_color: '#f6f7f9',
-        theme_color: '#f6f7f9',
+        background_color: '#f6f3ed',
+        theme_color: '#f6f3ed',
         categories: ['productivity', 'utilities'],
         icons: [
           {

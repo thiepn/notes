@@ -3,5 +3,5 @@ export const APP_CONFIG = {
   basePath: '/notes/',
   productionUrl: 'https://thiepn.dev/notes/',
   storageMode: 'local-first',
-  cloudSyncEnabled: false,
+  cloudSyncEnabled: true,
 } as const;
