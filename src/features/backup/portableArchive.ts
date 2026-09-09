@@ -80,7 +80,9 @@ export async function buildPortableArchive(document: BackupDocument): Promise<Po
     checklistByNote.set(item.noteId, list);
   }
   for (const list of checklistByNote.values()) {
-    list.sort((a, b) => a.position - b.position || a.createdAt - b.createdAt || a.id.localeCompare(b.id));
+    list.sort(
+      (a, b) => a.position - b.position || a.createdAt - b.createdAt || a.id.localeCompare(b.id),
+    );
   }
 
   const labelNameById = new Map(data.labels.map((label) => [label.id, label.name]));
@@ -104,7 +106,9 @@ export async function buildPortableArchive(document: BackupDocument): Promise<Po
   for (const list of attachmentMetadataByNote.values()) {
     list.sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id));
   }
-  const attachmentBlobById = new Map(prepared.attachments.map((attachment) => [attachment.id, attachment]));
+  const attachmentBlobById = new Map(
+    prepared.attachments.map((attachment) => [attachment.id, attachment]),
+  );
 
   const files: Record<string, Uint8Array> = {};
   const manifestNotes: PortableNoteEntry[] = [];
@@ -122,7 +126,11 @@ export async function buildPortableArchive(document: BackupDocument): Promise<Po
     for (const attachment of attachmentMetadataByNote.get(note.id) ?? []) {
       const source = attachmentBlobById.get(attachment.id);
       if (!source) throw new Error(`Portable export is missing attachment ${attachment.id}.`);
-      const filename = portableAttachmentFilename(attachment.name, attachment.id, attachment.mimeType);
+      const filename = portableAttachmentFilename(
+        attachment.name,
+        attachment.id,
+        attachment.mimeType,
+      );
       const path = `attachments/${note.id}/${filename}`;
       files[path] = new Uint8Array(await source.data.arrayBuffer());
       attachmentEntries.push({
@@ -133,7 +141,9 @@ export async function buildPortableArchive(document: BackupDocument): Promise<Po
         size: attachment.size,
         sha256: attachment.dataSha256,
       });
-      attachmentLinks.push(`- [${escapeMarkdownLinkLabel(attachment.name ?? filename)}](../${path})`);
+      attachmentLinks.push(
+        `- [${escapeMarkdownLinkLabel(attachment.name ?? filename)}](../${path})`,
+      );
     }
 
     const body = documentMarkdown(note, checklistByNote.get(note.id) ?? []);
@@ -190,9 +200,9 @@ export async function buildPortableArchive(document: BackupDocument): Promise<Po
 }
 
 export async function downloadPortableArchive(
-  document: BackupDocument,
+  backupDocument: BackupDocument,
 ): Promise<PortableArchiveDownload> {
-  const built = await buildPortableArchive(document);
+  const built = await buildPortableArchive(backupDocument);
   const { zipSync } = await import('fflate');
   const archive = zipSync(built.files, { level: 6 });
   const filename = portableArchiveFilename(built.manifest.exportedAt);
@@ -231,7 +241,9 @@ function portablePathSegment(value: string, maxBytes: number): string {
     result += point;
   }
   result = result.replace(/[. ]+$/u, '') || 'Untitled';
-  if (/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/iu.test(result)) result = `Note-${result}`;
+  if (/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/iu.test(result)) {
+    result = `Note-${result}`;
+  }
   return result;
 }
 
@@ -267,11 +279,14 @@ function portableNoteMarkdown(
     '---',
     '',
   ].join('\n');
-  const attachments = attachmentLinks.length > 0 ? `\n## Attachments\n\n${attachmentLinks.join('\n')}\n` : '';
+  const attachments =
+    attachmentLinks.length > 0 ? `\n## Attachments\n\n${attachmentLinks.join('\n')}\n` : '';
   return `${frontmatter}${body.trimEnd()}\n${attachments}`;
 }
 
-function noteLifecycle(note: BackupDocument['data']['notes'][number]): 'active' | 'archived' | 'trashed' {
+function noteLifecycle(
+  note: BackupDocument['data']['notes'][number],
+): 'active' | 'archived' | 'trashed' {
   if (note.trashedAt !== null) return 'trashed';
   if (note.archivedAt !== null) return 'archived';
   return 'active';
