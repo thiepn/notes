@@ -1,0 +1,83 @@
+name: P2 browser contract fixes
+on:
+  push:
+    branches: [feat/p2-shell-responsive-ux]
+    paths: [.github/workflows/p2-browser-fix.yml]
+permissions:
+  contents: write
+concurrency:
+  group: notes-p2-browser-fix
+  cancel-in-progress: true
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/p2-shell-responsive-ux
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - name: Add explicit Search destination and update responsive contracts
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new, count=1):
+              p=Path(path); text=p.read_text(); actual=text.count(old)
+              assert actual==count, f'{path}: expected {count}, found {actual}: {old[:120]!r}'
+              p.write_text(text.replace(old,new))
+
+          replace(
+            'src/app/AppShell.tsx',
+            "  const [searchFiltersOpen, setSearchFiltersOpen] = useState(false);\n  const [searchFocusRequest, setSearchFocusRequest] = useState(0);",
+            "  const [searchFiltersOpen, setSearchFiltersOpen] = useState(false);\n  const [searchDestinationOpen, setSearchDestinationOpen] = useState(false);\n  const [searchFocusRequest, setSearchFocusRequest] = useState(0);",
+          )
+          replace(
+            'src/app/AppShell.tsx',
+            "  const searchActive = Boolean(searchQuery.trim()) || searchFiltersActive || searchFiltersOpen;",
+            "  const searchActive =\n    searchDestinationOpen || Boolean(searchQuery.trim()) || searchFiltersActive || searchFiltersOpen;",
+          )
+          replace(
+            'src/app/AppShell.tsx',
+            "  const clearSearch = useCallback(() => {\n    setSearchQuery('');\n    setSearchFilters({ ...DEFAULT_SEARCH_FILTERS });\n    setSearchFiltersOpen(false);\n  }, []);",
+            "  const clearSearch = useCallback(() => {\n    setSearchDestinationOpen(false);\n    setSearchQuery('');\n    setSearchFilters({ ...DEFAULT_SEARCH_FILTERS });\n    setSearchFiltersOpen(false);\n  }, []);",
+          )
+          replace(
+            'src/app/AppShell.tsx',
+            "  const focusSearch = useCallback(() => {\n    setCommandPaletteOpen(false);\n    setSearchFocusRequest((request) => request + 1);\n  }, []);\n\n  const openSearch = useCallback(() => {\n    setCommandPaletteOpen(false);\n    setSearchFiltersOpen(true);\n    setSearchFocusRequest((request) => request + 1);\n    setMobileSidebarOpen(false);\n    setTabletSidebarExpanded(false);\n  }, []);",
+            "  const focusSearch = useCallback(() => {\n    setCommandPaletteOpen(false);\n    setSearchDestinationOpen(true);\n    setSearchFocusRequest((request) => request + 1);\n    setMobileSidebarOpen(false);\n    setTabletSidebarExpanded(false);\n  }, []);\n\n  const openSearch = focusSearch;",
+          )
+
+          replace(
+            'e2e/p1-foundation.spec.ts',
+            "    await page.getByRole('button', { name: 'Open settings', exact: true }).click();\n    const settings = page.getByRole('dialog', { name: 'Settings', exact: true });",
+            "    await expect(\n      page.getByRole('button', { name: 'Open settings', exact: true }),\n    ).not.toBeVisible();\n    await page.getByRole('button', { name: 'More options', exact: true }).click();\n    await page.getByRole('menuitem', { name: 'Settings', exact: true }).click();\n    const settings = page.getByRole('dialog', { name: 'Settings', exact: true });",
+          )
+
+          replace(
+            'e2e/p2-shell-responsive.spec.ts',
+            "  await mobileNav.getByRole('button', { name: 'Find a note' }).click();\n  await expect(page.getByRole('heading', { name: 'Search', level: 1 })).toBeVisible();\n  await expect(page.getByRole('searchbox', { name: 'Search notes' })).toBeFocused();",
+            "  const searchDestination = mobileNav.getByRole('button', { name: 'Find a note' });\n  await searchDestination.click();\n  await expect(searchDestination).toHaveAttribute('aria-current', 'page');\n  await expect(page.locator('.search-results-toolbar')).toBeVisible();\n  await expect(page.getByRole('searchbox', { name: 'Search notes' })).toBeFocused();\n  await expect(page.getByRole('region', { name: 'Search filters' })).toHaveCount(0);",
+          )
+          PY
+      - run: npm ci --no-audit --no-fund
+      - run: npx prettier --write src/app/AppShell.tsx e2e/p1-foundation.spec.ts e2e/p2-shell-responsive.spec.ts
+      - run: npm run foundation:check && npm run lint && npm run typecheck && npm test && npm run build
+      - name: Commit Search destination fixes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/app/AppShell.tsx e2e/p1-foundation.spec.ts e2e/p2-shell-responsive.spec.ts
+          git commit -m 'P2: make Search a first-class destination and preserve tablet settings access'
+          git push origin HEAD:feat/p2-shell-responsive-ux
+      - run: npx playwright install --with-deps chromium
+      - name: Re-run P1 and P2 responsive contracts without retries
+        run: npx playwright test e2e/p2-shell-responsive.spec.ts e2e/shell.spec.ts e2e/p1-foundation.spec.ts --retries=0 --reporter=line
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: notes-p2-browser-fix-evidence
+          path: test-results
+          retention-days: 7
