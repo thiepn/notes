@@ -2,7 +2,12 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { AlertTriangle, ArrowUpRight, Link2, Sparkles } from 'lucide-react';
 
 import type { NoteRecord, NotesRepository } from '../../db';
-import { analyzeNoteConnections, linkUnlinkedMentions } from './linkIntelligence';
+import {
+  analyzeNoteConnections,
+  linkUnlinkedMentions,
+  normalizeWikiTitle,
+  resolveWikiLink,
+} from './linkIntelligence';
 
 interface ConnectionsPanelProps {
   note: NoteRecord;
@@ -25,6 +30,7 @@ export function ConnectionsPanel({
 }: ConnectionsPanelProps) {
   const connections = useMemo(() => analyzeNoteConnections(note, library), [library, note]);
   const [linkingNoteId, setLinkingNoteId] = useState<string | null>(null);
+  const [creatingTargetKey, setCreatingTargetKey] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const title = note.title.trim();
   const connectionCount = connections.outgoing.length + connections.backlinks.length;
@@ -50,6 +56,43 @@ export function ConnectionsPanel({
       setErrorMessage('That mention could not be linked. The source note may have changed.');
     } finally {
       setLinkingNoteId(null);
+    }
+  };
+
+  const createMissingTarget = async (targetTitle: string) => {
+    const normalizedTarget = normalizeWikiTitle(targetTitle);
+    if (!normalizedTarget) return;
+    setErrorMessage(null);
+    setCreatingTargetKey(normalizedTarget);
+
+    try {
+      const savedSource = await beforeLinking();
+      if (!savedSource) return;
+      const [active, archived] = await Promise.all([
+        repository.listActive(),
+        repository.listArchived(),
+      ]);
+      const freshLibrary = [...active, ...archived];
+      const freshResolution = resolveWikiLink(targetTitle, freshLibrary);
+
+      if (freshResolution.status !== 'missing') {
+        await onLibraryChanged();
+        setErrorMessage(
+          freshResolution.status === 'resolved'
+            ? `“${targetTitle}” now resolves to an existing note.`
+            : `“${targetTitle}” is now ambiguous. Make the duplicate titles unique before creating another target.`,
+        );
+        return;
+      }
+
+      const created = await repository.create({ title: targetTitle.trim() });
+      onSourceSaved(created);
+      await onLibraryChanged();
+      onOpenNote(created.id);
+    } catch {
+      setErrorMessage('That WikiLink target could not be created. Try again.');
+    } finally {
+      setCreatingTargetKey(null);
     }
   };
 
@@ -104,17 +147,38 @@ export function ConnectionsPanel({
               );
             }
 
+            if (resolution.status === 'missing') {
+              const creating = creatingTargetKey === resolution.normalizedTitle;
+              return (
+                <div
+                  className="note-connection-row"
+                  data-status="missing"
+                  key={resolution.normalizedTitle || link.title}
+                >
+                  <span>{link.title}</span>
+                  <span className="note-connection-meta">
+                    <span>Missing target{countLabel}</span>
+                    <button
+                      className="note-unlinked-link"
+                      type="button"
+                      disabled={creatingTargetKey !== null || linkingNoteId !== null}
+                      onClick={() => void createMissingTarget(link.title)}
+                    >
+                      {creating ? 'Creating…' : 'Create note'}
+                    </button>
+                  </span>
+                </div>
+              );
+            }
+
             return (
               <div
                 className="note-connection-row"
-                data-status={resolution.status}
+                data-status="ambiguous"
                 key={resolution.normalizedTitle || link.title}
               >
                 <span>{link.title}</span>
-                <span className="note-connection-meta">
-                  {resolution.status === 'missing' ? 'Missing target' : 'Ambiguous target'}
-                  {countLabel}
-                </span>
+                <span className="note-connection-meta">Ambiguous target{countLabel}</span>
               </div>
             );
           })}
@@ -155,7 +219,11 @@ export function ConnectionsPanel({
               <button
                 className="note-unlinked-link"
                 type="button"
-                disabled={linkingNoteId !== null || connections.titleCollisionCount !== 1}
+                disabled={
+                  linkingNoteId !== null ||
+                  creatingTargetKey !== null ||
+                  connections.titleCollisionCount !== 1
+                }
                 onClick={() => void linkMention(mention.note.id)}
               >
                 {linkingNoteId === mention.note.id

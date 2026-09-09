@@ -1,7 +1,26 @@
-import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import { Command, Search } from 'lucide-react';
 
+import { subscribeAppEvent } from '../../app/events';
 import { useDialogFocusTrap } from '../../components/ui/useDialogFocusTrap';
+import { NotesRepository, notesDatabase } from '../../db';
+import { requestLinkedNoteOpen, requestSavedSearchOpen } from '../links/navigation';
+import {
+  SearchHistoryRepository,
+  summarizeSearch,
+  type SavedSearch,
+} from '../search/searchHistory';
+import {
+  normalizeKnowledgeText,
+  rankQuickOpenNotes,
+  type QuickOpenNote,
+} from './knowledgeCommands';
 
 export interface CommandPaletteItem {
   id: string;
@@ -19,16 +38,100 @@ interface CommandPaletteProps {
   onClose(): void;
 }
 
+const notesRepository = new NotesRepository(notesDatabase);
+const searchHistoryRepository = new SearchHistoryRepository(notesDatabase);
+
 export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
+  const [quickOpenNotes, setQuickOpenNotes] = useState<QuickOpenNote[]>([]);
+  const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadKnowledgeNavigation = async () => {
+      try {
+        const [active, archived, saved] = await Promise.all([
+          notesRepository.listActive(),
+          notesRepository.listArchived(),
+          searchHistoryRepository.listSaved(),
+        ]);
+        if (cancelled) return;
+        setQuickOpenNotes([...active, ...archived]);
+        setSavedSearches(saved);
+      } catch {
+        if (cancelled) return;
+        setQuickOpenNotes([]);
+        setSavedSearches([]);
+      }
+    };
+
+    void loadKnowledgeNavigation();
+    const unsubscribeCloudSync = subscribeAppEvent('cloudSyncApplied', () => {
+      void loadKnowledgeNavigation();
+    });
+    const unsubscribeSearchHistory = subscribeAppEvent('searchHistoryChanged', () => {
+      void loadKnowledgeNavigation();
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribeCloudSync();
+      unsubscribeSearchHistory();
+    };
+  }, []);
+
+  const smartCollectionCommands = useMemo<CommandPaletteItem[]>(
+    () =>
+      savedSearches.map((search) => {
+        const summary = summarizeSearch(search);
+        return {
+          id: `smart-collection:${search.id}`,
+          label: `Smart collection: ${summary.title}`,
+          description: summary.detail ?? 'Saved search',
+          group: 'Smart collections',
+          keywords: [
+            'saved search',
+            'smart collection',
+            search.query,
+            summary.title,
+            summary.detail ?? '',
+          ],
+          run: () => {
+            void requestSavedSearchOpen(search.id);
+          },
+        };
+      }),
+    [savedSearches],
+  );
+
+  const quickOpenCommands = useMemo<CommandPaletteItem[]>(
+    () =>
+      rankQuickOpenNotes(quickOpenNotes, query).map(({ note }) => ({
+        id: `quick-open-note:${note.id}`,
+        label: `Open note: ${note.title.trim() || 'Untitled note'}`,
+        description: `${note.archivedAt === null ? 'Notes' : 'Archive'} · ${note.type === 'checklist' ? 'Checklist' : 'Text note'}`,
+        group: 'Notes',
+        keywords: ['open note', 'find note', note.title],
+        run: () => {
+          void requestLinkedNoteOpen(note.id);
+        },
+      })),
+    [quickOpenNotes, query],
+  );
+
+  const commandCatalog = useMemo(
+    () => [...commands, ...smartCollectionCommands, ...quickOpenCommands],
+    [commands, quickOpenCommands, smartCollectionCommands],
+  );
 
   const filtered = useMemo(() => {
     const terms = normalize(query).split(' ').filter(Boolean);
-    if (terms.length === 0) return commands;
-    return commands.filter((command) => {
+    if (terms.length === 0) return commandCatalog;
+    return commandCatalog.filter((command) => {
       const haystack = normalize(
         [command.label, command.description ?? '', command.group, ...(command.keywords ?? [])].join(
           ' ',
@@ -36,7 +139,7 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
       );
       return terms.every((term) => haystack.includes(term));
     });
-  }, [commands, query]);
+  }, [commandCatalog, query]);
 
   const enabledIndexes = filtered.flatMap((command, index) => (command.disabled ? [] : [index]));
   const safeActiveIndex =
@@ -130,7 +233,7 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
             aria-autocomplete="list"
             aria-activedescendant={activeOptionId}
             autoComplete="off"
-            placeholder="Type a command…"
+            placeholder="Type a command or note title…"
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);
@@ -149,7 +252,7 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
           {filtered.length === 0 ? (
             <div className="command-palette-empty" role="status">
               <Command aria-hidden="true" />
-              <span>No matching commands</span>
+              <span>No matching commands or notes</span>
             </div>
           ) : (
             filtered.map((command, index) => {
@@ -203,5 +306,5 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
 }
 
 function normalize(value: string): string {
-  return value.toLocaleLowerCase().trim().replace(/\s+/gu, ' ');
+  return normalizeKnowledgeText(value);
 }
