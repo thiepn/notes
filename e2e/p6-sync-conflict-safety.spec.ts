@@ -77,8 +77,7 @@ async function cloud(page: Page, rows: RemoteSyncRecord[]) {
       if (request.method() === 'POST') {
         const record = request.postDataJSON() as RemoteSyncRecord;
         const index = rows.findIndex(
-          (row) =>
-            row.entity_type === record.entity_type && row.entity_id === record.entity_id,
+          (row) => row.entity_type === record.entity_type && row.entity_id === record.entity_id,
         );
         if (index < 0) rows.push(record);
         else rows[index] = record;
@@ -122,16 +121,10 @@ test('a losing cloud text edit is preserved as a visible conflict copy', async (
     const db = await import('/notes/src/db/index.ts');
     const repository = new db.NotesRepository(db.notesDatabase);
     const current = await repository.require(noteId);
-    return repository.update(
-      noteId,
-      { content: 'Local winning text.' },
-      current.revision,
-    );
+    return repository.update(noteId, { content: 'Local winning text.' }, current.revision);
   }, note.id);
 
-  const remoteBefore = rows.find(
-    (row) => row.entity_type === 'note' && row.entity_id === note.id,
-  )!;
+  const remoteBefore = rows.find((row) => row.entity_type === 'note' && row.entity_id === note.id)!;
   const remoteTime = Math.max(0, localWinner.updatedAt - 1);
   replaceRemote(
     rows,
@@ -162,10 +155,14 @@ test('a losing cloud text edit is preserved as a visible conflict copy', async (
   expect(state.original.content).toBe('Local winning text.');
   expect(state.copies).toHaveLength(1);
   expect(state.copies[0]?.content).toBe('Cloud losing text.');
-  await expect(page.getByRole('button', { name: /Open note: .*conflict copy \(cloud/u })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: /Open note: .*conflict copy \(cloud/u }),
+  ).toBeVisible();
 });
 
-test('a losing local checklist edit preserves nested items in a conflict copy', async ({ page }) => {
+test('a losing local checklist edit preserves nested items in a conflict copy', async ({
+  page,
+}) => {
   const rows: RemoteSyncRecord[] = [];
   await cloud(page, rows);
   await waitForNotes(page);
@@ -189,14 +186,10 @@ test('a losing local checklist edit preserves nested items in a conflict copy', 
     const items = await repository.itemsForNote(noteId);
     const parent = items[0]!;
     const child = items[1]!;
-    return repository.save(
-      noteId,
-      'P6 Local Checklist Edit',
-      [
-        { id: parent.id, text: 'Local parent losing', checked: true, parentId: null },
-        { id: child.id, text: 'Local child losing', checked: false, parentId: parent.id },
-      ],
-    );
+    return repository.save(noteId, 'P6 Local Checklist Edit', [
+      { id: parent.id, text: 'Local parent losing', checked: true, parentId: null },
+      { id: child.id, text: 'Local child losing', checked: false, parentId: parent.id },
+    ]);
   }, created.note.id);
 
   const remoteTime = localLoser.note.updatedAt + 1_000;
