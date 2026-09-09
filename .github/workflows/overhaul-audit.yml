@@ -1,0 +1,30 @@
+name: Notes V5 audit workspace
+on:
+  push:
+    branches: [feat/notes-v5-editorial-overhaul]
+    paths: [.github/workflows/overhaul-audit.yml]
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install chromium
+      - name: Package audit workspace
+        run: |
+          mkdir -p /tmp/notes-audit
+          git archive --format=tar.gz HEAD > /tmp/notes-audit/source.tar.gz
+          tar -czf /tmp/notes-audit/dependencies.tar.gz node_modules
+          cp "$(command -v node)" /tmp/notes-audit/node
+          tar -czf /tmp/notes-audit/browsers.tar.gz -C "$HOME/.cache" ms-playwright
+      - uses: actions/upload-artifact@v4
+        with:
+          name: notes-v5-audit-workspace
+          path: /tmp/notes-audit
+          retention-days: 3
