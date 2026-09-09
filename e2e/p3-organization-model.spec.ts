@@ -74,7 +74,7 @@ test('search lifecycle changes refresh global collection counts immediately', as
 
   await expect(sidebarCount(page, 'Notes')).toHaveText('0');
   await expect(sidebarCount(page, 'Archive')).toHaveText('1');
-  await expect(page.getByRole('heading', { name: 'Archived', level: 2 })).toBeVisible();
+  await expect(card).toBeVisible();
 });
 
 test('label management exposes usage and refreshes an already-open search index', async ({
