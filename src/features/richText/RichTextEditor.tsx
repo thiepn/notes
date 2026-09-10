@@ -185,11 +185,7 @@ export function RichTextEditor({
     );
   };
 
-  const recordHistory = (
-    entry: EditorHistoryEntry,
-    kind: 'typing' | 'edit',
-    timestamp = 0,
-  ) => {
+  const recordHistory = (entry: EditorHistoryEntry, kind: 'typing' | 'edit', timestamp = 0) => {
     const history = historyRef.current;
     const current = history.entries[history.index];
     if (
