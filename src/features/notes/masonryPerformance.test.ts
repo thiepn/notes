@@ -5,7 +5,7 @@ import {
   MOBILE_INITIAL_MOUNTED_NOTE_COUNT,
   TABLET_INITIAL_MOUNTED_NOTE_COUNT,
   resolveNoteMountProfile,
-} from './MasonryGrid';
+} from './masonryPerformance';
 
 describe('adaptive note mounting profiles', () => {
   it('uses smaller initial card windows on mobile and tablet breakpoints', () => {
