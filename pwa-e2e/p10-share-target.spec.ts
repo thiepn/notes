@@ -42,7 +42,7 @@ test('production manifest exposes P10 shortcuts and POST share target', async ({
   });
 });
 
-test('installed PWA receives shared text through the service worker and opens the local note', async ({
+test('installed PWA receives shared text through the service worker and consumes it once', async ({
   page,
 }) => {
   await page.goto('./');
@@ -74,4 +74,12 @@ test('installed PWA receives shared text through the service worker and opens th
   await expect(page.getByLabel('Note text')).toContainText('service-worker-controlled share flow');
   await expect(page.getByLabel('Note text')).toContainText('https://example.test/private-reference');
   await expect(page).toHaveURL(/\/notes\/$/u);
+
+  const pendingShares = await page.evaluate(async () => {
+    const cache = await caches.open('notes-share-target-v1');
+    return (await cache.keys()).filter(
+      (request) => new URL(request.url).pathname.startsWith('/notes/share-payload/'),
+    ).length;
+  });
+  expect(pendingShares).toBe(0);
 });
