@@ -185,7 +185,11 @@ export function RichTextEditor({
     );
   };
 
-  const recordHistory = (entry: EditorHistoryEntry, kind: 'typing' | 'edit') => {
+  const recordHistory = (
+    entry: EditorHistoryEntry,
+    kind: 'typing' | 'edit',
+    timestamp = 0,
+  ) => {
     const history = historyRef.current;
     const current = history.entries[history.index];
     if (
@@ -196,11 +200,10 @@ export function RichTextEditor({
       return;
     }
 
-    const now = Date.now();
     const canGroupTyping =
       kind === 'typing' &&
       history.lastKind === 'typing' &&
-      now - history.lastAt <= TYPING_GROUP_MS &&
+      timestamp - history.lastAt <= TYPING_GROUP_MS &&
       history.index === history.entries.length - 1 &&
       history.index > 0;
 
@@ -219,7 +222,7 @@ export function RichTextEditor({
     }
 
     history.lastKind = kind;
-    history.lastAt = now;
+    history.lastAt = timestamp;
     publishHistoryAvailability(history);
   };
 
@@ -410,6 +413,7 @@ export function RichTextEditor({
         selectionEnd: nextSelectionEnd,
       },
       'typing',
+      event.timeStamp,
     );
     updateSelection(nextSelectionStart, nextSelectionEnd);
     setSlashDismissed(false);
