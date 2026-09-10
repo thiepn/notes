@@ -38,11 +38,11 @@ P9 does not clear storage, reset the database, sign the user out, or perform aut
 
 V4.0 introduced bounded progressive card mounting with a fixed 96-card initial window. P9 keeps that architecture but makes the first render responsive to the same shell breakpoints used elsewhere in Notes:
 
-| Shell profile | Width | Initial cards | Batch size | Observer preload margin |
-| --- | ---: | ---: | ---: | ---: |
-| Mobile | `<= 767px` | 48 | 48 | 480px |
-| Tablet | `768–1100px` | 72 | 72 | 640px |
-| Desktop | `>= 1101px` | 96 | 96 | 800px |
+| Shell profile |        Width | Initial cards | Batch size | Observer preload margin |
+| ------------- | -----------: | ------------: | ---------: | ----------------------: |
+| Mobile        |   `<= 767px` |            48 |         48 |                   480px |
+| Tablet        | `768–1100px` |            72 |         72 |                   640px |
+| Desktop       |  `>= 1101px` |            96 |         96 |                   800px |
 
 This reduces initial React nodes, ResizeObservers, attachment-preview observers, layout reads, and paint work on narrow devices without changing the logical collection or any bulk-operation semantics.
 
