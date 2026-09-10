@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
+const QUICKSTART_KEY = 'notes.onboarding.quickstart.v1';
+
 async function seedRelatedNotes(page: Page) {
   return page.evaluate(async () => {
     const db = await import('/notes/src/db/index.ts');
@@ -72,6 +74,27 @@ test('empty libraries get a small non-blocking first-run path into capture', asy
 
   await expect(page.getByLabel('Title')).toBeVisible();
   await expect(coach).not.toBeVisible();
+});
+
+test('established libraries never regain first-run coaching after becoming empty', async ({
+  page,
+}) => {
+  await page.goto('./');
+  await seedRelatedNotes(page);
+  await page.reload();
+
+  await expect
+    .poll(() => page.evaluate((key) => window.localStorage.getItem(key), QUICKSTART_KEY))
+    .toBe('done');
+
+  await page.evaluate(async () => {
+    const db = await import('/notes/src/db/index.ts');
+    await db.notesDatabase.notes.clear();
+  });
+  await page.reload();
+  await page.waitForTimeout(1_100);
+
+  await expect(page.getByLabel('Getting started with Notes')).not.toBeVisible();
 });
 
 test('editor connections surface deterministic local related notes', async ({ page }) => {
