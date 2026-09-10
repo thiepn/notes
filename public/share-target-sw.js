@@ -24,7 +24,11 @@ self.addEventListener('fetch', (event) => {
         const cache = await caches.open(NOTES_SHARE_CACHE);
         const pending = await cache.keys();
         if (pending.length >= MAX_PENDING_SHARES) {
-          await Promise.all(pending.slice(0, pending.length - MAX_PENDING_SHARES + 1).map((entry) => cache.delete(entry)));
+          await Promise.all(
+            pending
+              .slice(0, pending.length - MAX_PENDING_SHARES + 1)
+              .map((entry) => cache.delete(entry)),
+          );
         }
         await cache.put(
           new URL(`${NOTES_SHARE_PAYLOAD_PREFIX}${key}`, self.location.origin).toString(),
