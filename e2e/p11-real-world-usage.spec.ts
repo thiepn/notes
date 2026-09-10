@@ -19,9 +19,7 @@ test.describe('P11 real-world usage audit', () => {
     }
 
     for (const secondaryName of ['Archive', 'Trash', 'Backup & import', 'Settings', 'Commands']) {
-      await expect(
-        sidebar.getByRole('button', { name: secondaryName, exact: true }),
-      ).toBeVisible();
+      await expect(sidebar.getByRole('button', { name: secondaryName, exact: true })).toBeVisible();
     }
   });
 
