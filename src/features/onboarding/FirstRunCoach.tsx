@@ -20,17 +20,20 @@ export function FirstRunCoach() {
       .then((count) => {
         if (cancelled || count !== 0) return;
         timer = window.setTimeout(() => {
-          void notesDatabase.notes.count().then((freshCount) => {
-            if (
-              cancelled ||
-              freshCount !== 0 ||
-              quickstartCompleted() ||
-              document.querySelector('.note-composer, [role="dialog"]')
-            ) {
-              return;
-            }
-            setVisible(true);
-          });
+          void notesDatabase.notes
+            .count()
+            .then((freshCount) => {
+              if (
+                cancelled ||
+                freshCount !== 0 ||
+                quickstartCompleted() ||
+                document.querySelector('.note-composer, [role="dialog"]')
+              ) {
+                return;
+              }
+              setVisible(true);
+            })
+            .catch(() => undefined);
         }, SHOW_DELAY_MS);
       })
       .catch(() => undefined);
