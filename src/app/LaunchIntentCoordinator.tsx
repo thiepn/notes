@@ -6,11 +6,14 @@ import { dispatchAppEvent } from './events';
 import {
   clearLaunchIntentFromLocation,
   consumePreparedLaunchIntent,
+  sanitizeSharedPayload,
+  sharePayloadPath,
   type LaunchCapture,
   type LaunchIntent,
 } from './launchIntent';
 
 const notesRepository = new NotesRepository(notesDatabase);
+const SHARE_CACHE = 'notes-share-target-v1';
 const UI_RETRY_ATTEMPTS = 80;
 const UI_RETRY_MS = 50;
 
@@ -28,20 +31,7 @@ export function LaunchIntentCoordinator() {
 }
 
 async function handleLaunchIntent(intent: LaunchIntent): Promise<boolean> {
-  if (intent.sharedNote) {
-    try {
-      const created = await notesRepository.create({
-        title: intent.sharedNote.title,
-        content: intent.sharedNote.content,
-      });
-      dispatchAppEvent('cloudSyncApplied');
-      await requestLinkedNoteOpen(created.id);
-      return true;
-    } catch {
-      // Keep the fragment intact so a failed local write can be retried by reloading.
-      return false;
-    }
-  }
+  if (intent.shareKey) return consumeSharedNote(intent.shareKey);
 
   if (intent.noteId) {
     await requestLinkedNoteOpen(intent.noteId);
@@ -59,6 +49,42 @@ async function handleLaunchIntent(intent: LaunchIntent): Promise<boolean> {
   }
 
   return true;
+}
+
+async function consumeSharedNote(shareKey: string): Promise<boolean> {
+  if (!('caches' in window)) return false;
+  const payloadUrl = new URL(sharePayloadPath(shareKey), window.location.origin).toString();
+
+  try {
+    const cache = await window.caches.open(SHARE_CACHE);
+    const response = await cache.match(payloadUrl);
+    if (!response) return true;
+
+    let payload: ReturnType<typeof sanitizeSharedPayload>;
+    try {
+      payload = sanitizeSharedPayload(await response.json());
+    } catch {
+      await cache.delete(payloadUrl);
+      return true;
+    }
+
+    if (!payload) {
+      await cache.delete(payloadUrl);
+      return true;
+    }
+
+    const created = await notesRepository.create({
+      title: payload.title,
+      content: payload.content,
+    });
+    dispatchAppEvent('cloudSyncApplied');
+    await requestLinkedNoteOpen(created.id);
+    await cache.delete(payloadUrl);
+    return true;
+  } catch {
+    // Preserve the token in the URL after transient storage/write failures so reload can retry.
+    return false;
+  }
 }
 
 async function openCapture(capture: LaunchCapture): Promise<void> {
