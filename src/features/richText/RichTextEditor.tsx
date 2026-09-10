@@ -1,8 +1,5 @@
 import {
-  useCallback,
-  useEffect,
   useId,
-  useMemo,
   useRef,
   useState,
   type ChangeEvent as ReactChangeEvent,
@@ -161,7 +158,10 @@ export function RichTextEditor({
   const selectionRef = useRef(selection);
   const [slashDismissed, setSlashDismissed] = useState(false);
   const [slashIndex, setSlashIndex] = useState(0);
-  const [, setHistoryVersion] = useState(0);
+  const [historyAvailability, setHistoryAvailability] = useState({
+    canUndo: false,
+    canRedo: false,
+  });
   const historyRef = useRef<EditorHistory>({
     entries: [{ value, selectionStart: 0, selectionEnd: 0 }],
     index: 0,
@@ -169,13 +169,23 @@ export function RichTextEditor({
     lastAt: 0,
   });
 
-  const updateSelection = useCallback((selectionStart: number, selectionEnd: number) => {
+  const updateSelection = (selectionStart: number, selectionEnd: number) => {
     const next = { selectionStart, selectionEnd };
     selectionRef.current = next;
     setSelection(next);
-  }, []);
+  };
 
-  const recordHistory = useCallback((entry: EditorHistoryEntry, kind: 'typing' | 'edit') => {
+  const publishHistoryAvailability = (history: EditorHistory) => {
+    const next = {
+      canUndo: history.index > 0,
+      canRedo: history.index < history.entries.length - 1,
+    };
+    setHistoryAvailability((current) =>
+      current.canUndo === next.canUndo && current.canRedo === next.canRedo ? current : next,
+    );
+  };
+
+  const recordHistory = (entry: EditorHistoryEntry, kind: 'typing' | 'edit') => {
     const history = historyRef.current;
     const current = history.entries[history.index];
     if (
@@ -210,127 +220,87 @@ export function RichTextEditor({
 
     history.lastKind = kind;
     history.lastAt = now;
-    setHistoryVersion((version) => version + 1);
-  }, []);
+    publishHistoryAvailability(history);
+  };
 
-  useEffect(() => {
-    const history = historyRef.current;
-    if (history.entries[history.index]?.value === value) return;
-    const currentSelection = selectionRef.current;
-    history.entries.splice(history.index + 1);
-    history.entries.push({ value, ...currentSelection });
-    history.index = history.entries.length - 1;
-    if (history.entries.length > MAX_HISTORY_ENTRIES) {
-      history.entries.shift();
-      history.index -= 1;
-    }
-    history.lastKind = null;
-    history.lastAt = 0;
-    setHistoryVersion((version) => version + 1);
-  }, [value]);
+  const focusSelection = (selectionStart: number, selectionEnd: number) => {
+    updateSelection(selectionStart, selectionEnd);
+    requestAnimationFrame(() => {
+      const target = activeRef.current;
+      if (!target) return;
+      target.focus();
+      target.setSelectionRange(selectionStart, selectionEnd);
+    });
+  };
 
-  const focusSelection = useCallback(
-    (selectionStart: number, selectionEnd: number) => {
-      updateSelection(selectionStart, selectionEnd);
-      requestAnimationFrame(() => {
-        const target = activeRef.current;
-        if (!target) return;
-        target.focus();
-        target.setSelectionRange(selectionStart, selectionEnd);
-      });
-    },
-    [activeRef, updateSelection],
-  );
+  const commitEdit = (result: RichTextEditResult, kind: 'typing' | 'edit' = 'edit') => {
+    recordHistory(
+      {
+        value: result.value,
+        selectionStart: result.selectionStart,
+        selectionEnd: result.selectionEnd,
+      },
+      kind,
+    );
+    onChange(result.value);
+    focusSelection(result.selectionStart, result.selectionEnd);
+    setSlashDismissed(false);
+    setSlashIndex(0);
+  };
 
-  const commitEdit = useCallback(
-    (result: RichTextEditResult, kind: 'typing' | 'edit' = 'edit') => {
-      recordHistory(
-        {
-          value: result.value,
-          selectionStart: result.selectionStart,
-          selectionEnd: result.selectionEnd,
-        },
-        kind,
-      );
-      onChange(result.value);
-      focusSelection(result.selectionStart, result.selectionEnd);
-      setSlashDismissed(false);
-    },
-    [focusSelection, onChange, recordHistory],
-  );
-
-  const apply = useCallback(
-    (command: RichTextCommand) => {
-      const textarea = activeRef.current;
-      if (!textarea) return;
-      commitEdit(
-        applyRichTextCommand(
-          value,
-          textarea.selectionStart ?? value.length,
-          textarea.selectionEnd ?? value.length,
-          command,
-        ),
-      );
-    },
-    [activeRef, commitEdit, value],
-  );
-
-  const restoreHistory = useCallback(
-    (direction: 'undo' | 'redo') => {
-      const history = historyRef.current;
-      const nextIndex = direction === 'undo' ? history.index - 1 : history.index + 1;
-      if (nextIndex < 0 || nextIndex >= history.entries.length) return false;
-      const entry = history.entries[nextIndex];
-      if (!entry) return false;
-      history.index = nextIndex;
-      history.lastKind = null;
-      history.lastAt = 0;
-      setHistoryVersion((version) => version + 1);
-      onChange(entry.value);
-      focusSelection(entry.selectionStart, entry.selectionEnd);
-      setSlashDismissed(false);
-      return true;
-    },
-    [focusSelection, onChange],
-  );
-
-  const slashMatch = useMemo(
-    () =>
-      preview || slashDismissed
-        ? null
-        : findSlashCommand(value, selection.selectionStart, selection.selectionEnd),
-    [preview, selection.selectionEnd, selection.selectionStart, slashDismissed, value],
-  );
-  const slashOptions = useMemo(() => {
-    if (!slashMatch) return [];
-    if (!slashMatch.query) return SLASH_COMMANDS;
-    return SLASH_COMMANDS.filter((option) =>
-      [option.label, option.description, ...option.keywords].some((candidate) =>
-        candidate.toLocaleLowerCase().includes(slashMatch.query),
+  const apply = (command: RichTextCommand) => {
+    const textarea = activeRef.current;
+    if (!textarea) return;
+    commitEdit(
+      applyRichTextCommand(
+        value,
+        textarea.selectionStart ?? value.length,
+        textarea.selectionEnd ?? value.length,
+        command,
       ),
     );
-  }, [slashMatch]);
-  const slashQuery = slashMatch?.query ?? null;
+  };
 
-  useEffect(() => {
+  const restoreHistory = (direction: 'undo' | 'redo') => {
+    const history = historyRef.current;
+    const nextIndex = direction === 'undo' ? history.index - 1 : history.index + 1;
+    if (nextIndex < 0 || nextIndex >= history.entries.length) return false;
+    const entry = history.entries[nextIndex];
+    if (!entry) return false;
+
+    history.index = nextIndex;
+    history.lastKind = null;
+    history.lastAt = 0;
+    publishHistoryAvailability(history);
+    onChange(entry.value);
+    focusSelection(entry.selectionStart, entry.selectionEnd);
+    setSlashDismissed(false);
     setSlashIndex(0);
-  }, [slashQuery]);
+    return true;
+  };
 
+  const slashMatch =
+    preview || slashDismissed
+      ? null
+      : findSlashCommand(value, selection.selectionStart, selection.selectionEnd);
+  const slashOptions = !slashMatch
+    ? []
+    : !slashMatch.query
+      ? SLASH_COMMANDS
+      : SLASH_COMMANDS.filter((option) =>
+          [option.label, option.description, ...option.keywords].some((candidate) =>
+            candidate.toLocaleLowerCase().includes(slashMatch.query),
+          ),
+        );
   const activeSlashIndex =
     slashOptions.length === 0 ? 0 : Math.min(slashIndex, slashOptions.length - 1);
   const slashOpen = slashMatch !== null && slashOptions.length > 0;
-  const history = historyRef.current;
-  const canUndo = history.index > 0;
-  const canRedo = history.index < history.entries.length - 1;
 
-  const chooseSlashCommand = useCallback(
-    (option: SlashCommandOption) => {
-      if (!slashMatch) return;
-      commitEdit(applySlashCommand(value, slashMatch, option.command));
-      setFormattingOpen(false);
-    },
-    [commitEdit, slashMatch, value],
-  );
+  const chooseSlashCommand = (option: SlashCommandOption) => {
+    if (!slashMatch) return;
+    commitEdit(applySlashCommand(value, slashMatch, option.command));
+    setFormattingOpen(false);
+  };
 
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLTextAreaElement>) => {
     if (slashOpen && slashMatch) {
@@ -443,6 +413,7 @@ export function RichTextEditor({
     );
     updateSelection(nextSelectionStart, nextSelectionEnd);
     setSlashDismissed(false);
+    setSlashIndex(0);
     onChange(nextValue);
   };
 
@@ -475,7 +446,7 @@ export function RichTextEditor({
               type="button"
               aria-label="Undo"
               title="Undo (Ctrl/⌘ Z)"
-              disabled={!canUndo}
+              disabled={!historyAvailability.canUndo}
               onClick={() => restoreHistory('undo')}
             >
               <Undo2 aria-hidden="true" />
@@ -485,7 +456,7 @@ export function RichTextEditor({
               type="button"
               aria-label="Redo"
               title="Redo (Ctrl/⌘ Shift+Z)"
-              disabled={!canRedo}
+              disabled={!historyAvailability.canRedo}
               onClick={() => restoreHistory('redo')}
             >
               <Redo2 aria-hidden="true" />
