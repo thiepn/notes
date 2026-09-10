@@ -1,12 +1,7 @@
 import { applyRichTextCommand, type RichTextCommand, type RichTextEditResult } from './richText';
 
 export type RichTextSlashCommand =
-  | 'heading'
-  | 'bulletList'
-  | 'orderedList'
-  | 'quote'
-  | 'codeBlock'
-  | 'wikiLink';
+  'heading' | 'bulletList' | 'orderedList' | 'quote' | 'codeBlock' | 'wikiLink';
 
 export interface SlashCommandMatch {
   query: string;
