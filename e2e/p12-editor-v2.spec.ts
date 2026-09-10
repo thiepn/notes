@@ -118,7 +118,10 @@ test.describe('P12 Editor V2', () => {
     }
 
     await body.fill('/');
-    const firstCommand = form.getByRole('menu', { name: 'Insert block' }).getByRole('menuitem').first();
+    const firstCommand = form
+      .getByRole('menu', { name: 'Insert block' })
+      .getByRole('menuitem')
+      .first();
     const commandBox = await firstCommand.boundingBox();
     expect(commandBox).not.toBeNull();
     expect(commandBox!.height).toBeGreaterThanOrEqual(44);
