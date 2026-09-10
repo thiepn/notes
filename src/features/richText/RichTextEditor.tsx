@@ -9,6 +9,7 @@ import {
   type ClipboardEvent as ReactClipboardEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type RefObject,
+  type SyntheticEvent as ReactSyntheticEvent,
 } from 'react';
 import {
   Bold,
@@ -315,7 +316,8 @@ export function RichTextEditor({
     setSlashIndex(0);
   }, [slashQuery]);
 
-  const activeSlashIndex = slashOptions.length === 0 ? 0 : Math.min(slashIndex, slashOptions.length - 1);
+  const activeSlashIndex =
+    slashOptions.length === 0 ? 0 : Math.min(slashIndex, slashOptions.length - 1);
   const slashOpen = slashMatch !== null && slashOptions.length > 0;
   const history = historyRef.current;
   const canUndo = history.index > 0;
@@ -444,7 +446,7 @@ export function RichTextEditor({
     onChange(nextValue);
   };
 
-  const handleSelection = (event: ReactChangeEvent<HTMLTextAreaElement>) => {
+  const handleSelection = (event: ReactSyntheticEvent<HTMLTextAreaElement>) => {
     const selectionStart = event.currentTarget.selectionStart;
     const selectionEnd = event.currentTarget.selectionEnd;
     updateSelection(selectionStart, selectionEnd);
