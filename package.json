@@ -24,7 +24,8 @@
     "test:watch": "vitest",
     "e2e": "playwright test",
     "e2e:compat": "playwright test --config=playwright.compat.config.ts",
-    "e2e:pwa": "playwright test --config=playwright.pwa.config.ts"
+    "e2e:pwa": "playwright test --config=playwright.pwa.config.ts",
+    "release:check": "npm run format:check && npm run foundation:check && npm run lint && npm run test && npm run build"
   },
   "dependencies": {
     "@tesseract.js-data/deu": "1.0.0",

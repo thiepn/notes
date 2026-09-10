@@ -8,6 +8,7 @@ import {
   normalizeWikiTitle,
   resolveWikiLink,
 } from './linkIntelligence';
+import { findRelatedNotes } from './relatedNotes';
 
 interface ConnectionsPanelProps {
   note: NoteRecord;
@@ -29,6 +30,22 @@ export function ConnectionsPanel({
   onLibraryChanged,
 }: ConnectionsPanelProps) {
   const connections = useMemo(() => analyzeNoteConnections(note, library), [library, note]);
+  const explicitlyLinkedIds = useMemo(() => {
+    const ids = new Set(connections.backlinks.map((backlink) => backlink.note.id));
+    for (const outgoing of connections.outgoing) {
+      if (outgoing.resolution.status === 'resolved' && outgoing.resolution.noteId) {
+        ids.add(outgoing.resolution.noteId);
+      }
+    }
+    return ids;
+  }, [connections]);
+  const relatedNotes = useMemo(
+    () =>
+      findRelatedNotes(note, library, 10)
+        .filter(({ note: candidate }) => !explicitlyLinkedIds.has(candidate.id))
+        .slice(0, 4),
+    [explicitlyLinkedIds, library, note],
+  );
   const [linkingNoteId, setLinkingNoteId] = useState<string | null>(null);
   const [creatingTargetKey, setCreatingTargetKey] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -105,6 +122,7 @@ export function ConnectionsPanel({
           </span>
           <span className="note-connections-summary">
             {connectionCount} {connectionCount === 1 ? 'linked note' : 'linked notes'} ·{' '}
+            {relatedNotes.length} {relatedNotes.length === 1 ? 'related note' : 'related notes'} ·{' '}
             {connections.unlinkedMentions.length}{' '}
             {connections.unlinkedMentions.length === 1 ? 'unlinked mention' : 'unlinked mentions'}
           </span>
@@ -204,6 +222,30 @@ export function ConnectionsPanel({
         </ConnectionGroup>
       ) : null}
 
+      {relatedNotes.length > 0 ? (
+        <ConnectionGroup title="Related notes" icon={<Sparkles aria-hidden="true" />}>
+          {relatedNotes.map((related) => (
+            <button
+              className="note-connection-row"
+              type="button"
+              data-status={related.duplicate ? 'duplicate' : 'related'}
+              key={related.note.id}
+              onClick={() => onOpenNote(related.note.id)}
+            >
+              <span>{related.note.title || 'Untitled note'}</span>
+              <span className="note-connection-meta">
+                {related.duplicate
+                  ? 'Possible duplicate'
+                  : related.sharedTerms.length > 0
+                    ? `Shared: ${related.sharedTerms.slice(0, 2).join(' · ')}`
+                    : 'Related'}{' '}
+                <ArrowUpRight aria-hidden="true" />
+              </span>
+            </button>
+          ))}
+        </ConnectionGroup>
+      ) : null}
+
       {connections.unlinkedMentions.length > 0 ? (
         <ConnectionGroup title="Unlinked mentions" icon={<Sparkles aria-hidden="true" />}>
           {connections.unlinkedMentions.map((mention) => (
@@ -237,9 +279,12 @@ export function ConnectionsPanel({
         </ConnectionGroup>
       ) : null}
 
-      {title && connectionCount === 0 && connections.unlinkedMentions.length === 0 ? (
+      {title &&
+      connectionCount === 0 &&
+      relatedNotes.length === 0 &&
+      connections.unlinkedMentions.length === 0 ? (
         <p className="note-connections-empty">
-          No links or unlinked mentions found for this note yet.
+          No links, related notes, or unlinked mentions found for this note yet.
         </p>
       ) : null}
 
