@@ -1,0 +1,73 @@
+.runtime-error-screen {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-6);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.runtime-error-card {
+  width: min(100%, 560px);
+  padding: clamp(var(--space-6), 6vw, var(--space-10));
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-dialog);
+}
+
+.runtime-error-kicker {
+  margin: 0 0 var(--space-3);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.runtime-error-card h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(var(--text-xl), 7vw, var(--text-2xl));
+  line-height: 1.1;
+}
+
+.runtime-error-card > p:not(.runtime-error-kicker) {
+  max-width: 46ch;
+  margin: var(--space-4) 0 0;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.runtime-error-card button {
+  min-height: 44px;
+  margin-top: var(--space-6);
+  padding: 0 var(--space-5);
+  border: 1px solid var(--accent-strong);
+  border-radius: var(--radius-md);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 700;
+}
+
+.runtime-error-card button:hover {
+  background: var(--accent-strong);
+}
+
+.runtime-error-card .runtime-error-detail {
+  font-size: var(--text-sm);
+}
+
+@media (forced-colors: active) {
+  .runtime-error-card {
+    border-color: CanvasText;
+    box-shadow: none;
+  }
+
+  .runtime-error-card button {
+    border-color: ButtonText;
+    background: ButtonFace;
+    color: ButtonText;
+    forced-color-adjust: none;
+  }
+}

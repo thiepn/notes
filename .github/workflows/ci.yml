@@ -47,8 +47,11 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Core browser compatibility
+        run: npm run e2e:compat
 
       - name: End-to-end regression suite
         run: npm run e2e
@@ -64,5 +67,7 @@ jobs:
           path: |
             test-results
             pwa-test-results
+            compat-test-results
             playwright-report
+            compat-playwright-report
           retention-days: 7
