@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { encodeSharePayload, parseLaunchIntent } from './launchIntent';
+import { parseLaunchIntent, sanitizeSharedPayload, sharePayloadPath } from './launchIntent';
 
 const NOTE_ID = '11111111-1111-4111-8111-111111111111';
 const LABEL_ID = '22222222-2222-4222-8222-222222222222';
+const SHARE_KEY = '33333333-3333-4333-8333-333333333333';
 
 describe('parseLaunchIntent', () => {
   it('accepts supported workspace, capture, note, label, and search intents', () => {
@@ -22,6 +23,13 @@ describe('parseLaunchIntent', () => {
     });
   });
 
+  it('accepts only UUID share tokens and maps them to the private payload path', () => {
+    const intent = parseLaunchIntent(new URL(`https://example.test/notes/#share=${SHARE_KEY}`));
+
+    expect(intent).toEqual({ shareKey: SHARE_KEY });
+    expect(sharePayloadPath(SHARE_KEY)).toBe(`/notes/share-payload/${SHARE_KEY}`);
+  });
+
   it('ignores malformed identifiers and unsupported launch values', () => {
     const intent = parseLaunchIntent(
       new URL('https://example.test/notes/?view=unknown&capture=voice&note=nope&label=also-nope'),
@@ -30,39 +38,45 @@ describe('parseLaunchIntent', () => {
     expect(intent).toBeNull();
   });
 
-  it('decodes private fragment share payloads and avoids repeating an already-shared URL', () => {
-    const payload = encodeSharePayload({
-      title: 'Shared research',
-      text: 'Read https://example.test/article before Friday.',
-      url: 'https://example.test/article',
-    });
-    const intent = parseLaunchIntent(new URL(`https://example.test/notes/#share=${payload}`));
+  it('rejects malformed share tokens without breaking other deep links', () => {
+    const intent = parseLaunchIntent(
+      new URL('https://example.test/notes/?view=search&q=algebra#share=not-a-token'),
+    );
 
-    expect(intent?.sharedNote).toEqual({
+    expect(intent).toEqual({ view: 'search', searchQuery: 'algebra' });
+  });
+});
+
+describe('sanitizeSharedPayload', () => {
+  it('avoids repeating a URL already present in the shared text', () => {
+    expect(
+      sanitizeSharedPayload({
+        title: 'Shared research',
+        text: 'Read https://example.test/article before Friday.',
+        url: 'https://example.test/article',
+      }),
+    ).toEqual({
       title: 'Shared research',
       content: 'Read https://example.test/article before Friday.',
     });
   });
 
-  it('combines shared text and a distinct URL', () => {
-    const payload = encodeSharePayload({
-      title: 'Reference',
-      text: 'Useful documentation',
-      url: 'https://example.test/docs',
-    });
-    const intent = parseLaunchIntent(new URL(`https://example.test/notes/#share=${payload}`));
-
-    expect(intent?.sharedNote).toEqual({
+  it('combines shared text and a distinct URL while ignoring unknown fields', () => {
+    expect(
+      sanitizeSharedPayload({
+        title: 'Reference',
+        text: 'Useful documentation',
+        url: 'https://example.test/docs',
+        ignored: 'not imported',
+      }),
+    ).toEqual({
       title: 'Reference',
       content: 'Useful documentation\n\nhttps://example.test/docs',
     });
   });
 
-  it('rejects malformed share fragments without breaking other deep links', () => {
-    const intent = parseLaunchIntent(
-      new URL('https://example.test/notes/?view=search&q=algebra#share=not-valid-base64'),
-    );
-
-    expect(intent).toEqual({ view: 'search', searchQuery: 'algebra' });
+  it('rejects payloads without usable note content', () => {
+    expect(sanitizeSharedPayload({ title: ' ', text: '', url: '' })).toBeNull();
+    expect(sanitizeSharedPayload(null)).toBeNull();
   });
 });
