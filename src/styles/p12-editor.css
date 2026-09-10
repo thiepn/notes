@@ -1,0 +1,193 @@
+/* P12 — Editor V2: writing mechanics, command discovery, and touch-safe history controls. */
+.rich-text-compact-controls {
+  display: flex;
+  min-width: 0;
+  min-height: 34px;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+}
+
+.rich-text-compact-button {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font-size: 11px;
+}
+
+.rich-text-compact-button:hover,
+.rich-text-compact-button:focus-visible,
+.rich-text-compact-button[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  color: var(--text);
+}
+
+.rich-text-compact-button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.rich-text-compact-button:disabled {
+  opacity: 0.32;
+  cursor: default;
+}
+
+.rich-text-compact-button:disabled:hover {
+  background: transparent;
+  color: inherit;
+}
+
+.rich-text-compact-button svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+
+.rich-text-history-button {
+  width: 32px;
+  padding-inline: 0;
+}
+
+.rich-text-slash-hint {
+  margin-left: 4px;
+  color: var(--text-subtle);
+  font: 10px var(--font-mono);
+  letter-spacing: 0.02em;
+}
+
+.rich-text-preview-toggle {
+  margin-left: auto;
+}
+
+.rich-text-input-wrap {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+.rich-text-input-wrap textarea {
+  tab-size: 2;
+}
+
+.rich-text-slash-menu {
+  display: grid;
+  width: min(100%, 390px);
+  max-height: min(360px, 48dvh);
+  overflow: auto;
+  padding: 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-dialog);
+  color: var(--text);
+  z-index: 8;
+}
+
+.rich-text-slash-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 8px 8px;
+  color: var(--text-subtle);
+  font: 10px var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.rich-text-slash-option {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.rich-text-slash-option:hover,
+.rich-text-slash-option:focus-visible,
+.rich-text-slash-option[data-active='true'] {
+  background: var(--surface-subtle);
+}
+
+.rich-text-slash-option:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+.rich-text-slash-icon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+}
+
+.rich-text-slash-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.rich-text-slash-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.rich-text-slash-copy strong {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rich-text-slash-copy > span {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  .rich-text-compact-controls {
+    min-height: 44px;
+  }
+
+  .rich-text-compact-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .rich-text-compact-button span:not(.rich-text-slash-hint) {
+    display: none;
+  }
+
+  .rich-text-slash-hint {
+    display: none;
+  }
+
+  .rich-text-slash-menu {
+    width: 100%;
+    max-height: min(330px, 42dvh);
+  }
+
+  .rich-text-slash-option {
+    min-height: 52px;
+  }
+}
