@@ -77,7 +77,9 @@ test('mobile large libraries use a smaller mount window while preserving full li
   await page.reload();
 
   await expect(page.locator('[data-runtime-error-boundary]')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Open note: P9 scale note 1' })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Open note: P9 scale note 1', exact: true }),
+  ).toBeVisible();
 
   const grid = page.locator('.note-grid').first();
   await expect(grid).toHaveAttribute('data-mount-profile', 'mobile');
