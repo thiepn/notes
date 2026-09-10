@@ -71,7 +71,10 @@ test('mobile large libraries use a smaller mount window while preserving full li
   await expect(items.nth(47)).toHaveAttribute('aria-posinset', '48');
   await expect(items.nth(47)).toHaveAttribute('aria-setsize', '1000');
 
-  await page.getByRole('button', { name: /Show more notes/u }).first().click();
+  await page
+    .getByRole('button', { name: /Show more notes/u })
+    .first()
+    .click();
   await expect(grid).toHaveAttribute('data-mounted-count', '96');
   await expect(items).toHaveCount(96);
 });
