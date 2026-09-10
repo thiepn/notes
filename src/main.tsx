@@ -2,8 +2,11 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { App } from './App';
+import { prepareLaunchIntent } from './app/launchIntent';
 import { RuntimeErrorBoundary } from './app/RuntimeErrorBoundary';
 import './styles.css';
+
+prepareLaunchIntent();
 
 const root = document.getElementById('root');
 
