@@ -23,6 +23,28 @@ async function seedNotes(page: Page, count: number) {
   }, count);
 }
 
+async function installIdleIntersectionObserver(page: Page) {
+  await page.addInitScript(() => {
+    class IdleIntersectionObserver {
+      readonly root = null;
+      readonly rootMargin = '0px';
+      readonly thresholds = [0];
+
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+      takeRecords() {
+        return [];
+      }
+    }
+
+    Object.defineProperty(window, 'IntersectionObserver', {
+      configurable: true,
+      value: IdleIntersectionObserver,
+    });
+  });
+}
+
 test('lazy workspace failures surface recovery UI without clearing the local library', async ({
   page,
 }) => {
@@ -48,16 +70,14 @@ test('lazy workspace failures surface recovery UI without clearing the local lib
 test('mobile large libraries use a smaller mount window while preserving full list semantics', async ({
   page,
 }) => {
-  await page.addInitScript(() => {
-    Object.defineProperty(window, 'IntersectionObserver', {
-      configurable: true,
-      value: undefined,
-    });
-  });
+  await installIdleIntersectionObserver(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('./');
   await seedNotes(page, 1000);
   await page.reload();
+
+  await expect(page.locator('[data-runtime-error-boundary]')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Open note: P9 scale note 1' })).toBeVisible();
 
   const grid = page.locator('.note-grid').first();
   await expect(grid).toHaveAttribute('data-mount-profile', 'mobile');
