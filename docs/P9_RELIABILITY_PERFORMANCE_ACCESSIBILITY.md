@@ -79,7 +79,7 @@ Primary workspace navigation now updates both browser-level and assistive contex
 - Backup -> `Backup — Notes`
 - label view -> `<label name> — Notes`
 
-A visually hidden polite status region exposes `<workspace> workspace` when the active workspace changes.
+A visually hidden polite live region exposes `<workspace> workspace` when the active workspace changes without taking over the generic `status` role used by operational account, backup, and editor messages.
 
 When privacy lock replaces the application UI, it owns the title as `Locked — Notes`. After unlock, the mounted workspace re-establishes its normal title.
 
@@ -150,12 +150,12 @@ P9 is releasable only if:
 1. A lazy workspace/render failure surfaces the recovery UI instead of a blank root.
 2. Activating the runtime boundary never clears the existing local note library.
 3. The recovery surface exposes no caught exception or user-note content.
-4. Mobile note grids begin at 48 mounted cards when automatic intersection loading is unavailable.
+4. Mobile note grids begin at 48 mounted cards before automatic intersection loading advances the window.
 5. Tablet and desktop profiles retain 72/96 initial-card budgets respectively.
 6. Manual **Show more notes** continues to advance by the profile batch size.
 7. Mounted list items expose their logical position and the full collection size.
 8. Grid rendering remains usable without `ResizeObserver`.
-9. Workspace navigation updates document title and the polite assistive status region.
+9. Workspace navigation updates document title and the polite assistive live region without colliding with operational status messages.
 10. Privacy lock owns the locked document title without leaking note context.
 11. Core compatibility passes directly in Chromium, Firefox, and WebKit with retries disabled.
 12. Full Chromium regression and PWA/offline certification remain green.
