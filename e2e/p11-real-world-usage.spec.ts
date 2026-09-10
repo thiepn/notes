@@ -27,6 +27,9 @@ test.describe('P11 real-world usage audit', () => {
     page,
   }) => {
     await page.setViewportSize(MOBILE);
+    await page.addInitScript(() => {
+      window.localStorage.setItem('notes.onboarding.quickstart.v1', 'done');
+    });
     await page.goto('./');
 
     await expect(page.locator('.workspace-heading .workspace-kicker')).not.toBeVisible();
