@@ -1,6 +1,8 @@
 import type { NoteRecord } from '../../db';
 
 const TOKEN_PATTERN = /[\p{L}\p{N}][\p{L}\p{N}'’-]*/gu;
+const NUMBER_PATTERN = /^\p{N}+$/u;
+const NON_ASCII_PATTERN = /[^\u0000-\u007f]/u;
 const MAX_TERMS_PER_NOTE = 600;
 const DEFAULT_LIMIT = 5;
 const MIN_RELATED_SCORE = 0.16;
@@ -117,8 +119,7 @@ function compare(source: NoteFingerprint, candidate: NoteRecord): RelatedNote | 
   const containment = intersection / Math.min(source.totalWeight, target.totalWeight);
   const score = 0.7 * jaccard + 0.3 * containment;
   const exactDuplicate =
-    source.canonicalDocument.length > 1 &&
-    source.canonicalDocument === target.canonicalDocument;
+    source.canonicalDocument.length > 1 && source.canonicalDocument === target.canonicalDocument;
   const nearDuplicate = score >= 0.82 && containment >= 0.9;
   const duplicate = exactDuplicate || nearDuplicate;
 
@@ -154,10 +155,17 @@ function addTerms(terms: Map<string, number>, text: string, weight: number): voi
 
   for (const match of normalized.matchAll(TOKEN_PATTERN)) {
     const term = match[0];
-    if (term.length < 3 || STOP_WORDS.has(term)) continue;
+    if (!isUsefulTerm(term)) continue;
     terms.set(term, Math.max(terms.get(term) ?? 0, weight));
     if (terms.size >= MAX_TERMS_PER_NOTE) break;
   }
+}
+
+function isUsefulTerm(term: string): boolean {
+  if (STOP_WORDS.has(term)) return false;
+  if (NUMBER_PATTERN.test(term)) return term.length >= 4;
+  if (term.length >= 3) return true;
+  return term.length >= 2 && NON_ASCII_PATTERN.test(term);
 }
 
 function canonicalize(value: string): string {
