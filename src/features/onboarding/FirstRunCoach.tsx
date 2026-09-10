@@ -18,7 +18,11 @@ export function FirstRunCoach() {
     void notesDatabase.notes
       .count()
       .then((count) => {
-        if (cancelled || count !== 0) return;
+        if (cancelled) return;
+        if (count !== 0) {
+          completeQuickstart();
+          return;
+        }
         timer = window.setTimeout(() => {
           void notesDatabase.notes
             .count()
