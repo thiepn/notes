@@ -1,0 +1,43 @@
+name: P10 Format
+
+on:
+  push:
+    branches: [p10-final-product-release]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: p10-final-product-release
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Apply repository formatter
+        run: npm run format
+
+      - name: Commit formatter output
+        run: |
+          if git diff --quiet -- .; then
+            echo "No formatting changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add --all
+          git commit -m "P10: apply repository formatting after lint fixes"
+          git push origin HEAD:p10-final-product-release
