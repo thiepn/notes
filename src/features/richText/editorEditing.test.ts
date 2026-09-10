@@ -63,8 +63,8 @@ describe('P12 editor interactions', () => {
   it('turns a pasted URL into a link when text is selected', () => {
     expect(linkSelectionWithPastedUrl('Read the docs today', 9, 13, 'https://example.com')).toEqual({
       value: 'Read the [docs](https://example.com) today',
-      selectionStart: 32,
-      selectionEnd: 32,
+      selectionStart: 36,
+      selectionEnd: 36,
     });
     expect(linkSelectionWithPastedUrl('No selection', 2, 2, 'https://example.com')).toBeNull();
     expect(linkSelectionWithPastedUrl('two\nlines', 0, 9, 'https://example.com')).toBeNull();
