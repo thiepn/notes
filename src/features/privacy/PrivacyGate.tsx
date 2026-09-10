@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { LockKeyhole, StickyNote } from 'lucide-react';
 
+import { notesDocumentTitle } from '../../app/documentContext';
 import { usePrivacy } from './PrivacyContext';
 
 export function PrivacyGate({ children }: { children: ReactNode }) {
@@ -9,6 +10,11 @@ export function PrivacyGate({ children }: { children: ReactNode }) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   const [now, setNow] = useState(Date.now);
+
+  useEffect(() => {
+    if (!locked) return;
+    document.title = notesDocumentTitle('Locked');
+  }, [locked]);
 
   useEffect(() => {
     if (!locked || unlockBlockedUntil === null) return;
