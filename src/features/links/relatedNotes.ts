@@ -100,26 +100,25 @@ function compare(source: NoteFingerprint, candidate: NoteRecord): RelatedNote | 
   if (target.totalWeight === 0) return null;
 
   let intersection = 0;
-  let union = 0;
   const shared: Array<{ term: string; weight: number }> = [];
-  const allTerms = new Set([...source.terms.keys(), ...target.terms.keys()]);
 
-  for (const term of allTerms) {
-    const sourceWeight = source.terms.get(term) ?? 0;
-    const targetWeight = target.terms.get(term) ?? 0;
+  for (const [term, sourceWeight] of source.terms) {
+    const targetWeight = target.terms.get(term);
+    if (targetWeight === undefined) continue;
     const sharedWeight = Math.min(sourceWeight, targetWeight);
     intersection += sharedWeight;
-    union += Math.max(sourceWeight, targetWeight);
-    if (sharedWeight > 0) shared.push({ term, weight: sharedWeight });
+    shared.push({ term, weight: sharedWeight });
   }
 
-  if (intersection === 0 || union === 0) return null;
+  if (intersection === 0) return null;
 
+  const union = source.totalWeight + target.totalWeight - intersection;
   const jaccard = intersection / union;
   const containment = intersection / Math.min(source.totalWeight, target.totalWeight);
   const score = 0.7 * jaccard + 0.3 * containment;
   const exactDuplicate =
-    source.canonicalDocument.length > 1 && source.canonicalDocument === target.canonicalDocument;
+    source.canonicalDocument.length > 1 &&
+    source.canonicalDocument === target.canonicalDocument;
   const nearDuplicate = score >= 0.82 && containment >= 0.9;
   const duplicate = exactDuplicate || nearDuplicate;
 
