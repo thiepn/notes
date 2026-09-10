@@ -4,6 +4,7 @@ const MAX_SEARCH_QUERY = 1_000;
 const MAX_SHARE_TITLE = 500;
 const MAX_SHARE_CONTENT = 1_000_000;
 const MAX_SHARE_URL = 16_384;
+const SHARE_PAYLOAD_PREFIX = '/notes/share-payload/';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 
 export type LaunchView = 'notes' | 'search' | 'reminders' | 'archive' | 'trash' | 'backup';
@@ -20,7 +21,7 @@ export interface LaunchIntent {
   noteId?: string;
   capture?: LaunchCapture;
   searchQuery?: string;
-  sharedNote?: SharedNoteIntent;
+  shareKey?: string;
 }
 
 let preparedLaunchIntent: LaunchIntent | null = null;
@@ -47,9 +48,9 @@ export function parseLaunchIntent(url: URL): LaunchIntent | null {
   const noteId = parseUuid(url.searchParams.get('note'));
   const labelId = parseUuid(url.searchParams.get('label'));
   const searchQuery = sanitize(url.searchParams.get('q'), MAX_SEARCH_QUERY);
-  const sharedNote = parseSharedNoteHash(url.hash);
+  const shareKey = parseShareKey(url.hash);
 
-  if (!view && !capture && !noteId && !labelId && !searchQuery && !sharedNote) return null;
+  if (!view && !capture && !noteId && !labelId && !searchQuery && !shareKey) return null;
 
   return {
     ...(view ? { view } : {}),
@@ -57,7 +58,7 @@ export function parseLaunchIntent(url: URL): LaunchIntent | null {
     ...(noteId ? { noteId } : {}),
     ...(labelId ? { labelId } : {}),
     ...(searchQuery ? { searchQuery } : {}),
-    ...(sharedNote ? { sharedNote } : {}),
+    ...(shareKey ? { shareKey } : {}),
   };
 }
 
@@ -71,45 +72,19 @@ export function clearLaunchIntentFromLocation(): void {
   window.history.replaceState(window.history.state, '', next);
 }
 
-export function encodeSharePayload(payload: {
-  title?: string;
-  text?: string;
-  url?: string;
-}): string {
-  const json = JSON.stringify({
-    title: payload.title ?? '',
-    text: payload.text ?? '',
-    url: payload.url ?? '',
-  });
-  const bytes = new TextEncoder().encode(json);
-  let binary = '';
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/gu, '-').replace(/\//gu, '_').replace(/=+$/gu, '');
+export function sharePayloadPath(shareKey: string): string {
+  return `${SHARE_PAYLOAD_PREFIX}${shareKey}`;
 }
 
-function parseSharedNoteHash(hash: string): SharedNoteIntent | null {
-  if (!hash.startsWith('#share=')) return null;
-  const encoded = hash.slice('#share='.length).trim();
-  if (!encoded || encoded.length > 2_000_000) return null;
-
-  try {
-    const base64 = encoded.replace(/-/gu, '+').replace(/_/gu, '/');
-    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
-    const binary = atob(padded);
-    const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
-    const parsed = JSON.parse(new TextDecoder().decode(bytes)) as unknown;
-    if (!parsed || typeof parsed !== 'object') return null;
-
-    const payload = parsed as Record<string, unknown>;
-    const title = sanitize(typeof payload.title === 'string' ? payload.title : '', MAX_SHARE_TITLE);
-    const text = sanitize(typeof payload.text === 'string' ? payload.text : '', MAX_SHARE_CONTENT);
-    const url = sanitize(typeof payload.url === 'string' ? payload.url : '', MAX_SHARE_URL);
-    const content = composeSharedContent(text, url);
-    if (!title && !content) return null;
-    return { title, content };
-  } catch {
-    return null;
-  }
+export function sanitizeSharedPayload(payload: unknown): SharedNoteIntent | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const value = payload as Record<string, unknown>;
+  const title = sanitize(typeof value.title === 'string' ? value.title : '', MAX_SHARE_TITLE);
+  const text = sanitize(typeof value.text === 'string' ? value.text : '', MAX_SHARE_CONTENT);
+  const url = sanitize(typeof value.url === 'string' ? value.url : '', MAX_SHARE_URL);
+  const content = composeSharedContent(text, url);
+  if (!title && !content) return null;
+  return { title, content };
 }
 
 function composeSharedContent(text: string, url: string): string {
@@ -127,9 +102,9 @@ function primeNavigation(intent: LaunchIntent, storage: Storage): void {
     const section = resolveInitialSection(intent);
     storage.setItem(ACTIVE_SECTION_KEY, section);
 
-    if (intent.labelId && !intent.noteId && !intent.capture && !intent.sharedNote) {
+    if (intent.labelId && !intent.noteId && !intent.capture && !intent.shareKey) {
       storage.setItem(ACTIVE_LABEL_KEY, intent.labelId);
-    } else if (section !== 'notes' || intent.noteId || intent.capture || intent.sharedNote) {
+    } else if (section !== 'notes' || intent.noteId || intent.capture || intent.shareKey) {
       storage.removeItem(ACTIVE_LABEL_KEY);
     }
   } catch {
@@ -138,11 +113,16 @@ function primeNavigation(intent: LaunchIntent, storage: Storage): void {
 }
 
 function resolveInitialSection(intent: LaunchIntent): Exclude<LaunchView, 'search'> {
-  if (intent.noteId || intent.labelId || intent.capture || intent.sharedNote || intent.searchQuery) {
+  if (intent.noteId || intent.labelId || intent.capture || intent.shareKey || intent.searchQuery) {
     return 'notes';
   }
   if (!intent.view || intent.view === 'search') return 'notes';
   return intent.view;
+}
+
+function parseShareKey(hash: string): string | undefined {
+  if (!hash.startsWith('#share=')) return undefined;
+  return parseUuid(hash.slice('#share='.length));
 }
 
 function parseView(value: string | null): LaunchView | undefined {
