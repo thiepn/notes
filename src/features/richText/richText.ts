@@ -3,6 +3,7 @@ export type RichTextCommand =
   | 'italic'
   | 'strike'
   | 'code'
+  | 'codeBlock'
   | 'link'
   | 'wikiLink'
   | 'heading'
@@ -31,18 +32,20 @@ export function applyRichTextCommand(
       return wrapSelection(value, selectionStart, selectionEnd, '~~', '~~', 'strikethrough');
     case 'code':
       return wrapSelection(value, selectionStart, selectionEnd, '`', '`', 'code');
+    case 'codeBlock':
+      return insertCodeBlock(value, selectionStart, selectionEnd);
     case 'link':
       return insertLink(value, selectionStart, selectionEnd);
     case 'wikiLink':
       return wrapSelection(value, selectionStart, selectionEnd, '[[', ']]', 'Note title');
     case 'heading':
-      return transformSelectedLines(value, selectionStart, selectionEnd, toggleHeading);
+      return transformSelectedLines(value, selectionStart, selectionEnd, toggleHeading, '## ');
     case 'bulletList':
-      return transformSelectedLines(value, selectionStart, selectionEnd, toggleBullets);
+      return transformSelectedLines(value, selectionStart, selectionEnd, toggleBullets, '- ');
     case 'orderedList':
-      return transformSelectedLines(value, selectionStart, selectionEnd, toggleOrderedList);
+      return transformSelectedLines(value, selectionStart, selectionEnd, toggleOrderedList, '1. ');
     case 'quote':
-      return transformSelectedLines(value, selectionStart, selectionEnd, toggleQuote);
+      return transformSelectedLines(value, selectionStart, selectionEnd, toggleQuote, '> ');
   }
 }
 
@@ -85,6 +88,22 @@ function wrapSelection(
   };
 }
 
+function insertCodeBlock(value: string, start: number, end: number): RichTextEditResult {
+  const selected = value.slice(start, end);
+  const content = selected || 'code';
+  const leadingBreak = start > 0 && value[start - 1] !== '\n' ? '\n' : '';
+  const trailingBreak = end < value.length && value[end] !== '\n' ? '\n' : '';
+  const replacement = `${leadingBreak}\`\`\`\n${content}\n\`\`\`${trailingBreak}`;
+  const nextValue = `${value.slice(0, start)}${replacement}${value.slice(end)}`;
+  const contentStart = start + leadingBreak.length + 4;
+
+  return {
+    value: nextValue,
+    selectionStart: contentStart,
+    selectionEnd: contentStart + content.length,
+  };
+}
+
 function insertLink(value: string, start: number, end: number): RichTextEditResult {
   const selected = value.slice(start, end).trim();
   const selectedIsUrl = /^https?:\/\/\S+$/iu.test(selected);
@@ -108,13 +127,31 @@ function transformSelectedLines(
   selectionStart: number,
   selectionEnd: number,
   transform: LineTransformer,
+  emptyLinePrefix: string,
 ): RichTextEditResult {
   const lineStart = value.lastIndexOf('\n', Math.max(0, selectionStart - 1)) + 1;
   const nextBreak = value.indexOf('\n', selectionEnd);
   const lineEnd = nextBreak === -1 ? value.length : nextBreak;
   const original = value.slice(lineStart, lineEnd);
+  const collapsed = selectionStart === selectionEnd;
+
+  if (collapsed && original.trim().length === 0) {
+    const indentation = original.match(/^\s*/u)?.[0] ?? '';
+    const replacement = `${indentation}${emptyLinePrefix}`;
+    const nextValue = `${value.slice(0, lineStart)}${replacement}${value.slice(lineEnd)}`;
+    const cursor = lineStart + replacement.length;
+    return { value: nextValue, selectionStart: cursor, selectionEnd: cursor };
+  }
+
   const replacement = transform(original.split('\n')).join('\n');
   const nextValue = `${value.slice(0, lineStart)}${replacement}${value.slice(lineEnd)}`;
+
+  if (collapsed && !original.includes('\n')) {
+    const relativeCursor = selectionStart - lineStart;
+    const delta = replacement.length - original.length;
+    const cursor = lineStart + Math.max(0, Math.min(replacement.length, relativeCursor + delta));
+    return { value: nextValue, selectionStart: cursor, selectionEnd: cursor };
+  }
 
   return {
     value: nextValue,
