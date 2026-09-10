@@ -1,0 +1,91 @@
+import { expect, test, type Page } from '@playwright/test';
+
+async function seedRelatedNotes(page: Page) {
+  return page.evaluate(async () => {
+    const db = await import('/notes/src/db/index.ts');
+    const now = Date.now();
+    const source = {
+      id: crypto.randomUUID(),
+      type: 'text' as const,
+      title: 'Linear algebra exam',
+      content: 'Jordan form eigenvalues eigenvectors matrix basis similarity transformation',
+      color: 'default' as const,
+      createdAt: now,
+      updatedAt: now,
+      pinnedAt: null,
+      archivedAt: null,
+      trashedAt: null,
+      position: 0,
+      revision: 1,
+    };
+    const related = {
+      ...source,
+      id: crypto.randomUUID(),
+      title: 'Jordan form notes',
+      content: 'Matrix eigenvalues basis diagonalization and similarity transformation',
+      createdAt: now - 1,
+      updatedAt: now - 1,
+      position: 1,
+    };
+    await db.notesDatabase.notes.bulkPut([source, related]);
+    return { sourceId: source.id };
+  });
+}
+
+test('PWA capture shortcut opens a text note directly and cleans the launch URL', async ({ page }) => {
+  await page.goto('./?capture=text');
+
+  await expect(page.getByLabel('Title')).toBeVisible();
+  await expect(page.getByLabel('Note text')).toBeVisible();
+  await expect(page).toHaveURL(/\/notes\/$/u);
+});
+
+test('search deep link opens search and applies the query', async ({ page }) => {
+  await page.goto('./?view=search&q=algebra');
+
+  await expect(page).toHaveTitle('Search — Notes');
+  await expect(page.getByRole('searchbox', { name: 'Search notes' })).toHaveValue('algebra');
+  await expect(page).toHaveURL(/\/notes\/$/u);
+});
+
+test('fragment share launch creates and opens a local note without leaving payload in the URL', async ({
+  page,
+}) => {
+  const payload = Buffer.from(
+    JSON.stringify({
+      title: 'Shared from P10',
+      text: 'Private shared context',
+      url: 'https://example.test/reference',
+    }),
+    'utf8',
+  ).toString('base64url');
+
+  await page.goto(`./#share=${payload}`);
+
+  await expect(page.getByLabel('Title')).toHaveValue('Shared from P10');
+  await expect(page.getByLabel('Note text')).toContainText('Private shared context');
+  await expect(page.getByLabel('Note text')).toContainText('https://example.test/reference');
+  await expect(page).toHaveURL(/\/notes\/$/u);
+});
+
+test('empty libraries get a small non-blocking first-run path into capture', async ({ page }) => {
+  await page.goto('./');
+
+  const coach = page.getByLabel('Getting started with Notes');
+  await expect(coach).toBeVisible();
+  await coach.getByRole('button', { name: 'Create a note' }).click();
+
+  await expect(page.getByLabel('Title')).toBeVisible();
+  await expect(coach).not.toBeVisible();
+});
+
+test('editor connections surface deterministic local related notes', async ({ page }) => {
+  await page.goto('./');
+  const { sourceId } = await seedRelatedNotes(page);
+  await page.reload();
+
+  await page.locator(`[data-note-id="${sourceId}"] .note-card-open`).click();
+  await expect(page.getByRole('heading', { name: 'Related notes' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Jordan form notes/u })).toBeVisible();
+  await expect(page.getByText(/Shared:/u)).toBeVisible();
+});
