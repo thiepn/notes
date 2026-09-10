@@ -5,7 +5,7 @@ async function openSettings(page: Page) {
 
   if (width <= 767) {
     await page.getByRole('button', { name: 'Open navigation', exact: true }).click();
-    const drawer = page.getByRole('dialog', { name: 'Primary navigation' });
+    const drawer = page.getByRole('dialog', { name: 'More navigation' });
     await expect(drawer).toBeVisible();
     await drawer.getByRole('button', { name: 'Settings', exact: true }).click();
   } else {
