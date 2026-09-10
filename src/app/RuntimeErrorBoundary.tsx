@@ -20,7 +20,10 @@ export class RuntimeErrorBoundary extends Component<
     return { failed: true };
   }
 
-  componentDidCatch(_error: unknown, _info: ErrorInfo): void {
+  componentDidCatch(error: unknown, info: ErrorInfo): void {
+    // Failure details are intentionally neither persisted nor exposed by this local recovery layer.
+    void error;
+    void info;
     document.title = notesDocumentTitle('Recovery');
   }
 
