@@ -4,11 +4,11 @@ const NOTES_SHARE_CACHE = 'notes-share-target-v1';
 const NOTES_SHARE_PAYLOAD_PREFIX = '/notes/share-payload/';
 const MAX_PENDING_SHARES = 8;
 
-self.addEventListener('fetch', (event) => {
+globalThis.addEventListener('fetch', (event) => {
   const request = event.request;
   if (request.method !== 'POST') return;
 
-  const url = new URL(request.url);
+  const url = new globalThis.URL(request.url);
   if (url.pathname !== NOTES_SHARE_TARGET_PATH) return;
 
   event.respondWith(
@@ -20,8 +20,8 @@ self.addEventListener('fetch', (event) => {
           text: readString(form, 'text'),
           url: readString(form, 'url'),
         };
-        const key = crypto.randomUUID();
-        const cache = await caches.open(NOTES_SHARE_CACHE);
+        const key = globalThis.crypto.randomUUID();
+        const cache = await globalThis.caches.open(NOTES_SHARE_CACHE);
         const pending = await cache.keys();
         if (pending.length >= MAX_PENDING_SHARES) {
           await Promise.all(
@@ -31,17 +31,23 @@ self.addEventListener('fetch', (event) => {
           );
         }
         await cache.put(
-          new URL(`${NOTES_SHARE_PAYLOAD_PREFIX}${key}`, self.location.origin).toString(),
-          new Response(JSON.stringify(payload), {
+          new globalThis.URL(
+            `${NOTES_SHARE_PAYLOAD_PREFIX}${key}`,
+            globalThis.location.origin,
+          ).toString(),
+          new globalThis.Response(JSON.stringify(payload), {
             headers: { 'Content-Type': 'application/json; charset=utf-8' },
           }),
         );
-        return Response.redirect(
-          new URL(`/notes/#share=${key}`, self.location.origin).toString(),
+        return globalThis.Response.redirect(
+          new globalThis.URL(`/notes/#share=${key}`, globalThis.location.origin).toString(),
           303,
         );
       } catch {
-        return Response.redirect(new URL('/notes/', self.location.origin).toString(), 303);
+        return globalThis.Response.redirect(
+          new globalThis.URL('/notes/', globalThis.location.origin).toString(),
+          303,
+        );
       }
     })(),
   );
