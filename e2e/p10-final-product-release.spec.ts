@@ -48,23 +48,14 @@ test('search deep link opens search and applies the query', async ({ page }) => 
   await expect(page).toHaveURL(/\/notes\/$/u);
 });
 
-test('fragment share launch creates and opens a local note without leaving payload in the URL', async ({
-  page,
-}) => {
-  const payload = Buffer.from(
-    JSON.stringify({
-      title: 'Shared from P10',
-      text: 'Private shared context',
-      url: 'https://example.test/reference',
-    }),
-    'utf8',
-  ).toString('base64url');
+test('note deep link opens the requested local note and cleans the launch URL', async ({ page }) => {
+  await page.goto('./');
+  const { sourceId } = await seedRelatedNotes(page);
 
-  await page.goto(`./#share=${payload}`);
+  await page.goto(`./?note=${sourceId}`);
 
-  await expect(page.getByLabel('Title')).toHaveValue('Shared from P10');
-  await expect(page.getByLabel('Note text')).toContainText('Private shared context');
-  await expect(page.getByLabel('Note text')).toContainText('https://example.test/reference');
+  await expect(page.getByLabel('Title')).toHaveValue('Linear algebra exam');
+  await expect(page.getByLabel('Note text')).toContainText('Jordan form eigenvalues');
   await expect(page).toHaveURL(/\/notes\/$/u);
 });
 
