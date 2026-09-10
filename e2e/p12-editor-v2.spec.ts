@@ -28,7 +28,7 @@ test.describe('P12 Editor V2', () => {
     await expect(body).toHaveValue('## Workspace plan');
 
     await form.getByRole('button', { name: 'Preview formatted text' }).click();
-    await expect(form.getByRole('heading', { name: 'Workspace plan', level: 2 })).toBeVisible();
+    await expect(form.locator('.rich-text-heading[data-level="2"]')).toHaveText('Workspace plan');
   });
 
   test('Enter continues bullet lists and a blank marker exits the list', async ({ page }) => {
@@ -103,7 +103,7 @@ test.describe('P12 Editor V2', () => {
     await expect(body).toHaveValue('```\nconst x = 1;\n```');
 
     await form.getByRole('button', { name: 'Preview formatted text' }).click();
-    await expect(form.locator('pre code')).toContainText('const x = 1;');
+    await expect(form.locator('.rich-text-code-block')).toContainText('const x = 1;');
   });
 
   test('Editor V2 controls remain touch-safe on mobile', async ({ page }) => {
