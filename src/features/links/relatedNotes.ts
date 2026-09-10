@@ -162,10 +162,7 @@ function isUsefulTerm(term: string): boolean {
   if (STOP_WORDS.has(term)) return false;
   if (NUMBER_PATTERN.test(term)) return term.length >= 4;
   if (term.length >= 3) return true;
-  return (
-    term.length >= 2 &&
-    [...term].some((character) => (character.codePointAt(0) ?? 0) > 0x7f)
-  );
+  return term.length >= 2 && [...term].some((character) => (character.codePointAt(0) ?? 0) > 0x7f);
 }
 
 function canonicalize(value: string): string {
