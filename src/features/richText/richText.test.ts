@@ -41,6 +41,27 @@ describe('rich text commands', () => {
     );
   });
 
+  it('inserts block markers at an empty cursor instead of doing nothing', () => {
+    expect(applyRichTextCommand('', 0, 0, 'heading')).toEqual({
+      value: '## ',
+      selectionStart: 3,
+      selectionEnd: 3,
+    });
+    expect(applyRichTextCommand('', 0, 0, 'bulletList')).toEqual({
+      value: '- ',
+      selectionStart: 2,
+      selectionEnd: 2,
+    });
+  });
+
+  it('wraps selected content in a fenced code block', () => {
+    expect(applyRichTextCommand('const answer = 42;', 0, 18, 'codeBlock')).toEqual({
+      value: '```\nconst answer = 42;\n```',
+      selectionStart: 4,
+      selectionEnd: 22,
+    });
+  });
+
   it('keeps stored formatting out of plain-text search and labels', () => {
     expect(
       richTextToPlainText(
