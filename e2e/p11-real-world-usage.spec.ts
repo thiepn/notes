@@ -44,7 +44,7 @@ test.describe('P11 real-world usage audit', () => {
     await expect(composer).toBeVisible();
     const box = await composer.boundingBox();
     expect(box).not.toBeNull();
-    expect(box?.top ?? Number.POSITIVE_INFINITY).toBeLessThan(300);
+    expect(box!.y).toBeLessThan(300);
   });
 
   test('desktop exposes one visible sync affordance instead of duplicate status chrome', async ({
