@@ -27,10 +27,14 @@ test('core capture, persistence, editing, and local search work across browser e
 
   const search = page.getByRole('searchbox', { name: 'Search notes' });
   await search.fill('dependable after editing');
-  await expect(page.getByRole('button', { name: 'Open note: Cross-browser field note' })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Open note: Cross-browser field note' }),
+  ).toBeVisible();
 });
 
-test('mobile navigation and workspace context remain usable across browser engines', async ({ page }) => {
+test('mobile navigation and workspace context remain usable across browser engines', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('./');
 
