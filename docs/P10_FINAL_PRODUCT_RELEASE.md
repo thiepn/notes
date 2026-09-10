@@ -10,6 +10,7 @@ P10 closes the P1–P10 overhaul with changes that improve everyday entry, knowl
 - The coach points directly to the primary action: create the first note.
 - It also exposes the two highest-value keyboard entry points: `/` for search and `Ctrl/⌘ K` for commands.
 - The coach does not appear when a library already contains notes and does not compete with an already-open editor or dialog.
+- Once Notes observes an established non-empty library, the quick-start is permanently considered complete for that browser profile, so deleting every note later cannot reintroduce first-run coaching.
 
 ### Launch and deep-link contract
 
@@ -97,6 +98,7 @@ Chromium end-to-end coverage includes:
 - search deep links with query propagation
 - direct note deep links
 - empty-library onboarding
+- established-library onboarding completion
 - related-note discovery inside the editor
 
 Production PWA coverage includes:
