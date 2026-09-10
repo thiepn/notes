@@ -23,6 +23,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
+    "e2e:compat": "playwright test --config=playwright.compat.config.ts",
     "e2e:pwa": "playwright test --config=playwright.pwa.config.ts"
   },
   "dependencies": {
