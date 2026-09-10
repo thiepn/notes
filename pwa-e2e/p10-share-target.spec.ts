@@ -4,13 +4,17 @@ async function waitForServiceWorkerControl(page: Page) {
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;
   });
-  if (!(await page.evaluate(() => Boolean(navigator.serviceWorker.controller)))) await page.reload();
+  if (!(await page.evaluate(() => Boolean(navigator.serviceWorker.controller))))
+    await page.reload();
   await expect
     .poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller)))
     .toBe(true);
 }
 
-test('production manifest exposes P10 shortcuts and POST share target', async ({ page, request }) => {
+test('production manifest exposes P10 shortcuts and POST share target', async ({
+  page,
+  request,
+}) => {
   await page.goto('./');
   const manifestHref = await page.locator('link[rel="manifest"]').getAttribute('href');
   expect(manifestHref).toBeTruthy();
@@ -72,13 +76,15 @@ test('installed PWA receives shared text through the service worker and consumes
 
   await expect(page.getByLabel('Title')).toHaveValue('Shared through PWA');
   await expect(page.getByLabel('Note text')).toContainText('service-worker-controlled share flow');
-  await expect(page.getByLabel('Note text')).toContainText('https://example.test/private-reference');
+  await expect(page.getByLabel('Note text')).toContainText(
+    'https://example.test/private-reference',
+  );
   await expect(page).toHaveURL(/\/notes\/$/u);
 
   const pendingShares = await page.evaluate(async () => {
     const cache = await caches.open('notes-share-target-v1');
-    return (await cache.keys()).filter(
-      (request) => new URL(request.url).pathname.startsWith('/notes/share-payload/'),
+    return (await cache.keys()).filter((request) =>
+      new URL(request.url).pathname.startsWith('/notes/share-payload/'),
     ).length;
   });
   expect(pendingShares).toBe(0);

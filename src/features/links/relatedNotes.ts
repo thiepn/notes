@@ -117,8 +117,7 @@ function compare(source: NoteFingerprint, candidate: NoteRecord): RelatedNote | 
   const containment = intersection / Math.min(source.totalWeight, target.totalWeight);
   const score = 0.7 * jaccard + 0.3 * containment;
   const exactDuplicate =
-    source.canonicalDocument.length > 1 &&
-    source.canonicalDocument === target.canonicalDocument;
+    source.canonicalDocument.length > 1 && source.canonicalDocument === target.canonicalDocument;
   const nearDuplicate = score >= 0.82 && containment >= 0.9;
   const duplicate = exactDuplicate || nearDuplicate;
 

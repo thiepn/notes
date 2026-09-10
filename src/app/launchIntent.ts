@@ -146,5 +146,8 @@ function parseUuid(value: string | null): string | undefined {
 }
 
 function sanitize(value: string | null, limit: number): string {
-  return (value ?? '').replace(/\u0000/gu, '').trim().slice(0, limit);
+  return (value ?? '')
+    .replace(/\u0000/gu, '')
+    .trim()
+    .slice(0, limit);
 }

@@ -32,7 +32,9 @@ async function seedRelatedNotes(page: Page) {
   });
 }
 
-test('PWA capture shortcut opens a text note directly and cleans the launch URL', async ({ page }) => {
+test('PWA capture shortcut opens a text note directly and cleans the launch URL', async ({
+  page,
+}) => {
   await page.goto('./?capture=text');
 
   await expect(page.getByLabel('Title')).toBeVisible();
@@ -48,7 +50,9 @@ test('search deep link opens search and applies the query', async ({ page }) => 
   await expect(page).toHaveURL(/\/notes\/$/u);
 });
 
-test('note deep link opens the requested local note and cleans the launch URL', async ({ page }) => {
+test('note deep link opens the requested local note and cleans the launch URL', async ({
+  page,
+}) => {
   await page.goto('./');
   const { sourceId } = await seedRelatedNotes(page);
 

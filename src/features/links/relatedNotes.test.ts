@@ -65,10 +65,19 @@ describe('findRelatedNotes', () => {
   });
 
   it('ignores the source note, trashed notes, and empty documents', () => {
-    const source = note('source', 'Mission planning', 'Travel logistics language study preparation');
-    const trashed = note('trash', 'Mission planning', 'Travel logistics language study preparation', {
-      trashedAt: 2,
-    });
+    const source = note(
+      'source',
+      'Mission planning',
+      'Travel logistics language study preparation',
+    );
+    const trashed = note(
+      'trash',
+      'Mission planning',
+      'Travel logistics language study preparation',
+      {
+        trashedAt: 2,
+      },
+    );
     const empty = note('empty', '', '');
 
     expect(findRelatedNotes(source, [source, trashed, empty])).toEqual([]);
@@ -85,7 +94,11 @@ describe('findRelatedNotes', () => {
   });
 
   it('respects the requested result limit deterministically', () => {
-    const source = note('source', 'Notes architecture', 'local first notes architecture storage sync');
+    const source = note(
+      'source',
+      'Notes architecture',
+      'local first notes architecture storage sync',
+    );
     const candidates = Array.from({ length: 8 }, (_, index) =>
       note(
         `candidate-${index}`,

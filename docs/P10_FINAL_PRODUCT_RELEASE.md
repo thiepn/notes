@@ -15,15 +15,15 @@ P10 closes the P1–P10 overhaul with changes that improve everyday entry, knowl
 
 Notes accepts the following launch intents at `/notes/`:
 
-| Intent | URL contract |
-| --- | --- |
-| New text note | `?capture=text` |
-| New checklist | `?capture=checklist` |
-| Search | `?view=search` |
-| Search with query | `?view=search&q=<query>` or `?q=<query>` |
-| Open note | `?note=<uuid>` |
-| Open label | `?label=<uuid>` |
-| Open workspace | `?view=notes`, `reminders`, `archive`, `trash`, or `backup` |
+| Intent            | URL contract                                                |
+| ----------------- | ----------------------------------------------------------- |
+| New text note     | `?capture=text`                                             |
+| New checklist     | `?capture=checklist`                                        |
+| Search            | `?view=search`                                              |
+| Search with query | `?view=search&q=<query>` or `?q=<query>`                    |
+| Open note         | `?note=<uuid>`                                              |
+| Open label        | `?label=<uuid>`                                             |
+| Open workspace    | `?view=notes`, `reminders`, `archive`, `trash`, or `backup` |
 
 Launch parameters are treated as commands, not permanent application state. After a launch intent has been handled, Notes removes the consumed parameters from the address bar while preserving unrelated URL state.
 
