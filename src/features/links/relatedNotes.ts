@@ -2,7 +2,6 @@ import type { NoteRecord } from '../../db';
 
 const TOKEN_PATTERN = /[\p{L}\p{N}][\p{L}\p{N}'’-]*/gu;
 const NUMBER_PATTERN = /^\p{N}+$/u;
-const NON_ASCII_PATTERN = /[^\u0000-\u007f]/u;
 const MAX_TERMS_PER_NOTE = 600;
 const DEFAULT_LIMIT = 5;
 const MIN_RELATED_SCORE = 0.16;
@@ -163,7 +162,7 @@ function isUsefulTerm(term: string): boolean {
   if (STOP_WORDS.has(term)) return false;
   if (NUMBER_PATTERN.test(term)) return term.length >= 4;
   if (term.length >= 3) return true;
-  return term.length >= 2 && NON_ASCII_PATTERN.test(term);
+  return term.length >= 2 && [...term].some((character) => (character.codePointAt(0) ?? 0) > 0x7f);
 }
 
 function canonicalize(value: string): string {
