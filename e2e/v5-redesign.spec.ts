@@ -60,7 +60,7 @@ async function noPageOverflow(page: Page) {
 async function openResponsiveSettings(page: Page, width = page.viewportSize()?.width ?? 1440) {
   if (width <= 767) {
     await page.getByRole('button', { name: 'Open navigation', exact: true }).click();
-    const drawer = page.getByRole('dialog', { name: 'Primary navigation' });
+    const drawer = page.getByRole('dialog', { name: 'More navigation' });
     await expect(drawer).toBeVisible();
     await drawer.getByRole('button', { name: 'Settings', exact: true }).click();
   } else if (width <= 1100) {
@@ -208,7 +208,7 @@ test('mobile navigation opens a contained drawer and returns to a working captur
   await page.setViewportSize({ width: 390, height: 844 });
   await seedNotebook(page);
   await page.getByRole('button', { name: 'Open navigation', exact: true }).click();
-  const drawer = page.getByRole('dialog', { name: 'Primary navigation' });
+  const drawer = page.getByRole('dialog', { name: 'More navigation' });
   await expect(drawer).toBeVisible();
   await expect(page.locator('#main-content')).toHaveAttribute('inert', '');
   for (let i = 0; i < 15; i++) {

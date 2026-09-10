@@ -83,7 +83,7 @@ export function AppSidebar({
   const sidebarRef = useRef<HTMLElement>(null);
   useDialogFocusTrap(sidebarRef, { enabled: mobile && mobileOpen });
   const [labelQuery, setLabelQuery] = useState('');
-  const showLabelSearch = labels.length >= 6 && !compact;
+  const showLabelSearch = labels.length >= 6 && (!compact || mobile);
   const normalizedLabelQuery = showLabelSearch ? labelQuery.trim().toLocaleLowerCase() : '';
   const visibleLabels = normalizedLabelQuery
     ? labels.filter((label) => label.name.toLocaleLowerCase().includes(normalizedLabelQuery))
@@ -121,7 +121,7 @@ export function AppSidebar({
         id="app-navigation"
         role={mobile && mobileOpen ? 'dialog' : undefined}
         aria-modal={mobile && mobileOpen ? true : undefined}
-        aria-label="Primary navigation"
+        aria-label={mobile ? 'More navigation' : 'Primary navigation'}
         aria-hidden={mobile && !mobileOpen}
         data-compact={compact}
         data-open={mobileOpen}
@@ -131,61 +131,65 @@ export function AppSidebar({
       >
         {mobile ? (
           <div className="sidebar-mobile-heading">
-            <strong>Navigation</strong>
+            <strong>More</strong>
             <button type="button" aria-label="Hide navigation" onClick={onCloseNavigation}>
               <X aria-hidden="true" />
             </button>
           </div>
         ) : null}
 
-        <nav className="sidebar-nav" aria-label="Notes navigation">
-          <button
-            type="button"
-            className="sidebar-capture"
-            onClick={onCreateNote}
-            aria-label="Write a new note"
-            title={compact ? 'New note' : undefined}
-          >
-            <Plus aria-hidden="true" />
-            <span>New note</span>
-            <kbd>C</kbd>
-          </button>
-
-          <p className="sidebar-eyebrow">Workspace</p>
-          {WORKSPACE_NAVIGATION.map(({ id, label, icon: Icon }) => {
-            const active =
-              id === 'search'
-                ? searchActive
-                : !searchActive &&
-                  activeSection === id &&
-                  (id !== 'notes' || activeLabelId === null);
-            const count =
-              id === 'notes' ? counts.notes : id === 'reminders' ? counts.reminders : null;
-            const activate = () => {
-              if (id === 'search') onSearch();
-              else onNavigate(id);
-            };
-            return (
+        <nav className="sidebar-nav" aria-label={mobile ? 'More destinations' : 'Notes navigation'}>
+          {!mobile ? (
+            <>
               <button
-                className="nav-item"
-                aria-label={label}
-                title={compact ? label : undefined}
                 type="button"
-                data-active={active}
-                aria-current={active ? 'page' : undefined}
-                onClick={activate}
-                key={id}
+                className="sidebar-capture"
+                onClick={onCreateNote}
+                aria-label="Write a new note"
+                title={compact ? 'New note' : undefined}
               >
-                <Icon aria-hidden="true" />
-                <span className="nav-label">{label}</span>
-                {count !== null ? (
-                  <span className="nav-count" aria-hidden="true">
-                    {count}
-                  </span>
-                ) : null}
+                <Plus aria-hidden="true" />
+                <span>New note</span>
+                <kbd>C</kbd>
               </button>
-            );
-          })}
+
+              <p className="sidebar-eyebrow">Workspace</p>
+              {WORKSPACE_NAVIGATION.map(({ id, label, icon: Icon }) => {
+                const active =
+                  id === 'search'
+                    ? searchActive
+                    : !searchActive &&
+                      activeSection === id &&
+                      (id !== 'notes' || activeLabelId === null);
+                const count =
+                  id === 'notes' ? counts.notes : id === 'reminders' ? counts.reminders : null;
+                const activate = () => {
+                  if (id === 'search') onSearch();
+                  else onNavigate(id);
+                };
+                return (
+                  <button
+                    className="nav-item"
+                    aria-label={label}
+                    title={compact ? label : undefined}
+                    type="button"
+                    data-active={active}
+                    aria-current={active ? 'page' : undefined}
+                    onClick={activate}
+                    key={id}
+                  >
+                    <Icon aria-hidden="true" />
+                    <span className="nav-label">{label}</span>
+                    {count !== null ? (
+                      <span className="nav-count" aria-hidden="true">
+                        {count}
+                      </span>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </>
+          ) : null}
 
           <div className="sidebar-section sidebar-label-section">
             <div className="sidebar-section-heading">
@@ -311,7 +315,7 @@ export function AppSidebar({
             >
               <Command aria-hidden="true" />
               <span className="nav-label">Commands</span>
-              <kbd>Ctrl K</kbd>
+              {!mobile ? <kbd>Ctrl K</kbd> : null}
             </button>
           </div>
         </nav>
