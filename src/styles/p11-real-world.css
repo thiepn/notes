@@ -1,0 +1,92 @@
+/* P11 real-world usage audit: reduce repeated chrome and keep small-screen controls discoverable. */
+
+@media (min-width: 768px) {
+  /* The persistent sidebar already owns account/sync status on larger layouts. */
+  .workspace-meta .sync-indicator {
+    display: none;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1100px) {
+  /* Tablet headings should not reserve an empty metadata column. */
+  .workspace-meta {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  /* The bottom bar owns primary navigation; the drawer starts directly with secondary tools. */
+  .app-sidebar .sidebar-label-section {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  /* Keep the active collection and sync state, but get capture/content above the fold faster. */
+  .workspace-heading {
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .workspace-heading > div:first-child {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .workspace-heading .workspace-kicker,
+  .workspace-heading p:not(.workspace-kicker) {
+    display: none;
+  }
+
+  .workspace-heading h1 {
+    font-size: 34px;
+  }
+
+  .workspace-meta {
+    display: block;
+  }
+
+  .workspace-meta .sync-indicator {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .workspace-meta .sync-indicator span {
+    display: none;
+  }
+
+  /* All six Settings destinations should be visible without a hidden horizontal tab strip. */
+  .settings-dialog-header p {
+    display: none;
+  }
+
+  .settings-navigation {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+    overflow: visible;
+  }
+
+  .settings-nav-item {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .settings-nav-item strong {
+    white-space: normal;
+  }
+
+  .settings-nav-item[data-active='true'] {
+    box-shadow: inset 2px 0 var(--accent);
+  }
+
+  /* Keyboard accelerators are desktop help, not useful content in a touch-first capture sheet. */
+  .capture-menu-hint {
+    display: none;
+  }
+}
