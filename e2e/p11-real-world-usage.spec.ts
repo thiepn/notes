@@ -25,7 +25,9 @@ test.describe('P11 real-world usage audit', () => {
     }
   });
 
-  test('mobile workspace gets capture above the fold while sync remains accessible', async ({ page }) => {
+  test('mobile workspace gets capture above the fold while sync remains accessible', async ({
+    page,
+  }) => {
     await page.setViewportSize(MOBILE);
     await page.goto('./');
 
@@ -54,7 +56,9 @@ test.describe('P11 real-world usage audit', () => {
     await expect(page.locator('.workspace-meta .sync-indicator')).not.toBeVisible();
   });
 
-  test('mobile Settings exposes every section without horizontal tab scrolling', async ({ page }) => {
+  test('mobile Settings exposes every section without horizontal tab scrolling', async ({
+    page,
+  }) => {
     await page.setViewportSize(MOBILE);
     await page.goto('./');
 
@@ -74,7 +78,9 @@ test.describe('P11 real-world usage audit', () => {
       'Search & history',
       'Data & advanced',
     ]) {
-      await expect(navigation.getByRole('button', { name: new RegExp(`^${sectionName}`) })).toBeVisible();
+      await expect(
+        navigation.getByRole('button', { name: new RegExp(`^${sectionName}`) }),
+      ).toBeVisible();
     }
 
     const geometry = await navigation.evaluate((element) => ({
