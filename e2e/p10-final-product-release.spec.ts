@@ -80,7 +80,11 @@ test('editor connections surface deterministic local related notes', async ({ pa
   await page.reload();
 
   await page.locator(`[data-note-id="${sourceId}"] .note-card-open`).click();
-  await expect(page.getByRole('heading', { name: 'Related notes' })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Jordan form notes/u })).toBeVisible();
-  await expect(page.getByText(/Shared:/u)).toBeVisible();
+  const editor = page.getByRole('dialog', { name: 'Edit note' });
+  await editor.getByRole('button', { name: 'More' }).click();
+  await editor.getByRole('menuitem', { name: 'Connections' }).click();
+
+  await expect(editor.getByRole('heading', { name: 'Related notes' })).toBeVisible();
+  await expect(editor.getByRole('button', { name: /Jordan form notes/u })).toBeVisible();
+  await expect(editor.getByText(/Shared:/u)).toBeVisible();
 });
