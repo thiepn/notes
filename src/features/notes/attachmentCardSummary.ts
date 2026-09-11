@@ -45,7 +45,9 @@ export async function loadAttachmentCardSummary(noteId: string): Promise<Attachm
     if (isVoiceAudioMimeType(mimeType)) audioCount += 1;
   }
 
-  const firstImageRaw = firstImageId ? await notesDatabase.attachments.get(firstImageId) : undefined;
+  const firstImageRaw = firstImageId
+    ? await notesDatabase.attachments.get(firstImageId)
+    : undefined;
   return {
     count: compoundKeys.length,
     imageCount,
