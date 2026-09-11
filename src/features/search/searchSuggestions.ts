@@ -30,10 +30,10 @@ const IS_OPTIONS: Array<[string, string]> = [
 ];
 
 const HAS_OPTIONS: Array<[string, string]> = [
-  ['has:label', 'Notes with labels'],
   ['has:reminder', 'Notes with reminders'],
   ['has:image', 'Notes with images'],
   ['has:link', 'Notes with links'],
+  ['has:label', 'Notes with labels'],
 ];
 
 export function buildSearchQuerySuggestions(
