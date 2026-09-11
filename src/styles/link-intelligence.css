@@ -78,7 +78,8 @@ button.rich-text-wiki-link:focus-visible {
 .note-connections-title svg,
 .note-connection-group h3 svg,
 .note-connection-meta svg,
-.note-connections-warning svg {
+.note-connections-warning svg,
+.note-intelligence-chip svg {
   width: 15px;
   height: 15px;
   flex: 0 0 auto;
@@ -169,6 +170,46 @@ button.note-connection-row:focus-visible {
   color: var(--warning);
 }
 
+.note-connection-row[data-status='duplicate'] {
+  background: color-mix(in srgb, var(--warning) 9%, transparent);
+}
+
+.note-connection-row[data-status='duplicate']:hover,
+.note-connection-row[data-status='duplicate']:focus-visible {
+  background: color-mix(in srgb, var(--warning) 14%, transparent);
+}
+
+.note-connection-row-context {
+  align-items: flex-start;
+}
+
+.note-connection-row-context > .note-connection-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  overflow: visible;
+  white-space: normal;
+}
+
+.note-connection-copy strong {
+  overflow: hidden;
+  font-size: 0.81rem;
+  font-weight: 680;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-connection-copy small {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--text-subtle);
+  font-size: 0.73rem;
+  font-weight: 450;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .note-connection-meta {
   display: inline-flex;
   flex: 0 0 auto;
@@ -176,6 +217,60 @@ button.note-connection-row:focus-visible {
   gap: 4px;
   color: var(--text-subtle);
   font-size: 0.72rem;
+}
+
+.note-intelligence-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.note-intelligence-chip {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 32px;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.76rem;
+}
+
+.note-intelligence-chip small {
+  color: var(--text-subtle);
+  font-size: 0.67rem;
+  white-space: nowrap;
+}
+
+button.note-intelligence-chip {
+  cursor: pointer;
+}
+
+button.note-intelligence-chip:hover,
+button.note-intelligence-chip:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 38%, transparent);
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+button.note-intelligence-chip:disabled {
+  opacity: 0.58;
+  cursor: default;
+}
+
+.note-intelligence-label {
+  border-color: color-mix(in srgb, var(--accent) 24%, transparent);
+  color: var(--accent-strong);
+}
+
+.note-intelligence-topic {
+  min-height: 28px;
+  padding-block: 3px;
 }
 
 .note-unlinked-mention {
@@ -276,6 +371,26 @@ button.note-connection-row:focus-visible {
 
   .note-connections-summary {
     text-align: left;
+  }
+
+  .note-connection-row-context {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .note-connection-row-context .note-connection-meta {
+    align-self: flex-start;
+  }
+
+  .note-intelligence-chip-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  }
+
+  .note-intelligence-chip {
+    justify-content: flex-start;
+    border-radius: var(--radius-sm);
   }
 
   .note-unlinked-mention {
