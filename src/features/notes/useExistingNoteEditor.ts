@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { broadcastAppEvent } from '../../app/events';
 import type { NoteRecord, NotesRepository } from '../../db';
 import { clearEditorJournal, readEditorJournal, writeEditorJournal } from './editorJournal';
 
@@ -28,7 +29,7 @@ export function useExistingNoteEditor({
   onClose,
 }: UseExistingNoteEditorOptions) {
   const [initialEditor] = useState(() => {
-    const journal = readEditorJournal();
+    const journal = readEditorJournal(note.id);
     const recovered = journal?.noteId === note.id ? journal : null;
 
     return {
@@ -73,17 +74,18 @@ export function useExistingNoteEditor({
         setErrorMessage(null);
       }
 
-      const saved =
-        current.title === snapshot.title && current.content === snapshot.content
-          ? current
-          : await repository.update(
-              current.id,
-              { title: snapshot.title, content: snapshot.content },
-              current.revision,
-            );
+      const changed = current.title !== snapshot.title || current.content !== snapshot.content;
+      const saved = changed
+        ? await repository.update(
+            current.id,
+            { title: snapshot.title, content: snapshot.content },
+            current.revision,
+          )
+        : current;
 
       noteRef.current = saved;
       onSaved(saved);
+      if (changed) broadcastAppEvent('cloudSyncApplied');
 
       if (mountedRef.current) {
         setStatus('idle');
@@ -92,7 +94,7 @@ export function useExistingNoteEditor({
 
       const pending = pendingDraftRef.current;
       if (pending.title === snapshot.title && pending.content === snapshot.content) {
-        clearEditorJournal();
+        clearEditorJournal(saved.id);
         if (mountedRef.current) setHasPendingChanges(false);
       } else {
         writeEditorJournal({
@@ -176,7 +178,7 @@ export function useExistingNoteEditor({
 
     try {
       if (beforeClose) await beforeClose(saved);
-      clearEditorJournal();
+      clearEditorJournal(saved.id);
       onClose();
       return true;
     } catch (error) {
