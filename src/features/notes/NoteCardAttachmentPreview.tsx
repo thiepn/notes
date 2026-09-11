@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Image, Mic, Paperclip } from 'lucide-react';
 
-import type { AttachmentRecord } from '../../db';
 import {
   EMPTY_ATTACHMENT_CARD_SUMMARY,
   loadAttachmentCardSummary,
