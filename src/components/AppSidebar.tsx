@@ -347,7 +347,9 @@ export function AppSidebar({
                     <button
                       className="nav-item sidebar-smart-view-item"
                       aria-label={`Smart view: ${summary.title}`}
-                      title={summary.detail ? `${summary.title} · ${summary.detail}` : summary.title}
+                      title={
+                        summary.detail ? `${summary.title} · ${summary.detail}` : summary.title
+                      }
                       type="button"
                       onClick={() => openSavedView(search.id)}
                       key={search.id}
