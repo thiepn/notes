@@ -79,7 +79,9 @@ test('search assist completes operators and quoted label names with keyboard nav
   await search.focus();
   await search.fill('has:');
   const assist = page.getByRole('dialog', { name: 'Search history' });
-  await expect(assist.getByRole('button', { name: 'Use search suggestion: Notes with reminders' })).toBeVisible();
+  await expect(
+    assist.getByRole('button', { name: 'Use search suggestion: Notes with reminders' }),
+  ).toBeVisible();
   await search.press('ArrowDown');
   await expect(
     assist.getByRole('button', { name: 'Use search suggestion: Notes with reminders' }),
@@ -122,7 +124,9 @@ test('saved searches remain discoverable while typing and mobile assist targets 
   await search.focus();
   await search.fill('mission');
   const assist = page.getByRole('dialog', { name: 'Search history' });
-  await expect(assist.getByRole('button', { name: 'Open saved search: mission planning' })).toBeVisible();
+  await expect(
+    assist.getByRole('button', { name: 'Open saved search: mission planning' }),
+  ).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
   await search.focus();
