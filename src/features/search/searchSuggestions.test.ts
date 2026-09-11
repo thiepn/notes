@@ -5,8 +5,20 @@ import { DEFAULT_SEARCH_FILTERS } from './searchTypes';
 import { buildSearchQuerySuggestions, filterSearchHistory } from './searchSuggestions';
 
 const labels: LabelRecord[] = [
-  { id: 'label-1', name: 'Project Alpha', createdAt: 1, updatedAt: 1 },
-  { id: 'label-2', name: 'French', createdAt: 1, updatedAt: 1 },
+  {
+    id: 'label-1',
+    name: 'Project Alpha',
+    nameNormalized: 'project alpha',
+    createdAt: 1,
+    updatedAt: 1,
+  },
+  {
+    id: 'label-2',
+    name: 'French',
+    nameNormalized: 'french',
+    createdAt: 1,
+    updatedAt: 1,
+  },
 ];
 
 describe('buildSearchQuerySuggestions', () => {
