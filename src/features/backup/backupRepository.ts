@@ -10,6 +10,7 @@ import {
   settingRecordSchema,
   type NotesDatabase,
 } from '../../db';
+import { isPortableSettingKey } from '../../db/internalSettings';
 import {
   NOTES_BACKUP_FORMAT,
   NOTES_BACKUP_FORMAT_VERSION,
@@ -55,7 +56,7 @@ export class BackupRepository {
           this.database.attachments.count(),
           this.database.reminders.count(),
           this.database.revisions.count(),
-          this.database.settings.count(),
+          this.database.settings.filter((setting) => isPortableSettingKey(setting.key)).count(),
         ]),
     );
     const [notes, checklistItems, labels, noteLabels, attachments, reminders, revisions, settings] =
@@ -118,7 +119,7 @@ export class BackupRepository {
           attachments,
           reminders,
           revisions,
-          settings,
+          settings: settings.filter((setting) => isPortableSettingKey(setting.key)),
         };
       },
     );
@@ -162,6 +163,7 @@ export class BackupRepository {
   async restorePrepared(prepared: PreparedBackup): Promise<BackupStats> {
     const verified = await prepareBackup(prepared.document);
     const { data } = verified.document;
+    const portableSettings = data.settings.filter((setting) => isPortableSettingKey(setting.key));
 
     await this.database.transaction(
       'rw',
@@ -198,11 +200,15 @@ export class BackupRepository {
         }
         if (data.reminders.length > 0) await this.database.reminders.bulkAdd(data.reminders);
         if (data.revisions.length > 0) await this.database.revisions.bulkAdd(data.revisions);
-        if (data.settings.length > 0) await this.database.settings.bulkAdd(data.settings);
+        if (portableSettings.length > 0) await this.database.settings.bulkAdd(portableSettings);
       },
     );
 
-    return verified.stats;
+    const restoredDocument = {
+      ...verified.document,
+      data: { ...verified.document.data, settings: portableSettings },
+    };
+    return backupStats(backupDocumentSchema.parse(restoredDocument));
   }
 }
 
