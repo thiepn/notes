@@ -124,9 +124,13 @@ test('capture source panels manage focus, validation semantics, and Back restora
   const back = templates.getByRole('button', { name: 'Back' });
   await expect(back).toBeFocused();
   await back.press('Enter');
-  await expect(page.getByRole('dialog', { name: 'New' }).getByRole('button', { name: 'Template' })).toBeFocused();
+  await expect(
+    page.getByRole('dialog', { name: 'New' }).getByRole('button', { name: 'Template' }),
+  ).toBeFocused();
 
-  const webLink = page.getByRole('dialog', { name: 'New' }).getByRole('button', { name: 'Web link' });
+  const webLink = page
+    .getByRole('dialog', { name: 'New' })
+    .getByRole('button', { name: 'Web link' });
   await webLink.click();
   const linkDialog = page.getByRole('dialog', { name: 'Web link' });
   const input = linkDialog.getByRole('textbox', { name: 'Web address' });
@@ -135,10 +139,14 @@ test('capture source panels manage focus, validation semantics, and Back restora
   await linkDialog.getByRole('button', { name: 'Save link' }).click();
   await expect(input).toHaveAttribute('aria-invalid', 'true');
   await expect(input).toHaveAttribute('aria-describedby', 'capture-source-error');
-  await expect(linkDialog.getByRole('alert')).toContainText('Enter a valid http:// or https:// web address.');
+  await expect(linkDialog.getByRole('alert')).toContainText(
+    'Enter a valid http:// or https:// web address.',
+  );
 
   await linkDialog.getByRole('button', { name: 'Back' }).click();
-  await expect(page.getByRole('dialog', { name: 'New' }).getByRole('button', { name: 'Web link' })).toBeFocused();
+  await expect(
+    page.getByRole('dialog', { name: 'New' }).getByRole('button', { name: 'Web link' }),
+  ).toBeFocused();
 });
 
 test('mobile navigation returns focus to its opener after Escape', async ({ page }) => {
