@@ -28,6 +28,7 @@ export function NoteColorPicker({ id, noteLabel, value, onChange }: NoteColorPic
       className="note-organization-popover note-color-picker"
       role="dialog"
       aria-label="Note color"
+      tabIndex={-1}
     >
       <span className="note-organization-title">Color</span>
       <div className="note-color-grid">
