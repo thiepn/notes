@@ -88,7 +88,9 @@ test('relation hydration uses noteId indexes instead of full-table scans', async
   expect(result.checklistItemsByNote[result.noteB]).toEqual(['Relevant B']);
 });
 
-test('attachment card metadata avoids Blob reads unless an image thumbnail is needed', async ({ page }) => {
+test('attachment card metadata avoids Blob reads unless an image thumbnail is needed', async ({
+  page,
+}) => {
   await page.goto('./');
 
   const result = await page.evaluate(async () => {
@@ -164,7 +166,12 @@ test('attachment card metadata avoids Blob reads unless an image thumbnail is ne
   });
 
   expect(result.metadataOnly).toEqual({ count: 2, imageCount: 0, audioCount: 1, firstImage: null });
-  expect(result.withImage).toEqual({ count: 3, imageCount: 1, audioCount: 1, firstImage: result.imageId });
+  expect(result.withImage).toEqual({
+    count: 3,
+    imageCount: 1,
+    audioCount: 1,
+    firstImage: result.imageId,
+  });
   expect(result.blobRecordReads).toBe(1);
 });
 
