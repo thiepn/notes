@@ -54,9 +54,11 @@ The release chain is intentionally composed from existing permanent tests rather
 Browser certification remains:
 
 1. `npm run e2e:compat` — focused Chromium/Firefox/WebKit compatibility
-2. `npm run e2e` — complete Chromium product regression suite, including P1–P20 phase tests
-3. `npm run e2e:p20` — P20 cross-system tests with **retries disabled**
+2. `npm run e2e:release` — complete Chromium product regression suite, including P1–P20 phase tests, with **retries disabled**
+3. `npm run e2e:p20` — focused P20 cross-system tests with **retries disabled**
 4. `npm run e2e:pwa` — production-build PWA/offline certification
+
+The ordinary `npm run e2e` command remains available for development, while release certification never relies on retry recovery.
 
 The single orchestration command is:
 
@@ -64,7 +66,7 @@ The single orchestration command is:
 npm run release:certify
 ```
 
-CI also runs the P20 release contract and no-retry P20 browser suite as permanent explicit gates so future changes cannot silently remove them.
+CI permanently runs the P20 release contract, the complete no-retry Chromium release suite, and the focused no-retry P20 browser suite so future changes cannot silently remove these gates.
 
 ## P20 cross-system browser scenarios
 
@@ -203,6 +205,18 @@ The fix distinguishes the mobile active-note path: active Notes navigation uses 
 The pre-P20 Pages workflow deployed directly on every `main` push, independently of CI. A failing main commit could therefore begin a production deployment before certification finished.
 
 P20 changes deployment to a successful-main-`workflow_run` gate and builds the exact CI `head_sha`. The release contract rejects a return to an independent push-triggered deployment.
+
+### Finding 4 — P20 keyboard readiness race
+
+The first focused no-retry P20 run pressed the documented `C` shortcut immediately after `page.reload()` without first waiting for the workspace to complete the same readiness contract used by the established keyboard tests. The product shortcut itself remained covered and working in the existing command suite.
+
+The P20 test now waits for both the Notes heading and primary text-capture action after reload before exercising the keyboard-only journey. This corrects the certification test rather than altering keyboard behavior.
+
+### Finding 5 — hidden drawing-test retry
+
+The full Chromium run surfaced a drawing persistence test that exceeded Playwright's generic 5-second assertion window once and passed only on retry. Release certification does not accept a retry-recovered result as clean evidence.
+
+Drawing persistence intentionally performs PNG export followed by the attachment repository's privacy-safe decode/re-encode/checksum path. The drawing test now uses a bounded operation-specific completion window for that asynchronous persistence operation, and P20 adds `e2e:release` so the **entire** Chromium release suite runs with retries disabled. A future drawing hang therefore still fails certification; it can no longer be hidden by retry recovery.
 
 ## Manual acceptance matrix
 
