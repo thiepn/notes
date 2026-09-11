@@ -31,7 +31,10 @@ async function openTextEditor(page: Page, noteId: string) {
   return editor;
 }
 
-test('a durable text edit refreshes another open tab without reloading', async ({ page, context }) => {
+test('a durable text edit refreshes another open tab without reloading', async ({
+  page,
+  context,
+}) => {
   await preparePage(page);
   const noteId = await seedTextNote(page, 'Cross-tab note', 'Before peer refresh');
   await page.reload();
