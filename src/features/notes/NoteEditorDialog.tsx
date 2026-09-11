@@ -13,12 +13,14 @@ import {
 import { History, ListChecks, MoreHorizontal, Paperclip, Plus, Workflow } from 'lucide-react';
 
 import {
+  LabelsRepository,
   RemindersRepository,
   RevisionsRepository,
   VoiceAttachmentsRepository,
   notesDatabase,
   type AttachmentsRepository,
   type ChecklistItemRecord,
+  type LabelRecord,
   type NoteRecord,
   type NotesRepository,
 } from '../../db';
@@ -40,6 +42,7 @@ import { useExistingNoteEditor } from './useExistingNoteEditor';
 const revisionsRepository = new RevisionsRepository(notesDatabase);
 const remindersRepository = new RemindersRepository(notesDatabase);
 const voiceAttachmentsRepository = new VoiceAttachmentsRepository(notesDatabase);
+const labelsRepository = new LabelsRepository(notesDatabase);
 
 interface HistoricalResult {
   note: NoteRecord;
@@ -48,10 +51,12 @@ interface HistoricalResult {
 
 interface NoteEditorDialogProps {
   note: NoteRecord;
+  labels: LabelRecord[];
   repository: NotesRepository;
   attachmentsRepository: AttachmentsRepository;
   attachmentRefreshKey?: number;
   onSaved(note: NoteRecord): void;
+  onLabelsChanged(): Promise<void>;
   onAttachmentsChanged(noteId: string): void;
   onHistoryChecklistSaved(note: NoteRecord, items: ChecklistItemRecord[]): void;
   onConvertToChecklist(): Promise<void>;
@@ -60,10 +65,12 @@ interface NoteEditorDialogProps {
 
 export function NoteEditorDialog({
   note,
+  labels,
   repository,
   attachmentsRepository,
   attachmentRefreshKey = 0,
   onSaved,
+  onLabelsChanged,
   onAttachmentsChanged,
   onHistoryChecklistSaved,
   onConvertToChecklist,
@@ -77,6 +84,7 @@ export function NoteEditorDialog({
   const [pendingHistoryResult, setPendingHistoryResult] = useState<HistoricalResult | null>(null);
   const [pendingHistoryCopies, setPendingHistoryCopies] = useState<HistoricalResult[]>([]);
   const [linkLibrary, setLinkLibrary] = useState<NoteRecord[]>([]);
+  const [linkLabelIdsByNote, setLinkLabelIdsByNote] = useState<Record<string, string[]>>({});
   const [addOpen, setAddOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [attachmentsOpen, setAttachmentsOpen] = useState(false);
@@ -107,7 +115,10 @@ export function NoteEditorDialog({
       repository.listActive(),
       repository.listArchived(),
     ]);
-    setLinkLibrary([...active, ...archived]);
+    const library = [...active, ...archived];
+    const labelIdsByNote = await labelsRepository.labelIdsByNote(library.map((item) => item.id));
+    setLinkLibrary(library);
+    setLinkLabelIdsByNote(labelIdsByNote);
   }, [repository]);
 
   useEffect(() => {
@@ -199,6 +210,17 @@ export function NoteEditorDialog({
     await revisionsRepository.checkpoint(saved.id, 'close').catch(() => undefined);
     onClose();
     await requestLinkedNoteOpen(noteId);
+  };
+
+  const assignSuggestedLabel = async (labelId: string) => {
+    const saved = await saveNow();
+    if (!saved) throw new Error('The note could not be saved before labeling.');
+    await labelsRepository.assign(saved.id, labelId);
+    setLinkLabelIdsByNote((current) => ({
+      ...current,
+      [saved.id]: [...new Set([...(current[saved.id] ?? []), labelId])],
+    }));
+    await onLabelsChanged();
   };
 
   const convert = async () => {
@@ -303,8 +325,11 @@ export function NoteEditorDialog({
               <ConnectionsPanel
                 note={draftNote}
                 library={effectiveLinkLibrary}
+                labels={labels}
+                labelIdsByNote={linkLabelIdsByNote}
                 repository={repository}
                 beforeLinking={saveNow}
+                onAssignLabel={assignSuggestedLabel}
                 onOpenNote={(noteId) => void openLinkedNote(noteId)}
                 onSourceSaved={onSaved}
                 onLibraryChanged={refreshLinkLibrary}
