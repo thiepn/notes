@@ -1,3 +1,5 @@
+import { linkTitleFromUrl } from '../features/notes/captureEverywhere';
+
 const ACTIVE_SECTION_KEY = 'notes.active-section';
 const ACTIVE_LABEL_KEY = 'notes.active-label';
 const MAX_SEARCH_QUERY = 1_000;
@@ -79,10 +81,14 @@ export function sharePayloadPath(shareKey: string): string {
 export function sanitizeSharedPayload(payload: unknown): SharedNoteIntent | null {
   if (!payload || typeof payload !== 'object') return null;
   const value = payload as Record<string, unknown>;
-  const title = sanitize(typeof value.title === 'string' ? value.title : '', MAX_SHARE_TITLE);
+  const explicitTitle = sanitize(
+    typeof value.title === 'string' ? value.title : '',
+    MAX_SHARE_TITLE,
+  );
   const text = sanitize(typeof value.text === 'string' ? value.text : '', MAX_SHARE_CONTENT);
   const url = sanitize(typeof value.url === 'string' ? value.url : '', MAX_SHARE_URL);
   const content = composeSharedContent(text, url);
+  const title = explicitTitle || linkTitleFromUrl(url || text);
   if (!title && !content) return null;
   return { title, content };
 }
