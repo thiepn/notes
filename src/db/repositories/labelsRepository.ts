@@ -103,7 +103,9 @@ export class LabelsRepository {
 
   async labelIdsByNote(noteIds: string[]): Promise<Record<string, string[]>> {
     const uniqueNoteIds = [...new Set(noteIds)];
-    const result: Record<string, string[]> = Object.fromEntries(uniqueNoteIds.map((id) => [id, []]));
+    const result: Record<string, string[]> = Object.fromEntries(
+      uniqueNoteIds.map((id) => [id, []]),
+    );
     if (uniqueNoteIds.length === 0) return result;
 
     const links = await this.database.noteLabels.where('noteId').anyOf(uniqueNoteIds).toArray();
