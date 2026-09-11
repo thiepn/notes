@@ -17,7 +17,7 @@ P17 moves existing-note recovery to per-note v2 keys:
 
 The old v1 slots remain readable for backward-compatible recovery. Cleanup is scoped to the journal last read/written by the current tab or an explicitly supplied note ID; another tab's pending draft is not deleted.
 
-Checklist *capture* remains a single global journal because there is only one in-progress new-checklist capture surface per tab; the change applies to existing-note editors.
+Checklist _capture_ remains a single global journal because there is only one in-progress new-checklist capture surface per tab; the change applies to existing-note editors.
 
 ### 2. IndexedDB was safe against stale writes, but peer tabs could remain visually stale
 
