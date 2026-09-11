@@ -122,7 +122,9 @@ function readCurrentJournal(noteId: string, storage: EditorStorage): EditorJourn
   }
 }
 
-function readLegacyJournal(storage: EditorStorage): z.infer<typeof legacyEditorJournalSchema> | null {
+function readLegacyJournal(
+  storage: EditorStorage,
+): z.infer<typeof legacyEditorJournalSchema> | null {
   try {
     const raw = storage.getItem(EDITOR_JOURNAL_KEY);
     if (!raw) return null;
@@ -158,9 +160,7 @@ function listJournalKeys(storage: EditorStorage): string[] {
   return keys;
 }
 
-function migrateLegacyJournal(
-  legacy: z.infer<typeof legacyEditorJournalSchema>,
-): EditorJournal {
+function migrateLegacyJournal(legacy: z.infer<typeof legacyEditorJournalSchema>): EditorJournal {
   return editorJournalSchema.parse({ ...legacy, version: 2 });
 }
 
