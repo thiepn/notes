@@ -57,6 +57,22 @@ export async function requestSavedSearchOpen(searchId: string): Promise<boolean>
   return false;
 }
 
+export async function requestSearchOpen(query: string): Promise<boolean> {
+  const normalizedQuery = query.trim();
+  if (!normalizedQuery) return false;
+
+  document.querySelector<HTMLButtonElement>('.search-reset')?.click();
+  await nextFrame();
+
+  const searchInput = document.querySelector<HTMLInputElement>('input[aria-label="Search notes"]');
+  if (!searchInput) return false;
+  searchInput.focus();
+  setNativeInputValue(searchInput, normalizedQuery);
+  searchInput.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText' }));
+  await nextFrame();
+  return searchInput.value === normalizedQuery;
+}
+
 async function openCardWhenAvailable(noteId: string): Promise<boolean> {
   for (let attempt = 0; attempt < OPEN_ATTEMPTS; attempt += 1) {
     const escapedId = CSS.escape(noteId);
@@ -69,6 +85,12 @@ async function openCardWhenAvailable(noteId: string): Promise<boolean> {
     await delay(OPEN_RETRY_MS);
   }
   return false;
+}
+
+function setNativeInputValue(input: HTMLInputElement, value: string): void {
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+  if (setter) setter.call(input, value);
+  else input.value = value;
 }
 
 function nextFrame(): Promise<void> {
