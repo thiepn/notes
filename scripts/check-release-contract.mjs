@@ -59,6 +59,8 @@ const requiredFiles = [
   'e2e/p20-release-certification.spec.ts',
   'playwright.compat.config.ts',
   'playwright.pwa.config.ts',
+  '.github/workflows/ci.yml',
+  '.github/workflows/deploy.yml',
 ];
 for (const file of requiredFiles) {
   if (!exists(file)) fail(`${file} is required by the P20 release contract.`);
@@ -67,6 +69,25 @@ for (const file of requiredFiles) {
 const ci = read('.github/workflows/ci.yml');
 for (const command of ['npm run release:contract', 'npm run e2e:p20']) {
   if (!ci.includes(command)) fail(`CI must permanently run ${command}.`);
+}
+
+const deploy = read('.github/workflows/deploy.yml');
+for (const deploymentInvariant of [
+  'workflow_run:',
+  'workflows: [CI]',
+  'branches: [main]',
+  "github.event.workflow_run.conclusion == 'success'",
+  'ref: ${{ github.event.workflow_run.head_sha }}',
+  'git rev-parse HEAD',
+  'github.event.workflow_run.head_sha',
+  'npm ci --no-audit --no-fund',
+]) {
+  if (!deploy.includes(deploymentInvariant)) {
+    fail(`Pages deployment must preserve certified-main invariant: ${deploymentInvariant}`);
+  }
+}
+if (/^\s*push:\s*$/mu.test(deploy)) {
+  fail('Pages deployment must not race main CI through an independent push trigger.');
 }
 
 const p20Doc = exists('docs/P20_RELEASE_CERTIFICATION.md')
