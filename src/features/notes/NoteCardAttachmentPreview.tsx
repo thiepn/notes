@@ -2,29 +2,19 @@ import { useEffect, useRef, useState } from 'react';
 import { Image, Mic, Paperclip } from 'lucide-react';
 
 import {
-  AttachmentsRepository,
-  isPreviewableImageMimeType,
-  isVoiceAudioMimeType,
-  notesDatabase,
-  type AttachmentRecord,
-} from '../../db';
+  EMPTY_ATTACHMENT_CARD_SUMMARY,
+  loadAttachmentCardSummary,
+  type AttachmentCardSummary,
+} from './attachmentCardSummary';
 
-const attachmentRepository = new AttachmentsRepository(notesDatabase);
 const CARD_THUMBNAIL_MAX_DIMENSION = 720;
 
-interface PreviewState {
-  count: number;
-  imageCount: number;
-  audioCount: number;
-  firstImage: AttachmentRecord | null;
-}
+type PreviewState = AttachmentCardSummary;
 
 interface ThumbnailState {
   blob: Blob | null;
   url: string | null;
 }
-
-const EMPTY_PREVIEW: PreviewState = { count: 0, imageCount: 0, audioCount: 0, firstImage: null };
 
 export function NoteCardAttachmentPreview({
   noteId,
@@ -38,7 +28,7 @@ export function NoteCardAttachmentPreview({
     () => typeof window === 'undefined' || !('IntersectionObserver' in window),
   );
   const [loaded, setLoaded] = useState(false);
-  const [preview, setPreview] = useState<PreviewState>(EMPTY_PREVIEW);
+  const [preview, setPreview] = useState<PreviewState>(EMPTY_ATTACHMENT_CARD_SUMMARY);
   const [failedImageId, setFailedImageId] = useState<string | null>(null);
   const firstImage = preview.firstImage;
   const imageUrl = useThumbnailUrl(
@@ -63,27 +53,15 @@ export function NoteCardAttachmentPreview({
   useEffect(() => {
     if (!shouldLoad) return;
     let cancelled = false;
-    void attachmentRepository
-      .list(noteId)
-      .then((attachments) => {
+    void loadAttachmentCardSummary(noteId)
+      .then((summary) => {
         if (cancelled) return;
-        const images = attachments.filter((attachment) =>
-          isPreviewableImageMimeType(attachment.mimeType),
-        );
-        const audioCount = attachments.filter((attachment) =>
-          isVoiceAudioMimeType(attachment.mimeType),
-        ).length;
-        setPreview({
-          count: attachments.length,
-          imageCount: images.length,
-          audioCount,
-          firstImage: images[0] ?? null,
-        });
+        setPreview(summary);
         setLoaded(true);
       })
       .catch(() => {
         if (cancelled) return;
-        setPreview(EMPTY_PREVIEW);
+        setPreview(EMPTY_ATTACHMENT_CARD_SUMMARY);
         setLoaded(true);
       });
     return () => {

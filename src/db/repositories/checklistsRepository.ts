@@ -39,16 +39,15 @@ export class ChecklistsRepository {
   }
 
   async itemsByNote(noteIds: string[]): Promise<Record<string, ChecklistItemRecord[]>> {
+    const uniqueNoteIds = [...new Set(noteIds)];
     const result: Record<string, ChecklistItemRecord[]> = Object.fromEntries(
-      noteIds.map((noteId) => [noteId, []]),
+      uniqueNoteIds.map((noteId) => [noteId, []]),
     );
-    if (noteIds.length === 0) return result;
+    if (uniqueNoteIds.length === 0) return result;
 
-    const noteIdSet = new Set(noteIds);
-    const allItems = await this.database.checklistItems.toArray();
-    for (const rawItem of allItems) {
+    const rows = await this.database.checklistItems.where('noteId').anyOf(uniqueNoteIds).toArray();
+    for (const rawItem of rows) {
       const item = checklistItemRecordSchema.parse(rawItem);
-      if (!noteIdSet.has(item.noteId)) continue;
       result[item.noteId]?.push(item);
     }
 
