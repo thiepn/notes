@@ -102,14 +102,14 @@ export class LabelsRepository {
   }
 
   async labelIdsByNote(noteIds: string[]): Promise<Record<string, string[]>> {
-    const result: Record<string, string[]> = Object.fromEntries(noteIds.map((id) => [id, []]));
-    if (noteIds.length === 0) return result;
+    const uniqueNoteIds = [...new Set(noteIds)];
+    const result: Record<string, string[]> = Object.fromEntries(uniqueNoteIds.map((id) => [id, []]));
+    if (uniqueNoteIds.length === 0) return result;
 
-    const noteIdSet = new Set(noteIds);
-    const links = await this.database.noteLabels.toArray();
+    const links = await this.database.noteLabels.where('noteId').anyOf(uniqueNoteIds).toArray();
     for (const rawLink of links) {
       const link = noteLabelRecordSchema.parse(rawLink);
-      if (noteIdSet.has(link.noteId)) result[link.noteId]?.push(link.labelId);
+      result[link.noteId]?.push(link.labelId);
     }
     return result;
   }
