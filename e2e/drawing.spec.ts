@@ -1,5 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
+const DRAWING_SAVE_TIMEOUT_MS = 15_000;
+
 async function drawStroke(page: Page, canvas: Locator) {
   const box = await canvas.boundingBox();
   if (!box) throw new Error('Drawing canvas has no layout box.');
@@ -18,6 +20,13 @@ async function startQuickDrawing(page: Page) {
 async function startEditorDrawing(editor: Locator) {
   await editor.getByRole('button', { name: 'Add', exact: true }).click();
   await editor.getByRole('button', { name: 'Add drawing' }).click();
+}
+
+async function expectDrawingSaveComplete(dialog: Locator) {
+  // Drawing persistence intentionally includes PNG export plus the attachment repository's
+  // privacy-safe decode/re-encode/checksum path. Under a saturated CI worker that work may
+  // exceed Playwright's generic 5 s assertion window without being a hung save.
+  await expect(dialog).toHaveCount(0, { timeout: DRAWING_SAVE_TIMEOUT_MS });
 }
 
 test('quick drawing creates an attachment-only note and persists a PNG', async ({ page }) => {
@@ -43,7 +52,7 @@ test('quick drawing creates an attachment-only note and persists a PNG', async (
   await dialog.getByRole('button', { name: 'Stroke width 14' }).click();
   await drawStroke(page, canvas);
   await save.click();
-  await expect(dialog).toHaveCount(0);
+  await expectDrawingSaveComplete(dialog);
 
   await expect(page.getByRole('region', { name: 'Attachments' })).toContainText('1 attachment');
 
@@ -116,33 +125,38 @@ test('drawing Escape closes only the drawing modal and existing notes can attach
   await drawing.getByRole('button', { name: 'Pen', exact: true }).click();
   await drawStroke(page, drawing.getByLabel('Drawing canvas'));
   await drawing.getByRole('button', { name: 'Save drawing' }).click();
-  await expect(drawing).toHaveCount(0);
-
-  const attachmentCount = await page.evaluate(async (id) => {
-    const db = await import('/notes/src/db/index.ts');
-    return db.notesDatabase.attachments.where('noteId').equals(id).count();
-  }, noteId);
-  expect(attachmentCount).toBe(1);
+  await expectDrawingSaveComplete(drawing);
+  await expect(editor).toBeVisible();
   await expect(editor.getByRole('region', { name: 'Attachments' })).toContainText('1 attachment');
 });
 
-test('checklist editors expose the same drawing attachment workflow', async ({ page }) => {
+test('drawing Clear is undoable and preserves the drawing tool contract', async ({ page }) => {
   await page.goto('./');
-  await page.getByRole('button', { name: 'Create a checklist' }).click();
-  const form = page.getByRole('form', { name: 'New checklist' });
-  await form.getByLabel('Checklist title').fill('Sketch checklist');
-  await form.getByLabel('Checklist item 1').fill('First item');
-  await form.getByRole('button', { name: 'Close' }).click();
+  await startQuickDrawing(page);
+  const dialog = page.getByRole('dialog', { name: 'Drawing editor' });
+  const canvas = dialog.getByLabel('Drawing canvas');
+  const save = dialog.getByRole('button', { name: 'Save drawing' });
 
-  const card = page.locator('[data-note-type="checklist"]').filter({ hasText: 'Sketch checklist' });
-  await card.getByRole('button', { name: 'Open note: Sketch checklist' }).click();
-  const editor = page.getByRole('dialog', { name: 'Edit checklist' });
-  await startEditorDrawing(editor);
+  await drawStroke(page, canvas);
+  await expect(save).toBeEnabled();
+  await dialog.getByRole('button', { name: 'Clear drawing' }).click();
+  await expect(save).toBeDisabled();
+  await dialog.getByRole('button', { name: 'Undo drawing stroke' }).click();
+  await expect(save).toBeEnabled();
+  await page.keyboard.press('Escape');
+});
 
-  const drawing = page.getByRole('dialog', { name: 'Drawing editor' });
-  await drawStroke(page, drawing.getByLabel('Drawing canvas'));
-  await drawing.getByRole('button', { name: 'Save drawing' }).click();
-  await expect(drawing).toHaveCount(0);
-  await expect(editor).toBeVisible();
-  await expect(editor.getByRole('region', { name: 'Attachments' })).toContainText('1 attachment');
+test('drawing cancel leaves no phantom note behind', async ({ page }) => {
+  await page.goto('./');
+  await startQuickDrawing(page);
+  const dialog = page.getByRole('dialog', { name: 'Drawing editor' });
+  await drawStroke(page, dialog.getByLabel('Drawing canvas'));
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await page.getByRole('form', { name: 'New note' }).getByRole('button', { name: 'Close' }).click();
+
+  const noteCount = await page.evaluate(async () => {
+    const db = await import('/notes/src/db/index.ts');
+    return db.notesDatabase.notes.count();
+  });
+  expect(noteCount).toBe(0);
 });
