@@ -56,9 +56,27 @@ P3 shows persisted notes in a simple temporary linear preview beneath the compos
 
 P4 replaces this temporary rendering with the permanent note-card, masonry/grid, list-view, and editor-opening system.
 
+## P16 — Capture Everywhere
+
+P16 keeps the blank composer contract above unchanged and adds prefilled capture paths through the **New** sheet.
+
+### Quick start sources
+
+- **Clipboard** — reads plain text only after an explicit click. URL-only clipboard text becomes a bookmark; other text remains note body content.
+- **Web link** — accepts only HTTP/HTTPS URLs and derives the hostname as the initial title.
+- **Template** — creates one of three code-defined normal text-note structures: Meeting, Study, or Daily note.
+
+These paths create ordinary notes through `NotesRepository` and then open the standard editor. They do not create a second autosave or draft system.
+
+When a prefilled capture starts inside an active label collection, P16 assigns that label through `LabelsRepository` and keeps the user in the same label view when the new card becomes available.
+
+The existing POST PWA share target remains privacy-safe. P16 only improves URL-only shares by deriving a hostname title locally when the sender provides no title.
+
+See `P16_CAPTURE_EVERYWHERE.md` for the complete phase contract and boundaries.
+
 ## Tests
 
-Vitest covers recovery-journal parsing, round-tripping, clearing, and meaningful-draft rules.
+Vitest covers recovery-journal parsing, round-tripping, clearing, meaningful-draft rules, and P16 clipboard/link/template normalization.
 
 Playwright covers:
 
@@ -66,4 +84,8 @@ Playwright covers:
 - immediate reload inside the autosave debounce window,
 - empty-capture discard,
 - rapid typing followed by `Ctrl+Enter`,
-- all existing P1 IndexedDB and P2 responsive-shell regressions.
+- clipboard prefilled capture,
+- validated web-link capture,
+- built-in template capture,
+- active-label inheritance for prefilled capture,
+- all existing IndexedDB, responsive-shell, search, organization, intelligence, and PWA regressions.
