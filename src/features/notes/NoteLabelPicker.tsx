@@ -37,6 +37,7 @@ export function NoteLabelPicker({
       className="note-organization-popover note-label-picker"
       role="dialog"
       aria-label="Note labels"
+      tabIndex={-1}
     >
       <span className="note-organization-title">Labels</span>
       {labels.length > 0 ? (
