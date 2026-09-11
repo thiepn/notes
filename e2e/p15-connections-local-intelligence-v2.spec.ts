@@ -43,7 +43,7 @@ async function seedIntelligenceLibrary(page: Page) {
     await labels.assign(relatedA.id, project.id);
 
     const duplicate = await notes.create({
-      title: 'Analysis exam',
+      title: 'Analysis exam copy',
       content: 'Jordan matrix eigenvalues basis convergence proof review',
     });
 
@@ -67,9 +67,7 @@ async function seedIntelligenceLibrary(page: Page) {
 }
 
 function group(connections: Locator, heading: string) {
-  return connections
-    .locator('.note-connection-group')
-    .filter({ has: connections.getByRole('heading', { name: heading, exact: true }) });
+  return connections.getByRole('heading', { name: heading, exact: true }).locator('..');
 }
 
 test('connections separate possible duplicates and explain richer local related-note signals', async ({
@@ -80,8 +78,8 @@ test('connections separate possible duplicates and explain richer local related-
 
   const duplicates = group(connections, 'Possible duplicates');
   await expect(duplicates).toBeVisible();
-  await expect(duplicates.getByRole('button', { name: /Analysis exam/u })).toContainText(
-    'Same title and content',
+  await expect(duplicates.getByRole('button', { name: /Analysis exam copy/u })).toContainText(
+    'Same content',
   );
 
   const related = group(connections, 'Related notes');
