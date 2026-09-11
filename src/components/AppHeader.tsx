@@ -255,7 +255,12 @@ export function AppHeader({
       <div
         className="search-shell"
         role="search"
-        onFocusCapture={() => setSearchHistoryOpen(true)}
+        onFocusCapture={(event) => {
+          setSearchHistoryOpen(true);
+          if (event.target === searchInputRef.current) {
+            void labelsRepository.list().then(setSearchLabels, () => undefined);
+          }
+        }}
         onBlurCapture={(event) => {
           const next = event.relatedTarget;
           if (!(next instanceof Node) || !event.currentTarget.contains(next)) {
