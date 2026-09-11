@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import type { NoteRecord } from '../../db';
-import { findRelatedNotes } from './relatedNotes';
+import type { LabelRecord, NoteRecord } from '../../db';
+import {
+  findRelatedNotes,
+  suggestLabelsForNote,
+  summarizeLocalTopics,
+} from './relatedNotes';
 
 function note(
   id: string,
@@ -23,6 +27,16 @@ function note(
     position: 0,
     revision: 1,
     ...overrides,
+  };
+}
+
+function label(id: string, name: string): LabelRecord {
+  return {
+    id,
+    name,
+    nameNormalized: name.normalize('NFKC').toLocaleLowerCase(),
+    createdAt: 1,
+    updatedAt: 1,
   };
 }
 
@@ -61,7 +75,43 @@ describe('findRelatedNotes', () => {
     const [result] = findRelatedNotes(source, [duplicate]);
 
     expect(result?.duplicate).toBe(true);
+    expect(result?.duplicateReason).toBe('Same title and content');
     expect(result?.score).toBeGreaterThan(0.8);
+  });
+
+  it('does not call notes duplicates from a shared generic title alone', () => {
+    const source = note('source', 'Meeting notes', 'Budget planning roadmap launch operations');
+    const candidate = note('candidate', 'Meeting notes', 'Choir rehearsal songs prayer schedule');
+
+    const result = findRelatedNotes(source, [candidate]);
+
+    expect(result[0]?.duplicate).not.toBe(true);
+  });
+
+  it('uses shared labels as a deterministic relatedness signal even without lexical overlap', () => {
+    const project = label('project', 'Project');
+    const source = note('source', 'Launch', 'Budget milestones owners');
+    const candidate = note('candidate', 'Retrospective', 'Lessons risks follow up');
+
+    const [result] = findRelatedNotes(source, [candidate], 5, {
+      labels: [project],
+      labelIdsByNote: { source: ['project'], candidate: ['project'] },
+    });
+
+    expect(result?.note.id).toBe('candidate');
+    expect(result?.sharedLabels).toEqual(['Project']);
+    expect(result?.score).toBeGreaterThanOrEqual(0.16);
+  });
+
+  it('uses shared resolved WikiLink targets as a local neighborhood signal', () => {
+    const hub = note('hub', 'Reference Hub', 'Canonical material');
+    const source = note('source', 'Alpha', 'Review [[Reference Hub]] before Friday.');
+    const candidate = note('candidate', 'Beta', 'Follow [[Reference Hub]] after the meeting.');
+
+    const [result] = findRelatedNotes(source, [source, candidate, hub]);
+
+    expect(result?.note.id).toBe('candidate');
+    expect(result?.sharedLinkTargets).toEqual(['Reference Hub']);
   });
 
   it('ignores the source note, trashed notes, and empty documents', () => {
@@ -110,5 +160,66 @@ describe('findRelatedNotes', () => {
 
     expect(findRelatedNotes(source, candidates, 3)).toHaveLength(3);
     expect(findRelatedNotes(source, candidates, 0)).toEqual([]);
+  });
+});
+
+describe('P15 local label and topic intelligence', () => {
+  it('suggests an existing label supported by multiple related notes', () => {
+    const study = label('study', 'Study');
+    const source = note('source', 'Analysis exam', 'integrals sequences convergence proof');
+    const first = note('first', 'Analysis exercises', 'integrals convergence proof practice');
+    const second = note('second', 'Exam review', 'sequences convergence proof summary');
+    const relations = findRelatedNotes(source, [first, second], 8, {
+      labels: [study],
+      labelIdsByNote: { first: ['study'], second: ['study'] },
+    });
+
+    const suggestions = suggestLabelsForNote(
+      source,
+      relations,
+      [study],
+      { first: ['study'], second: ['study'] },
+      4,
+    );
+
+    expect(suggestions[0]).toMatchObject({
+      label: { id: 'study', name: 'Study' },
+      support: 2,
+      directMatch: false,
+    });
+  });
+
+  it('can suggest a label whose name directly appears in the note without inventing labels', () => {
+    const french = label('french', 'French');
+    const source = note('source', 'French review', 'Practice vocabulary and listening today.');
+
+    expect(suggestLabelsForNote(source, [], [french], {}, 4)).toEqual([
+      expect.objectContaining({
+        label: french,
+        directMatch: true,
+      }),
+    ]);
+  });
+
+  it('summarizes recurring labels and shared terms as local topics', () => {
+    const math = label('math', 'Math');
+    const source = note('source', 'Jordan form', 'matrix eigenvalue basis');
+    const first = note('first', 'Jordan matrix', 'matrix eigenvalue basis');
+    const second = note('second', 'Matrix basis', 'matrix eigenvalue proof');
+    const relations = findRelatedNotes(source, [first, second], 8, {
+      labels: [math],
+      labelIdsByNote: { source: ['math'], first: ['math'], second: ['math'] },
+    });
+
+    const topics = summarizeLocalTopics(
+      source,
+      relations,
+      [math],
+      { source: ['math'], first: ['math'], second: ['math'] },
+      5,
+    );
+
+    expect(topics).toEqual(expect.arrayContaining([expect.objectContaining({ label: 'Math' })]));
+    expect(topics.some((topic) => topic.kind === 'term')).toBe(true);
   });
 });
