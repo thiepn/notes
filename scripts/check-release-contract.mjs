@@ -20,6 +20,7 @@ const requiredScripts = [
   'test',
   'build',
   'e2e',
+  'e2e:release',
   'e2e:compat',
   'e2e:p20',
   'e2e:pwa',
@@ -33,6 +34,9 @@ for (const name of requiredScripts) {
   }
 }
 
+if (scripts['e2e:release'] && !/--retries=0/u.test(scripts['e2e:release'])) {
+  fail('e2e:release must run the complete browser regression suite with retries disabled.');
+}
 if (scripts['e2e:p20'] && !/p20-release-certification\.spec\.ts/u.test(scripts['e2e:p20'])) {
   fail('e2e:p20 must target the dedicated P20 release-certification spec.');
 }
@@ -41,7 +45,7 @@ if (scripts['e2e:p20'] && !/--retries=0/u.test(scripts['e2e:p20'])) {
 }
 
 const certify = scripts['release:certify'] ?? '';
-for (const gate of ['release:check', 'e2e:compat', 'e2e', 'e2e:p20', 'e2e:pwa']) {
+for (const gate of ['release:check', 'e2e:compat', 'e2e:release', 'e2e:p20', 'e2e:pwa']) {
   if (!certify.includes(`npm run ${gate}`)) {
     fail(`release:certify must include npm run ${gate}.`);
   }
@@ -67,7 +71,7 @@ for (const file of requiredFiles) {
 }
 
 const ci = read('.github/workflows/ci.yml');
-for (const command of ['npm run release:contract', 'npm run e2e:p20']) {
+for (const command of ['npm run release:contract', 'npm run e2e:release', 'npm run e2e:p20']) {
   if (!ci.includes(command)) fail(`CI must permanently run ${command}.`);
 }
 
