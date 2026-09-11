@@ -2,10 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import {
   Archive,
   Bell,
+  Bookmark,
   Command,
   DatabaseBackup,
   Lightbulb,
+  ListFilter,
   Pencil,
+  Pin,
   Plus,
   Search,
   Settings2,
@@ -15,12 +18,22 @@ import {
 } from 'lucide-react';
 
 import { notesDocumentTitle, workspaceAnnouncement } from '../app/documentContext';
-import type { LabelRecord } from '../db';
+import { subscribeAppEvent } from '../app/events';
+import { notesDatabase, type LabelRecord } from '../db';
+import { requestSavedSearchOpen, requestSearchOpen } from '../features/links/navigation';
 import type { NavigationStats } from '../features/organization/navigationStats';
+import {
+  SearchHistoryRepository,
+  summarizeSearch,
+  type SavedSearch,
+} from '../features/search/searchHistory';
 import { SyncIndicator } from '../features/sync/SyncIndicator';
 import { useDialogFocusTrap } from './ui/useDialogFocusTrap';
 
 export type AppSection = 'notes' | 'reminders' | 'archive' | 'trash' | 'backup';
+
+const searchHistoryRepository = new SearchHistoryRepository(notesDatabase);
+const MAX_SIDEBAR_SMART_VIEWS = 5;
 
 interface AppSidebarProps {
   activeSection: AppSection;
@@ -83,6 +96,7 @@ export function AppSidebar({
   const sidebarRef = useRef<HTMLElement>(null);
   useDialogFocusTrap(sidebarRef, { enabled: mobile && mobileOpen });
   const [labelQuery, setLabelQuery] = useState('');
+  const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
   const showLabelSearch = labels.length >= 6 && (!compact || mobile);
   const normalizedLabelQuery = showLabelSearch ? labelQuery.trim().toLocaleLowerCase() : '';
   const visibleLabels = normalizedLabelQuery
@@ -94,14 +108,47 @@ export function AppSidebar({
   const currentWorkspaceTitle = searchActive
     ? 'Search'
     : (activeLabelName ?? SECTION_TITLES[activeSection]);
+  const visibleSmartViews = savedSearches.slice(0, MAX_SIDEBAR_SMART_VIEWS);
 
   useEffect(() => {
     document.title = notesDocumentTitle(currentWorkspaceTitle);
   }, [currentWorkspaceTitle]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const reload = () => {
+      void searchHistoryRepository.listSaved().then((searches) => {
+        if (!cancelled) setSavedSearches(searches);
+      });
+    };
+    reload();
+    const unsubscribe = subscribeAppEvent('searchHistoryChanged', reload);
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, []);
+
   const navigateLabel = (labelId: string) => {
     setLabelQuery('');
     onLabelNavigate(labelId);
+  };
+
+  const runAfterMobileClose = (operation: () => void) => {
+    if (!mobile) {
+      operation();
+      return;
+    }
+    onCloseNavigation();
+    window.requestAnimationFrame(operation);
+  };
+
+  const openBuiltInView = (query: string) => {
+    runAfterMobileClose(() => void requestSearchOpen(query));
+  };
+
+  const openSavedView = (searchId: string) => {
+    runAfterMobileClose(() => void requestSavedSearchOpen(searchId));
   };
 
   return (
@@ -191,6 +238,39 @@ export function AppSidebar({
             </>
           ) : null}
 
+          <div className="sidebar-section sidebar-organize-section">
+            <div className="sidebar-section-heading sidebar-section-heading-static">
+              <ListFilter aria-hidden="true" />
+              <span>Organize</span>
+            </div>
+            <button
+              className="nav-item"
+              aria-label="Pinned notes"
+              title={compact ? 'Pinned notes' : undefined}
+              type="button"
+              onClick={() => openBuiltInView('is:pinned')}
+            >
+              <Pin aria-hidden="true" />
+              <span className="nav-label">Pinned</span>
+              <span className="nav-count" aria-hidden="true">
+                {counts.pinned}
+              </span>
+            </button>
+            <button
+              className="nav-item"
+              aria-label="Unlabeled notes"
+              title={compact ? 'Unlabeled notes' : undefined}
+              type="button"
+              onClick={() => openBuiltInView('is:active is:unlabeled')}
+            >
+              <Tag aria-hidden="true" />
+              <span className="nav-label">Unlabeled</span>
+              <span className="nav-count" aria-hidden="true">
+                {counts.unlabeled}
+              </span>
+            </button>
+          </div>
+
           <div className="sidebar-section sidebar-label-section">
             <div className="sidebar-section-heading">
               <Tag aria-hidden="true" />
@@ -253,6 +333,47 @@ export function AppSidebar({
               </button>
             )}
           </div>
+
+          {savedSearches.length > 0 ? (
+            <div className="sidebar-section sidebar-smart-view-section">
+              <div className="sidebar-section-heading sidebar-section-heading-static">
+                <Bookmark aria-hidden="true" />
+                <span>Smart views</span>
+              </div>
+              <div className="sidebar-smart-view-list">
+                {visibleSmartViews.map((search) => {
+                  const summary = summarizeSearch(search);
+                  return (
+                    <button
+                      className="nav-item sidebar-smart-view-item"
+                      aria-label={`Smart view: ${summary.title}`}
+                      title={summary.detail ? `${summary.title} · ${summary.detail}` : summary.title}
+                      type="button"
+                      onClick={() => openSavedView(search.id)}
+                      key={search.id}
+                    >
+                      <Bookmark aria-hidden="true" />
+                      <span className="nav-label">{summary.title}</span>
+                    </button>
+                  );
+                })}
+                {savedSearches.length > MAX_SIDEBAR_SMART_VIEWS ? (
+                  <button
+                    className="nav-item sidebar-smart-view-more"
+                    type="button"
+                    aria-label="Show all saved searches"
+                    onClick={() => runAfterMobileClose(onSearch)}
+                  >
+                    <Search aria-hidden="true" />
+                    <span className="nav-label">More saved views</span>
+                    <span className="nav-count" aria-hidden="true">
+                      {savedSearches.length - MAX_SIDEBAR_SMART_VIEWS}
+                    </span>
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
 
           <div className="sidebar-section sidebar-library-section">
             <div className="sidebar-section-heading sidebar-section-heading-static">
