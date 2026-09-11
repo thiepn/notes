@@ -2,6 +2,8 @@ import { LabelsRepository, NotesRepository, RemindersRepository, notesDatabase }
 
 export interface NavigationStats {
   notes: number;
+  pinned: number;
+  unlabeled: number;
   reminders: number;
   archive: number;
   trash: number;
@@ -10,6 +12,8 @@ export interface NavigationStats {
 
 export const EMPTY_NAVIGATION_STATS: NavigationStats = {
   notes: 0,
+  pinned: 0,
+  unlabeled: 0,
   reminders: 0,
   archive: 0,
   trash: 0,
@@ -32,6 +36,8 @@ export async function loadNavigationStats(): Promise<NavigationStats> {
 
   return {
     notes: activeNotes.length,
+    pinned: activeNotes.filter((note) => note.pinnedAt !== null).length,
+    unlabeled: activeNotes.filter((note) => (labelIdsByNote[note.id] ?? []).length === 0).length,
     reminders: visibleReminders.filter(({ reminder }) => reminder.status === 'active').length,
     archive: archivedNotes.length,
     trash: trashedNotes.length,
