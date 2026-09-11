@@ -69,7 +69,9 @@ export function buildSearchQuerySuggestions(
     return labels
       .filter((label) => {
         const name = normalizeSearchText(label.name);
-        return !normalizedValue || name.startsWith(normalizedValue) || name.includes(normalizedValue);
+        return (
+          !normalizedValue || name.startsWith(normalizedValue) || name.includes(normalizedValue)
+        );
       })
       .slice(0, limit)
       .map((label) => {
