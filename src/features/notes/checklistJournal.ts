@@ -47,6 +47,8 @@ export interface ChecklistJournalStorage {
   key?(index: number): string | null;
 }
 
+let lastTouchedEditorNoteId: string | null = null;
+
 export function readChecklistCaptureJournal(): ChecklistJournal | null {
   return readJournal(CHECKLIST_CAPTURE_KEY, browserStorage());
 }
@@ -67,16 +69,30 @@ export function readChecklistEditorJournal(
 
   if (noteId) {
     const current = readEditorJournal(noteId, storage);
-    if (current) return current;
+    if (current) {
+      lastTouchedEditorNoteId = current.noteId;
+      return current;
+    }
     const legacy = readJournal(CHECKLIST_EDITOR_KEY, storage);
-    return legacy?.noteId === noteId ? migrateLegacyEditorJournal(legacy) : null;
+    if (legacy?.noteId === noteId) {
+      const migrated = migrateLegacyEditorJournal(legacy);
+      lastTouchedEditorNoteId = migrated.noteId;
+      return migrated;
+    }
+    return null;
   }
 
   const journals = listEditorJournals(storage);
   const latest = journals.sort((a, b) => b.updatedAt - a.updatedAt)[0];
-  if (latest) return latest;
+  if (latest) {
+    lastTouchedEditorNoteId = latest.noteId;
+    return latest;
+  }
   const legacy = readJournal(CHECKLIST_EDITOR_KEY, storage);
-  return legacy?.noteId ? migrateLegacyEditorJournal(legacy) : null;
+  if (!legacy?.noteId) return null;
+  const migrated = migrateLegacyEditorJournal(legacy);
+  lastTouchedEditorNoteId = migrated.noteId;
+  return migrated;
 }
 
 export function writeChecklistEditorJournal(
@@ -92,6 +108,7 @@ export function writeChecklistEditorJournal(
       updatedAt: Date.now(),
     });
     storage.setItem(editorJournalKey(parsed.noteId), JSON.stringify(parsed));
+    lastTouchedEditorNoteId = parsed.noteId;
     const legacy = readJournal(CHECKLIST_EDITOR_KEY, storage);
     if (legacy?.noteId === parsed.noteId) storage.removeItem(CHECKLIST_EDITOR_KEY);
   } catch {
@@ -105,14 +122,15 @@ export function clearChecklistEditorJournal(
 ): void {
   if (!storage) return;
   try {
-    if (noteId) {
-      storage.removeItem(editorJournalKey(noteId));
+    const targetNoteId = noteId ?? lastTouchedEditorNoteId;
+    if (targetNoteId) {
+      storage.removeItem(editorJournalKey(targetNoteId));
       const legacy = readJournal(CHECKLIST_EDITOR_KEY, storage);
-      if (legacy?.noteId === noteId) storage.removeItem(CHECKLIST_EDITOR_KEY);
+      if (legacy?.noteId === targetNoteId) storage.removeItem(CHECKLIST_EDITOR_KEY);
+      if (lastTouchedEditorNoteId === targetNoteId) lastTouchedEditorNoteId = null;
       return;
     }
 
-    for (const key of listEditorJournalKeys(storage)) storage.removeItem(key);
     storage.removeItem(CHECKLIST_EDITOR_KEY);
   } catch {
     // Ignore storage errors during cleanup.
