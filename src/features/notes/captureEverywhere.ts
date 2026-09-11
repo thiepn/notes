@@ -32,10 +32,7 @@ export const CAPTURE_TEMPLATES: CaptureTemplateDefinition[] = [
   },
 ];
 
-export function buildClipboardCapture(
-  clipboardText: string,
-  now = new Date(),
-): PrefilledTextCapture | null {
+export function buildClipboardCapture(clipboardText: string): PrefilledTextCapture | null {
   const text = sanitizeContent(clipboardText);
   if (!text) return null;
 
