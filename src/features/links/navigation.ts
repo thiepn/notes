@@ -14,15 +14,24 @@ export async function requestLinkedNoteOpen(noteId: string): Promise<boolean> {
   const sidebar = document.querySelector<HTMLElement>('[data-testid="app-sidebar"]');
   if (!sidebar) return false;
 
-  if (sidebar.inert) {
-    document.querySelector<HTMLButtonElement>('[data-testid="navigation-toggle"]')?.click();
+  if (sidebar.inert && label === 'Notes') {
+    const mobileNotesButton = document.querySelector<HTMLButtonElement>(
+      '.mobile-navigation button[aria-label="Show notes"]',
+    );
+    if (!mobileNotesButton) return false;
+    mobileNotesButton.click();
     await nextFrame();
-  }
+  } else {
+    if (sidebar.inert) {
+      document.querySelector<HTMLButtonElement>('[data-testid="navigation-toggle"]')?.click();
+      await nextFrame();
+    }
 
-  const navigationButton = [...sidebar.querySelectorAll<HTMLButtonElement>('.nav-item')].find(
-    (button) => button.querySelector('.nav-label')?.textContent?.trim() === label,
-  );
-  navigationButton?.click();
+    const navigationButton = [...sidebar.querySelectorAll<HTMLButtonElement>('.nav-item')].find(
+      (button) => button.querySelector('.nav-label')?.textContent?.trim() === label,
+    );
+    navigationButton?.click();
+  }
 
   return openCardWhenAvailable(noteId);
 }
