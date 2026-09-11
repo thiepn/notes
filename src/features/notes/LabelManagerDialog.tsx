@@ -14,6 +14,8 @@ interface LabelManagerDialogProps {
   onDelete(labelId: string): Promise<void>;
 }
 
+type LabelSort = 'name' | 'usage';
+
 export function LabelManagerDialog({
   labels,
   counts,
@@ -24,6 +26,8 @@ export function LabelManagerDialog({
 }: LabelManagerDialogProps) {
   const [newLabelName, setNewLabelName] = useState('');
   const [labelQuery, setLabelQuery] = useState('');
+  const [labelSort, setLabelSort] = useState<LabelSort>('name');
+  const [unusedOnly, setUnusedOnly] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [deleteCandidateId, setDeleteCandidateId] = useState<string | null>(null);
@@ -33,9 +37,19 @@ export function LabelManagerDialog({
   const newLabelRef = useRef<HTMLInputElement>(null);
   const showLabelSearch = labels.length >= 6;
   const normalizedLabelQuery = showLabelSearch ? labelQuery.trim().toLocaleLowerCase() : '';
-  const visibleLabels = normalizedLabelQuery
-    ? labels.filter((label) => label.name.toLocaleLowerCase().includes(normalizedLabelQuery))
-    : labels;
+  const unusedCount = labels.filter((label) => (counts[label.id] ?? 0) === 0).length;
+  const visibleLabels = labels
+    .filter((label) =>
+      normalizedLabelQuery ? label.name.toLocaleLowerCase().includes(normalizedLabelQuery) : true,
+    )
+    .filter((label) => (unusedOnly ? (counts[label.id] ?? 0) === 0 : true))
+    .sort((a, b) => {
+      if (labelSort === 'usage') {
+        const countDifference = (counts[b.id] ?? 0) - (counts[a.id] ?? 0);
+        if (countDifference !== 0) return countDifference;
+      }
+      return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+    });
 
   useDialogFocusTrap(dialogRef, { onEscape: onClose, initialFocusRef: newLabelRef });
 
@@ -118,6 +132,31 @@ export function LabelManagerDialog({
           </p>
         ) : null}
 
+        {labels.length > 1 ? (
+          <div className="label-manager-controls" aria-label="Label organization controls">
+            <label>
+              <span>Sort</span>
+              <select
+                aria-label="Sort labels"
+                value={labelSort}
+                onChange={(event) => setLabelSort(event.target.value as LabelSort)}
+              >
+                <option value="name">Name A–Z</option>
+                <option value="usage">Most used</option>
+              </select>
+            </label>
+            <button
+              type="button"
+              className="label-manager-unused-toggle"
+              aria-pressed={unusedOnly}
+              disabled={unusedCount === 0}
+              onClick={() => setUnusedOnly((current) => !current)}
+            >
+              Unused {unusedCount > 0 ? `(${unusedCount})` : ''}
+            </button>
+          </div>
+        ) : null}
+
         {showLabelSearch ? (
           <label className="label-manager-search">
             <Search aria-hidden="true" />
@@ -134,7 +173,9 @@ export function LabelManagerDialog({
 
         <div className="label-manager-list">
           {labels.length > 0 && visibleLabels.length === 0 ? (
-            <p className="label-manager-empty">No matching labels.</p>
+            <p className="label-manager-empty">
+              {unusedOnly ? 'No unused labels match.' : 'No matching labels.'}
+            </p>
           ) : null}
           {labels.length === 0 ? (
             <p className="label-manager-empty">No labels yet.</p>
