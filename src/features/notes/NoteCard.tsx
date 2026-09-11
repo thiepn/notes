@@ -79,6 +79,8 @@ interface NoteCardProps {
 
 type OrganizationPanel = 'color' | 'labels' | 'more' | null;
 
+type MenuFocusTarget = 'first' | 'last';
+
 const LONG_PRESS_MS = 480;
 
 export function NoteCard({
@@ -95,6 +97,12 @@ export function NoteCard({
 }: NoteCardProps) {
   const { hidePreviews } = usePrivacy();
   const cardRef = useRef<HTMLElement>(null);
+  const openButtonRef = useRef<HTMLButtonElement>(null);
+  const colorTriggerRef = useRef<HTMLButtonElement>(null);
+  const moreTriggerRef = useRef<HTMLButtonElement>(null);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+  const panelReturnFocusRef = useRef<HTMLElement | null>(null);
+  const menuFocusTargetRef = useRef<MenuFocusTarget>('first');
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggeredRef = useRef(false);
   const [openPanel, setOpenPanel] = useState<OrganizationPanel>(null);
@@ -106,6 +114,9 @@ export function NoteCard({
   const selectionActive = selection?.active ?? false;
   const selectionSelected = selection?.selected ?? false;
   const visiblePanel = selectionActive ? null : openPanel;
+  const colorPanelId = `note-color-panel-${note.id}`;
+  const labelsPanelId = `note-labels-panel-${note.id}`;
+  const moreMenuId = `note-more-menu-${note.id}`;
 
   useEffect(() => {
     if (reminder !== undefined) return;
@@ -126,22 +137,71 @@ export function NoteCard({
 
   useEffect(() => {
     if (!visiblePanel) return;
+
+    const focusFrame = window.requestAnimationFrame(() => {
+      if (visiblePanel === 'more') {
+        const items = menuItems(moreMenuRef.current);
+        const target = menuFocusTargetRef.current === 'last' ? items.at(-1) : items[0];
+        target?.focus({ preventScroll: true });
+        return;
+      }
+
+      const panelId = visiblePanel === 'color' ? colorPanelId : labelsPanelId;
+      const panel = document.getElementById(panelId);
+      if (!(panel instanceof HTMLElement)) return;
+      const target = firstPopoverControl(panel) ?? panel;
+      target.focus({ preventScroll: true });
+    });
+
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target;
       if (!(target instanceof Node)) return;
       if (cardRef.current?.contains(target)) return;
       setOpenPanel(null);
     };
+
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpenPanel(null);
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        const returnTarget = panelReturnFocusRef.current;
+        setOpenPanel(null);
+        window.requestAnimationFrame(() => {
+          if (returnTarget?.isConnected) returnTarget.focus({ preventScroll: true });
+          else openButtonRef.current?.focus({ preventScroll: true });
+        });
+        return;
+      }
+
+      if (visiblePanel !== 'more') return;
+      const menu = moreMenuRef.current;
+      if (!menu || !menu.contains(document.activeElement)) return;
+      const items = menuItems(menu);
+      if (items.length === 0) return;
+      const currentIndex = items.findIndex((item) => item === document.activeElement);
+      let nextIndex: number | null = null;
+      if (event.key === 'ArrowDown') {
+        nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % items.length;
+      } else if (event.key === 'ArrowUp') {
+        nextIndex = currentIndex <= 0 ? items.length - 1 : currentIndex - 1;
+      } else if (event.key === 'Home') {
+        nextIndex = 0;
+      } else if (event.key === 'End') {
+        nextIndex = items.length - 1;
+      }
+      if (nextIndex === null) return;
+      event.preventDefault();
+      items[nextIndex]?.focus({ preventScroll: true });
     };
+
     document.addEventListener('pointerdown', handlePointerDown, true);
-    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown, true);
     return () => {
+      window.cancelAnimationFrame(focusFrame);
       document.removeEventListener('pointerdown', handlePointerDown, true);
-      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keydown', handleKeyDown, true);
     };
-  }, [visiblePanel]);
+  }, [colorPanelId, labelsPanelId, visiblePanel]);
 
   useEffect(
     () => () => {
@@ -193,9 +253,32 @@ export function NoteCard({
     actions.open(note);
   };
 
+  const openOrganizationPanel = (
+    panel: Exclude<OrganizationPanel, null>,
+    returnFocus: HTMLElement | null,
+    menuFocusTarget: MenuFocusTarget = 'first',
+  ) => {
+    panelReturnFocusRef.current = returnFocus;
+    menuFocusTargetRef.current = menuFocusTarget;
+    setOpenPanel(panel);
+  };
+
   const closeAndRun = (action: () => void) => {
+    const returnTarget = panelReturnFocusRef.current;
     setOpenPanel(null);
     action();
+    window.requestAnimationFrame(() => {
+      if (returnTarget?.isConnected) returnTarget.focus({ preventScroll: true });
+    });
+  };
+
+  const closeColorAndApply = (color: NoteColor) => {
+    const returnTarget = panelReturnFocusRef.current;
+    setOpenPanel(null);
+    actions.setColor(note, color);
+    window.requestAnimationFrame(() => {
+      if (returnTarget?.isConnected) returnTarget.focus({ preventScroll: true });
+    });
   };
 
   return (
@@ -239,7 +322,7 @@ export function NoteCard({
             hidden
             type="button"
             aria-label={`Change labels: ${label}`}
-            onClick={() => setOpenPanel('labels')}
+            onClick={() => openOrganizationPanel('labels', openButtonRef.current)}
           />
           <button
             hidden
@@ -252,6 +335,7 @@ export function NoteCard({
 
       {canOpen ? (
         <button
+          ref={openButtonRef}
           className="note-card-open"
           type="button"
           aria-label={`Open note: ${label}`}
@@ -313,10 +397,16 @@ export function NoteCard({
           {mode !== 'trash' ? (
             <div className="note-card-action-slot note-card-direct-secondary">
               <IconButton
+                ref={colorTriggerRef}
                 className="note-card-action"
                 label={`Change color: ${label}`}
                 aria-expanded={visiblePanel === 'color'}
-                onClick={() => setOpenPanel((current) => (current === 'color' ? null : 'color'))}
+                aria-haspopup="dialog"
+                aria-controls={colorPanelId}
+                onClick={() => {
+                  if (visiblePanel === 'color') setOpenPanel(null);
+                  else openOrganizationPanel('color', colorTriggerRef.current);
+                }}
               >
                 <Palette />
               </IconButton>
@@ -362,15 +452,36 @@ export function NoteCard({
           ) : (
             <div className="note-card-action-slot">
               <IconButton
+                ref={moreTriggerRef}
                 className="note-card-action"
                 label={`More actions: ${label}`}
                 aria-expanded={visiblePanel === 'more'}
-                onClick={() => setOpenPanel((current) => (current === 'more' ? null : 'more'))}
+                aria-haspopup="menu"
+                aria-controls={moreMenuId}
+                onClick={() => {
+                  if (visiblePanel === 'more') setOpenPanel(null);
+                  else openOrganizationPanel('more', moreTriggerRef.current, 'first');
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'ArrowDown') {
+                    event.preventDefault();
+                    openOrganizationPanel('more', moreTriggerRef.current, 'first');
+                  } else if (event.key === 'ArrowUp') {
+                    event.preventDefault();
+                    openOrganizationPanel('more', moreTriggerRef.current, 'last');
+                  }
+                }}
               >
                 <MoreHorizontal />
               </IconButton>
               {visiblePanel === 'more' ? (
-                <div className="note-card-more-menu" role="menu">
+                <div
+                  ref={moreMenuRef}
+                  className="note-card-more-menu"
+                  id={moreMenuId}
+                  role="menu"
+                  aria-label={`Actions for ${label}`}
+                >
                   {mode === 'notes' ? (
                     <button
                       type="button"
@@ -385,10 +496,18 @@ export function NoteCard({
                       {note.pinnedAt !== null ? 'Unpin' : 'Pin'}
                     </button>
                   ) : null}
-                  <button type="button" role="menuitem" onClick={() => setOpenPanel('color')}>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => openOrganizationPanel('color', moreTriggerRef.current)}
+                  >
                     <Palette aria-hidden="true" /> Color
                   </button>
-                  <button type="button" role="menuitem" onClick={() => setOpenPanel('labels')}>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => openOrganizationPanel('labels', moreTriggerRef.current)}
+                  >
                     <Tag aria-hidden="true" /> Labels
                   </button>
                   {mode === 'notes' ? (
@@ -428,16 +547,15 @@ export function NoteCard({
               ) : null}
               {visiblePanel === 'color' ? (
                 <NoteColorPicker
+                  id={colorPanelId}
                   noteLabel={label}
                   value={note.color}
-                  onChange={(color) => {
-                    setOpenPanel(null);
-                    actions.setColor(note, color);
-                  }}
+                  onChange={closeColorAndApply}
                 />
               ) : null}
               {visiblePanel === 'labels' ? (
                 <NoteLabelPicker
+                  id={labelsPanelId}
                   labels={labels}
                   noteLabel={label}
                   selectedLabelIds={selectedLabelIds}
@@ -567,5 +685,18 @@ function firstMeaningfulLine(content: string): string {
       .map((line) => line.trim())
       .find(Boolean)
       ?.slice(0, 80) ?? ''
+  );
+}
+
+function menuItems(menu: HTMLElement | null): HTMLButtonElement[] {
+  if (!menu) return [];
+  return Array.from(menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')).filter(
+    (item) => !item.disabled && item.getClientRects().length > 0,
+  );
+}
+
+function firstPopoverControl(panel: HTMLElement): HTMLElement | null {
+  return panel.querySelector<HTMLElement>(
+    'input:not([disabled]), button:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
   );
 }
