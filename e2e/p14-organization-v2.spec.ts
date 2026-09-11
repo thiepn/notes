@@ -24,7 +24,10 @@ async function seedP14Library(page: Page) {
     await labels.create('Unused A');
     await labels.create('Unused B');
 
-    const pinned = await notes.create({ title: 'Pinned project', content: 'Important project note.' });
+    const pinned = await notes.create({
+      title: 'Pinned project',
+      content: 'Important project note.',
+    });
     await labels.assign(pinned.id, project.id);
     await notes.setPinned(pinned.id, true, pinned.revision);
 
@@ -104,7 +107,9 @@ test('Organize shortcuts expose pinned and active unlabeled notes with derived c
   await expect(page.locator(`[data-note-id="${ids.archivedLooseId}"]`)).toHaveCount(0);
 });
 
-test('saved searches appear as sidebar Smart views and reopen their full snapshot', async ({ page }) => {
+test('saved searches appear as sidebar Smart views and reopen their full snapshot', async ({
+  page,
+}) => {
   const ids = await seedP14Library(page);
   expect(ids.savedId).not.toBeNull();
 
@@ -160,7 +165,9 @@ test('bulk label assignment can filter a larger label library before applying me
   });
   await expect(labelSearch).toBeVisible();
   await labelSearch.fill('French');
-  await expect(labelsDialog.getByRole('button', { name: 'Add label French to selected notes' })).toBeVisible();
+  await expect(
+    labelsDialog.getByRole('button', { name: 'Add label French to selected notes' }),
+  ).toBeVisible();
   await expect(labelsDialog.getByRole('button', { name: /label Project/u })).toHaveCount(0);
   await labelsDialog.getByRole('button', { name: 'Add label French to selected notes' }).click();
 
