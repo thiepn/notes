@@ -16,11 +16,8 @@ import {
   summarizeSearch,
   type SavedSearch,
 } from '../search/searchHistory';
-import {
-  normalizeKnowledgeText,
-  rankQuickOpenNotes,
-  type QuickOpenNote,
-} from './knowledgeCommands';
+import { rankCommandCandidates } from './commandRanking';
+import { rankQuickOpenNotes, type QuickOpenNote } from './knowledgeCommands';
 
 export interface CommandPaletteItem {
   id: string;
@@ -30,18 +27,20 @@ export interface CommandPaletteItem {
   shortcut?: string;
   keywords?: string[];
   disabled?: boolean;
+  kind?: 'action' | 'note' | 'saved-search' | 'search';
   run(): void;
 }
 
 interface CommandPaletteProps {
   commands: CommandPaletteItem[];
   onClose(): void;
+  onSearchNotes?(query: string): void;
 }
 
 const notesRepository = new NotesRepository(notesDatabase);
 const searchHistoryRepository = new SearchHistoryRepository(notesDatabase);
 
-export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
+export function CommandPalette({ commands, onClose, onSearchNotes }: CommandPaletteProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
@@ -93,6 +92,7 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
           label: `Smart collection: ${summary.title}`,
           description: summary.detail ?? 'Saved search',
           group: 'Smart collections',
+          kind: 'saved-search',
           keywords: [
             'saved search',
             'smart collection',
@@ -115,6 +115,7 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
         label: `Open note: ${note.title.trim() || 'Untitled note'}`,
         description: `${note.archivedAt === null ? 'Notes' : 'Archive'} · ${note.type === 'checklist' ? 'Checklist' : 'Text note'}`,
         group: 'Notes',
+        kind: 'note',
         keywords: ['open note', 'find note', note.title],
         run: () => {
           void requestLinkedNoteOpen(note.id);
@@ -129,17 +130,23 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
   );
 
   const filtered = useMemo(() => {
-    const terms = normalize(query).split(' ').filter(Boolean);
-    if (terms.length === 0) return commandCatalog;
-    return commandCatalog.filter((command) => {
-      const haystack = normalize(
-        [command.label, command.description ?? '', command.group, ...(command.keywords ?? [])].join(
-          ' ',
-        ),
-      );
-      return terms.every((term) => haystack.includes(term));
-    });
-  }, [commandCatalog, query]);
+    const ranked = rankCommandCandidates(commandCatalog, query, 24).map(({ item }) => item);
+    const trimmedQuery = query.trim();
+    if (!onSearchNotes || trimmedQuery.length < 2) return ranked;
+
+    const searchCommand: CommandPaletteItem = {
+      id: `full-search:${trimmedQuery}`,
+      label: `Search notes for “${trimmedQuery}”`,
+      description: 'Search titles, text, checklists, labels, attachments, and OCR',
+      group: 'Search',
+      kind: 'search',
+      keywords: [],
+      run: () => onSearchNotes(trimmedQuery),
+    };
+
+    if (ranked.length === 0) return [searchCommand];
+    return [ranked[0]!, searchCommand, ...ranked.slice(1)];
+  }, [commandCatalog, onSearchNotes, query]);
 
   const enabledIndexes = filtered.flatMap((command, index) => (command.disabled ? [] : [index]));
   const safeActiveIndex =
@@ -233,7 +240,7 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
             aria-autocomplete="list"
             aria-activedescendant={activeOptionId}
             autoComplete="off"
-            placeholder="Type a command or note title…"
+            placeholder="Commands, notes, or search anything…"
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);
@@ -269,6 +276,7 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
                     role="option"
                     aria-selected={active}
                     data-active={active}
+                    data-kind={command.kind ?? 'action'}
                     disabled={command.disabled}
                     tabIndex={-1}
                     onMouseEnter={() => {
@@ -303,8 +311,4 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
       </div>
     </div>
   );
-}
-
-function normalize(value: string): string {
-  return normalizeKnowledgeText(value);
 }
