@@ -100,6 +100,18 @@ test('search assist completes operators and quoted label names with keyboard nav
   await labelSuggestion.click();
   await expect(search).toHaveValue('label:"Project Alpha"');
   await expect(page.locator(`[data-note-id="${ids.labeledId}"]`)).toBeVisible();
+
+  await page.evaluate(async () => {
+    const dbModule = await import('/notes/src/db/index.ts');
+    const labels = new dbModule.LabelsRepository(dbModule.notesDatabase);
+    await labels.create('Fresh Label');
+  });
+  await search.blur();
+  await search.focus();
+  await search.fill('label:fresh');
+  await expect(
+    assist.getByRole('button', { name: 'Use search suggestion: Label: Fresh Label' }),
+  ).toBeVisible();
 });
 
 test('saved searches remain discoverable while typing and mobile assist targets stay touch-safe', async ({
