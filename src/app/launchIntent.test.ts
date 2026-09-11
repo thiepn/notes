@@ -75,6 +75,30 @@ describe('sanitizeSharedPayload', () => {
     });
   });
 
+  it('derives a useful hostname title when a shared bookmark has no title', () => {
+    expect(
+      sanitizeSharedPayload({
+        title: '',
+        text: '',
+        url: 'https://www.example.test/article',
+      }),
+    ).toEqual({
+      title: 'example.test',
+      content: 'https://www.example.test/article',
+    });
+
+    expect(
+      sanitizeSharedPayload({
+        title: '',
+        text: 'https://docs.example.test/guide',
+        url: '',
+      }),
+    ).toEqual({
+      title: 'docs.example.test',
+      content: 'https://docs.example.test/guide',
+    });
+  });
+
   it('rejects payloads without usable note content', () => {
     expect(sanitizeSharedPayload({ title: ' ', text: '', url: '' })).toBeNull();
     expect(sanitizeSharedPayload(null)).toBeNull();
