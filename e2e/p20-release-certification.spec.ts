@@ -276,6 +276,7 @@ test.describe('P20 release certification', () => {
 
     const editor = page.getByRole('dialog', { name: 'Edit note' });
     await expect(editor).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'More navigation' })).toHaveCount(0);
     await editor.getByRole('button', { name: 'Close' }).click();
 
     await mobileNavigation.getByRole('button', { name: 'Open navigation' }).click();
