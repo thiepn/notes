@@ -4,6 +4,7 @@ import type { NoteRecord } from '../../db';
 import {
   analyzeNoteConnections,
   findUnlinkedMentions,
+  getBacklinks,
   linkUnlinkedMentions,
   normalizeWikiTitle,
   parseWikiLinks,
@@ -65,12 +66,27 @@ describe('V2-3 link intelligence', () => {
 
     const connections = analyzeNoteConnections(atlas, library);
     expect(connections.backlinks.map((item) => item.note.id)).toEqual(['n2']);
+    expect(connections.backlinks[0]?.snippet).toContain('Project Atlas');
     expect(connections.unlinkedMentions.map((item) => item.note.id)).toEqual(['n3']);
     expect(analyzeNoteConnections(explicit, library).outgoing[0]).toMatchObject({
       title: 'Project Atlas',
       count: 1,
       resolution: { status: 'resolved', noteId: 'n1' },
     });
+  });
+
+  it('ranks stronger backlinks before merely newer backlinks and includes context', () => {
+    const target = note('n1', 'Atlas');
+    const newerSingle = note('n9', 'Newer', 'See [[Atlas]] once.', { updatedAt: 99 });
+    const olderDouble = note('n2', 'Older', '[[Atlas]] first and [[Atlas]] second.', {
+      updatedAt: 2,
+    });
+
+    const backlinks = getBacklinks(target, [target, newerSingle, olderDouble]);
+
+    expect(backlinks.map((item) => item.note.id)).toEqual(['n2', 'n9']);
+    expect(backlinks[0]).toMatchObject({ count: 2 });
+    expect(backlinks[0]?.snippet).toContain('Atlas');
   });
 
   it('does not report mentions already linked, in Markdown links, or in code', () => {
@@ -81,6 +97,19 @@ describe('V2-3 link intelligence', () => {
       '[[Project Atlas]]\n[Project Atlas](https://example.com)\n`Project Atlas`\n```\nProject Atlas\n```',
     );
     expect(findUnlinkedMentions(target, [target, source])).toEqual([]);
+  });
+
+  it('ranks sources with more unlinked mentions before newer single mentions', () => {
+    const target = note('n1', 'Project Atlas');
+    const newer = note('n9', 'Newer', 'Project Atlas is here.', { updatedAt: 99 });
+    const repeated = note('n2', 'Repeated', 'Project Atlas first. Project Atlas second.', {
+      updatedAt: 2,
+    });
+
+    const mentions = findUnlinkedMentions(target, [target, newer, repeated]);
+
+    expect(mentions.map((item) => item.note.id)).toEqual(['n2', 'n9']);
+    expect(mentions[0]?.count).toBe(2);
   });
 
   it('converts every safe mention in one source while preserving protected ranges', () => {

@@ -1,20 +1,28 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { AlertTriangle, ArrowUpRight, Link2, Sparkles } from 'lucide-react';
+import { AlertTriangle, ArrowUpRight, Link2, Sparkles, Tag, Waypoints } from 'lucide-react';
 
-import type { NoteRecord, NotesRepository } from '../../db';
+import type { LabelRecord, NoteRecord, NotesRepository } from '../../db';
 import {
   analyzeNoteConnections,
   linkUnlinkedMentions,
   normalizeWikiTitle,
   resolveWikiLink,
 } from './linkIntelligence';
-import { findRelatedNotes } from './relatedNotes';
+import {
+  findRelatedNotes,
+  suggestLabelsForNote,
+  summarizeLocalTopics,
+  type RelatedNote,
+} from './relatedNotes';
 
 interface ConnectionsPanelProps {
   note: NoteRecord;
   library: NoteRecord[];
+  labels: LabelRecord[];
+  labelIdsByNote: Record<string, string[]>;
   repository: NotesRepository;
   beforeLinking(): Promise<NoteRecord | null>;
+  onAssignLabel(labelId: string): Promise<void>;
   onOpenNote(noteId: string): void;
   onSourceSaved(note: NoteRecord): void;
   onLibraryChanged(): Promise<void>;
@@ -23,8 +31,11 @@ interface ConnectionsPanelProps {
 export function ConnectionsPanel({
   note,
   library,
+  labels,
+  labelIdsByNote,
   repository,
   beforeLinking,
+  onAssignLabel,
   onOpenNote,
   onSourceSaved,
   onLibraryChanged,
@@ -39,15 +50,34 @@ export function ConnectionsPanel({
     }
     return ids;
   }, [connections]);
+  const intelligencePool = useMemo(
+    () => findRelatedNotes(note, library, 16, { labels, labelIdsByNote }),
+    [labelIdsByNote, labels, library, note],
+  );
+  const duplicateNotes = useMemo(
+    () => intelligencePool.filter((candidate) => candidate.duplicate).slice(0, 3),
+    [intelligencePool],
+  );
   const relatedNotes = useMemo(
     () =>
-      findRelatedNotes(note, library, 10)
-        .filter(({ note: candidate }) => !explicitlyLinkedIds.has(candidate.id))
+      intelligencePool
+        .filter(
+          ({ note: candidate, duplicate }) => !duplicate && !explicitlyLinkedIds.has(candidate.id),
+        )
         .slice(0, 4),
-    [explicitlyLinkedIds, library, note],
+    [explicitlyLinkedIds, intelligencePool],
+  );
+  const suggestedLabels = useMemo(
+    () => suggestLabelsForNote(note, intelligencePool, labels, labelIdsByNote, 4),
+    [intelligencePool, labelIdsByNote, labels, note],
+  );
+  const localTopics = useMemo(
+    () => summarizeLocalTopics(note, intelligencePool, labels, labelIdsByNote, 5),
+    [intelligencePool, labelIdsByNote, labels, note],
   );
   const [linkingNoteId, setLinkingNoteId] = useState<string | null>(null);
   const [creatingTargetKey, setCreatingTargetKey] = useState<string | null>(null);
+  const [assigningLabelId, setAssigningLabelId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const title = note.title.trim();
   const connectionCount = connections.outgoing.length + connections.backlinks.length;
@@ -73,6 +103,18 @@ export function ConnectionsPanel({
       setErrorMessage('That mention could not be linked. The source note may have changed.');
     } finally {
       setLinkingNoteId(null);
+    }
+  };
+
+  const assignLabel = async (labelId: string) => {
+    setErrorMessage(null);
+    setAssigningLabelId(labelId);
+    try {
+      await onAssignLabel(labelId);
+    } catch {
+      setErrorMessage('That label could not be added. Try again.');
+    } finally {
+      setAssigningLabelId(null);
     }
   };
 
@@ -123,6 +165,8 @@ export function ConnectionsPanel({
           <span className="note-connections-summary">
             {connectionCount} {connectionCount === 1 ? 'linked note' : 'linked notes'} ·{' '}
             {relatedNotes.length} {relatedNotes.length === 1 ? 'related note' : 'related notes'} ·{' '}
+            {duplicateNotes.length}{' '}
+            {duplicateNotes.length === 1 ? 'possible duplicate' : 'possible duplicates'} ·{' '}
             {connections.unlinkedMentions.length}{' '}
             {connections.unlinkedMentions.length === 1 ? 'unlinked mention' : 'unlinked mentions'}
           </span>
@@ -141,6 +185,71 @@ export function ConnectionsPanel({
             are ambiguous until the titles are unique.
           </span>
         </div>
+      ) : null}
+
+      {suggestedLabels.length > 0 ? (
+        <ConnectionGroup title="Suggested labels" icon={<Tag aria-hidden="true" />}>
+          <div className="note-intelligence-chip-list" aria-label="Suggested labels">
+            {suggestedLabels.map((suggestion) => (
+              <button
+                className="note-intelligence-chip note-intelligence-label"
+                type="button"
+                key={suggestion.label.id}
+                disabled={assigningLabelId !== null}
+                aria-label={`Add suggested label ${suggestion.label.name}`}
+                title={
+                  suggestion.directMatch
+                    ? 'This label name appears in the note.'
+                    : `Used by ${suggestion.support} related ${suggestion.support === 1 ? 'note' : 'notes'}.`
+                }
+                onClick={() => void assignLabel(suggestion.label.id)}
+              >
+                <Tag aria-hidden="true" />
+                <span>{suggestion.label.name}</span>
+                <small>
+                  {assigningLabelId === suggestion.label.id
+                    ? 'Adding…'
+                    : suggestion.directMatch
+                      ? 'Text match'
+                      : `${suggestion.support} related`}
+                </small>
+              </button>
+            ))}
+          </div>
+        </ConnectionGroup>
+      ) : null}
+
+      {localTopics.length > 0 ? (
+        <ConnectionGroup title="Local topics" icon={<Waypoints aria-hidden="true" />}>
+          <div className="note-intelligence-chip-list" aria-label="Local topics">
+            {localTopics.map((topic) => (
+              <span className="note-intelligence-chip note-intelligence-topic" key={topic.key}>
+                <span>{topic.label}</span>
+                <small>{topic.support} notes</small>
+              </span>
+            ))}
+          </div>
+        </ConnectionGroup>
+      ) : null}
+
+      {duplicateNotes.length > 0 ? (
+        <ConnectionGroup title="Possible duplicates" icon={<AlertTriangle aria-hidden="true" />}>
+          {duplicateNotes.map((duplicate) => (
+            <button
+              className="note-connection-row"
+              type="button"
+              data-status="duplicate"
+              key={duplicate.note.id}
+              onClick={() => onOpenNote(duplicate.note.id)}
+            >
+              <span>{duplicate.note.title || 'Untitled note'}</span>
+              <span className="note-connection-meta">
+                {duplicate.duplicateReason ?? 'Very similar note'}{' '}
+                <ArrowUpRight aria-hidden="true" />
+              </span>
+            </button>
+          ))}
+        </ConnectionGroup>
       ) : null}
 
       {connections.outgoing.length > 0 ? (
@@ -179,7 +288,11 @@ export function ConnectionsPanel({
                     <button
                       className="note-unlinked-link"
                       type="button"
-                      disabled={creatingTargetKey !== null || linkingNoteId !== null}
+                      disabled={
+                        creatingTargetKey !== null ||
+                        linkingNoteId !== null ||
+                        assigningLabelId !== null
+                      }
                       onClick={() => void createMissingTarget(link.title)}
                     >
                       {creating ? 'Creating…' : 'Create note'}
@@ -207,12 +320,15 @@ export function ConnectionsPanel({
         <ConnectionGroup title="Backlinks">
           {connections.backlinks.map((backlink) => (
             <button
-              className="note-connection-row"
+              className="note-connection-row note-connection-row-context"
               type="button"
               key={backlink.note.id}
               onClick={() => onOpenNote(backlink.note.id)}
             >
-              <span>{backlink.note.title || 'Untitled note'}</span>
+              <span className="note-connection-copy">
+                <strong>{backlink.note.title || 'Untitled note'}</strong>
+                <small>{backlink.snippet}</small>
+              </span>
               <span className="note-connection-meta">
                 {backlink.count > 1 ? `${backlink.count} links` : '1 link'}{' '}
                 <ArrowUpRight aria-hidden="true" />
@@ -228,18 +344,13 @@ export function ConnectionsPanel({
             <button
               className="note-connection-row"
               type="button"
-              data-status={related.duplicate ? 'duplicate' : 'related'}
+              data-status="related"
               key={related.note.id}
               onClick={() => onOpenNote(related.note.id)}
             >
               <span>{related.note.title || 'Untitled note'}</span>
               <span className="note-connection-meta">
-                {related.duplicate
-                  ? 'Possible duplicate'
-                  : related.sharedTerms.length > 0
-                    ? `Shared: ${related.sharedTerms.slice(0, 2).join(' · ')}`
-                    : 'Related'}{' '}
-                <ArrowUpRight aria-hidden="true" />
+                {relatedReason(related)} <ArrowUpRight aria-hidden="true" />
               </span>
             </button>
           ))}
@@ -264,6 +375,7 @@ export function ConnectionsPanel({
                 disabled={
                   linkingNoteId !== null ||
                   creatingTargetKey !== null ||
+                  assigningLabelId !== null ||
                   connections.titleCollisionCount !== 1
                 }
                 onClick={() => void linkMention(mention.note.id)}
@@ -282,9 +394,12 @@ export function ConnectionsPanel({
       {title &&
       connectionCount === 0 &&
       relatedNotes.length === 0 &&
+      duplicateNotes.length === 0 &&
+      suggestedLabels.length === 0 &&
+      localTopics.length === 0 &&
       connections.unlinkedMentions.length === 0 ? (
         <p className="note-connections-empty">
-          No links, related notes, or unlinked mentions found for this note yet.
+          No links, related notes, label suggestions, or unlinked mentions found for this note yet.
         </p>
       ) : null}
 
@@ -295,6 +410,19 @@ export function ConnectionsPanel({
       ) : null}
     </section>
   );
+}
+
+function relatedReason(related: RelatedNote): string {
+  if (related.sharedLabels.length > 0) {
+    return `Shared label: ${related.sharedLabels.slice(0, 2).join(' · ')}`;
+  }
+  if (related.sharedLinkTargets.length > 0) {
+    return `Links to: ${related.sharedLinkTargets.slice(0, 2).join(' · ')}`;
+  }
+  if (related.sharedTerms.length > 0) {
+    return `Shared: ${related.sharedTerms.slice(0, 2).join(' · ')}`;
+  }
+  return 'Related locally';
 }
 
 function ConnectionGroup({
