@@ -36,6 +36,8 @@ export interface ParsedSearchQuery {
   requireImage: boolean;
   requireLink: boolean;
   requireReminder: boolean;
+  requireLabeled: boolean;
+  requireUnlabeled: boolean;
   after: number | null;
   before: number | null;
   errors: string[];
@@ -112,6 +114,8 @@ export function parseSearchQuery(input: string): ParsedSearchQuery {
     requireImage: false,
     requireLink: false,
     requireReminder: false,
+    requireLabeled: false,
+    requireUnlabeled: false,
     after: null,
     before: null,
     errors: [],
@@ -143,6 +147,10 @@ export function parseSearchQuery(input: string): ParsedSearchQuery {
         parsed.types.push(value);
         continue;
       }
+      if (value === 'unlabeled') {
+        parsed.requireUnlabeled = true;
+        continue;
+      }
     }
 
     if (operator === 'has' && value === 'image') {
@@ -155,6 +163,10 @@ export function parseSearchQuery(input: string): ParsedSearchQuery {
     }
     if (operator === 'has' && value === 'reminder') {
       parsed.requireReminder = true;
+      continue;
+    }
+    if (operator === 'has' && value === 'label') {
+      parsed.requireLabeled = true;
       continue;
     }
 
@@ -206,6 +218,8 @@ export function searchDocuments(
     ) {
       continue;
     }
+    if (parsed.requireUnlabeled && document.labelIds.length > 0) continue;
+    if (parsed.requireLabeled && document.labelIds.length === 0) continue;
     if (parsed.requireImage && !document.hasImage) continue;
     if (parsed.requireLink && !document.hasLink) continue;
     if (parsed.requireReminder && !document.hasReminder) continue;

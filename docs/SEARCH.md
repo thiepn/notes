@@ -1,6 +1,6 @@
 # Search System
 
-P9 establishes a local search engine over active and archived notes. V2-7 / P27 extends that engine with bounded fuzzy matching, stronger field-aware relevance, attachment-filename and committed-OCR indexing, saved searches, and recent-search history without adding a server or parallel persistent note index.
+P9 establishes a local search engine over active and archived notes. V2-7 / P27 extends that engine with bounded fuzzy matching, stronger field-aware relevance, attachment-filename and committed-OCR indexing, saved searches, and recent-search history without adding a server or parallel persistent note index. P13 adds search/command discovery, and P14 promotes saved searches into sidebar Smart Views while adding organization-oriented label-presence operators.
 
 Trash is intentionally excluded from search results; deleted notes remain discoverable only from Trash.
 
@@ -101,15 +101,19 @@ Search supports:
 - `label:study`
 - `label:"Bible Study"`
 - `is:pinned`
+- `is:unlabeled`
 - `is:active`
 - `is:archived`
 - `is:text`
 - `is:checklist`
+- `has:label`
 - `has:image`
 - `has:link`
 - `has:reminder`
 - `before:YYYY-MM-DD`
 - `after:YYYY-MM-DD`
+
+`is:unlabeled` requires that the search document have zero assigned label IDs. `has:label` requires at least one assigned label. P14's built-in Unlabeled organization view combines `is:active is:unlabeled` so archived notes do not appear in the active cleanup queue.
 
 Date operators and date filters use `updatedAt`. `before:` is exclusive at local midnight; `after:` is inclusive at local midnight.
 
@@ -130,7 +134,7 @@ Multiple selected colors are OR conditions. Multiple selected labels are AND con
 
 Search can run with filters and no free-text query.
 
-## Saved searches
+## Saved searches and Smart Views
 
 V2-7 can save the current search from the header. A saved search captures:
 
@@ -153,7 +157,7 @@ Consequences:
 
 The list is capped at 20. Canonically identical snapshots are deduplicated; color and label selection order does not make two searches distinct.
 
-Focusing an empty search field shows saved searches. Selecting one restores both its query and filter snapshot. Saved searches can be removed independently without affecting notes.
+P13 keeps saved searches discoverable in the search-assist surface while typing. P14 also exposes the five most recent saved searches in the sidebar as **Smart Views**. Selecting a Smart View uses the existing saved-search navigation path and restores the complete query/filter snapshot; Smart Views do not introduce a second persistence format.
 
 ## Recent searches
 
@@ -170,19 +174,19 @@ They are:
 
 Recent searches are **not** part of library backup/restore. They are disposable UI history, not user-authored library data.
 
-Focusing an empty search field shows recent searches beneath saved searches when either exists.
+P13 keeps relevant recent searches available in search assist while typing. A search already represented by a saved search is suppressed from Recent results to avoid duplicate suggestions.
 
 ## Keyboard and navigation
 
 Pressing `/` outside an editable control focuses the header search field. Escape inside a non-empty search field clears only the query text. The Reset control clears query, filters, and the open filter panel.
 
-Navigating to Notes, a label, Archive, Trash, or Reminders exits search and restores the normal workspace context.
+Navigating to Notes, a label, Archive, Trash, or Reminders exits search and restores the normal workspace context. P14 Pinned, Unlabeled, and Smart View navigation intentionally enter the existing Search workspace instead of creating parallel collection state.
 
 ## Result behavior
 
 Search spans active and archived notes and groups them separately when both are present. Search result cards remain editable and retain normal single-note lifecycle, color, and label controls.
 
-P8 selection intentionally does not activate inside mixed-lifecycle search results. Bulk selection remains scoped to normal Notes, label, Archive, and Trash collections where one lifecycle mode applies to the entire selection.
+P8 selection intentionally does not activate inside mixed-lifecycle search results. Bulk selection remains scoped to normal Notes, label, Archive, and Trash collections where one lifecycle mode applies to the entire selection. P14 preserves this boundary even for search-backed Smart Views.
 
 ## Performance
 
@@ -195,23 +199,13 @@ A 10,000-note Chromium regression builds the local index and then searches it fo
 - in-memory matching under 100 ms,
 - index construction under 3 seconds on the CI runner.
 
-The fuzzy path is bounded and candidate-pruned specifically so adding typo tolerance does not invalidate this performance contract.
+The fuzzy path is bounded and candidate-pruned specifically so adding typo tolerance does not invalidate this performance contract. P14's label-presence operators only inspect the label IDs already present in each in-memory search document and do not change the index format.
 
 ## Privacy and phase boundary
 
-Search remains fully local. V2-7 sends no note text, OCR text, filename, query, saved-search snapshot, or recent-search history to a server.
+Search remains fully local. No note text, OCR text, filename, query, saved-search snapshot, recent-search history, or Smart View navigation is sent to a search provider.
 
-V2-7 owns:
-
-- fuzzy matching,
-- field-aware relevance scoring,
-- attachment-filename indexing,
-- committed-OCR indexing/scoring,
-- saved searches,
-- recent searches,
-- advanced-search regression and performance coverage.
-
-V2-7 deliberately excludes:
+The system deliberately excludes:
 
 - cloud or hosted search,
 - semantic/vector/embedding search,
@@ -221,4 +215,4 @@ V2-7 deliberately excludes:
 - a parallel durable search-index database,
 - collaborative/shared saved searches.
 
-P10 continues to own the command palette and broader keyboard command system.
+P13 owns the unified command/search discovery experience. P14 reuses that search system for organization-oriented Pinned, Unlabeled, and saved-search Smart Views without changing the core search architecture.

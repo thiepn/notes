@@ -56,11 +56,12 @@ test('saved searches are runnable as smart collections from the command palette'
   page,
 }) => {
   await page.goto('./');
-  await page.evaluate(async () => {
+  const ids = await page.evaluate(async () => {
     const db = await import('/notes/src/db/index.ts');
     const notes = new db.NotesRepository(db.notesDatabase);
-    await notes.create({ title: 'P5 Smart Alpha', content: 'collection alpha' });
-    await notes.create({ title: 'P5 Smart Beta', content: 'collection beta' });
+    const alpha = await notes.create({ title: 'P5 Smart Alpha', content: 'collection alpha' });
+    const beta = await notes.create({ title: 'P5 Smart Beta', content: 'collection beta' });
+    return { alpha: alpha.id, beta: beta.id };
   });
   await page.reload();
   await waitForNotes(page);
@@ -79,8 +80,8 @@ test('saved searches are runnable as smart collections from the command palette'
   await collection.click();
 
   await expect(search).toHaveValue('P5 Smart Alpha');
-  await expect(page.getByText('P5 Smart Alpha', { exact: true })).toBeVisible();
-  await expect(page.getByText('P5 Smart Beta', { exact: true })).toHaveCount(0);
+  await expect(page.locator(`[data-note-id="${ids.alpha}"]`)).toBeVisible();
+  await expect(page.locator(`[data-note-id="${ids.beta}"]`)).toHaveCount(0);
 });
 
 test('a missing WikiLink target can be created directly from Connections', async ({ page }) => {
