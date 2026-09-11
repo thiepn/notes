@@ -16,7 +16,7 @@ import {
   X,
 } from 'lucide-react';
 
-import { notesDatabase, type LabelRecord } from '../db';
+import { LabelsRepository, notesDatabase, type LabelRecord } from '../db';
 import { usePrivacy } from '../features/privacy/PrivacyContext';
 import { SearchHistoryPopover } from '../features/search/SearchHistoryPopover';
 import {
@@ -33,6 +33,7 @@ import { hasSearchFilters, type SearchFilters } from '../features/search/searchT
 import { IconButton } from './ui/IconButton';
 
 const searchHistoryRepository = new SearchHistoryRepository(notesDatabase);
+const labelsRepository = new LabelsRepository(notesDatabase);
 
 interface AppHeaderProps {
   onMenu(): void;
@@ -43,7 +44,6 @@ interface AppHeaderProps {
   searchFocusRequest: number;
   searchQuery: string;
   searchFilters: SearchFilters;
-  labels: LabelRecord[];
   filtersOpen: boolean;
   filtersActive: boolean;
   onSearchQueryChange(query: string): void;
@@ -61,7 +61,6 @@ export function AppHeader({
   searchFocusRequest,
   searchQuery,
   searchFilters,
-  labels,
   filtersOpen,
   filtersActive,
   onSearchQueryChange,
@@ -79,6 +78,7 @@ export function AppHeader({
   const [searchHistoryOpen, setSearchHistoryOpen] = useState(false);
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>(readRecentSearches);
+  const [searchLabels, setSearchLabels] = useState<LabelRecord[]>([]);
   const currentSnapshot: SearchSnapshot = { query: searchQuery, filters: searchFilters };
   const currentSignature = searchSignature(currentSnapshot);
   const currentCanBeSaved = Boolean(searchQuery.trim()) || filtersActive;
@@ -97,12 +97,15 @@ export function AppHeader({
   useEffect(() => {
     let cancelled = false;
     const reloadHistory = () => {
-      void searchHistoryRepository.listSaved().then((searches) => {
-        if (!cancelled) {
-          setSavedSearches(searches);
-          setRecentSearches(readRecentSearches());
-        }
-      });
+      void Promise.all([searchHistoryRepository.listSaved(), labelsRepository.list()]).then(
+        ([searches, labels]) => {
+          if (!cancelled) {
+            setSavedSearches(searches);
+            setRecentSearches(readRecentSearches());
+            setSearchLabels(labels);
+          }
+        },
+      );
     };
     reloadHistory();
     const unsubscribeSearchHistory = subscribeAppEvent('searchHistoryChanged', reloadHistory);
@@ -404,7 +407,7 @@ export function AppHeader({
         {assistVisible ? (
           <SearchHistoryPopover
             query={searchQuery}
-            labels={labels}
+            labels={searchLabels}
             saved={savedSearches}
             recent={recentSearches}
             onApply={(snapshot) => {
