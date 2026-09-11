@@ -21,7 +21,9 @@ test('clipboard quick start creates and opens a prefilled note', async ({ page, 
   await expect(editor.getByLabel('Edit note text')).toHaveValue('Captured from the clipboard.');
 });
 
-test('web link quick start validates and captures a bookmark with a useful title', async ({ page }) => {
+test('web link quick start validates and captures a bookmark with a useful title', async ({
+  page,
+}) => {
   await page.goto('./');
   const menu = await openNewMenu(page);
   await menu.getByRole('button', { name: 'Web link', exact: true }).click();
