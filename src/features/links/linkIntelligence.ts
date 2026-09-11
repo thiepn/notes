@@ -26,6 +26,7 @@ export interface OutgoingWikiLink {
 export interface Backlink {
   note: NoteRecord;
   count: number;
+  snippet: string;
 }
 
 export interface UnlinkedMention {
@@ -120,14 +121,27 @@ export function getBacklinks(target: NoteRecord, notes: NoteRecord[]): Backlink[
   for (const source of notes) {
     if (source.id === target.id || source.type !== 'text' || source.trashedAt !== null) continue;
     let count = 0;
+    let firstMatch: WikiLinkToken | null = null;
     for (const token of parseWikiLinks(source.content)) {
       const resolution = resolveWikiLink(token.title, notes);
-      if (resolution.status === 'resolved' && resolution.noteId === target.id) count += 1;
+      if (resolution.status !== 'resolved' || resolution.noteId !== target.id) continue;
+      count += 1;
+      firstMatch ??= token;
     }
-    if (count > 0) backlinks.push({ note: source, count });
+    if (count > 0) {
+      backlinks.push({
+        note: source,
+        count,
+        snippet: firstMatch
+          ? createSnippet(source.content, firstMatch.start, firstMatch.end)
+          : source.title,
+      });
+    }
   }
 
-  return backlinks.sort((a, b) => b.note.updatedAt - a.note.updatedAt);
+  return backlinks.sort(
+    (a, b) => b.count - a.count || b.note.updatedAt - a.note.updatedAt || a.note.id.localeCompare(b.note.id),
+  );
 }
 
 export function findUnlinkedMentions(target: NoteRecord, notes: NoteRecord[]): UnlinkedMention[] {
@@ -147,7 +161,9 @@ export function findUnlinkedMentions(target: NoteRecord, notes: NoteRecord[]): U
     });
   }
 
-  return mentions.sort((a, b) => b.note.updatedAt - a.note.updatedAt);
+  return mentions.sort(
+    (a, b) => b.count - a.count || b.note.updatedAt - a.note.updatedAt || a.note.id.localeCompare(b.note.id),
+  );
 }
 
 export function analyzeNoteConnections(target: NoteRecord, notes: NoteRecord[]): NoteConnections {
