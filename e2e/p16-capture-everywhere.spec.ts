@@ -49,9 +49,9 @@ test('templates create normal editable text notes with useful structure', async 
 
   const editor = page.getByRole('dialog', { name: 'Edit note' });
   await expect(editor.getByLabel('Edit title')).toHaveValue(/^Meeting — \d{4}-\d{2}-\d{2}$/u);
-  await expect(editor.getByLabel('Edit note text')).toContainText('## Agenda');
-  await expect(editor.getByLabel('Edit note text')).toContainText('## Decisions');
-  await expect(editor.getByLabel('Edit note text')).toContainText('## Actions');
+  await expect(editor.getByLabel('Edit note text')).toHaveValue(
+    /## Agenda[\s\S]*## Decisions[\s\S]*## Actions/u,
+  );
 });
 
 test('prefilled capture inherits and stays inside the active label collection', async ({
