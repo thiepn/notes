@@ -8,6 +8,7 @@ import {
   Pin,
   PinOff,
   RotateCcw,
+  Search,
   Tag,
   Trash2,
   X,
@@ -261,6 +262,12 @@ function BulkLabelPanel({
   labelCounts: Map<string, number>;
   onChange(labelId: string, assigned: boolean): void;
 }) {
+  const [query, setQuery] = useState('');
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  const visibleLabels = normalizedQuery
+    ? labels.filter((label) => label.name.toLocaleLowerCase().includes(normalizedQuery))
+    : labels;
+
   return (
     <div
       className="bulk-selection-popover bulk-label-panel"
@@ -271,30 +278,49 @@ function BulkLabelPanel({
       {labels.length === 0 ? (
         <p className="note-organization-empty">Create a label from the sidebar first.</p>
       ) : (
-        <div className="bulk-label-list">
-          {labels.map((label) => {
-            const count = labelCounts.get(label.id) ?? 0;
-            const all = selectedCount > 0 && count === selectedCount;
-            const mixed = count > 0 && !all;
-            return (
-              <button
-                className="bulk-label-option"
-                key={label.id}
-                type="button"
-                data-state={all ? 'all' : mixed ? 'mixed' : 'none'}
-                aria-pressed={all}
-                aria-label={`${all ? 'Remove' : 'Add'} label ${label.name} ${all ? 'from' : 'to'} selected notes`}
-                onClick={() => onChange(label.id, !all)}
-              >
-                <span className="bulk-label-check" aria-hidden="true">
-                  {all ? <Check /> : mixed ? <CheckCheck /> : null}
-                </span>
-                <span>{label.name}</span>
-                {mixed ? <span className="bulk-label-mixed">Some</span> : null}
-              </button>
-            );
-          })}
-        </div>
+        <>
+          {labels.length >= 6 ? (
+            <label className="bulk-label-search">
+              <Search aria-hidden="true" />
+              <span className="sr-only">Find labels for selected notes</span>
+              <input
+                type="search"
+                aria-label="Find labels for selected notes"
+                placeholder="Find labels"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+            </label>
+          ) : null}
+          {visibleLabels.length > 0 ? (
+            <div className="bulk-label-list">
+              {visibleLabels.map((label) => {
+                const count = labelCounts.get(label.id) ?? 0;
+                const all = selectedCount > 0 && count === selectedCount;
+                const mixed = count > 0 && !all;
+                return (
+                  <button
+                    className="bulk-label-option"
+                    key={label.id}
+                    type="button"
+                    data-state={all ? 'all' : mixed ? 'mixed' : 'none'}
+                    aria-pressed={all}
+                    aria-label={`${all ? 'Remove' : 'Add'} label ${label.name} ${all ? 'from' : 'to'} selected notes`}
+                    onClick={() => onChange(label.id, !all)}
+                  >
+                    <span className="bulk-label-check" aria-hidden="true">
+                      {all ? <Check /> : mixed ? <CheckCheck /> : null}
+                    </span>
+                    <span>{label.name}</span>
+                    {mixed ? <span className="bulk-label-mixed">Some</span> : null}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="note-organization-empty">No matching labels.</p>
+          )}
+        </>
       )}
     </div>
   );
