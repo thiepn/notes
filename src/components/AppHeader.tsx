@@ -16,7 +16,7 @@ import {
   X,
 } from 'lucide-react';
 
-import { notesDatabase } from '../db';
+import { LabelsRepository, notesDatabase, type LabelRecord } from '../db';
 import { usePrivacy } from '../features/privacy/PrivacyContext';
 import { SearchHistoryPopover } from '../features/search/SearchHistoryPopover';
 import {
@@ -33,6 +33,7 @@ import { hasSearchFilters, type SearchFilters } from '../features/search/searchT
 import { IconButton } from './ui/IconButton';
 
 const searchHistoryRepository = new SearchHistoryRepository(notesDatabase);
+const labelsRepository = new LabelsRepository(notesDatabase);
 
 interface AppHeaderProps {
   onMenu(): void;
@@ -77,13 +78,14 @@ export function AppHeader({
   const [searchHistoryOpen, setSearchHistoryOpen] = useState(false);
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>(readRecentSearches);
+  const [searchLabels, setSearchLabels] = useState<LabelRecord[]>([]);
   const currentSnapshot: SearchSnapshot = { query: searchQuery, filters: searchFilters };
   const currentSignature = searchSignature(currentSnapshot);
   const currentCanBeSaved = Boolean(searchQuery.trim()) || filtersActive;
   const currentIsSaved = savedSearches.some(
     (search) => searchSignature(search) === currentSignature,
   );
-  const historyVisible = searchHistoryOpen && !searchQuery.trim() && !filtersActive && !filtersOpen;
+  const assistVisible = searchHistoryOpen && !filtersOpen;
   const activeFilterCount =
     (searchFilters.type !== 'any' ? 1 : 0) +
     (searchFilters.status !== 'any' ? 1 : 0) +
@@ -95,12 +97,15 @@ export function AppHeader({
   useEffect(() => {
     let cancelled = false;
     const reloadHistory = () => {
-      void searchHistoryRepository.listSaved().then((searches) => {
-        if (!cancelled) {
-          setSavedSearches(searches);
-          setRecentSearches(readRecentSearches());
-        }
-      });
+      void Promise.all([searchHistoryRepository.listSaved(), labelsRepository.list()]).then(
+        ([searches, labels]) => {
+          if (!cancelled) {
+            setSavedSearches(searches);
+            setRecentSearches(readRecentSearches());
+            setSearchLabels(labels);
+          }
+        },
+      );
     };
     reloadHistory();
     const unsubscribeSearchHistory = subscribeAppEvent('searchHistoryChanged', reloadHistory);
@@ -220,6 +225,10 @@ export function AppHeader({
     setSavedSearches(await searchHistoryRepository.save(currentSnapshot));
   };
 
+  const focusSearchInput = () => {
+    window.requestAnimationFrame(() => searchInputRef.current?.focus({ preventScroll: true }));
+  };
+
   return (
     <header className="app-header">
       <div className="header-leading">
@@ -246,12 +255,43 @@ export function AppHeader({
       <div
         className="search-shell"
         role="search"
-        onFocusCapture={() => setSearchHistoryOpen(true)}
+        onFocusCapture={(event) => {
+          setSearchHistoryOpen(true);
+          if (event.target === searchInputRef.current) {
+            void labelsRepository.list().then(setSearchLabels, () => undefined);
+          }
+        }}
         onBlurCapture={(event) => {
           const next = event.relatedTarget;
           if (!(next instanceof Node) || !event.currentTarget.contains(next)) {
             setSearchHistoryOpen(false);
           }
+        }}
+        onKeyDownCapture={(event) => {
+          const target = event.target;
+          if (!(target instanceof HTMLElement) || !target.closest('#search-assist-popover')) return;
+
+          if (event.key === 'Escape') {
+            event.preventDefault();
+            event.stopPropagation();
+            setSearchHistoryOpen(false);
+            focusSearchInput();
+            return;
+          }
+
+          if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+          const items = searchAssistItems(event.currentTarget);
+          if (items.length === 0) return;
+          const currentIndex = items.findIndex((item) => item === document.activeElement);
+          const direction = event.key === 'ArrowDown' ? 1 : -1;
+          const nextIndex =
+            currentIndex < 0
+              ? direction === 1
+                ? 0
+                : items.length - 1
+              : (currentIndex + direction + items.length) % items.length;
+          event.preventDefault();
+          items[nextIndex]?.focus({ preventScroll: true });
         }}
       >
         <Search aria-hidden="true" />
@@ -261,19 +301,28 @@ export function AppHeader({
           placeholder="Search notes"
           aria-label="Search notes"
           aria-keyshortcuts="/"
+          aria-controls={assistVisible ? 'search-assist-popover' : undefined}
           enterKeyHint="search"
           value={searchQuery}
           onChange={(event) => onSearchQueryChange(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === 'ArrowDown') {
               event.preventDefault();
-              const selector = historyVisible
-                ? '.search-history-popover .search-history-apply'
-                : '.search-result-section .note-card-open';
               const focusTarget = () => {
-                const target = document.querySelector<HTMLButtonElement>(selector);
-                if (!target) return false;
-                target.focus();
+                if (assistVisible) {
+                  const assistTarget = document.querySelector<HTMLButtonElement>(
+                    '#search-assist-popover [data-search-nav="true"]',
+                  );
+                  if (assistTarget) {
+                    assistTarget.focus();
+                    return true;
+                  }
+                }
+                const resultTarget = document.querySelector<HTMLButtonElement>(
+                  '.search-result-section .note-card-open',
+                );
+                if (!resultTarget) return false;
+                resultTarget.focus();
                 return true;
               };
               if (focusTarget()) return;
@@ -291,14 +340,15 @@ export function AppHeader({
             }
 
             if (event.key !== 'Escape') return;
-            if (historyVisible) {
-              event.preventDefault();
-              setSearchHistoryOpen(false);
-              return;
-            }
             if (searchQuery) {
               event.preventDefault();
               onSearchQueryChange('');
+              setSearchHistoryOpen(false);
+              return;
+            }
+            if (assistVisible) {
+              event.preventDefault();
+              setSearchHistoryOpen(false);
               return;
             }
             if (filtersOpen) {
@@ -359,13 +409,20 @@ export function AppHeader({
           </button>
         ) : null}
 
-        {historyVisible ? (
+        {assistVisible ? (
           <SearchHistoryPopover
+            query={searchQuery}
+            labels={searchLabels}
             saved={savedSearches}
             recent={recentSearches}
             onApply={(snapshot) => {
               onApplySearch(snapshot);
               setSearchHistoryOpen(false);
+            }}
+            onApplyQuery={(nextQuery) => {
+              onSearchQueryChange(nextQuery);
+              setSearchHistoryOpen(true);
+              focusSearchInput();
             }}
             onRemoveSaved={(id) => void removeSavedSearch(id)}
             onClearRecent={() => setRecentSearches(clearRecentSearches())}
@@ -483,4 +540,10 @@ export function AppHeader({
 function menuItems(menu: HTMLElement | null): HTMLButtonElement[] {
   if (!menu) return [];
   return Array.from(menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not([disabled])'));
+}
+
+function searchAssistItems(root: HTMLElement): HTMLButtonElement[] {
+  return Array.from(
+    root.querySelectorAll<HTMLButtonElement>('#search-assist-popover [data-search-nav="true"]'),
+  ).filter((button) => !button.disabled && button.getClientRects().length > 0);
 }

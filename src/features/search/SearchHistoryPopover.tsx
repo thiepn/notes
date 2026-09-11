@@ -1,32 +1,78 @@
-import { Bookmark, Clock3, X } from 'lucide-react';
+import { Bookmark, Clock3, Search, X } from 'lucide-react';
 
+import type { LabelRecord } from '../../db';
 import {
   summarizeSearch,
   type RecentSearch,
   type SavedSearch,
   type SearchSnapshot,
 } from './searchHistory';
+import { buildSearchQuerySuggestions, filterSearchHistory } from './searchSuggestions';
 
 interface SearchHistoryPopoverProps {
+  query: string;
+  labels: LabelRecord[];
   saved: SavedSearch[];
   recent: RecentSearch[];
   onApply(snapshot: SearchSnapshot): void;
+  onApplyQuery(query: string): void;
   onRemoveSaved(id: string): void;
   onClearRecent(): void;
 }
 
 export function SearchHistoryPopover({
+  query,
+  labels,
   saved,
   recent,
   onApply,
+  onApplyQuery,
   onRemoveSaved,
   onClearRecent,
 }: SearchHistoryPopoverProps) {
-  if (saved.length === 0 && recent.length === 0) return null;
+  const suggestions = buildSearchQuerySuggestions(query, labels);
+  const filteredHistory = filterSearchHistory(saved, recent, query);
+  if (
+    suggestions.length === 0 &&
+    filteredHistory.saved.length === 0 &&
+    filteredHistory.recent.length === 0
+  ) {
+    return null;
+  }
 
   return (
-    <div className="search-history-popover" role="dialog" aria-label="Search history">
-      {saved.length > 0 ? (
+    <div
+      className="search-history-popover search-assist-popover"
+      id="search-assist-popover"
+      role="dialog"
+      aria-label="Search history"
+    >
+      {suggestions.length > 0 ? (
+        <section className="search-history-section" aria-labelledby="search-suggestions-title">
+          <div className="search-history-heading">
+            <span id="search-suggestions-title">
+              <Search aria-hidden="true" /> Search shortcuts
+            </span>
+          </div>
+          <div className="search-history-list search-suggestion-list">
+            {suggestions.map((suggestion) => (
+              <button
+                key={suggestion.id}
+                className="search-suggestion-apply"
+                type="button"
+                data-search-nav="true"
+                aria-label={`Use search suggestion: ${suggestion.label}`}
+                onClick={() => onApplyQuery(suggestion.query)}
+              >
+                <strong>{suggestion.label}</strong>
+                <span>{suggestion.description}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {filteredHistory.saved.length > 0 ? (
         <section className="search-history-section" aria-labelledby="saved-searches-title">
           <div className="search-history-heading">
             <span id="saved-searches-title">
@@ -34,7 +80,7 @@ export function SearchHistoryPopover({
             </span>
           </div>
           <div className="search-history-list">
-            {saved.map((search) => (
+            {filteredHistory.saved.map((search) => (
               <SearchHistoryRow
                 key={search.id}
                 search={search}
@@ -48,7 +94,7 @@ export function SearchHistoryPopover({
         </section>
       ) : null}
 
-      {recent.length > 0 ? (
+      {filteredHistory.recent.length > 0 ? (
         <section className="search-history-section" aria-labelledby="recent-searches-title">
           <div className="search-history-heading">
             <span id="recent-searches-title">
@@ -59,7 +105,7 @@ export function SearchHistoryPopover({
             </button>
           </div>
           <div className="search-history-list">
-            {recent.map((search) => (
+            {filteredHistory.recent.map((search) => (
               <SearchHistoryRow
                 key={search.id}
                 search={search}
@@ -95,6 +141,7 @@ function SearchHistoryRow({
         type="button"
         aria-label={`Open ${kind} search: ${summary.title}`}
         data-saved-search-id={savedSearchId}
+        data-search-nav="true"
         onClick={onApply}
       >
         <strong>{summary.title}</strong>

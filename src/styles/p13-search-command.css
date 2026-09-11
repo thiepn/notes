@@ -1,0 +1,82 @@
+.command-palette-item[data-kind='search'] {
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+
+.command-palette-item[data-kind='search']:hover,
+.command-palette-item[data-kind='search'][data-active='true'] {
+  background: color-mix(in srgb, var(--accent) 13%, var(--surface));
+}
+
+.command-palette-item[data-kind='search'] .command-palette-copy strong {
+  color: var(--accent-strong);
+}
+
+.search-assist-popover {
+  gap: var(--space-2);
+}
+
+.search-suggestion-list {
+  gap: 2px;
+}
+
+.search-suggestion-apply {
+  display: grid;
+  width: 100%;
+  min-height: 44px;
+  min-width: 0;
+  gap: 3px;
+  align-content: center;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.search-suggestion-apply strong,
+.search-suggestion-apply span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-suggestion-apply strong {
+  font-size: var(--text-sm);
+  font-weight: 650;
+}
+
+.search-suggestion-apply span {
+  color: var(--text-subtle);
+  font-size: var(--text-xs);
+}
+
+.search-suggestion-apply:hover,
+.search-suggestion-apply:focus-visible,
+.search-history-apply[data-search-nav='true']:focus-visible {
+  background: var(--surface-hover);
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+.search-history-apply[data-search-nav='true'] {
+  min-height: 44px;
+}
+
+@media (max-width: 767px) {
+  .search-suggestion-apply,
+  .search-history-apply[data-search-nav='true'] {
+    min-height: 48px;
+  }
+
+  .search-history-remove {
+    width: 44px;
+    min-height: 44px;
+  }
+
+  .command-palette-item {
+    min-height: 56px;
+  }
+}
