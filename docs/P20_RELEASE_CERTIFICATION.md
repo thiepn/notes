@@ -169,26 +169,26 @@ P20 does not claim that automated coverage proves subjective usability, perfect 
 
 ## Manual acceptance matrix
 
-| Domain | Automated evidence | Manual acceptance before stable release |
-| --- | --- | --- |
-| Data integrity / migrations | Required | Inspect representative upgrade and failure recovery |
-| Text notes / editor | Required | Natural writing/edit/reload session |
-| Checklists | Required | Natural list editing/toggling session |
-| Capture | Required | Desktop and mobile capture sources |
-| Attachments / OCR / media | Required | Browser capability and failure-state sanity check |
-| Organization / lifecycle | Required | Pin/label/color/archive/trash recovery journey |
-| Search / commands / connections | Required | Retrieval of old and newly-mutated content |
-| Reminders | Required | Scheduling, overdue/completed presentation |
-| History | Required | Restore an older revision and continue editing |
-| Backup / restore / import / export | Required | Inspect exported artifact and perform clean restore |
-| Multi-tab / recovery | Required | Two-tab concurrent edit session |
-| Sync / conflicts | Required when remote test environment is available | Offline/reconnect/conflict sanity check |
-| Privacy | Required | Lock/reload/unlock and hidden-preview inspection |
-| Accessibility | Required | Keyboard-only pass; screen-reader/AT review remains human work |
-| Responsive / mobile | Required | 320/390 mobile and tablet/desktop spot checks |
-| Performance | Required | Large-library interaction sanity check |
-| Offline / PWA | Required | Installed/production offline reload |
-| Production | Required | Live deployed smoke after exact main SHA deploys |
+| Domain                             | Automated evidence                                 | Manual acceptance before stable release                        |
+| ---------------------------------- | -------------------------------------------------- | -------------------------------------------------------------- |
+| Data integrity / migrations        | Required                                           | Inspect representative upgrade and failure recovery            |
+| Text notes / editor                | Required                                           | Natural writing/edit/reload session                            |
+| Checklists                         | Required                                           | Natural list editing/toggling session                          |
+| Capture                            | Required                                           | Desktop and mobile capture sources                             |
+| Attachments / OCR / media          | Required                                           | Browser capability and failure-state sanity check              |
+| Organization / lifecycle           | Required                                           | Pin/label/color/archive/trash recovery journey                 |
+| Search / commands / connections    | Required                                           | Retrieval of old and newly-mutated content                     |
+| Reminders                          | Required                                           | Scheduling, overdue/completed presentation                     |
+| History                            | Required                                           | Restore an older revision and continue editing                 |
+| Backup / restore / import / export | Required                                           | Inspect exported artifact and perform clean restore            |
+| Multi-tab / recovery               | Required                                           | Two-tab concurrent edit session                                |
+| Sync / conflicts                   | Required when remote test environment is available | Offline/reconnect/conflict sanity check                        |
+| Privacy                            | Required                                           | Lock/reload/unlock and hidden-preview inspection               |
+| Accessibility                      | Required                                           | Keyboard-only pass; screen-reader/AT review remains human work |
+| Responsive / mobile                | Required                                           | 320/390 mobile and tablet/desktop spot checks                  |
+| Performance                        | Required                                           | Large-library interaction sanity check                         |
+| Offline / PWA                      | Required                                           | Installed/production offline reload                            |
+| Production                         | Required                                           | Live deployed smoke after exact main SHA deploys               |
 
 Manual acceptance must be recorded separately from automated PASS claims.
 
