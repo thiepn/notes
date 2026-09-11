@@ -50,19 +50,26 @@ test('note card More menu supports complete keyboard navigation and focus restor
   await expect(reopened.getByRole('menuitem').last()).toBeFocused();
 });
 
-test('note organization popovers receive focus and return it to their trigger on Escape', async ({
+test('note organization popovers receive focus and return it to their origin on Escape', async ({
   page,
 }) => {
   await seedNote(page, 'P19 color note');
 
   const card = page.locator('[data-note-card]').filter({ hasText: 'P19 color note' }).first();
-  const trigger = card.getByRole('button', { name: 'Change color: P19 color note' });
+  const trigger = card.getByRole('button', { name: 'More actions: P19 color note' });
   await trigger.focus();
-  await trigger.press('Enter');
+  await trigger.press('ArrowDown');
+  const menu = card.getByRole('menu', { name: 'Actions for P19 color note' });
+  await menu.getByRole('menuitem', { name: 'Color' }).click();
 
   const dialog = card.getByRole('dialog', { name: 'Note color' });
   await expect(dialog).toBeVisible();
-  await expect(trigger).toHaveAttribute('aria-haspopup', 'dialog');
+  const directColorTrigger = card.locator('.note-card-direct-secondary').getByRole('button', {
+    name: 'Change color: P19 color note',
+    includeHidden: true,
+  });
+  await expect(directColorTrigger).toHaveAttribute('aria-haspopup', 'dialog');
+  await expect(directColorTrigger).toHaveAttribute('aria-controls', /note-color-panel-/);
   const firstColor = dialog.getByRole('button').first();
   await expect(firstColor).toBeFocused();
 
@@ -115,7 +122,7 @@ test('capture source panels manage focus, validation semantics, and Back restora
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('./');
   await waitForNotesWorkspace(page);
-  await page.getByRole('button', { name: 'New note' }).click();
+  await page.getByRole('button', { name: 'New note', exact: true }).click();
 
   const root = page.getByRole('dialog', { name: 'New' });
   const template = root.getByRole('button', { name: 'Template' });
@@ -154,7 +161,7 @@ test('mobile navigation returns focus to its opener after Escape', async ({ page
   await page.goto('./');
   await waitForNotesWorkspace(page);
 
-  const trigger = page.getByTestId('navigation-toggle');
+  const trigger = page.getByRole('button', { name: 'Open navigation', exact: true });
   await trigger.focus();
   await trigger.press('Enter');
   const sidebar = page.getByRole('dialog', { name: 'More navigation' });
