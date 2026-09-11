@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 async function openNewMenu(page: Page) {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole('button', { name: 'New note' }).click();
+  await page.getByRole('button', { name: 'New note', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'New' });
   await expect(dialog).toBeVisible();
   return dialog;
