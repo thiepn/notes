@@ -231,6 +231,7 @@ export function CaptureMenu({ onClose, onCapture }: CaptureMenuProps) {
             <p>Save a web address as a normal note. The site name becomes the initial title.</p>
             <form
               className="capture-link-form"
+              noValidate
               onSubmit={(event) => {
                 event.preventDefault();
                 void submitLink();
