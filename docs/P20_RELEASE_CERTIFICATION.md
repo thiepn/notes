@@ -122,6 +122,21 @@ mobile New
 
 These scenarios complement the existing dedicated suites for backup rollback, import, history, reminders/timezones, privacy, sync/conflict safety, multi-tab recovery, large-library scale, OCR, attachments/media, responsive navigation, PWA/offline behavior, P18 performance, and P19 accessibility/focus behavior.
 
+## Certified deployment path
+
+Production deployment is gated behind the exact successful main CI commit.
+
+The Pages workflow:
+
+1. listens for completion of the `CI` workflow on `main` rather than racing CI from an independent `push` trigger;
+2. refuses to build unless that CI run concluded successfully;
+3. checks out `github.event.workflow_run.head_sha` rather than whatever commit happens to be the latest `main` by the time the runner starts;
+4. verifies the checked-out SHA before building;
+5. uses `npm ci` for deterministic dependency installation;
+6. uploads and deploys the artifact built from that exact certified SHA.
+
+`scripts/check-release-contract.mjs` permanently verifies these deployment invariants.
+
 ## Preserved architecture boundaries
 
 P20 does not intentionally change:
@@ -166,6 +181,28 @@ The permanent suite already contains dedicated browser coverage for:
 - production PWA/offline/share-target behavior.
 
 P20 does not claim that automated coverage proves subjective usability, perfect accessibility, or absence of all defects.
+
+## Certification findings
+
+P20 certification is adversarial: a failed gate is a finding until shown otherwise.
+
+### Finding 1 — formatting contract
+
+The first candidate failed the repository formatting gate because the new certification matrix had not been normalized by the project's formatter. The document was corrected; no formatting assertion was weakened.
+
+### Finding 2 — mobile linked-note navigation
+
+The first complete Chromium pass exposed a deterministic mobile interaction defect in `requestLinkedNoteOpen()`.
+
+When an active note was created through Template capture on mobile, the helper saw the mobile sidebar as inert and opened **More navigation** before attempting to navigate to Notes. The mobile More drawer intentionally does not contain the primary Notes destination, so the helper could not close the drawer through that route. It then opened the editor underneath the still-open modal drawer, which intercepted editor controls.
+
+The fix distinguishes the mobile active-note path: active Notes navigation uses the fixed mobile **Notes** destination directly, while archived-note navigation may still open More to reach Archive. The P20 small-mobile scenario now explicitly asserts that More navigation is absent when the captured note editor opens.
+
+### Finding 3 — deployment race
+
+The pre-P20 Pages workflow deployed directly on every `main` push, independently of CI. A failing main commit could therefore begin a production deployment before certification finished.
+
+P20 changes deployment to a successful-main-`workflow_run` gate and builds the exact CI `head_sha`. The release contract rejects a return to an independent push-triggered deployment.
 
 ## Manual acceptance matrix
 
