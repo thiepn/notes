@@ -24,11 +24,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
+    "e2e:release": "playwright test --retries=0",
     "e2e:compat": "playwright test --config=playwright.compat.config.ts",
     "e2e:p20": "playwright test e2e/p20-release-certification.spec.ts --retries=0",
     "e2e:pwa": "playwright test --config=playwright.pwa.config.ts",
     "release:check": "npm run format:check && npm run foundation:check && npm run release:contract && npm run lint && npm run test && npm run build",
-    "release:certify": "npm run release:check && npm run e2e:compat && npm run e2e && npm run e2e:p20 && npm run e2e:pwa"
+    "release:certify": "npm run release:check && npm run e2e:compat && npm run e2e:release && npm run e2e:p20 && npm run e2e:pwa"
   },
   "dependencies": {
     "@tesseract.js-data/deu": "1.0.0",
