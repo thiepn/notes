@@ -35,6 +35,8 @@ import type { CaptureKind } from './captureTypes';
 
 const ACTIVE_SECTION_KEY = 'notes.active-section';
 const ACTIVE_LABEL_KEY = 'notes.active-label';
+const OPEN_ATTEMPTS = 60;
+const OPEN_RETRY_MS = 50;
 const notesRepository = new NotesRepository(notesDatabase);
 const labelsRepository = new LabelsRepository(notesDatabase);
 
@@ -73,9 +75,10 @@ export function CaptureMenu({ onClose, onCapture }: CaptureMenuProps) {
         title: capture.title,
         content: capture.content,
       });
-      await inheritActiveLabel(created.id);
+      const preserveLabelView = await inheritActiveLabel(created.id);
       dispatchAppEvent('cloudSyncApplied');
       onClose();
+      if (preserveLabelView && (await openCapturedCard(created.id))) return;
       await requestLinkedNoteOpen(created.id);
     } catch {
       setSourceError('That capture could not be created. Try again.');
@@ -321,15 +324,34 @@ export function CaptureMenu({ onClose, onCapture }: CaptureMenuProps) {
   );
 }
 
-async function inheritActiveLabel(noteId: string): Promise<void> {
+async function inheritActiveLabel(noteId: string): Promise<boolean> {
   try {
-    if (localStorage.getItem(ACTIVE_SECTION_KEY) !== 'notes') return;
+    if (localStorage.getItem(ACTIVE_SECTION_KEY) !== 'notes') return false;
     const labelId = localStorage.getItem(ACTIVE_LABEL_KEY)?.trim();
-    if (!labelId || !(await labelsRepository.get(labelId))) return;
+    if (!labelId || !(await labelsRepository.get(labelId))) return false;
     await labelsRepository.assign(noteId, labelId);
+    return true;
   } catch {
     // A capture should remain usable if convenience navigation state or label assignment fails.
+    return false;
   }
+}
+
+async function openCapturedCard(noteId: string): Promise<boolean> {
+  for (let attempt = 0; attempt < OPEN_ATTEMPTS; attempt += 1) {
+    const card = document.querySelector<HTMLElement>(`[data-note-id="${CSS.escape(noteId)}"]`);
+    const openButton = card?.querySelector<HTMLButtonElement>('.note-card-open');
+    if (openButton) {
+      openButton.click();
+      return true;
+    }
+    await delay(OPEN_RETRY_MS);
+  }
+  return false;
+}
+
+function delay(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 }
 
 function CaptureAction({
