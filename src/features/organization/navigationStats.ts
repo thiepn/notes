@@ -8,7 +8,6 @@ export interface NavigationStats {
   archive: number;
   trash: number;
   labels: Record<string, number>;
-  labelUsage: Record<string, number>;
 }
 
 export const EMPTY_NAVIGATION_STATS: NavigationStats = {
@@ -19,7 +18,6 @@ export const EMPTY_NAVIGATION_STATS: NavigationStats = {
   archive: 0,
   trash: 0,
   labels: {},
-  labelUsage: {},
 };
 
 const notesRepository = new NotesRepository(notesDatabase);
@@ -34,22 +32,16 @@ export async function loadNavigationStats(): Promise<NavigationStats> {
     remindersRepository.listVisibleWithNotes(),
   ]);
 
-  const activeNoteIds = activeNotes.map((note) => note.id);
-  const libraryNoteIds = [...activeNoteIds, ...archivedNotes.map((note) => note.id)];
-  const [labelIdsByActiveNote, labelIdsByLibraryNote] = await Promise.all([
-    labelsRepository.labelIdsByNote(activeNoteIds),
-    labelsRepository.labelIdsByNote(libraryNoteIds),
-  ]);
+  const labelIdsByNote = await labelsRepository.labelIdsByNote(activeNotes.map((note) => note.id));
 
   return {
     notes: activeNotes.length,
     pinned: activeNotes.filter((note) => note.pinnedAt !== null).length,
-    unlabeled: activeNotes.filter((note) => (labelIdsByActiveNote[note.id] ?? []).length === 0).length,
+    unlabeled: activeNotes.filter((note) => (labelIdsByNote[note.id] ?? []).length === 0).length,
     reminders: visibleReminders.filter(({ reminder }) => reminder.status === 'active').length,
     archive: archivedNotes.length,
     trash: trashedNotes.length,
-    labels: countLabels(labelIdsByActiveNote),
-    labelUsage: countLabels(labelIdsByLibraryNote),
+    labels: countLabels(labelIdsByNote),
   };
 }
 
