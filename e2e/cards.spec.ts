@@ -102,7 +102,9 @@ test('opens a card editor and recovers an edit across an immediate reload', asyn
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Edit note text').fill('Recovered edit before debounce.');
   await expect
-    .poll(() => page.evaluate(() => Boolean(localStorage.getItem('notes.editor-draft.v1'))))
+    .poll(() =>
+      page.evaluate((id) => Boolean(localStorage.getItem(`notes.editor-draft.v2:${id}`)), noteId),
+    )
     .toBe(true);
 
   await page.reload();
