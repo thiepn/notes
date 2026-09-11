@@ -29,6 +29,8 @@ export interface EditorStorage {
   key?(index: number): string | null;
 }
 
+let lastTouchedNoteId: string | null = null;
+
 export function readEditorJournal(
   noteId?: string,
   storage: EditorStorage | null = browserStorage(),
@@ -37,16 +39,30 @@ export function readEditorJournal(
 
   if (noteId) {
     const current = readCurrentJournal(noteId, storage);
-    if (current) return current;
+    if (current) {
+      lastTouchedNoteId = current.noteId;
+      return current;
+    }
     const legacy = readLegacyJournal(storage);
-    return legacy?.noteId === noteId ? migrateLegacyJournal(legacy) : null;
+    if (legacy?.noteId === noteId) {
+      const migrated = migrateLegacyJournal(legacy);
+      lastTouchedNoteId = migrated.noteId;
+      return migrated;
+    }
+    return null;
   }
 
   const journals = listCurrentJournals(storage);
   const latest = journals.sort((a, b) => b.updatedAt - a.updatedAt)[0];
-  if (latest) return latest;
+  if (latest) {
+    lastTouchedNoteId = latest.noteId;
+    return latest;
+  }
   const legacy = readLegacyJournal(storage);
-  return legacy ? migrateLegacyJournal(legacy) : null;
+  if (!legacy) return null;
+  const migrated = migrateLegacyJournal(legacy);
+  lastTouchedNoteId = migrated.noteId;
+  return migrated;
 }
 
 export function writeEditorJournal(
@@ -62,6 +78,7 @@ export function writeEditorJournal(
       updatedAt: Date.now(),
     });
     storage.setItem(journalKey(journal.noteId), JSON.stringify(journal));
+    lastTouchedNoteId = journal.noteId;
     const legacy = readLegacyJournal(storage);
     if (legacy?.noteId === journal.noteId) storage.removeItem(EDITOR_JOURNAL_KEY);
     return true;
@@ -77,14 +94,16 @@ export function clearEditorJournal(
   if (!storage) return false;
 
   try {
-    if (noteId) {
-      storage.removeItem(journalKey(noteId));
+    const targetNoteId = noteId ?? lastTouchedNoteId;
+    if (targetNoteId) {
+      storage.removeItem(journalKey(targetNoteId));
       const legacy = readLegacyJournal(storage);
-      if (legacy?.noteId === noteId) storage.removeItem(EDITOR_JOURNAL_KEY);
+      if (legacy?.noteId === targetNoteId) storage.removeItem(EDITOR_JOURNAL_KEY);
+      if (lastTouchedNoteId === targetNoteId) lastTouchedNoteId = null;
       return true;
     }
 
-    for (const key of listJournalKeys(storage)) storage.removeItem(key);
+    // A legacy caller that has not read or written a v2 journal can only safely clean the legacy slot.
     storage.removeItem(EDITOR_JOURNAL_KEY);
     return true;
   } catch {
