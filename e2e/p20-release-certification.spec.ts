@@ -2,11 +2,16 @@ import { expect, test, type Page } from '@playwright/test';
 
 const ONBOARDING_KEY = 'notes.onboarding.quickstart.v1';
 
+async function waitForNotesWorkspace(page: Page) {
+  await expect(page.getByRole('heading', { name: 'Notes', level: 1 })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Create a text note' })).toBeVisible();
+}
+
 async function preparePage(page: Page, viewport?: { width: number; height: number }) {
   if (viewport) await page.setViewportSize(viewport);
   await page.addInitScript((key) => window.localStorage.setItem(key, 'done'), ONBOARDING_KEY);
   await page.goto('./');
-  await expect(page.getByRole('heading', { name: 'Notes', level: 1 })).toBeVisible();
+  await waitForNotesWorkspace(page);
 }
 
 async function tomorrowInput(page: Page) {
@@ -181,8 +186,6 @@ test.describe('P20 release certification', () => {
       );
 
       return {
-        textId: text.id,
-        checklistId: checklist.note.id,
         title: restoredText?.title ?? null,
         checklistTitle: restoredChecklist?.title ?? null,
         labelRestored: restoredLabels.includes(label.id),
@@ -219,6 +222,7 @@ test.describe('P20 release certification', () => {
       await new db.LabelsRepository(db.notesDatabase).create('Keyboard release');
     });
     await page.reload();
+    await waitForNotesWorkspace(page);
 
     await page.keyboard.press('c');
     const composer = page.getByRole('form', { name: 'New note' });
