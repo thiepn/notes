@@ -16,12 +16,7 @@ import {
 import { dispatchAppEvent } from '../../app/events';
 import { IconButton } from '../../components/ui/IconButton';
 import { useDialogFocusTrap } from '../../components/ui/useDialogFocusTrap';
-import {
-  LabelsRepository,
-  NATIVE_IMAGE_ACCEPT,
-  NotesRepository,
-  notesDatabase,
-} from '../../db';
+import { LabelsRepository, NATIVE_IMAGE_ACCEPT, NotesRepository, notesDatabase } from '../../db';
 import { requestLinkedNoteOpen } from '../links/navigation';
 import {
   CAPTURE_TEMPLATES,
@@ -317,7 +312,9 @@ export function CaptureMenu({ onClose, onCapture }: CaptureMenuProps) {
         ) : null}
 
         {panel === 'root' ? (
-          <p className="capture-menu-hint">C creates text instantly · Shift+C creates a checklist</p>
+          <p className="capture-menu-hint">
+            C creates text instantly · Shift+C creates a checklist
+          </p>
         ) : null}
       </div>
     </div>
