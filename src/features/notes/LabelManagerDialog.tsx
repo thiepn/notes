@@ -1,9 +1,15 @@
-import { useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import { Check, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 
 import { IconButton } from '../../components/ui/IconButton';
 import { useDialogFocusTrap } from '../../components/ui/useDialogFocusTrap';
-import type { LabelRecord } from '../../db';
+import { notesDatabase, type LabelRecord } from '../../db';
 
 interface LabelManagerDialogProps {
   labels: LabelRecord[];
@@ -28,6 +34,7 @@ export function LabelManagerDialog({
   const [labelQuery, setLabelQuery] = useState('');
   const [labelSort, setLabelSort] = useState<LabelSort>('name');
   const [unusedOnly, setUnusedOnly] = useState(false);
+  const [usageCounts, setUsageCounts] = useState<Record<string, number>>(counts);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [deleteCandidateId, setDeleteCandidateId] = useState<string | null>(null);
@@ -37,21 +44,34 @@ export function LabelManagerDialog({
   const newLabelRef = useRef<HTMLInputElement>(null);
   const showLabelSearch = labels.length >= 6;
   const normalizedLabelQuery = showLabelSearch ? labelQuery.trim().toLocaleLowerCase() : '';
-  const unusedCount = labels.filter((label) => (counts[label.id] ?? 0) === 0).length;
+  const unusedCount = labels.filter((label) => (usageCounts[label.id] ?? 0) === 0).length;
   const visibleLabels = labels
     .filter((label) =>
       normalizedLabelQuery ? label.name.toLocaleLowerCase().includes(normalizedLabelQuery) : true,
     )
-    .filter((label) => (unusedOnly ? (counts[label.id] ?? 0) === 0 : true))
+    .filter((label) => (unusedOnly ? (usageCounts[label.id] ?? 0) === 0 : true))
     .sort((a, b) => {
       if (labelSort === 'usage') {
-        const countDifference = (counts[b.id] ?? 0) - (counts[a.id] ?? 0);
+        const countDifference = (usageCounts[b.id] ?? 0) - (usageCounts[a.id] ?? 0);
         if (countDifference !== 0) return countDifference;
       }
       return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
     });
 
   useDialogFocusTrap(dialogRef, { onEscape: onClose, initialFocusRef: newLabelRef });
+
+  useEffect(() => {
+    let cancelled = false;
+    void notesDatabase.noteLabels.toArray().then((links) => {
+      if (cancelled) return;
+      const next: Record<string, number> = {};
+      for (const link of links) next[link.labelId] = (next[link.labelId] ?? 0) + 1;
+      setUsageCounts(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [labels]);
 
   const run = async (operation: () => Promise<void>) => {
     setBusy(true);
@@ -183,6 +203,7 @@ export function LabelManagerDialog({
             visibleLabels.map((label) => {
               const editing = editingId === label.id;
               const deleting = deleteCandidateId === label.id;
+              const usage = usageCounts[label.id] ?? 0;
 
               return (
                 <div className="label-manager-row" key={label.id}>
@@ -245,7 +266,7 @@ export function LabelManagerDialog({
                     <>
                       <span className="label-manager-name">{label.name}</span>
                       <span className="label-manager-meta">
-                        {counts[label.id] ?? 0} {(counts[label.id] ?? 0) === 1 ? 'note' : 'notes'}
+                        {usage} {usage === 1 ? 'note' : 'notes'}
                       </span>
                       <div className="label-manager-actions">
                         <IconButton
