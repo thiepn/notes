@@ -14,7 +14,8 @@ export async function requestLinkedNoteOpen(noteId: string): Promise<boolean> {
   const sidebar = document.querySelector<HTMLElement>('[data-testid="app-sidebar"]');
   if (!sidebar) return false;
 
-  if (sidebar.inert && label === 'Notes') {
+  const mobileSidebar = sidebar.getAttribute('aria-label') === 'More navigation';
+  if (mobileSidebar && label === 'Notes') {
     const mobileNotesButton = document.querySelector<HTMLButtonElement>(
       '.mobile-navigation button[aria-label="Show notes"]',
     );
