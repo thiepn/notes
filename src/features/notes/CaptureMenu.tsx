@@ -36,6 +36,7 @@ const notesRepository = new NotesRepository(notesDatabase);
 const labelsRepository = new LabelsRepository(notesDatabase);
 
 type CapturePanel = 'root' | 'link' | 'templates';
+type RootCaptureOrigin = 'link' | 'templates';
 
 interface CaptureMenuProps {
   onClose(): void;
@@ -51,7 +52,7 @@ export function CaptureMenu({ onClose, onCapture }: CaptureMenuProps) {
   const sourceBackRef = useRef<HTMLButtonElement>(null);
   const linkTriggerRef = useRef<HTMLButtonElement>(null);
   const templateTriggerRef = useRef<HTMLButtonElement>(null);
-  const rootReturnFocusRef = useRef<HTMLButtonElement | null>(null);
+  const rootReturnFocusRef = useRef<RootCaptureOrigin | null>(null);
   const [panel, setPanel] = useState<CapturePanel>('root');
   const [linkValue, setLinkValue] = useState('');
   const [sourceError, setSourceError] = useState<string | null>(null);
@@ -124,7 +125,7 @@ export function CaptureMenu({ onClose, onCapture }: CaptureMenuProps) {
 
   const openSourcePanel = (
     nextPanel: Exclude<CapturePanel, 'root'>,
-    returnFocus: HTMLButtonElement | null,
+    returnFocus: RootCaptureOrigin,
   ) => {
     setSourceError(null);
     rootReturnFocusRef.current = returnFocus;
@@ -136,12 +137,17 @@ export function CaptureMenu({ onClose, onCapture }: CaptureMenuProps) {
   };
 
   const goBack = () => {
-    const returnTarget = rootReturnFocusRef.current;
+    const returnOrigin = rootReturnFocusRef.current;
     setSourceError(null);
     setPanel('root');
     window.requestAnimationFrame(() => {
-      if (returnTarget?.isConnected) returnTarget.focus({ preventScroll: true });
-      else firstActionRef.current?.focus({ preventScroll: true });
+      const returnTarget =
+        returnOrigin === 'link'
+          ? linkTriggerRef.current
+          : returnOrigin === 'templates'
+            ? templateTriggerRef.current
+            : firstActionRef.current;
+      returnTarget?.focus({ preventScroll: true });
     });
   };
 
@@ -229,14 +235,14 @@ export function CaptureMenu({ onClose, onCapture }: CaptureMenuProps) {
                   icon={<Link2 />}
                   label="Web link"
                   disabled={busy}
-                  onClick={() => openSourcePanel('link', linkTriggerRef.current)}
+                  onClick={() => openSourcePanel('link', 'link')}
                 />
                 <QuickStartAction
                   buttonRef={templateTriggerRef}
                   icon={<LayoutTemplate />}
                   label="Template"
                   disabled={busy}
-                  onClick={() => openSourcePanel('templates', templateTriggerRef.current)}
+                  onClick={() => openSourcePanel('templates', 'templates')}
                 />
               </div>
             </section>
