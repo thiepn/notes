@@ -22,6 +22,7 @@ export interface FilteredSearchHistory {
 
 const IS_OPTIONS: Array<[string, string]> = [
   ['is:pinned', 'Pinned notes'],
+  ['is:unlabeled', 'Unlabeled notes'],
   ['is:active', 'Active notes'],
   ['is:archived', 'Archived notes'],
   ['is:text', 'Text notes'],
@@ -29,6 +30,7 @@ const IS_OPTIONS: Array<[string, string]> = [
 ];
 
 const HAS_OPTIONS: Array<[string, string]> = [
+  ['has:label', 'Notes with labels'],
   ['has:reminder', 'Notes with reminders'],
   ['has:image', 'Notes with images'],
   ['has:link', 'Notes with links'],
