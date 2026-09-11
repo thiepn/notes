@@ -140,7 +140,10 @@ export function getBacklinks(target: NoteRecord, notes: NoteRecord[]): Backlink[
   }
 
   return backlinks.sort(
-    (a, b) => b.count - a.count || b.note.updatedAt - a.note.updatedAt || a.note.id.localeCompare(b.note.id),
+    (a, b) =>
+      b.count - a.count ||
+      b.note.updatedAt - a.note.updatedAt ||
+      a.note.id.localeCompare(b.note.id),
   );
 }
 
@@ -162,7 +165,10 @@ export function findUnlinkedMentions(target: NoteRecord, notes: NoteRecord[]): U
   }
 
   return mentions.sort(
-    (a, b) => b.count - a.count || b.note.updatedAt - a.note.updatedAt || a.note.id.localeCompare(b.note.id),
+    (a, b) =>
+      b.count - a.count ||
+      b.note.updatedAt - a.note.updatedAt ||
+      a.note.id.localeCompare(b.note.id),
   );
 }
 
