@@ -326,6 +326,7 @@ export function CaptureMenu({ onClose, onCapture }: CaptureMenuProps) {
 
 async function inheritActiveLabel(noteId: string): Promise<boolean> {
   try {
+    if (document.querySelector('.workspace-search-active')) return false;
     if (localStorage.getItem(ACTIVE_SECTION_KEY) !== 'notes') return false;
     const labelId = localStorage.getItem(ACTIVE_LABEL_KEY)?.trim();
     if (!labelId || !(await labelsRepository.get(labelId))) return false;
