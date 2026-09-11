@@ -62,8 +62,7 @@ export function ConnectionsPanel({
     () =>
       intelligencePool
         .filter(
-          ({ note: candidate, duplicate }) =>
-            !duplicate && !explicitlyLinkedIds.has(candidate.id),
+          ({ note: candidate, duplicate }) => !duplicate && !explicitlyLinkedIds.has(candidate.id),
         )
         .slice(0, 4),
     [explicitlyLinkedIds, intelligencePool],
@@ -166,7 +165,8 @@ export function ConnectionsPanel({
           <span className="note-connections-summary">
             {connectionCount} {connectionCount === 1 ? 'linked note' : 'linked notes'} ·{' '}
             {relatedNotes.length} {relatedNotes.length === 1 ? 'related note' : 'related notes'} ·{' '}
-            {duplicateNotes.length} {duplicateNotes.length === 1 ? 'possible duplicate' : 'possible duplicates'} ·{' '}
+            {duplicateNotes.length}{' '}
+            {duplicateNotes.length === 1 ? 'possible duplicate' : 'possible duplicates'} ·{' '}
             {connections.unlinkedMentions.length}{' '}
             {connections.unlinkedMentions.length === 1 ? 'unlinked mention' : 'unlinked mentions'}
           </span>
@@ -244,7 +244,8 @@ export function ConnectionsPanel({
             >
               <span>{duplicate.note.title || 'Untitled note'}</span>
               <span className="note-connection-meta">
-                {duplicate.duplicateReason ?? 'Very similar note'} <ArrowUpRight aria-hidden="true" />
+                {duplicate.duplicateReason ?? 'Very similar note'}{' '}
+                <ArrowUpRight aria-hidden="true" />
               </span>
             </button>
           ))}
