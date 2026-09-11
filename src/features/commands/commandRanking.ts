@@ -34,11 +34,7 @@ export function rankCommandCandidates<T extends CommandSearchCandidate>(
     .map(({ item, score }) => ({ item, score }));
 }
 
-function scoreCandidate(
-  item: CommandSearchCandidate,
-  phrase: string,
-  terms: string[],
-): number {
+function scoreCandidate(item: CommandSearchCandidate, phrase: string, terms: string[]): number {
   const label = normalizeKnowledgeText(item.label);
   const description = normalizeKnowledgeText(item.description ?? '');
   const group = normalizeKnowledgeText(item.group);
