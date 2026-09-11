@@ -35,7 +35,9 @@ function document(record: NoteRecord, labelNames: string[] = []): SearchDocument
   const normalizedChecklist = '';
   const normalizedAttachments = '';
   const normalizedOcr = '';
-  const normalizedAll = [normalizedTitle, normalizedBody, normalizedLabels].filter(Boolean).join(' ');
+  const normalizedAll = [normalizedTitle, normalizedBody, normalizedLabels]
+    .filter(Boolean)
+    .join(' ');
   return {
     note: record,
     checklistItems: [],
