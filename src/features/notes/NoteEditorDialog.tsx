@@ -12,6 +12,7 @@ import {
 } from 'react';
 import { History, ListChecks, MoreHorizontal, Paperclip, Plus, Workflow } from 'lucide-react';
 
+import { dispatchAppEvent } from '../../app/events';
 import {
   LabelsRepository,
   RemindersRepository,
@@ -51,12 +52,10 @@ interface HistoricalResult {
 
 interface NoteEditorDialogProps {
   note: NoteRecord;
-  labels: LabelRecord[];
   repository: NotesRepository;
   attachmentsRepository: AttachmentsRepository;
   attachmentRefreshKey?: number;
   onSaved(note: NoteRecord): void;
-  onLabelsChanged(): Promise<void>;
   onAttachmentsChanged(noteId: string): void;
   onHistoryChecklistSaved(note: NoteRecord, items: ChecklistItemRecord[]): void;
   onConvertToChecklist(): Promise<void>;
@@ -65,12 +64,10 @@ interface NoteEditorDialogProps {
 
 export function NoteEditorDialog({
   note,
-  labels,
   repository,
   attachmentsRepository,
   attachmentRefreshKey = 0,
   onSaved,
-  onLabelsChanged,
   onAttachmentsChanged,
   onHistoryChecklistSaved,
   onConvertToChecklist,
@@ -84,6 +81,7 @@ export function NoteEditorDialog({
   const [pendingHistoryResult, setPendingHistoryResult] = useState<HistoricalResult | null>(null);
   const [pendingHistoryCopies, setPendingHistoryCopies] = useState<HistoricalResult[]>([]);
   const [linkLibrary, setLinkLibrary] = useState<NoteRecord[]>([]);
+  const [linkLabels, setLinkLabels] = useState<LabelRecord[]>([]);
   const [linkLabelIdsByNote, setLinkLabelIdsByNote] = useState<Record<string, string[]>>({});
   const [addOpen, setAddOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -111,13 +109,15 @@ export function NoteEditorDialog({
   });
 
   const refreshLinkLibrary = useCallback(async () => {
-    const [active, archived] = await Promise.all([
+    const [active, archived, labels] = await Promise.all([
       repository.listActive(),
       repository.listArchived(),
+      labelsRepository.list(),
     ]);
     const library = [...active, ...archived];
     const labelIdsByNote = await labelsRepository.labelIdsByNote(library.map((item) => item.id));
     setLinkLibrary(library);
+    setLinkLabels(labels);
     setLinkLabelIdsByNote(labelIdsByNote);
   }, [repository]);
 
@@ -220,7 +220,9 @@ export function NoteEditorDialog({
       ...current,
       [saved.id]: [...new Set([...(current[saved.id] ?? []), labelId])],
     }));
-    await onLabelsChanged();
+    // This existing library-refresh signal keeps cards, filters, counts, and search in sync with
+    // local metadata changes as well as externally-applied library changes.
+    dispatchAppEvent('cloudSyncApplied');
   };
 
   const convert = async () => {
@@ -325,7 +327,7 @@ export function NoteEditorDialog({
               <ConnectionsPanel
                 note={draftNote}
                 library={effectiveLinkLibrary}
-                labels={labels}
+                labels={linkLabels}
                 labelIdsByNote={linkLabelIdsByNote}
                 repository={repository}
                 beforeLinking={saveNow}
