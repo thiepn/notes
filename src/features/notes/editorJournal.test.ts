@@ -118,12 +118,13 @@ describe('editor journal', () => {
     expect(readEditorJournal(undefined, storage)?.noteId).toBe(NOTE_B);
   });
 
-  it('clears every text recovery journal when an explicit full cleanup is requested', () => {
+  it('legacy no-argument cleanup removes only the journal last used by this tab', () => {
     const storage = new MemoryStorage();
-    writeEditorJournal({ noteId: NOTE_A, title: 'A', content: 'One' }, storage);
-    writeEditorJournal({ noteId: NOTE_B, title: 'B', content: 'Two' }, storage);
+    writeEditorJournal({ noteId: NOTE_A, title: 'A', content: 'Peer draft' }, storage);
+    writeEditorJournal({ noteId: NOTE_B, title: 'B', content: 'Current tab' }, storage);
 
     expect(clearEditorJournal(undefined, storage)).toBe(true);
-    expect(readEditorJournal(undefined, storage)).toBeNull();
+    expect(readEditorJournal(NOTE_B, storage)).toBeNull();
+    expect(readEditorJournal(NOTE_A, storage)?.content).toBe('Peer draft');
   });
 });
