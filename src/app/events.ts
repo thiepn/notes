@@ -26,6 +26,7 @@ export function broadcastAppEvent(name: AppEventName): void {
 }
 
 export function subscribeAppEvent(name: AppEventName, listener: () => void): () => void {
+  if (CROSS_TAB_EVENTS.has(name)) getChannel();
   const eventName = APP_EVENTS[name];
   window.addEventListener(eventName, listener);
   return () => window.removeEventListener(eventName, listener);
