@@ -10,7 +10,11 @@ import { Command, Search } from 'lucide-react';
 import { subscribeAppEvent } from '../../app/events';
 import { useDialogFocusTrap } from '../../components/ui/useDialogFocusTrap';
 import { NotesRepository, notesDatabase } from '../../db';
-import { requestLinkedNoteOpen, requestSavedSearchOpen } from '../links/navigation';
+import {
+  requestLinkedNoteOpen,
+  requestSavedSearchOpen,
+  requestSearchOpen,
+} from '../links/navigation';
 import {
   SearchHistoryRepository,
   summarizeSearch,
@@ -34,13 +38,12 @@ export interface CommandPaletteItem {
 interface CommandPaletteProps {
   commands: CommandPaletteItem[];
   onClose(): void;
-  onSearchNotes?(query: string): void;
 }
 
 const notesRepository = new NotesRepository(notesDatabase);
 const searchHistoryRepository = new SearchHistoryRepository(notesDatabase);
 
-export function CommandPalette({ commands, onClose, onSearchNotes }: CommandPaletteProps) {
+export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
@@ -132,7 +135,7 @@ export function CommandPalette({ commands, onClose, onSearchNotes }: CommandPale
   const filtered = useMemo(() => {
     const ranked = rankCommandCandidates(commandCatalog, query, 24).map(({ item }) => item);
     const trimmedQuery = query.trim();
-    if (!onSearchNotes || trimmedQuery.length < 2) return ranked;
+    if (trimmedQuery.length < 2) return ranked;
 
     const searchCommand: CommandPaletteItem = {
       id: `full-search:${trimmedQuery}`,
@@ -141,12 +144,14 @@ export function CommandPalette({ commands, onClose, onSearchNotes }: CommandPale
       group: 'Search',
       kind: 'search',
       keywords: [],
-      run: () => onSearchNotes(trimmedQuery),
+      run: () => {
+        void requestSearchOpen(trimmedQuery);
+      },
     };
 
     if (ranked.length === 0) return [searchCommand];
     return [ranked[0]!, searchCommand, ...ranked.slice(1)];
-  }, [commandCatalog, onSearchNotes, query]);
+  }, [commandCatalog, query]);
 
   const enabledIndexes = filtered.flatMap((command, index) => (command.disabled ? [] : [index]));
   const safeActiveIndex =
