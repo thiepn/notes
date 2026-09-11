@@ -15,17 +15,20 @@ const COLOR_LABELS: Record<NoteColor, string> = {
 };
 
 interface NoteColorPickerProps {
+  id?: string;
   noteLabel: string;
   value: NoteColor;
   onChange(color: NoteColor): void;
 }
 
-export function NoteColorPicker({ noteLabel, value, onChange }: NoteColorPickerProps) {
+export function NoteColorPicker({ id, noteLabel, value, onChange }: NoteColorPickerProps) {
   return (
     <div
+      id={id}
       className="note-organization-popover note-color-picker"
       role="dialog"
       aria-label="Note color"
+      tabIndex={-1}
     >
       <span className="note-organization-title">Color</span>
       <div className="note-color-grid">

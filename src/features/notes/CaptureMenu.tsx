@@ -36,6 +36,7 @@ const notesRepository = new NotesRepository(notesDatabase);
 const labelsRepository = new LabelsRepository(notesDatabase);
 
 type CapturePanel = 'root' | 'link' | 'templates';
+type RootCaptureOrigin = 'link' | 'templates';
 
 interface CaptureMenuProps {
   onClose(): void;
@@ -48,6 +49,10 @@ export function CaptureMenu({ onClose, onCapture }: CaptureMenuProps) {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const scanInputRef = useRef<HTMLInputElement>(null);
   const linkInputRef = useRef<HTMLInputElement>(null);
+  const sourceBackRef = useRef<HTMLButtonElement>(null);
+  const linkTriggerRef = useRef<HTMLButtonElement>(null);
+  const templateTriggerRef = useRef<HTMLButtonElement>(null);
+  const rootReturnFocusRef = useRef<RootCaptureOrigin | null>(null);
   const [panel, setPanel] = useState<CapturePanel>('root');
   const [linkValue, setLinkValue] = useState('');
   const [sourceError, setSourceError] = useState<string | null>(null);
@@ -118,9 +123,32 @@ export function CaptureMenu({ onClose, onCapture }: CaptureMenuProps) {
     await createPrefilledNote(buildTemplateCapture(templateId));
   };
 
+  const openSourcePanel = (
+    nextPanel: Exclude<CapturePanel, 'root'>,
+    returnFocus: RootCaptureOrigin,
+  ) => {
+    setSourceError(null);
+    rootReturnFocusRef.current = returnFocus;
+    setPanel(nextPanel);
+    window.requestAnimationFrame(() => {
+      if (nextPanel === 'link') linkInputRef.current?.focus({ preventScroll: true });
+      else sourceBackRef.current?.focus({ preventScroll: true });
+    });
+  };
+
   const goBack = () => {
+    const returnOrigin = rootReturnFocusRef.current;
     setSourceError(null);
     setPanel('root');
+    window.requestAnimationFrame(() => {
+      const returnTarget =
+        returnOrigin === 'link'
+          ? linkTriggerRef.current
+          : returnOrigin === 'templates'
+            ? templateTriggerRef.current
+            : firstActionRef.current;
+      returnTarget?.focus({ preventScroll: true });
+    });
   };
 
   return (
@@ -136,6 +164,7 @@ export function CaptureMenu({ onClose, onCapture }: CaptureMenuProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="capture-menu-title"
+        aria-busy={busy}
         tabIndex={-1}
       >
         <header className="capture-menu-header">
@@ -202,30 +231,31 @@ export function CaptureMenu({ onClose, onCapture }: CaptureMenuProps) {
                   onClick={() => void captureClipboard()}
                 />
                 <QuickStartAction
+                  buttonRef={linkTriggerRef}
                   icon={<Link2 />}
                   label="Web link"
                   disabled={busy}
-                  onClick={() => {
-                    setSourceError(null);
-                    setPanel('link');
-                    window.requestAnimationFrame(() => linkInputRef.current?.focus());
-                  }}
+                  onClick={() => openSourcePanel('link', 'link')}
                 />
                 <QuickStartAction
+                  buttonRef={templateTriggerRef}
                   icon={<LayoutTemplate />}
                   label="Template"
                   disabled={busy}
-                  onClick={() => {
-                    setSourceError(null);
-                    setPanel('templates');
-                  }}
+                  onClick={() => openSourcePanel('templates', 'templates')}
                 />
               </div>
             </section>
           </>
         ) : panel === 'link' ? (
           <div className="capture-source-panel">
-            <button className="capture-source-back" type="button" disabled={busy} onClick={goBack}>
+            <button
+              ref={sourceBackRef}
+              className="capture-source-back"
+              type="button"
+              disabled={busy}
+              onClick={goBack}
+            >
               <ArrowLeft aria-hidden="true" /> Back
             </button>
             <p>Save a web address as a normal note. The site name becomes the initial title.</p>
@@ -249,6 +279,8 @@ export function CaptureMenu({ onClose, onCapture }: CaptureMenuProps) {
                   placeholder="https://example.com/article"
                   value={linkValue}
                   disabled={busy}
+                  aria-invalid={Boolean(sourceError)}
+                  aria-describedby={sourceError ? 'capture-source-error' : undefined}
                   onChange={(event) => {
                     setSourceError(null);
                     setLinkValue(event.target.value);
@@ -262,7 +294,13 @@ export function CaptureMenu({ onClose, onCapture }: CaptureMenuProps) {
           </div>
         ) : (
           <div className="capture-source-panel">
-            <button className="capture-source-back" type="button" disabled={busy} onClick={goBack}>
+            <button
+              ref={sourceBackRef}
+              className="capture-source-back"
+              type="button"
+              disabled={busy}
+              onClick={goBack}
+            >
               <ArrowLeft aria-hidden="true" /> Back
             </button>
             <p>Use a lightweight structure, then edit it like any other text note.</p>
@@ -307,7 +345,7 @@ export function CaptureMenu({ onClose, onCapture }: CaptureMenuProps) {
         />
 
         {sourceError ? (
-          <p className="capture-source-error" role="alert">
+          <p id="capture-source-error" className="capture-source-error" role="alert">
             {sourceError}
           </p>
         ) : null}
@@ -380,19 +418,21 @@ function CaptureAction({
 }
 
 function QuickStartAction({
+  buttonRef,
   icon,
   label,
   disabled,
   onClick,
 }: {
+  buttonRef?: Ref<HTMLButtonElement>;
   icon: ReactNode;
   label: string;
   disabled: boolean;
   onClick(): void;
 }) {
   return (
-    <button type="button" disabled={disabled} onClick={onClick}>
-      {icon}
+    <button ref={buttonRef} type="button" disabled={disabled} onClick={onClick}>
+      <span aria-hidden="true">{icon}</span>
       <span>{label}</span>
     </button>
   );

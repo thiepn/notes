@@ -74,10 +74,22 @@ export function useDialogFocusTrap<
       document.removeEventListener('keydown', handleKeyDown, true);
       if (!previous?.isConnected) return;
       window.requestAnimationFrame(() => {
+        if (!previous.isConnected) return;
         const active = document.activeElement;
         const focusIsUnclaimed =
           active === null || active === document.body || active === document.documentElement;
-        if (focusIsUnclaimed && previous.isConnected) previous.focus({ preventScroll: true });
+        const focusStayedInsideClosingSurface =
+          active instanceof Node && container.contains(active);
+        const anotherVisibleModal = Array.from(
+          document.querySelectorAll<HTMLElement>('[aria-modal="true"]'),
+        ).some((node) => node !== container && node.getClientRects().length > 0);
+        if (
+          !anotherVisibleModal &&
+          (focusIsUnclaimed || focusStayedInsideClosingSurface) &&
+          previous.isConnected
+        ) {
+          previous.focus({ preventScroll: true });
+        }
       });
     };
   });

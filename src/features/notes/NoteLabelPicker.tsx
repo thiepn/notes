@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import type { LabelRecord } from '../../db';
 
 interface NoteLabelPickerProps {
+  id?: string;
   labels: LabelRecord[];
   noteLabel: string;
   selectedLabelIds: string[];
@@ -10,6 +11,7 @@ interface NoteLabelPickerProps {
 }
 
 export function NoteLabelPicker({
+  id,
   labels,
   noteLabel,
   selectedLabelIds,
@@ -22,7 +24,7 @@ export function NoteLabelPicker({
   const handleToggle = (labelId: string) => {
     const current = selectionRef.current;
     const checked = current.includes(labelId);
-    const next = checked ? current.filter((id) => id !== labelId) : [...current, labelId];
+    const next = checked ? current.filter((itemId) => itemId !== labelId) : [...current, labelId];
 
     selectionRef.current = next;
     setLocalSelectedLabelIds(next);
@@ -31,9 +33,11 @@ export function NoteLabelPicker({
 
   return (
     <div
+      id={id}
       className="note-organization-popover note-label-picker"
       role="dialog"
       aria-label="Note labels"
+      tabIndex={-1}
     >
       <span className="note-organization-title">Labels</span>
       {labels.length > 0 ? (

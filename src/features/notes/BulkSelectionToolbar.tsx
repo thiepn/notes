@@ -58,6 +58,8 @@ export function BulkSelectionToolbar({
   onSetLabelMembership,
 }: BulkSelectionToolbarProps) {
   const toolbarRef = useRef<HTMLDivElement>(null);
+  const colorTriggerRef = useRef<HTMLButtonElement>(null);
+  const labelsTriggerRef = useRef<HTMLButtonElement>(null);
   const [openPanel, setOpenPanel] = useState<BulkPanel>(null);
   const selectedCount = selectedNotes.length;
   const allPinned = selectedCount > 0 && selectedNotes.every((note) => note.pinnedAt !== null);
@@ -75,6 +77,14 @@ export function BulkSelectionToolbar({
   useEffect(() => {
     if (!openPanel) return;
 
+    const focusFrame = window.requestAnimationFrame(() => {
+      const panel = toolbarRef.current?.querySelector<HTMLElement>('.bulk-selection-popover');
+      const first = panel?.querySelector<HTMLElement>(
+        'input:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      first?.focus({ preventScroll: true });
+    });
+
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target;
       if (!(target instanceof Node)) return;
@@ -82,14 +92,20 @@ export function BulkSelectionToolbar({
       setOpenPanel(null);
     };
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpenPanel(null);
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      event.stopPropagation();
+      const trigger = openPanel === 'color' ? colorTriggerRef.current : labelsTriggerRef.current;
+      setOpenPanel(null);
+      window.requestAnimationFrame(() => trigger?.focus({ preventScroll: true }));
     };
 
     document.addEventListener('pointerdown', handlePointerDown, true);
-    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown, true);
     return () => {
+      window.cancelAnimationFrame(focusFrame);
       document.removeEventListener('pointerdown', handlePointerDown, true);
-      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keydown', handleKeyDown, true);
     };
   }, [openPanel]);
 
@@ -102,6 +118,9 @@ export function BulkSelectionToolbar({
       data-mode={mode}
     >
       <div className="bulk-selection-summary">
+        <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+          {selectedCount} {selectedCount === 1 ? 'note' : 'notes'} selected
+        </span>
         <IconButton className="bulk-selection-icon" label="Exit selection" onClick={onClear}>
           <X />
         </IconButton>
@@ -136,15 +155,19 @@ export function BulkSelectionToolbar({
           <>
             <div className="bulk-selection-action-slot">
               <IconButton
+                ref={colorTriggerRef}
                 className="bulk-selection-icon"
                 label="Change color for selected notes"
                 aria-expanded={openPanel === 'color'}
+                aria-haspopup="dialog"
+                aria-controls="bulk-color-panel"
                 onClick={() => setOpenPanel((current) => (current === 'color' ? null : 'color'))}
               >
                 <Palette />
               </IconButton>
               {openPanel === 'color' ? (
                 <BulkColorPanel
+                  id="bulk-color-panel"
                   onChange={(color) => {
                     setOpenPanel(null);
                     onSetColor(color);
@@ -155,15 +178,19 @@ export function BulkSelectionToolbar({
 
             <div className="bulk-selection-action-slot">
               <IconButton
+                ref={labelsTriggerRef}
                 className="bulk-selection-icon"
                 label="Change labels for selected notes"
                 aria-expanded={openPanel === 'labels'}
+                aria-haspopup="dialog"
+                aria-controls="bulk-label-panel"
                 onClick={() => setOpenPanel((current) => (current === 'labels' ? null : 'labels'))}
               >
                 <Tag />
               </IconButton>
               {openPanel === 'labels' ? (
                 <BulkLabelPanel
+                  id="bulk-label-panel"
                   labels={labels}
                   selectedCount={selectedCount}
                   labelCounts={labelCounts}
@@ -227,9 +254,10 @@ export function BulkSelectionToolbar({
   );
 }
 
-function BulkColorPanel({ onChange }: { onChange(color: NoteColor): void }) {
+function BulkColorPanel({ id, onChange }: { id: string; onChange(color: NoteColor): void }) {
   return (
     <div
+      id={id}
       className="bulk-selection-popover bulk-color-panel"
       role="dialog"
       aria-label="Bulk note color"
@@ -252,11 +280,13 @@ function BulkColorPanel({ onChange }: { onChange(color: NoteColor): void }) {
 }
 
 function BulkLabelPanel({
+  id,
   labels,
   selectedCount,
   labelCounts,
   onChange,
 }: {
+  id: string;
   labels: LabelRecord[];
   selectedCount: number;
   labelCounts: Map<string, number>;
@@ -270,6 +300,7 @@ function BulkLabelPanel({
 
   return (
     <div
+      id={id}
       className="bulk-selection-popover bulk-label-panel"
       role="dialog"
       aria-label="Bulk note labels"
@@ -304,7 +335,7 @@ function BulkLabelPanel({
                     key={label.id}
                     type="button"
                     data-state={all ? 'all' : mixed ? 'mixed' : 'none'}
-                    aria-pressed={all}
+                    aria-pressed={mixed ? 'mixed' : all}
                     aria-label={`${all ? 'Remove' : 'Add'} label ${label.name} ${all ? 'from' : 'to'} selected notes`}
                     onClick={() => onChange(label.id, !all)}
                   >

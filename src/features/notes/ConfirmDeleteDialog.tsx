@@ -1,5 +1,6 @@
+import { useRef, type PointerEvent as ReactPointerEvent } from 'react';
+
 import { useDialogFocusTrap } from '../../components/ui/useDialogFocusTrap';
-import { useRef, useEffect, type PointerEvent as ReactPointerEvent } from 'react';
 
 interface ConfirmDeleteDialogProps {
   title?: string;
@@ -17,18 +18,8 @@ export function ConfirmDeleteDialog({
   onConfirm,
 }: ConfirmDeleteDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
-  useDialogFocusTrap(dialogRef);
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        onCancel();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onCancel]);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  useDialogFocusTrap(dialogRef, { onEscape: onCancel, initialFocusRef: cancelRef });
 
   const handleLayerPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.target === event.currentTarget) onCancel();
@@ -64,7 +55,7 @@ export function ConfirmDeleteDialog({
         </h2>
         <p id="confirm-delete-description">{description} This cannot be undone.</p>
         <div className="confirm-dialog-actions">
-          <button type="button" autoFocus onClick={onCancel}>
+          <button ref={cancelRef} type="button" onClick={onCancel}>
             Cancel
           </button>
           <button className="confirm-dialog-danger" type="button" onClick={onConfirm}>
