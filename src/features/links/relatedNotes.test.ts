@@ -1,11 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { LabelRecord, NoteRecord } from '../../db';
-import {
-  findRelatedNotes,
-  suggestLabelsForNote,
-  summarizeLocalTopics,
-} from './relatedNotes';
+import { findRelatedNotes, suggestLabelsForNote, summarizeLocalTopics } from './relatedNotes';
 
 function note(
   id: string,
