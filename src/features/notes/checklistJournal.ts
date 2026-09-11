@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { broadcastAppEvent } from '../../app/events';
 import type { ChecklistDraftItem } from '../../db';
 
 export const CHECKLIST_CAPTURE_KEY = 'notes.checklist-capture.v1';
@@ -128,6 +129,7 @@ export function clearChecklistEditorJournal(
       const legacy = readJournal(CHECKLIST_EDITOR_KEY, storage);
       if (legacy?.noteId === targetNoteId) storage.removeItem(CHECKLIST_EDITOR_KEY);
       if (lastTouchedEditorNoteId === targetNoteId) lastTouchedEditorNoteId = null;
+      broadcastAppEvent('cloudSyncApplied');
       return;
     }
 
