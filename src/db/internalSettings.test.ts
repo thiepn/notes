@@ -12,9 +12,11 @@ describe('internal settings', () => {
     expect(isPortableSettingKey('search.saved.v1')).toBe(true);
   });
 
-  it('keeps per-account sync acknowledgement shadows device-local', () => {
+  it('keeps current and future sync acknowledgement shadows device-local', () => {
     const key = syncShadowSettingKey('user-123');
-    expect(key).toBe(`${SYNC_SHADOW_SETTING_PREFIX}user-123`);
+    expect(key).toBe('sync.supabase.shadow.v2:user-123');
+    expect(key.startsWith(SYNC_SHADOW_SETTING_PREFIX)).toBe(true);
     expect(isPortableSettingKey(key)).toBe(false);
+    expect(isPortableSettingKey('sync.supabase.shadow.v3:user-123')).toBe(false);
   });
 });
