@@ -259,13 +259,22 @@ export function summarizeLocalTopics(
     .flatMap(([labelId, support]) => {
       const label = labelById.get(labelId);
       return label
-        ? [{ key: `label:${labelId}`, label: label.name, kind: 'label' as const, support: support.size }]
+        ? [
+            {
+              key: `label:${labelId}`,
+              label: label.name,
+              kind: 'label' as const,
+              support: support.size,
+            },
+          ]
         : [];
     });
 
   const normalizedLabelNames = new Set(labels.map((label) => normalizePhrase(label.name)));
   const termTopics: LocalTopic[] = [...termSupport.entries()]
-    .filter(([term, support]) => support.size >= 2 && !normalizedLabelNames.has(normalizePhrase(term)))
+    .filter(
+      ([term, support]) => support.size >= 2 && !normalizedLabelNames.has(normalizePhrase(term)),
+    )
     .map(([term, support]) => ({
       key: `term:${term}`,
       label: term,
@@ -289,7 +298,12 @@ function compare(
   context: RelatedComparisonContext,
 ): RelatedNote | null {
   const target = fingerprint(candidate);
-  const lexical = weightedSimilarity(source.terms, source.totalWeight, target.terms, target.totalWeight);
+  const lexical = weightedSimilarity(
+    source.terms,
+    source.totalWeight,
+    target.terms,
+    target.totalWeight,
+  );
   const body = weightedSimilarity(
     source.bodyTerms,
     source.bodyWeight,
@@ -306,7 +320,8 @@ function compare(
   const targetLabelIds = new Set(context.labelIdsByNote[candidate.id] ?? []);
   const sharedLabelIds = intersection(context.sourceLabelIds, targetLabelIds);
   const labelSimilarity = setJaccard(context.sourceLabelIds, targetLabelIds);
-  const targetLinkTargets = context.linkContext.targetsByNote.get(candidate.id) ?? new Set<string>();
+  const targetLinkTargets =
+    context.linkContext.targetsByNote.get(candidate.id) ?? new Set<string>();
   const sharedLinkIds = intersection(context.sourceLinkTargets, targetLinkTargets);
   const linkSimilarity = setJaccard(context.sourceLinkTargets, targetLinkTargets);
 
@@ -316,8 +331,7 @@ function compare(
     source.canonicalBody.length >= 24 && source.canonicalBody === target.canonicalBody;
   const sameTitle =
     source.canonicalTitle.length >= 3 && source.canonicalTitle === target.canonicalTitle;
-  const strongNearDuplicate =
-    title.score >= 0.82 && body.score >= 0.72 && body.containment >= 0.82;
+  const strongNearDuplicate = title.score >= 0.82 && body.score >= 0.72 && body.containment >= 0.82;
   const titledNearDuplicate = sameTitle && body.score >= 0.66 && body.containment >= 0.78;
   const duplicate = exactDuplicate || sameBody || strongNearDuplicate || titledNearDuplicate;
   const duplicateReason = exactDuplicate
@@ -464,5 +478,8 @@ function canonicalize(value: string): string {
 }
 
 function normalizePhrase(value: string): string {
-  return canonicalize(value).replace(/[^\p{L}\p{N}]+/gu, ' ').replace(/\s+/gu, ' ').trim();
+  return canonicalize(value)
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .replace(/\s+/gu, ' ')
+    .trim();
 }
