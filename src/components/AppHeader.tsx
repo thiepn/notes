@@ -377,7 +377,11 @@ export function AppHeader({
         <button
           className="search-inline-action"
           type="button"
-          aria-label="Search filters"
+          aria-label={
+            activeFilterCount > 0
+              ? `Search filters, ${activeFilterCount} active`
+              : 'Search filters'
+          }
           aria-expanded={filtersOpen}
           aria-pressed={filtersOpen || filtersActive}
           data-active={filtersOpen || filtersActive}
@@ -403,7 +407,7 @@ export function AppHeader({
             {currentIsSaved ? <BookmarkCheck /> : <BookmarkPlus />}
           </button>
         ) : null}
-        {searchQuery || filtersActive ? (
+        {filtersActive ? (
           <button className="search-reset" type="button" onClick={onClearSearch}>
             Reset
           </button>
