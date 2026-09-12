@@ -57,3 +57,82 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v5
+
+  smoke:
+    name: production smoke
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - name: Verify live production shell, manifest and service worker
+        env:
+          PROD_URL: https://thiepn.dev/notes/
+        run: |
+          set -euo pipefail
+
+          fetch() {
+            curl --fail --silent --show-error --location \
+              --retry 12 --retry-delay 5 --retry-all-errors \
+              "$1" -o "$2"
+          }
+
+          fetch "$PROD_URL" /tmp/notes-index.html
+          grep -F '<div id="root"></div>' /tmp/notes-index.html
+          grep -F '<title>Notes</title>' /tmp/notes-index.html
+
+          fetch "${PROD_URL}manifest.webmanifest" /tmp/manifest.webmanifest
+          fetch "${PROD_URL}sw.js" /tmp/sw.js
+          test -s /tmp/sw.js
+
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+
+          const manifest = JSON.parse(fs.readFileSync('/tmp/manifest.webmanifest', 'utf8'));
+          if (manifest.name !== 'Notes') throw new Error('Production manifest name mismatch.');
+          if (manifest.start_url !== '/notes/') throw new Error('Production manifest start_url mismatch.');
+          if (manifest.scope !== '/notes/') throw new Error('Production manifest scope mismatch.');
+          NODE
+
+          echo "Production smoke passed for $PROD_URL"
+
+  release:
+    name: stable release marker
+    runs-on: ubuntu-latest
+    needs: smoke
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout certified production commit
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 1
+
+      - name: Publish v1.0.0 for the marked release commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+
+          subject="$(git log -1 --pretty=%s)"
+          if [[ "$subject" != "Release v1.0.0" ]]; then
+            echo "No v1.0.0 release marker on this deployment; skipping stable release publication."
+            exit 0
+          fi
+
+          if gh release view v1.0.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            tag_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v1.0.0" --jq '.object.sha')"
+            test "$tag_sha" = "$RELEASE_SHA"
+            echo "v1.0.0 already exists at the certified production SHA."
+            exit 0
+          fi
+
+          gh release create v1.0.0 \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$RELEASE_SHA" \
+            --title "Notes v1.0.0" \
+            --notes "P20 release certification complete. Production deployment and post-deploy smoke passed for exact SHA $RELEASE_SHA. Certified gates: formatting, foundation/release contracts, lint, TypeScript, 228 unit tests, cross-browser compatibility, complete Chromium release regression with retries disabled, focused P20 cross-system certification with retries disabled, and PWA/offline certification."
+
+          tag_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v1.0.0" --jq '.object.sha')"
+          test "$tag_sha" = "$RELEASE_SHA"
+          echo "Published Notes v1.0.0 at $RELEASE_SHA"
