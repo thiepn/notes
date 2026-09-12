@@ -143,9 +143,9 @@ export function TextNoteComposer({
     const kind = quickToolsOpen ? 'quick' : expandedToolsOpen ? 'expanded' : null;
     if (!kind) return;
 
-    const menuRef = kind === 'quick' ? quickToolsMenuRef : expandedToolsMenuRef;
+    const surfaceRef = kind === 'quick' ? quickToolsMenuRef : expandedToolsMenuRef;
     const triggerRef = kind === 'quick' ? quickToolsTriggerRef : expandedToolsTriggerRef;
-    const closeMenu = (restoreFocus = false) => {
+    const closeSurface = (restoreFocus = false) => {
       if (kind === 'quick') setQuickToolsOpen(false);
       else setExpandedToolsOpen(false);
       if (restoreFocus) {
@@ -154,38 +154,41 @@ export function TextNoteComposer({
     };
 
     const focusFrame = window.requestAnimationFrame(() => {
-      const items = toolMenuItems(menuRef.current);
-      const target = initialToolsFocusRef.current === 'last' ? items.at(-1) : items[0];
+      const surface = surfaceRef.current;
+      if (!surface) return;
+      const items = kind === 'quick' ? toolMenuItems(surface) : popoverControls(surface);
+      const target =
+        kind === 'quick' && initialToolsFocusRef.current === 'last' ? items.at(-1) : items[0];
       target?.focus({ preventScroll: true });
     });
 
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target;
       if (!(target instanceof Node)) return;
-      if (menuRef.current?.contains(target) || triggerRef.current?.contains(target)) return;
-      closeMenu();
+      if (surfaceRef.current?.contains(target) || triggerRef.current?.contains(target)) return;
+      closeSurface();
     };
 
     const handleFocusIn = (event: FocusEvent) => {
       const target = event.target;
       if (!(target instanceof Node)) return;
-      if (menuRef.current?.contains(target) || triggerRef.current?.contains(target)) return;
-      closeMenu();
+      if (surfaceRef.current?.contains(target) || triggerRef.current?.contains(target)) return;
+      closeSurface();
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      const menu = menuRef.current;
-      if (!menu) return;
+      const surface = surfaceRef.current;
+      if (!surface) return;
 
       if (event.key === 'Escape') {
         event.preventDefault();
         event.stopPropagation();
-        closeMenu(true);
+        closeSurface(true);
         return;
       }
 
-      if (!menu.contains(document.activeElement)) return;
-      const items = toolMenuItems(menu);
+      if (kind !== 'quick' || !surface.contains(document.activeElement)) return;
+      const items = toolMenuItems(surface);
       if (items.length === 0) return;
       const currentIndex = items.findIndex((item) => item === document.activeElement);
       let nextIndex: number | null = null;
@@ -526,19 +529,9 @@ export function TextNoteComposer({
               className="note-editor-secondary note-composer-add-button"
               type="button"
               aria-expanded={expandedToolsOpen}
-              aria-haspopup="menu"
+              aria-haspopup="dialog"
               aria-controls="note-composer-expanded-tools"
-              onClick={() => {
-                initialToolsFocusRef.current = 'first';
-                setExpandedToolsOpen((open) => !open);
-              }}
-              onKeyDown={(event) => {
-                if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-                  event.preventDefault();
-                  initialToolsFocusRef.current = event.key === 'ArrowUp' ? 'last' : 'first';
-                  setExpandedToolsOpen(true);
-                }
-              }}
+              onClick={() => setExpandedToolsOpen((open) => !open)}
             >
               <Plus aria-hidden="true" /> Add
             </button>
@@ -547,12 +540,11 @@ export function TextNoteComposer({
                 ref={expandedToolsMenuRef}
                 className="note-composer-tools-menu note-composer-tools-menu-expanded"
                 id="note-composer-expanded-tools"
-                role="menu"
+                role="dialog"
                 aria-label="Add to note"
               >
                 <button
                   type="button"
-                  role="menuitem"
                   onClick={() => {
                     setExpandedToolsOpen(false);
                     expandedImageInputRef.current?.click();
@@ -665,6 +657,15 @@ function toolMenuItems(menu: HTMLElement | null): HTMLButtonElement[] {
   return Array.from(menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')).filter(
     (item) => !item.disabled && item.getClientRects().length > 0,
   );
+}
+
+function popoverControls(popover: HTMLElement | null): HTMLElement[] {
+  if (!popover) return [];
+  return Array.from(
+    popover.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    ),
+  ).filter((item) => item.getClientRects().length > 0);
 }
 
 function toErrorMessage(error: unknown): string {
