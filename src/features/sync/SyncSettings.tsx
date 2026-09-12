@@ -407,7 +407,9 @@ export function SyncSettings() {
           <section className="settings-group" aria-label="Signed-in sessions" aria-busy={busy}>
             <div className="settings-group-copy">
               <strong>Sessions & devices</strong>
-              <span>Review active THIEPN Account sessions and revoke access from other devices.</span>
+              <span>
+                Review active THIEPN Account sessions and revoke access from other devices.
+              </span>
             </div>
             {sessions.length > 0 ? (
               <div className="settings-choice-list">
@@ -420,7 +422,9 @@ export function SyncSettings() {
                       <strong>
                         {authSession.is_current ? 'This session' : 'Signed-in session'}
                       </strong>
-                      <small>{sessionSummary(authSession.user_agent, authSession.updated_at)}</small>
+                      <small>
+                        {sessionSummary(authSession.user_agent, authSession.updated_at)}
+                      </small>
                     </span>
                   </div>
                 ))}
