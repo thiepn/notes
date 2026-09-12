@@ -35,6 +35,9 @@ jobs:
       - name: Foundation contract
         run: npm run foundation:check
 
+      - name: Release contract
+        run: npm run release:contract
+
       - name: Lint
         run: npm run lint
 
@@ -53,8 +56,11 @@ jobs:
       - name: Core browser compatibility
         run: npm run e2e:compat
 
-      - name: End-to-end regression suite
-        run: npm run e2e
+      - name: End-to-end release regression suite without retries
+        run: npm run e2e:release
+
+      - name: P20 release certification without retries
+        run: npm run e2e:p20
 
       - name: PWA offline certification
         run: npm run e2e:pwa

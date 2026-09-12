@@ -42,7 +42,8 @@ export function DrawingDialog({ onSave, onClose }: DrawingDialogProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const activeStrokeRef = useRef<DrawingStroke | null>(null);
   const [strokes, setStrokes] = useState<DrawingStroke[]>([]);
-  const [redoStack, setRedoStack] = useState<DrawingStroke[]>([]);
+  const [undoStack, setUndoStack] = useState<DrawingStroke[][]>([]);
+  const [redoStack, setRedoStack] = useState<DrawingStroke[][]>([]);
   const [tool, setTool] = useState<DrawingTool>('pen');
   const [color, setColor] = useState(DEFAULT_COLOR);
   const [width, setWidth] = useState<number>(WIDTHS[1]);
@@ -71,6 +72,12 @@ export function DrawingDialog({ onSave, onClose }: DrawingDialogProps) {
       document.body.style.overflow = previousOverflow;
     };
   }, []);
+
+  const commitStrokes = (nextStrokes: DrawingStroke[]) => {
+    setUndoStack((history) => [...history, cloneStrokes(strokes)]);
+    setRedoStack([]);
+    setStrokes(cloneStrokes(nextStrokes));
+  };
 
   const startStroke = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     if (saving || event.button !== 0) return;
@@ -105,32 +112,28 @@ export function DrawingDialog({ onSave, onClose }: DrawingDialogProps) {
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
-    setStrokes((current) => [...current, cloneStroke(stroke)]);
-    setRedoStack([]);
+    commitStrokes([...strokes, cloneStroke(stroke)]);
   };
 
   const undo = () => {
-    setStrokes((current) => {
-      const removed = current[current.length - 1];
-      if (!removed) return current;
-      setRedoStack((redo) => [...redo, removed]);
-      return current.slice(0, -1);
-    });
+    const previous = undoStack[undoStack.length - 1];
+    if (!previous) return;
+    setUndoStack((history) => history.slice(0, -1));
+    setRedoStack((history) => [...history, cloneStrokes(strokes)]);
+    setStrokes(cloneStrokes(previous));
   };
 
   const redo = () => {
-    setRedoStack((current) => {
-      const restored = current[current.length - 1];
-      if (!restored) return current;
-      setStrokes((existing) => [...existing, restored]);
-      return current.slice(0, -1);
-    });
+    const next = redoStack[redoStack.length - 1];
+    if (!next) return;
+    setRedoStack((history) => history.slice(0, -1));
+    setUndoStack((history) => [...history, cloneStrokes(strokes)]);
+    setStrokes(cloneStrokes(next));
   };
 
   const clear = () => {
     if (strokes.length === 0) return;
-    setRedoStack(strokes);
-    setStrokes([]);
+    commitStrokes([]);
   };
 
   const save = async () => {
@@ -258,7 +261,7 @@ export function DrawingDialog({ onSave, onClose }: DrawingDialogProps) {
           <button
             type="button"
             aria-label="Undo drawing stroke"
-            disabled={saving || strokes.length === 0}
+            disabled={saving || undoStack.length === 0}
             onClick={undo}
           >
             <Undo2 aria-hidden="true" />
@@ -374,6 +377,10 @@ function configureContext(context: CanvasRenderingContext2D, stroke: DrawingStro
 
 function cloneStroke(stroke: DrawingStroke): DrawingStroke {
   return { ...stroke, points: stroke.points.map((point) => ({ ...point })) };
+}
+
+function cloneStrokes(strokes: DrawingStroke[]): DrawingStroke[] {
+  return strokes.map(cloneStroke);
 }
 
 function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
