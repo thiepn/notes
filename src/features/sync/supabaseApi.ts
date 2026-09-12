@@ -82,7 +82,9 @@ export function readStoredSession(): SupabaseSession | null {
 
     // Notes used an app-specific key before THIEPN Account. It points at this
     // exact Supabase project, so the legacy session can be promoted safely once.
-    const legacy = parseStoredSession(window.localStorage.getItem(LEGACY_NOTES_SESSION_STORAGE_KEY));
+    const legacy = parseStoredSession(
+      window.localStorage.getItem(LEGACY_NOTES_SESSION_STORAGE_KEY),
+    );
     if (!legacy) return null;
     window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(legacy));
     window.localStorage.removeItem(LEGACY_NOTES_SESSION_STORAGE_KEY);
