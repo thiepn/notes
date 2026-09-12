@@ -211,8 +211,11 @@ test('offline startup retains the sign-in and automatically reconnects', async (
   const status = page.locator('.workspace-meta .sync-indicator');
   await expect(status).toContainText('Offline');
   expect(
-    await page.evaluate(() => localStorage.getItem('notes.supabase.session.v1')),
+    await page.evaluate(() => localStorage.getItem('sb-hycegznamzjhwinegaai-auth-token')),
   ).not.toBeNull();
+  expect(
+    await page.evaluate(() => localStorage.getItem('notes.supabase.session.v1')),
+  ).toBeNull();
   await page.evaluate(() => window.dispatchEvent(new Event('test-reconnect')));
   await expect(status).toContainText('Synced');
 });
