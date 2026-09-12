@@ -130,18 +130,30 @@ test('drawing Escape closes only the drawing modal and existing notes can attach
   await expect(editor.getByRole('region', { name: 'Attachments' })).toContainText('1 attachment');
 });
 
-test('drawing Clear is undoable and preserves the drawing tool contract', async ({ page }) => {
+test('drawing Clear is undoable and redoable as one history action', async ({ page }) => {
   await page.goto('./');
   await startQuickDrawing(page);
   const dialog = page.getByRole('dialog', { name: 'Drawing editor' });
   const canvas = dialog.getByLabel('Drawing canvas');
   const save = dialog.getByRole('button', { name: 'Save drawing' });
+  const undo = dialog.getByRole('button', { name: 'Undo drawing stroke' });
+  const redo = dialog.getByRole('button', { name: 'Redo drawing stroke' });
 
   await drawStroke(page, canvas);
   await expect(save).toBeEnabled();
   await dialog.getByRole('button', { name: 'Clear drawing' }).click();
   await expect(save).toBeDisabled();
-  await dialog.getByRole('button', { name: 'Undo drawing stroke' }).click();
+  await expect(undo).toBeEnabled();
+
+  await undo.click();
+  await expect(save).toBeEnabled();
+  await expect(redo).toBeEnabled();
+
+  await redo.click();
+  await expect(save).toBeDisabled();
+  await expect(undo).toBeEnabled();
+
+  await undo.click();
   await expect(save).toBeEnabled();
   await page.keyboard.press('Escape');
 });
