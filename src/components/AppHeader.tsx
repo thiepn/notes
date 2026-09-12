@@ -378,9 +378,7 @@ export function AppHeader({
           className="search-inline-action"
           type="button"
           aria-label={
-            activeFilterCount > 0
-              ? `Search filters, ${activeFilterCount} active`
-              : 'Search filters'
+            activeFilterCount > 0 ? `Search filters, ${activeFilterCount} active` : 'Search filters'
           }
           aria-expanded={filtersOpen}
           aria-pressed={filtersOpen || filtersActive}
