@@ -70,7 +70,8 @@ test('saved searches are runnable as smart collections from the command palette'
   await search.fill('P5 Smart Alpha');
   await page.getByRole('button', { name: 'Save search' }).click();
   await expect(page.getByRole('button', { name: 'Search saved' })).toBeDisabled();
-  await page.getByRole('button', { name: 'Reset' }).click();
+  await page.getByRole('button', { name: 'Clear search query' }).click();
+  await expect(search).toHaveValue('');
 
   await page.getByRole('button', { name: 'Open command palette' }).click();
   const palette = page.getByRole('dialog', { name: 'Command palette' });
