@@ -90,9 +90,7 @@ test.describe('P21 post-v1 daily-use polish', () => {
 
     await page.getByRole('button', { name: 'Open settings' }).click();
     const settings = page.getByRole('dialog', { name: 'Settings' });
-    await settings
-      .getByRole('button', { name: /^Account & sync/u })
-      .click();
+    await settings.getByRole('button', { name: /^Account & sync/u }).click();
 
     await expect(settings.getByText('THIEPN Account', { exact: true })).toBeVisible();
     await expect(
