@@ -85,9 +85,18 @@ for (const deploymentInvariant of [
   'git rev-parse HEAD',
   'github.event.workflow_run.head_sha',
   'npm ci --no-audit --no-fund',
+  'needs: deploy',
+  'https://thiepn.dev/notes/',
+  'manifest.webmanifest',
+  'sw.js',
+  'curl --fail --silent --show-error --location',
+  'name: stable release marker',
+  'Release v1.0.0',
+  'gh release create v1.0.0',
+  'test "$tag_sha" = "$RELEASE_SHA"',
 ]) {
   if (!deploy.includes(deploymentInvariant)) {
-    fail(`Pages deployment must preserve certified-main invariant: ${deploymentInvariant}`);
+    fail(`Pages deployment must preserve certified release invariant: ${deploymentInvariant}`);
   }
 }
 if (/^\s*push:\s*$/mu.test(deploy)) {
