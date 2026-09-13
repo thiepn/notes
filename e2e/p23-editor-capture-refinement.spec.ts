@@ -132,7 +132,7 @@ test('capture busy state blocks Escape and competing capture actions', async ({ 
     });
   });
 
-  await page.getByRole('button', { name: 'New note', exact: true }).click();
+  await page.getByRole('button', { name: 'More capture options' }).click();
   const capture = page.getByRole('dialog', { name: 'New' });
   await capture.getByRole('button', { name: 'Clipboard' }).click();
 
