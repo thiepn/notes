@@ -121,6 +121,7 @@ test.describe('P23 editor action surfaces', () => {
 });
 
 test('capture busy state blocks Escape and competing capture actions', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('./');
   await waitForNotesWorkspace(page);
   await page.evaluate(() => {
@@ -132,8 +133,9 @@ test('capture busy state blocks Escape and competing capture actions', async ({ 
     });
   });
 
-  await page.getByRole('button', { name: 'More capture options' }).click();
+  await page.getByRole('button', { name: 'New note', exact: true }).click();
   const capture = page.getByRole('dialog', { name: 'New' });
+  await expect(capture).toBeVisible();
   await capture.getByRole('button', { name: 'Clipboard' }).click();
 
   await expect(capture).toHaveAttribute('aria-busy', 'true');
