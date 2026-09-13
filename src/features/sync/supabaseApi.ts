@@ -11,7 +11,7 @@ export class SupabaseRequestError extends Error {
 const SUPABASE_URL = 'https://hycegznamzjhwinegaai.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_1rZzRPzfLMaAH5pIgCwIjA_19UPMIsR';
 export const SESSION_STORAGE_KEY = 'sb-hycegznamzjhwinegaai-auth-token';
-export const LEGACY_NOTES_SESSION_STORAGE_KEY = 'notes.supabase.session.v1';
+export const RETIRED_NOTES_SESSION_STORAGE_KEY = 'notes.supabase.session.v1';
 const ATTACHMENT_BUCKET = 'notes-attachments';
 
 export type SyncEntityType =
@@ -74,21 +74,23 @@ function parseStoredSession(raw: string | null): SupabaseSession | null {
   }
 }
 
+function removeRetiredNotesSession(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(RETIRED_NOTES_SESSION_STORAGE_KEY);
+  } catch {
+    // The canonical in-memory/shared session can still work without storage cleanup.
+  }
+}
+
 export function readStoredSession(): SupabaseSession | null {
   if (typeof window === 'undefined') return null;
   try {
+    // A6: never promote the retired Notes-specific token. The shared THIEPN
+    // Account project key is the only persisted authentication authority.
     const shared = parseStoredSession(window.localStorage.getItem(SESSION_STORAGE_KEY));
-    if (shared) return shared;
-
-    // Notes used an app-specific key before THIEPN Account. It points at this
-    // exact Supabase project, so the legacy session can be promoted safely once.
-    const legacy = parseStoredSession(
-      window.localStorage.getItem(LEGACY_NOTES_SESSION_STORAGE_KEY),
-    );
-    if (!legacy) return null;
-    window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(legacy));
-    window.localStorage.removeItem(LEGACY_NOTES_SESSION_STORAGE_KEY);
-    return legacy;
+    removeRetiredNotesSession();
+    return shared;
   } catch {
     return null;
   }
@@ -99,7 +101,7 @@ export function storeSession(session: SupabaseSession | null): void {
   try {
     if (session) window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
     else window.localStorage.removeItem(SESSION_STORAGE_KEY);
-    window.localStorage.removeItem(LEGACY_NOTES_SESSION_STORAGE_KEY);
+    removeRetiredNotesSession();
   } catch {
     // A live in-memory session can still work if browser storage is unavailable.
   }
