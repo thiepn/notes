@@ -43,6 +43,11 @@
     bottom: calc(12px + var(--mobile-navigation-clearance));
   }
 
+  .lifecycle-toast {
+    right: max(16px, env(safe-area-inset-right));
+    left: max(16px, env(safe-area-inset-left));
+  }
+
   .note-editor-dialog,
   .note-editor-dialog[data-focus='true'] {
     padding-right: max(20px, env(safe-area-inset-right));
