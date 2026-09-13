@@ -12,7 +12,7 @@ test.describe('P25 search filters', () => {
     await page.goto('./');
     await waitForNotesWorkspace(page);
 
-    const trigger = page.getByRole('button', { name: 'Search filters' });
+    const trigger = page.getByRole('button', { name: 'Search filters', exact: true });
     await trigger.focus();
     await trigger.press('Enter');
 
@@ -38,7 +38,7 @@ test.describe('P25 search filters', () => {
     await page.goto('./');
     await waitForNotesWorkspace(page);
 
-    const trigger = page.getByRole('button', { name: 'Search filters' });
+    const trigger = page.getByRole('button', { name: 'Search filters', exact: true });
     await trigger.click();
     const filters = page.getByRole('dialog', { name: 'Search filters' });
     const close = filters.getByRole('button', { name: 'Close search filters' });
