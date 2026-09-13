@@ -15,13 +15,13 @@ Notes also reacts to canonical session changes emitted by other same-origin tabs
 
 ## A6 legacy inventory and disposition
 
-| Legacy artifact | A6 disposition |
-| --- | --- |
-| `notes.supabase.session.v1` | Ignored as auth input and deleted with targeted cleanup |
-| Legacy-to-shared token promotion | Removed |
-| Shared THIEPN Account storage | Retained as the only persisted session authority |
-| Cross-tab canonical session propagation | Implemented against the shared storage key |
-| Notes content, attachments, sync records and ownership data | Preserved |
+| Legacy artifact                                             | A6 disposition                                          |
+| ----------------------------------------------------------- | ------------------------------------------------------- |
+| `notes.supabase.session.v1`                                 | Ignored as auth input and deleted with targeted cleanup |
+| Legacy-to-shared token promotion                            | Removed                                                 |
+| Shared THIEPN Account storage                               | Retained as the only persisted session authority        |
+| Cross-tab canonical session propagation                     | Implemented against the shared storage key              |
+| Notes content, attachments, sync records and ownership data | Preserved                                               |
 
 No broad browser-storage wipe is used.
 
@@ -51,21 +51,21 @@ A6 inspected the live canonical Supabase project instead of relying only on repo
 
 ## Production/manual certification matrix
 
-| Check | Status |
-| --- | --- |
-| Existing shared THIEPN Account restores in Notes | PENDING MANUAL |
-| Existing pre-A6 user retains Notes ownership/data | PENDING MANUAL |
-| Sign-in flow on production origin | PENDING MANUAL |
-| Cross-tab shared-session propagation | AUTOMATED PASS; LIVE SMOKE PENDING |
-| Sign-out propagation across supported apps/tabs | AUTOMATED PASS; LIVE SMOKE PENDING |
-| Expired/revoked session recovery | PENDING MANUAL |
-| Offline vs signed-out state | AUTOMATED COVERAGE; LIVE SMOKE PENDING |
-| Multi-device security-change behavior | PENDING MANUAL |
-| Account deletion behavior | PENDING MANUAL |
-| Chromium production smoke test | PENDING MANUAL |
-| Firefox/Zen production smoke test | PENDING MANUAL |
-| Safari/WebKit production smoke test | PENDING MANUAL |
-| Supabase leaked-password protection | PENDING PROJECT SETTING |
+| Check                                             | Status                                 |
+| ------------------------------------------------- | -------------------------------------- |
+| Existing shared THIEPN Account restores in Notes  | PENDING MANUAL                         |
+| Existing pre-A6 user retains Notes ownership/data | PENDING MANUAL                         |
+| Sign-in flow on production origin                 | PENDING MANUAL                         |
+| Cross-tab shared-session propagation              | AUTOMATED PASS; LIVE SMOKE PENDING     |
+| Sign-out propagation across supported apps/tabs   | AUTOMATED PASS; LIVE SMOKE PENDING     |
+| Expired/revoked session recovery                  | PENDING MANUAL                         |
+| Offline vs signed-out state                       | AUTOMATED COVERAGE; LIVE SMOKE PENDING |
+| Multi-device security-change behavior             | PENDING MANUAL                         |
+| Account deletion behavior                         | PENDING MANUAL                         |
+| Chromium production smoke test                    | PENDING MANUAL                         |
+| Firefox/Zen production smoke test                 | PENDING MANUAL                         |
+| Safari/WebKit production smoke test               | PENDING MANUAL                         |
+| Supabase leaked-password protection               | PENDING PROJECT SETTING                |
 
 ## Security findings resolved
 
