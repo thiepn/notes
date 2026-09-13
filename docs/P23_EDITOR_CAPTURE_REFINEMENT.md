@@ -110,3 +110,5 @@ No migration is required.
 ## Certification
 
 P23 is complete only when its exact branch head passes formatting, foundation/release contracts, lint, TypeScript, unit tests, build/performance budget, three-engine browser compatibility, the complete Chromium release suite with retries disabled, P20 composition certification, and PWA/offline certification.
+
+A fresh exact-head certification run was triggered after GitHub left an earlier PR run queued without allocating a job; the product code was unchanged by that retrigger.
