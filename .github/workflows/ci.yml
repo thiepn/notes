@@ -38,6 +38,9 @@ jobs:
       - name: Release contract
         run: npm run release:contract
 
+      - name: THIEPN Account platform contract
+        run: npm run account-platform:contract
+
       - name: Lint
         run: npm run lint
 
