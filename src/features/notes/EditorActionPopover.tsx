@@ -85,10 +85,8 @@ export function EditorActionPopover({
   };
 
   const closeAndRestoreFocus = () => {
+    triggerRef.current?.focus({ preventScroll: true });
     onOpenChange(false);
-    window.requestAnimationFrame(() => {
-      triggerRef.current?.focus({ preventScroll: true });
-    });
   };
 
   const handleTriggerKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
