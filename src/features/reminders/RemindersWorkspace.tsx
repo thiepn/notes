@@ -35,7 +35,6 @@ const ChecklistEditorDialog = lazy(() =>
 const NoteEditorDialog = lazy(() =>
   import('../notes/NoteEditorDialog').then((module) => ({ default: module.NoteEditorDialog })),
 );
-const INITIAL_REMINDER_NOW = Date.now();
 
 interface RemindersWorkspaceProps {
   labels: LabelRecord[];
@@ -70,7 +69,7 @@ export function RemindersWorkspace({
     {},
   );
   const [toast, setToast] = useState<LifecycleToastState | null>(null);
-  const [now, setNow] = useState(INITIAL_REMINDER_NOW);
+  const [now, setNow] = useState(() => Date.now());
 
   const showToast = useCallback((message: string, undo?: () => Promise<void>) => {
     const id = crypto.randomUUID();
@@ -121,8 +120,19 @@ export function RemindersWorkspace({
   }, [reload, showToast]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
-    return () => window.clearInterval(timer);
+    const refreshNow = () => setNow(Date.now());
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') refreshNow();
+    };
+    refreshNow();
+    const timer = window.setInterval(refreshNow, 60_000);
+    window.addEventListener('focus', refreshNow);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', refreshNow);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   useEffect(() => {
