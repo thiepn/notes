@@ -19,12 +19,16 @@ test.describe('P25 search filters', () => {
     const filters = page.getByRole('dialog', { name: 'Search filters' });
     const close = filters.getByRole('button', { name: 'Close search filters' });
     await expect(filters).toBeVisible();
+    await expect(trigger).toHaveAttribute('aria-haspopup', 'dialog');
+    await expect(trigger).toHaveAttribute('aria-controls', 'search-filters-panel');
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true');
     await expect(filters).not.toHaveAttribute('aria-modal', 'true');
     await expect(close).toBeFocused();
 
     await page.keyboard.press('Escape');
     await expect(filters).toHaveCount(0);
     await expect(trigger).toBeFocused();
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
   });
 
   test('mobile filter sheet is modal, traps focus, and restores the search filter trigger', async ({
@@ -40,6 +44,8 @@ test.describe('P25 search filters', () => {
     const close = filters.getByRole('button', { name: 'Close search filters' });
     const clear = filters.getByRole('button', { name: 'Clear filters' });
 
+    await expect(trigger).toHaveAttribute('aria-haspopup', 'dialog');
+    await expect(trigger).toHaveAttribute('aria-controls', 'search-filters-panel');
     await expect(filters).toHaveAttribute('aria-modal', 'true');
     await expect(close).toBeFocused();
 
