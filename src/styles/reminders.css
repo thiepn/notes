@@ -162,10 +162,18 @@
   color: var(--accent-contrast, #fff);
 }
 
+.reminder-operation-status,
 .reminder-error {
   margin: 0;
-  color: var(--danger-strong);
   font-size: var(--text-xs);
+}
+
+.reminder-operation-status {
+  color: var(--text-muted);
+}
+
+.reminder-error {
+  color: var(--danger-strong);
 }
 
 .reminder-control-compact {
