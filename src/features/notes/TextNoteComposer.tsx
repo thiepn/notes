@@ -82,6 +82,11 @@ export function TextNoteComposer({
   const restoreCaptureFocusRef = useRef(false);
   const quickImageInputRef = useRef<HTMLInputElement>(null);
   const expandedImageInputRef = useRef<HTMLInputElement>(null);
+  const quickToolsTriggerRef = useRef<HTMLButtonElement>(null);
+  const quickToolsMenuRef = useRef<HTMLDivElement>(null);
+  const expandedToolsTriggerRef = useRef<HTMLButtonElement>(null);
+  const expandedToolsMenuRef = useRef<HTMLDivElement>(null);
+  const initialToolsFocusRef = useRef<'first' | 'last'>('first');
   const [attachmentRefreshKey, setAttachmentRefreshKey] = useState(0);
   const [quickAttachmentMessage, setQuickAttachmentMessage] = useState<string | null>(null);
   const [quickAttachmentError, setQuickAttachmentError] = useState<string | null>(null);
@@ -135,14 +140,83 @@ export function TextNoteComposer({
   }, [expanded, finishCapture]);
 
   useEffect(() => {
-    if (!quickToolsOpen && !expandedToolsOpen) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      setQuickToolsOpen(false);
-      setExpandedToolsOpen(false);
+    const kind = quickToolsOpen ? 'quick' : expandedToolsOpen ? 'expanded' : null;
+    if (!kind) return;
+
+    const surfaceRef = kind === 'quick' ? quickToolsMenuRef : expandedToolsMenuRef;
+    const triggerRef = kind === 'quick' ? quickToolsTriggerRef : expandedToolsTriggerRef;
+    const closeSurface = (restoreFocus = false) => {
+      if (kind === 'quick') setQuickToolsOpen(false);
+      else setExpandedToolsOpen(false);
+      if (restoreFocus) {
+        window.requestAnimationFrame(() => triggerRef.current?.focus({ preventScroll: true }));
+      }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+
+    const focusFrame = window.requestAnimationFrame(() => {
+      const surface = surfaceRef.current;
+      if (!surface) return;
+      const items = kind === 'quick' ? toolMenuItems(surface) : popoverControls(surface);
+      const target =
+        kind === 'quick' && initialToolsFocusRef.current === 'last' ? items.at(-1) : items[0];
+      target?.focus({ preventScroll: true });
+    });
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (surfaceRef.current?.contains(target) || triggerRef.current?.contains(target)) return;
+      closeSurface();
+    };
+
+    const handleFocusIn = (event: FocusEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (surfaceRef.current?.contains(target) || triggerRef.current?.contains(target)) return;
+      closeSurface();
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const surface = surfaceRef.current;
+      if (!surface) return;
+
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        closeSurface(true);
+        return;
+      }
+
+      if (kind !== 'quick' || !surface.contains(document.activeElement)) return;
+      const items = toolMenuItems(surface);
+      if (items.length === 0) return;
+      const currentIndex = items.findIndex((item) => item === document.activeElement);
+      let nextIndex: number | null = null;
+
+      if (event.key === 'ArrowDown') {
+        nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % items.length;
+      } else if (event.key === 'ArrowUp') {
+        nextIndex = currentIndex <= 0 ? items.length - 1 : currentIndex - 1;
+      } else if (event.key === 'Home') {
+        nextIndex = 0;
+      } else if (event.key === 'End') {
+        nextIndex = items.length - 1;
+      }
+
+      if (nextIndex === null) return;
+      event.preventDefault();
+      items[nextIndex]?.focus({ preventScroll: true });
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown, true);
+    document.addEventListener('focusin', handleFocusIn, true);
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      document.removeEventListener('pointerdown', handlePointerDown, true);
+      document.removeEventListener('focusin', handleFocusIn, true);
+      window.removeEventListener('keydown', handleKeyDown, true);
+    };
   }, [expandedToolsOpen, quickToolsOpen]);
 
   useLayoutEffect(() => {
@@ -268,11 +342,6 @@ export function TextNoteComposer({
 
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Escape') {
-      if (expandedToolsOpen) {
-        event.preventDefault();
-        setExpandedToolsOpen(false);
-        return;
-      }
       event.preventDefault();
       void finishAndRestoreFocus();
       return;
@@ -307,17 +376,36 @@ export function TextNoteComposer({
         </button>
         <div className="note-composer-menu-slot">
           <button
+            ref={quickToolsTriggerRef}
             className="note-composer-quick-action"
             type="button"
             aria-label="More capture options"
             title="More capture options"
             aria-expanded={quickToolsOpen}
-            onClick={() => setQuickToolsOpen((open) => !open)}
+            aria-haspopup="menu"
+            aria-controls="note-composer-quick-tools"
+            onClick={() => {
+              initialToolsFocusRef.current = 'first';
+              setQuickToolsOpen((open) => !open);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                event.preventDefault();
+                initialToolsFocusRef.current = event.key === 'ArrowUp' ? 'last' : 'first';
+                setQuickToolsOpen(true);
+              }
+            }}
           >
             <Plus aria-hidden="true" />
           </button>
           {quickToolsOpen ? (
-            <div className="note-composer-tools-menu" role="menu">
+            <div
+              ref={quickToolsMenuRef}
+              className="note-composer-tools-menu"
+              id="note-composer-quick-tools"
+              role="menu"
+              aria-label="More capture options"
+            >
               <button
                 type="button"
                 role="menuitem"
@@ -437,21 +525,26 @@ export function TextNoteComposer({
         <div className="note-composer-primary-actions">
           <div className="note-composer-menu-slot">
             <button
+              ref={expandedToolsTriggerRef}
               className="note-editor-secondary note-composer-add-button"
               type="button"
               aria-expanded={expandedToolsOpen}
+              aria-haspopup="dialog"
+              aria-controls="note-composer-expanded-tools"
               onClick={() => setExpandedToolsOpen((open) => !open)}
             >
               <Plus aria-hidden="true" /> Add
             </button>
             {expandedToolsOpen ? (
               <div
+                ref={expandedToolsMenuRef}
                 className="note-composer-tools-menu note-composer-tools-menu-expanded"
-                role="menu"
+                id="note-composer-expanded-tools"
+                role="dialog"
+                aria-label="Add to note"
               >
                 <button
                   type="button"
-                  role="menuitem"
                   onClick={() => {
                     setExpandedToolsOpen(false);
                     expandedImageInputRef.current?.click();
@@ -557,6 +650,22 @@ function DeferredComposerTool({ label }: { label: string }) {
       {label}
     </span>
   );
+}
+
+function toolMenuItems(menu: HTMLElement | null): HTMLButtonElement[] {
+  if (!menu) return [];
+  return Array.from(menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')).filter(
+    (item) => !item.disabled && item.getClientRects().length > 0,
+  );
+}
+
+function popoverControls(popover: HTMLElement | null): HTMLElement[] {
+  if (!popover) return [];
+  return Array.from(
+    popover.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    ),
+  ).filter((item) => item.getClientRects().length > 0);
 }
 
 function toErrorMessage(error: unknown): string {

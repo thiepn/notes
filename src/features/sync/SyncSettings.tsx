@@ -108,12 +108,18 @@ export function SyncSettings() {
           {actionError}
         </p>
       ) : null}
-      <section className="settings-group" aria-label="Cloud sync">
+      {busy ? (
+        <p className="settings-note" role="status" aria-live="polite">
+          Working…
+        </p>
+      ) : null}
+      <section className="settings-group" aria-label="Cloud sync" aria-busy={busy}>
         <div className="settings-group-copy">
           <strong>Cross-device sync</strong>
           <span>
-            Notes remain available offline in this browser and sync through your private Supabase
-            workspace when signed in.
+            Notes stay available offline in this browser. Sign-in uses your shared THIEPN Account,
+            while the Notes library remains separately authorized and synced through its private
+            cloud workspace.
           </span>
         </div>
 
@@ -126,7 +132,7 @@ export function SyncSettings() {
             <small>
               {signedIn
                 ? `${email}${lastSyncedAt ? ` · Last synced ${new Date(lastSyncedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}`
-                : 'Use the same account on every device to share one Notes library.'}
+                : 'Use the same THIEPN Account on every device to share one Notes library.'}
             </small>
           </span>
           {signedIn && accessGranted && !recoveryMode ? (
@@ -174,9 +180,13 @@ export function SyncSettings() {
       </section>
 
       {!signedIn ? (
-        <section className="settings-group" aria-label="Sign in and account recovery">
+        <section
+          className="settings-group"
+          aria-label="Sign in and account recovery"
+          aria-busy={busy}
+        >
           <div className="settings-group-copy">
-            <strong>Email account</strong>
+            <strong>THIEPN Account</strong>
             <span>Create an account or sign in to enable private cross-device sync.</span>
           </div>
           <div className="settings-choice-list">
@@ -254,7 +264,7 @@ export function SyncSettings() {
       ) : null}
 
       {signedIn && recoveryMode ? (
-        <section className="settings-group" aria-label="Password recovery">
+        <section className="settings-group" aria-label="Password recovery" aria-busy={busy}>
           <div className="settings-group-copy">
             <strong>Set a new password</strong>
             <span>Your recovery link was verified. Choose the replacement password now.</span>
@@ -278,10 +288,13 @@ export function SyncSettings() {
 
       {signedIn && !recoveryMode ? (
         <>
-          <section className="settings-group" aria-label="Account identity">
+          <section className="settings-group" aria-label="Account identity" aria-busy={busy}>
             <div className="settings-group-copy">
               <strong>Account & credentials</strong>
-              <span>Manage the email address and password used for Notes sync.</span>
+              <span>
+                Manage the shared THIEPN Account email and password used by supported first-party
+                apps.
+              </span>
             </div>
             <div className="settings-setting-row">
               <span className="settings-row-icon" aria-hidden="true">
@@ -391,10 +404,12 @@ export function SyncSettings() {
             </div>
           </section>
 
-          <section className="settings-group" aria-label="Signed-in sessions">
+          <section className="settings-group" aria-label="Signed-in sessions" aria-busy={busy}>
             <div className="settings-group-copy">
               <strong>Sessions & devices</strong>
-              <span>Review active Supabase sessions and revoke access from other devices.</span>
+              <span>
+                Review active THIEPN Account sessions and revoke access from other devices.
+              </span>
             </div>
             {sessions.length > 0 ? (
               <div className="settings-choice-list">
@@ -417,6 +432,10 @@ export function SyncSettings() {
             ) : (
               <p>No session details are currently available.</p>
             )}
+            <p className="settings-note">
+              THIEPN apps on this origin share the browser account session. Signing out here may
+              also sign you out of other supported THIEPN apps in this browser.
+            </p>
             <div>
               <button
                 className="settings-secondary-action"
@@ -454,7 +473,11 @@ export function SyncSettings() {
           </section>
 
           {accessGranted ? (
-            <section className="settings-group settings-boundary" aria-label="Cloud data deletion">
+            <section
+              className="settings-group settings-boundary"
+              aria-label="Cloud data deletion"
+              aria-busy={busy}
+            >
               <div className="settings-group-copy">
                 <strong>Delete cloud data</strong>
                 <span>
@@ -492,8 +515,8 @@ export function SyncSettings() {
                 <span>
                   <strong>Delete the Supabase account identity</strong>
                   <small>
-                    Type DELETE ACCOUNT. This is blocked automatically if the identity is also used
-                    by WORDSTRIKE.
+                    Type DELETE ACCOUNT. Deletion is blocked while the same THIEPN Account is still
+                    required by another supported first-party app.
                   </small>
                 </span>
                 <input
