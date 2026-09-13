@@ -67,7 +67,8 @@ test('A6 shared sign-out from another tab clears the Notes session and preserves
   expect(
     await page.evaluate(async () => {
       const d = await import('/notes/src/db/index.ts');
-      return d.notesDatabase.notes.where('title').equals('A6 local note').count();
+      const notes = await d.notesDatabase.notes.toArray();
+      return notes.filter((note) => note.title === 'A6 local note').length;
     }),
   ).toBe(1);
 });
