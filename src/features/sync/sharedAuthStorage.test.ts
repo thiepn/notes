@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
-  LEGACY_NOTES_SESSION_STORAGE_KEY,
+  RETIRED_NOTES_SESSION_STORAGE_KEY,
   SESSION_STORAGE_KEY,
   readStoredSession,
   storeSession,
@@ -36,41 +36,43 @@ afterEach(() => {
 });
 
 describe('THIEPN Account shared auth storage', () => {
-  it('uses the shared Supabase project storage key', () => {
+  it('locks the final and retired storage-key contracts', () => {
     expect(SESSION_STORAGE_KEY).toBe('sb-hycegznamzjhwinegaai-auth-token');
+    expect(RETIRED_NOTES_SESSION_STORAGE_KEY).toBe('notes.supabase.session.v1');
   });
 
-  it('promotes a valid legacy Notes session when no shared session exists', () => {
+  it('ignores and deletes the retired Notes-specific session', () => {
     const storage = memoryStorage({
-      [LEGACY_NOTES_SESSION_STORAGE_KEY]: JSON.stringify(session),
+      [RETIRED_NOTES_SESSION_STORAGE_KEY]: JSON.stringify(session),
     });
     vi.stubGlobal('window', { localStorage: storage });
 
-    expect(readStoredSession()).toEqual(session);
-    expect(JSON.parse(storage.getItem(SESSION_STORAGE_KEY)!)).toEqual(session);
-    expect(storage.getItem(LEGACY_NOTES_SESSION_STORAGE_KEY)).toBeNull();
+    expect(readStoredSession()).toBeNull();
+    expect(storage.getItem(SESSION_STORAGE_KEY)).toBeNull();
+    expect(storage.getItem(RETIRED_NOTES_SESSION_STORAGE_KEY)).toBeNull();
   });
 
-  it('prefers an existing shared session over the legacy Notes session', () => {
+  it('keeps the shared THIEPN Account session while deleting retired auth state', () => {
     const shared = { ...session, user: { id: 'shared-owner' } };
     const storage = memoryStorage({
       [SESSION_STORAGE_KEY]: JSON.stringify(shared),
-      [LEGACY_NOTES_SESSION_STORAGE_KEY]: JSON.stringify(session),
+      [RETIRED_NOTES_SESSION_STORAGE_KEY]: JSON.stringify(session),
     });
     vi.stubGlobal('window', { localStorage: storage });
 
     expect(readStoredSession()).toEqual(shared);
+    expect(storage.getItem(RETIRED_NOTES_SESSION_STORAGE_KEY)).toBeNull();
   });
 
-  it('writes and removes the shared session while cleaning the legacy key', () => {
+  it('writes and removes only the shared session while cleaning the retired key', () => {
     const storage = memoryStorage({
-      [LEGACY_NOTES_SESSION_STORAGE_KEY]: JSON.stringify(session),
+      [RETIRED_NOTES_SESSION_STORAGE_KEY]: JSON.stringify(session),
     });
     vi.stubGlobal('window', { localStorage: storage });
 
     storeSession(session);
     expect(JSON.parse(storage.getItem(SESSION_STORAGE_KEY)!)).toEqual(session);
-    expect(storage.getItem(LEGACY_NOTES_SESSION_STORAGE_KEY)).toBeNull();
+    expect(storage.getItem(RETIRED_NOTES_SESSION_STORAGE_KEY)).toBeNull();
 
     storeSession(null);
     expect(storage.getItem(SESSION_STORAGE_KEY)).toBeNull();
