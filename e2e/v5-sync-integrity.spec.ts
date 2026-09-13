@@ -195,11 +195,17 @@ test('a local edit during upload stays pending and uploads on the following sync
   );
 });
 
-test('offline startup retains the sign-in and automatically reconnects', async ({ page }) => {
+test('offline startup retains the canonical sign-in and automatically reconnects', async ({
+  page,
+}) => {
   const rows: RemoteSyncRecord[] = [];
   await cloud(page, rows);
   await page.addInitScript((value) => {
-    localStorage.setItem('notes.supabase.session.v1', JSON.stringify(value));
+    localStorage.setItem('sb-hycegznamzjhwinegaai-auth-token', JSON.stringify(value));
+    localStorage.setItem(
+      'notes.supabase.session.v1',
+      JSON.stringify({ ...value, access_token: 'legacy' }),
+    );
     let online = false;
     Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => online });
     window.addEventListener('test-reconnect', () => {

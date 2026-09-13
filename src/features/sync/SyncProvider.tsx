@@ -9,6 +9,7 @@ import {
   ensureFreshSession,
   hasNotesSyncAccess,
   readStoredSession,
+  SESSION_STORAGE_KEY,
   SupabaseRequestError,
   signInWithPassword,
   signOutSession,
@@ -147,6 +148,45 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     },
     [refreshSessionListFor, runSync],
   );
+
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== SESSION_STORAGE_KEY) return;
+      if (event.storageArea && event.storageArea !== window.localStorage) return;
+
+      const next = readStoredSession();
+      const current = sessionRef.current;
+      if (!next) {
+        if (current) {
+          clearSessionState(
+            'THIEPN Account was signed out in another app or tab. Local notes are unchanged.',
+          );
+        }
+        return;
+      }
+
+      if (
+        current?.access_token === next.access_token &&
+        current.refresh_token === next.refresh_token
+      )
+        return;
+
+      updateSession(next);
+      setRecoveryMode(false);
+      setAccessGranted(false);
+      if (!navigator.onLine) {
+        setStatus('offline');
+        setMessage('THIEPN Account changed in another app or tab. Reconnect to resume cloud sync.');
+        return;
+      }
+      setStatus('connecting');
+      setMessage('THIEPN Account changed in another app or tab. Reconnecting.');
+      void activateSession(next);
+    };
+
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [activateSession, clearSessionState, updateSession]);
 
   const syncNow = useCallback(async () => {
     if (!session || recoveryMode) return;
