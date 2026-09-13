@@ -27,6 +27,8 @@ import { OcrAttachmentControl } from '../ocr/OcrAttachmentControl';
 import { ReminderControl } from '../reminders/ReminderControl';
 import { VoiceAttachmentButton } from '../voice/VoiceAttachmentButton';
 import { AttachmentPanel } from './AttachmentPanel';
+import { ChecklistEditorFields } from './ChecklistEditorFields';
+import { EditorActionPopover } from './EditorActionPopover';
 import { EditorCloseButton, EditorStatusBar } from './EditorStatusBar';
 import { checklistEditorMetrics } from './editorInsights';
 import {
@@ -34,7 +36,6 @@ import {
   readChecklistEditorJournal,
   writeChecklistEditorJournal,
 } from './checklistJournal';
-import { ChecklistEditorFields } from './ChecklistEditorFields';
 import { RevisionHistoryDialog } from './RevisionHistoryDialog';
 
 const AUTOSAVE_DELAY_MS = 180;
@@ -398,60 +399,53 @@ export function ChecklistEditorDialog({
 
           <div className="note-editor-footer note-editor-footer-simplified">
             <div className="note-editor-primary-actions">
-              <div className="note-editor-menu-slot">
+              <EditorActionPopover
+                kind="dialog"
+                label="Add to checklist"
+                triggerLabel="Add"
+                triggerIcon={<Plus aria-hidden="true" />}
+                open={addOpen}
+                onOpenChange={setAddOpen}
+                onBeforeOpen={() => setMoreOpen(false)}
+                surfaceClassName="note-editor-tools-menu"
+              >
                 <button
-                  className="note-editor-secondary"
                   type="button"
-                  aria-expanded={addOpen}
                   onClick={() => {
-                    setMoreOpen(false);
-                    setAddOpen((open) => !open);
+                    setAddOpen(false);
+                    setAttachmentsOpen(true);
                   }}
                 >
-                  <Plus aria-hidden="true" /> Add
+                  <Paperclip aria-hidden="true" /> Image / attachment
                 </button>
-                {addOpen ? (
-                  <div className="note-editor-tools-menu" role="menu">
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setAddOpen(false);
-                        setAttachmentsOpen(true);
-                      }}
-                    >
-                      <Paperclip aria-hidden="true" /> Image / attachment
-                    </button>
-                    <DrawingAttachmentButton
-                      noteId={note.id}
-                      repository={attachmentsRepository}
-                      className="note-editor-menu-control"
-                      onDialogClose={() => setAddOpen(false)}
-                      onChanged={(noteId) => {
-                        setAddOpen(false);
-                        setAttachmentsOpen(true);
-                        onAttachmentsChanged(noteId);
-                      }}
-                    />
-                    <VoiceAttachmentButton
-                      noteId={note.id}
-                      repository={voiceAttachmentsRepository}
-                      className="note-editor-menu-control"
-                      onDialogClose={() => setAddOpen(false)}
-                      onChanged={(noteId) => {
-                        setAddOpen(false);
-                        setAttachmentsOpen(true);
-                        onAttachmentsChanged(noteId);
-                      }}
-                    />
-                    <OcrAttachmentControl
-                      noteId={note.id}
-                      repository={attachmentsRepository}
-                      refreshKey={attachmentRefreshKey}
-                    />
-                  </div>
-                ) : null}
-              </div>
+                <DrawingAttachmentButton
+                  noteId={note.id}
+                  repository={attachmentsRepository}
+                  className="note-editor-menu-control"
+                  onDialogClose={() => setAddOpen(false)}
+                  onChanged={(noteId) => {
+                    setAddOpen(false);
+                    setAttachmentsOpen(true);
+                    onAttachmentsChanged(noteId);
+                  }}
+                />
+                <VoiceAttachmentButton
+                  noteId={note.id}
+                  repository={voiceAttachmentsRepository}
+                  className="note-editor-menu-control"
+                  onDialogClose={() => setAddOpen(false)}
+                  onChanged={(noteId) => {
+                    setAddOpen(false);
+                    setAttachmentsOpen(true);
+                    onAttachmentsChanged(noteId);
+                  }}
+                />
+                <OcrAttachmentControl
+                  noteId={note.id}
+                  repository={attachmentsRepository}
+                  refreshKey={attachmentRefreshKey}
+                />
+              </EditorActionPopover>
 
               <ReminderControl
                 compact
@@ -482,36 +476,30 @@ export function ChecklistEditorDialog({
             />
 
             <div className="note-editor-footer-actions">
-              <div className="note-editor-menu-slot">
+              <EditorActionPopover
+                kind="menu"
+                label="More checklist actions"
+                triggerLabel="More"
+                triggerIcon={<MoreHorizontal aria-hidden="true" />}
+                open={moreOpen}
+                onOpenChange={setMoreOpen}
+                onBeforeOpen={() => setAddOpen(false)}
+                surfaceClassName="note-editor-more-menu"
+              >
+                <button type="button" role="menuitem" onClick={() => void openHistory()}>
+                  <History aria-hidden="true" /> History
+                </button>
                 <button
-                  className="note-editor-secondary"
                   type="button"
-                  aria-expanded={moreOpen}
+                  role="menuitem"
                   onClick={() => {
-                    setAddOpen(false);
-                    setMoreOpen((open) => !open);
+                    setMoreOpen(false);
+                    void convertToText();
                   }}
                 >
-                  <MoreHorizontal aria-hidden="true" /> More
+                  <ListChecks aria-hidden="true" /> Convert to text
                 </button>
-                {moreOpen ? (
-                  <div className="note-editor-more-menu" role="menu">
-                    <button type="button" role="menuitem" onClick={() => void openHistory()}>
-                      <History aria-hidden="true" /> History
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setMoreOpen(false);
-                        void convertToText();
-                      }}
-                    >
-                      <ListChecks aria-hidden="true" /> Convert to text
-                    </button>
-                  </div>
-                ) : null}
-              </div>
+              </EditorActionPopover>
               <EditorCloseButton onClick={() => void finish()} />
             </div>
           </div>
