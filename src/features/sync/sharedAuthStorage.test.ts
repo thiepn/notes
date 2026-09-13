@@ -36,8 +36,9 @@ afterEach(() => {
 });
 
 describe('THIEPN Account shared auth storage', () => {
-  it('uses the shared Supabase project storage key', () => {
+  it('locks the final and retired storage-key contracts', () => {
     expect(SESSION_STORAGE_KEY).toBe('sb-hycegznamzjhwinegaai-auth-token');
+    expect(RETIRED_NOTES_SESSION_STORAGE_KEY).toBe('notes.supabase.session.v1');
   });
 
   it('ignores and deletes the retired Notes-specific session', () => {
