@@ -55,9 +55,7 @@ describe('A5 Notes THIEPN Account platform adapter', () => {
   it('pins the certified A4 contract', () => {
     expect(THIEPN_ACCOUNT_SDK_VERSION).toBe('1.2.0');
     expect(THIEPN_ACCOUNT_PLATFORM_VERSION).toBe('1.0.0');
-    expect(THIEPN_ACCOUNT_SDK_SOURCE_SHA).toBe(
-      '124221f39a932d50f9a86ad5c3da2d8fd1fe50af',
-    );
+    expect(THIEPN_ACCOUNT_SDK_SOURCE_SHA).toBe('124221f39a932d50f9a86ad5c3da2d8fd1fe50af');
     expect(THIEPN_ACCOUNT_SESSION_KEY).toBe('sb-hycegznamzjhwinegaai-auth-token');
     expect(NOTES_PLATFORM_APP_ID).toBe('notes');
   });
