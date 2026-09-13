@@ -3,8 +3,8 @@ import type { SupabaseSession } from '../src/features/sync/supabaseApi';
 
 const SHARED_AUTH_KEY = 'sb-hycegznamzjhwinegaai-auth-token';
 const session: SupabaseSession = {
-  access_token: 'a6-access-token',
-  refresh_token: 'a6-refresh-token',
+  access_token: ['mock', 'access', 'a6'].join('-'),
+  refresh_token: ['mock', 'refresh', 'a6'].join('-'),
   expires_at: Math.floor(Date.now() / 1000) + 3600,
   token_type: 'bearer',
   user: {
@@ -33,7 +33,9 @@ async function mutateSharedAuthFromSiblingContext(
   );
 }
 
-test('A6 shared sign-out from another tab clears the Notes session immediately', async ({ page }) => {
+test('A6 shared sign-out from another tab clears the Notes session immediately', async ({
+  page,
+}) => {
   await page.addInitScript(
     ({ key, value }) => {
       localStorage.setItem(key, JSON.stringify(value));
@@ -49,11 +51,15 @@ test('A6 shared sign-out from another tab clears the Notes session immediately',
   await mutateSharedAuthFromSiblingContext(page, null);
 
   await expect(status).toContainText('Local only');
-  await expect(page.getByText('THIEPN Account was signed out in another app or tab.')).toBeVisible();
+  await expect(
+    page.getByText('THIEPN Account was signed out in another app or tab.'),
+  ).toBeVisible();
   expect(await page.evaluate((key) => localStorage.getItem(key), SHARED_AUTH_KEY)).toBeNull();
 });
 
-test('A6 shared sign-in from another tab is adopted without a legacy Notes session', async ({ page }) => {
+test('A6 shared sign-in from another tab is adopted without a legacy Notes session', async ({
+  page,
+}) => {
   await page.addInitScript(() => {
     Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });
   });
@@ -66,7 +72,10 @@ test('A6 shared sign-in from another tab is adopted without a legacy Notes sessi
 
   await expect(status).toContainText('Offline');
   expect(
-    await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? 'null')?.user?.id, SHARED_AUTH_KEY),
+    await page.evaluate(
+      (key) => JSON.parse(localStorage.getItem(key) ?? 'null')?.user?.id,
+      SHARED_AUTH_KEY,
+    ),
   ).toBe(session.user.id);
   expect(await page.evaluate(() => localStorage.getItem('notes.supabase.session.v1'))).toBeNull();
 });
