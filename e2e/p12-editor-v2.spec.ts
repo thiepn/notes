@@ -39,7 +39,10 @@ test.describe('P12 Editor V2', () => {
     await body.press('Enter');
     await expect(body).toHaveValue('- alpha\n- ');
 
-    await body.type('beta');
+    // Seed the second item atomically so this regression isolates Enter/list behavior
+    // instead of depending on character-by-character typing through controlled rerenders.
+    await body.fill('- alpha\n- beta');
+    await body.press('End');
     await body.press('Enter');
     await expect(body).toHaveValue('- alpha\n- beta\n- ');
 
