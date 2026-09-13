@@ -58,12 +58,17 @@ export function CaptureMenu({ onClose, onCapture }: CaptureMenuProps) {
   const [sourceError, setSourceError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  useDialogFocusTrap(dialogRef, { onEscape: onClose, initialFocusRef: firstActionRef });
+  useDialogFocusTrap(dialogRef, {
+    onEscape: () => {
+      if (!busy) onClose();
+    },
+    initialFocusRef: firstActionRef,
+  });
 
   const chooseFiles = (kind: 'image' | 'scan', event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []);
     event.target.value = '';
-    if (files.length === 0) return;
+    if (busy || files.length === 0) return;
     onCapture(kind, files);
   };
 
@@ -187,36 +192,42 @@ export function CaptureMenu({ onClose, onCapture }: CaptureMenuProps) {
                 icon={<StickyNote />}
                 label="Text note"
                 description="Start with a blank note"
+                disabled={busy}
                 onClick={() => onCapture('text')}
               />
               <CaptureAction
                 icon={<ListChecks />}
                 label="Checklist"
                 description="Create an actionable list"
+                disabled={busy}
                 onClick={() => onCapture('checklist')}
               />
               <CaptureAction
                 icon={<ImagePlus />}
                 label="Image"
                 description="Start a note from photos"
+                disabled={busy}
                 onClick={() => imageInputRef.current?.click()}
               />
               <CaptureAction
                 icon={<Camera />}
                 label="Scan"
                 description="Capture a page for local OCR"
+                disabled={busy}
                 onClick={() => scanInputRef.current?.click()}
               />
               <CaptureAction
                 icon={<PencilLine />}
                 label="Drawing"
                 description="Sketch directly into a note"
+                disabled={busy}
                 onClick={() => onCapture('drawing')}
               />
               <CaptureAction
                 icon={<Mic />}
                 label="Voice"
                 description="Attach a voice recording"
+                disabled={busy}
                 onClick={() => onCapture('voice')}
               />
             </div>
@@ -329,6 +340,7 @@ export function CaptureMenu({ onClose, onCapture }: CaptureMenuProps) {
           type="file"
           accept={NATIVE_IMAGE_ACCEPT}
           multiple
+          disabled={busy}
           tabIndex={-1}
           aria-hidden="true"
           onChange={(event) => chooseFiles('image', event)}
@@ -339,6 +351,7 @@ export function CaptureMenu({ onClose, onCapture }: CaptureMenuProps) {
           type="file"
           accept={NATIVE_IMAGE_ACCEPT}
           capture="environment"
+          disabled={busy}
           tabIndex={-1}
           aria-hidden="true"
           onChange={(event) => chooseFiles('scan', event)}
@@ -396,16 +409,24 @@ function CaptureAction({
   icon,
   label,
   description,
+  disabled,
   onClick,
 }: {
   buttonRef?: Ref<HTMLButtonElement>;
   icon: ReactNode;
   label: string;
   description: string;
+  disabled: boolean;
   onClick(): void;
 }) {
   return (
-    <button ref={buttonRef} className="capture-menu-action" type="button" onClick={onClick}>
+    <button
+      ref={buttonRef}
+      className="capture-menu-action"
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+    >
       <span className="capture-menu-action-icon" aria-hidden="true">
         {icon}
       </span>
