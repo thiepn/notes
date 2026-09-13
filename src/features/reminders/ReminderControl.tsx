@@ -1,4 +1,10 @@
-import { useEffect, useState } from 'react';
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react';
 import { Bell, BellOff, CheckCircle2, Clock3, X } from 'lucide-react';
 
 import type { ReminderRecord, RemindersRepository } from '../../db';
@@ -23,6 +29,8 @@ interface ReminderControlProps {
   onChanged(reminder: ReminderRecord | null): void;
 }
 
+type CompactFocusTarget = 'summary' | 'editor' | null;
+
 export function ReminderControl({
   noteId,
   repository,
@@ -41,6 +49,11 @@ export function ReminderControl({
   );
   const [busy, setBusy] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const compactTriggerRef = useRef<HTMLButtonElement>(null);
+  const expandedControlRef = useRef<HTMLElement>(null);
+  const compactFocusTargetRef = useRef<CompactFocusTarget>(null);
+  const restoreCompactFocusRef = useRef(false);
+  const compactControlsId = useId();
 
   useEffect(() => {
     if (controlledReminder !== undefined) return;
@@ -53,9 +66,41 @@ export function ReminderControl({
     };
   }, [controlledReminder, noteId, repository]);
 
+  useEffect(() => {
+    if (!compact) return;
+
+    if (!expanded && !editing) {
+      if (!restoreCompactFocusRef.current || busy) return;
+      restoreCompactFocusRef.current = false;
+      const frame = window.requestAnimationFrame(() => {
+        compactTriggerRef.current?.focus({ preventScroll: true });
+      });
+      return () => window.cancelAnimationFrame(frame);
+    }
+
+    const focusTarget = compactFocusTargetRef.current;
+    if (!focusTarget) return;
+    compactFocusTargetRef.current = null;
+    const frame = window.requestAnimationFrame(() => {
+      const surface = expandedControlRef.current;
+      if (!surface) return;
+      const target =
+        focusTarget === 'editor'
+          ? surface.querySelector<HTMLElement>(
+              '.reminder-editor button:not([disabled]), .reminder-editor input:not([disabled])',
+            )
+          : surface.querySelector<HTMLElement>(
+              '.reminder-control-edit:not([disabled]), .reminder-snooze-actions button:not([disabled]), .reminder-lifecycle-actions button:not([disabled]), .reminder-control-collapse:not([disabled])',
+            );
+      (target ?? surface).focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [busy, compact, editing, expanded]);
+
   const openEditor = () => {
     setDraft(localInputFromTimestamp(reminder?.dueAt ?? defaultReminderTimestamp()));
     setErrorMessage(null);
+    if (compact) compactFocusTargetRef.current = 'editor';
     setExpanded(true);
     setEditing(true);
   };
@@ -65,13 +110,28 @@ export function ReminderControl({
       openEditor();
       return;
     }
+    compactFocusTargetRef.current = 'summary';
     setErrorMessage(null);
     setExpanded(true);
   };
 
+  const collapseCompact = () => {
+    if (!compact) return;
+    restoreCompactFocusRef.current = true;
+    compactFocusTargetRef.current = null;
+    setEditing(false);
+    setExpanded(false);
+  };
+
   const cancelEditing = () => {
     setEditing(false);
-    if (compact && !reminder) setExpanded(false);
+    if (!compact) return;
+    if (!reminder) {
+      restoreCompactFocusRef.current = true;
+      setExpanded(false);
+      return;
+    }
+    compactFocusTargetRef.current = 'summary';
   };
 
   const save = async () => {
@@ -83,7 +143,10 @@ export function ReminderControl({
       setLoadedReminder(saved);
       onChanged(saved);
       setEditing(false);
-      if (compact) setExpanded(false);
+      if (compact) {
+        restoreCompactFocusRef.current = true;
+        setExpanded(false);
+      }
       dispatchReminderChanged();
     } catch (error) {
       setErrorMessage(toErrorMessage(error));
@@ -101,7 +164,10 @@ export function ReminderControl({
       setLoadedReminder(next);
       onChanged(next);
       setEditing(false);
-      if (compact) setExpanded(false);
+      if (compact) {
+        restoreCompactFocusRef.current = true;
+        setExpanded(false);
+      }
       dispatchReminderChanged();
     } catch (error) {
       setErrorMessage(toErrorMessage(error));
@@ -112,6 +178,15 @@ export function ReminderControl({
 
   const snooze = (preset: Parameters<typeof reminderSnoozeTimestamp>[0]) =>
     run(() => repository.snooze(noteId, reminderSnoozeTimestamp(preset)));
+
+  const handleCompactKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
+    if (!compact || event.key !== 'Escape') return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (busy) return;
+    if (editing) cancelEditing();
+    else collapseCompact();
+  };
 
   if (compact && !expanded && !editing) {
     const label = reminder
@@ -125,9 +200,12 @@ export function ReminderControl({
     return (
       <section className="reminder-control reminder-control-compact" aria-label="Reminder">
         <button
+          ref={compactTriggerRef}
           className="reminder-compact-button"
           type="button"
           aria-label={reminder ? `Change reminder: ${label}` : 'Add reminder'}
+          aria-expanded="false"
+          aria-controls={compactControlsId}
           onClick={openCompact}
           disabled={busy}
         >
@@ -145,8 +223,13 @@ export function ReminderControl({
 
   return (
     <section
+      ref={compact ? expandedControlRef : undefined}
+      id={compact ? compactControlsId : undefined}
       className={`reminder-control${compact ? ' reminder-control-compact-expanded' : ''}`}
       aria-label="Reminder"
+      aria-busy={busy}
+      tabIndex={compact ? -1 : undefined}
+      onKeyDown={handleCompactKeyDown}
     >
       <div className="reminder-control-summary">
         <Bell aria-hidden="true" />
@@ -182,7 +265,7 @@ export function ReminderControl({
           <button
             className="reminder-control-collapse"
             type="button"
-            onClick={() => setExpanded(false)}
+            onClick={collapseCompact}
             disabled={busy}
           >
             Done
@@ -234,17 +317,23 @@ export function ReminderControl({
         <div className="reminder-editor" role="group" aria-label="Set reminder">
           <div className="reminder-quick-presets" role="group" aria-label="Quick presets">
             <span>Quick</span>
-            <button type="button" onClick={() => setDraft(applyReminderQuickPreset('in-one-hour'))}>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setDraft(applyReminderQuickPreset('in-one-hour'))}
+            >
               In 1 hour
             </button>
             <button
               type="button"
+              disabled={busy}
               onClick={() => setDraft(applyReminderQuickPreset('tomorrow-morning'))}
             >
               Tomorrow 9:00
             </button>
             <button
               type="button"
+              disabled={busy}
               onClick={() => setDraft(applyReminderQuickPreset('next-week-morning'))}
             >
               Next week 9:00
@@ -254,18 +343,21 @@ export function ReminderControl({
             <span>Date</span>
             <button
               type="button"
+              disabled={busy}
               onClick={() => setDraft((current) => applyReminderDatePreset(current, 0))}
             >
               Today
             </button>
             <button
               type="button"
+              disabled={busy}
               onClick={() => setDraft((current) => applyReminderDatePreset(current, 1))}
             >
               Tomorrow
             </button>
             <button
               type="button"
+              disabled={busy}
               onClick={() => setDraft((current) => applyReminderDatePreset(current, 7))}
             >
               Next week
@@ -276,6 +368,7 @@ export function ReminderControl({
             <input
               type="date"
               value={draft.date}
+              disabled={busy}
               onChange={(event) =>
                 setDraft((current) => ({ ...current, date: event.target.value }))
               }
@@ -286,6 +379,7 @@ export function ReminderControl({
             <input
               type="time"
               value={draft.time}
+              disabled={busy}
               onChange={(event) =>
                 setDraft((current) => ({ ...current, time: event.target.value }))
               }
@@ -300,6 +394,12 @@ export function ReminderControl({
             </button>
           </div>
         </div>
+      ) : null}
+
+      {busy ? (
+        <p className="reminder-operation-status" role="status" aria-live="polite">
+          Updating reminder…
+        </p>
       ) : null}
 
       {errorMessage ? (

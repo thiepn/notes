@@ -30,6 +30,7 @@
     "e2e:p21": "playwright test e2e/p21-post-v1-daily-use-polish.spec.ts --retries=0",
     "e2e:p22": "playwright test e2e/p22-mobile-pwa-experience.spec.ts --retries=0",
     "e2e:p23": "playwright test e2e/p23-editor-capture-refinement.spec.ts --retries=0",
+    "e2e:p24": "playwright test e2e/p24-reminder-workflow-refinement.spec.ts --retries=0",
     "e2e:pwa": "playwright test --config=playwright.pwa.config.ts",
     "release:check": "npm run format:check && npm run foundation:check && npm run release:contract && npm run lint && npm run test && npm run build",
     "release:certify": "npm run release:check && npm run e2e:compat && npm run e2e:release && npm run e2e:p20 && npm run e2e:pwa"
