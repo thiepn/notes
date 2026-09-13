@@ -70,7 +70,7 @@ export function ReminderControl({
     if (!compact) return;
 
     if (!expanded && !editing) {
-      if (!restoreCompactFocusRef.current) return;
+      if (!restoreCompactFocusRef.current || busy) return;
       restoreCompactFocusRef.current = false;
       const frame = window.requestAnimationFrame(() => {
         compactTriggerRef.current?.focus({ preventScroll: true });
@@ -95,7 +95,7 @@ export function ReminderControl({
       (target ?? surface).focus({ preventScroll: true });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [compact, editing, expanded]);
+  }, [busy, compact, editing, expanded]);
 
   const openEditor = () => {
     setDraft(localInputFromTimestamp(reminder?.dueAt ?? defaultReminderTimestamp()));
