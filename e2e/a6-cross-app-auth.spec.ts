@@ -33,7 +33,7 @@ async function mutateSharedAuthFromSiblingContext(
   );
 }
 
-test('A6 shared sign-out from another tab clears the Notes session immediately', async ({
+test('A6 shared sign-out from another tab clears the Notes session and preserves local data', async ({
   page,
 }) => {
   await page.addInitScript(
@@ -48,13 +48,28 @@ test('A6 shared sign-out from another tab clears the Notes session immediately',
   const status = page.locator('.workspace-meta .sync-indicator');
   await expect(status).toContainText('Offline');
 
+  await page.evaluate(async () => {
+    const d = await import('/notes/src/db/index.ts');
+    await new d.NotesRepository(d.notesDatabase).create({
+      title: 'A6 local note',
+      content: 'Must survive shared-account sign-out.',
+    });
+  });
+  await page.reload();
+  await expect(status).toContainText('Offline');
+  await expect(page.getByRole('button', { name: 'Open note: A6 local note' })).toBeVisible();
+
   await mutateSharedAuthFromSiblingContext(page, null);
 
   await expect(status).toContainText('Local only');
-  await expect(
-    page.getByText('THIEPN Account was signed out in another app or tab.'),
-  ).toBeVisible();
   expect(await page.evaluate((key) => localStorage.getItem(key), SHARED_AUTH_KEY)).toBeNull();
+  await expect(page.getByRole('button', { name: 'Open note: A6 local note' })).toBeVisible();
+  expect(
+    await page.evaluate(async () => {
+      const d = await import('/notes/src/db/index.ts');
+      return d.notesDatabase.notes.where('title').equals('A6 local note').count();
+    }),
+  ).toBe(1);
 });
 
 test('A6 shared sign-in from another tab is adopted without a legacy Notes session', async ({
