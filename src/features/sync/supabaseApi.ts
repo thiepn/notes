@@ -28,13 +28,7 @@ export const LEGACY_NOTES_SESSION_STORAGE_KEY = 'notes.supabase.session.v1';
 const ATTACHMENT_BUCKET = 'notes-attachments';
 
 export type SyncEntityType =
-  | 'note'
-  | 'checklist_item'
-  | 'label'
-  | 'note_label'
-  | 'attachment'
-  | 'reminder'
-  | 'revision';
+  'note' | 'checklist_item' | 'label' | 'note_label' | 'attachment' | 'reminder' | 'revision';
 
 export type SupabaseUser = AccountPlatformUser;
 export type SupabaseSession = AccountPlatformSession;
