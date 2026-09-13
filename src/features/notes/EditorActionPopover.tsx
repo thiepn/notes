@@ -99,8 +99,14 @@ export function EditorActionPopover({
   const handleSurfaceKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Escape') {
       const target = event.target;
-      const nestedDialog = target instanceof Element ? target.closest('[role="dialog"]') : null;
-      if (nestedDialog && nestedDialog !== surfaceRef.current) return;
+      const nestedDialog = target instanceof Element ? target.closest<HTMLElement>('[role="dialog"]') : null;
+      if (
+        nestedDialog &&
+        nestedDialog !== surfaceRef.current &&
+        surfaceRef.current?.contains(nestedDialog)
+      ) {
+        return;
+      }
       event.preventDefault();
       event.stopPropagation();
       closeAndRestoreFocus();
