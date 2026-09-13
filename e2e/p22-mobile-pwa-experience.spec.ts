@@ -49,9 +49,9 @@ test.describe('P22 mobile and PWA experience', () => {
     await expect(
       page.getByText("Use your browser's install or Add to Home screen action if available."),
     ).toBeVisible();
-    await expect(
-      page.evaluate(() => sessionStorage.getItem('notes.pwa.install-dismissed')),
-    ).resolves.toBeNull();
+    expect(
+      await page.evaluate(() => sessionStorage.getItem('notes.pwa.install-dismissed')),
+    ).toBeNull();
 
     await page.getByRole('button', { name: 'Dismiss install warning' }).click();
     await dispatchInstallPrompt(page, { outcome: 'accepted' });
