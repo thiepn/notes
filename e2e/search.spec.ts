@@ -133,10 +133,10 @@ test('search includes archive, excludes trash, and supports operators', async ({
 test('filter panel intersects type, status, color, and labels with the query', async ({ page }) => {
   const ids = await seedSearchLibrary(page);
   await page.reload();
-  await page.getByRole('button', { name: 'Search filters' }).click();
+  await page.getByRole('button', { name: 'Search filters', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Search', level: 1 })).toBeVisible();
 
-  const filters = page.getByRole('region', { name: 'Search filters' });
+  const filters = page.getByRole('dialog', { name: 'Search filters' });
   await filters.getByLabel('Type').selectOption('checklist');
   await filters.getByRole('button', { name: 'Filter Yellow notes' }).click();
   await expect(page.locator(`[data-note-id="${ids.checklistId}"]`)).toBeVisible();
@@ -154,8 +154,8 @@ test('saved searches persist query and filter snapshots through the backed-up se
 }) => {
   const ids = await seedSearchLibrary(page);
   await search(page, 'milk');
-  await page.getByRole('button', { name: 'Search filters' }).click();
-  const filters = page.getByRole('region', { name: 'Search filters' });
+  await page.getByRole('button', { name: 'Search filters', exact: true }).click();
+  const filters = page.getByRole('dialog', { name: 'Search filters' });
   await filters.getByLabel('Type').selectOption('checklist');
   await expect(page.locator(`[data-note-id="${ids.checklistId}"]`)).toBeVisible();
 
@@ -180,8 +180,8 @@ test('saved searches persist query and filter snapshots through the backed-up se
   await history.getByRole('button', { name: 'Open saved search: milk' }).click();
   await expect(input).toHaveValue('milk');
 
-  await page.getByRole('button', { name: 'Search filters' }).click();
-  await expect(page.getByRole('region', { name: 'Search filters' }).getByLabel('Type')).toHaveValue(
+  await page.getByRole('button', { name: 'Search filters', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Search filters' }).getByLabel('Type')).toHaveValue(
     'checklist',
   );
 });
