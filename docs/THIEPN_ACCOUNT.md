@@ -31,7 +31,9 @@ sb-hycegznamzjhwinegaai-auth-token
 
 This allows a valid THIEPN Account session created by one supported app to be discovered by another supported app on the same origin.
 
-Legacy app-specific session keys may be promoted only when they were issued by this exact Supabase project. Tokens from another Supabase project must never be copied into the shared key.
+After the A6 production cutover, the shared project key is the only persisted browser-session authority. Retired app-specific auth keys must never be promoted, restored, copied, or otherwise used to reconstruct the shared session. Consumers may perform targeted deletion of their own retired auth artifacts, but must not broadly clear browser storage or delete unrelated application data.
+
+Supported apps must react to canonical session changes from other same-origin app tabs. A shared sign-out must clear the consumer's in-memory authenticated state without deleting app-local offline data; a valid shared sign-in/session replacement may be adopted and revalidated through the central account path.
 
 Signing out of the shared session signs the user out of supported THIEPN apps in that browser. App-local offline data is governed by each app's own data-retention rules.
 
@@ -48,13 +50,15 @@ A new app that needs accounts should:
 7. Give `UPDATE` policies both `USING` and `WITH CHECK` clauses when client writes are allowed.
 8. Avoid generic cross-app table names when a new domain could collide; prefer app-specific names or a deliberate schema boundary.
 9. Never expose service-role/secret credentials to the frontend.
-10. Test with at least two distinct authenticated users and prove that user B cannot read user A's data.
+10. Never create an app-specific recoverable copy of access or refresh tokens.
+11. React to canonical session changes from other same-origin supported apps/tabs.
+12. Test with at least two distinct authenticated users and prove that user B cannot read user A's data.
 
 ## Current adoption
 
-- **Notes:** shared identity project; email/password account flows; cloud Notes access remains separately authorized and RLS-protected.
-- **WORDSTRIKE:** shared identity project; Google auth and leaderboard identity; legacy same-project session migrates to the shared key.
-- **Diet Copilot:** migrated to the shared identity project; existing Diet data was remapped to its matching canonical THIEPN user UUID; Google/email/password entry points use the shared session.
+- **Notes:** shared identity project; email/password account flows; the retired Notes session is cleanup-only; cloud Notes access remains separately authorized and RLS-protected.
+- **WORDSTRIKE:** shared identity project; Google auth and leaderboard identity; retired WORDSTRIKE auth artifacts are cleanup-only and are never promoted into THIEPN Account storage.
+- **Diet Copilot:** shared identity project; existing Diet data was remapped to its matching canonical THIEPN user UUID; Google/email/password entry points use the shared session; retired Diet token backups are cleanup-only.
 - **Clean30:** remains local-only until account-backed persistence is required. When added, it should follow this contract rather than create a new Auth project.
 
 ## Production email requirements
