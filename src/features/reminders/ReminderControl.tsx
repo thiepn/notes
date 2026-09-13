@@ -180,9 +180,10 @@ export function ReminderControl({
     run(() => repository.snooze(noteId, reminderSnoozeTimestamp(preset)));
 
   const handleCompactKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
-    if (!compact || event.key !== 'Escape' || busy) return;
+    if (!compact || event.key !== 'Escape') return;
     event.preventDefault();
     event.stopPropagation();
+    if (busy) return;
     if (editing) cancelEditing();
     else collapseCompact();
   };
