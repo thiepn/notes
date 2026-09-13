@@ -1,3 +1,16 @@
+import {
+  AccountPlatformRequestError,
+  readAccountPlatformSession,
+  recordNotesAccountActivity,
+  refreshAccountPlatformSession,
+  signInAccountWithPassword,
+  signOutAccountPlatformSession,
+  storeAccountPlatformSession,
+  THIEPN_ACCOUNT_SESSION_KEY,
+  type AccountPlatformSession,
+  type AccountPlatformUser,
+} from './thiepnAccountPlatform';
+
 export class SupabaseRequestError extends Error {
   constructor(
     message: string,
@@ -10,26 +23,21 @@ export class SupabaseRequestError extends Error {
 
 const SUPABASE_URL = 'https://hycegznamzjhwinegaai.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_1rZzRPzfLMaAH5pIgCwIjA_19UPMIsR';
-export const SESSION_STORAGE_KEY = 'sb-hycegznamzjhwinegaai-auth-token';
+export const SESSION_STORAGE_KEY = THIEPN_ACCOUNT_SESSION_KEY;
 export const LEGACY_NOTES_SESSION_STORAGE_KEY = 'notes.supabase.session.v1';
 const ATTACHMENT_BUCKET = 'notes-attachments';
 
 export type SyncEntityType =
-  'note' | 'checklist_item' | 'label' | 'note_label' | 'attachment' | 'reminder' | 'revision';
+  | 'note'
+  | 'checklist_item'
+  | 'label'
+  | 'note_label'
+  | 'attachment'
+  | 'reminder'
+  | 'revision';
 
-export interface SupabaseUser {
-  id: string;
-  email?: string;
-  new_email?: string;
-}
-
-export interface SupabaseSession {
-  access_token: string;
-  refresh_token: string;
-  expires_at: number;
-  token_type: string;
-  user: SupabaseUser;
-}
+export type SupabaseUser = AccountPlatformUser;
+export type SupabaseSession = AccountPlatformSession;
 
 export interface RemoteSyncRecord {
   user_id: string;
@@ -54,66 +62,23 @@ interface AuthResponse {
   msg?: string;
 }
 
-function parseStoredSession(raw: string | null): SupabaseSession | null {
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as Partial<SupabaseSession>;
-    if (
-      typeof parsed.access_token !== 'string' ||
-      typeof parsed.refresh_token !== 'string' ||
-      typeof parsed.expires_at !== 'number' ||
-      !Number.isFinite(parsed.expires_at) ||
-      !parsed.user ||
-      typeof parsed.user.id !== 'string'
-    ) {
-      return null;
-    }
-    return parsed as SupabaseSession;
-  } catch {
-    return null;
-  }
-}
-
 export function readStoredSession(): SupabaseSession | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const shared = parseStoredSession(window.localStorage.getItem(SESSION_STORAGE_KEY));
-    if (shared) return shared;
-
-    // Notes used an app-specific key before THIEPN Account. It points at this
-    // exact Supabase project, so the legacy session can be promoted safely once.
-    const legacy = parseStoredSession(
-      window.localStorage.getItem(LEGACY_NOTES_SESSION_STORAGE_KEY),
-    );
-    if (!legacy) return null;
-    window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(legacy));
-    window.localStorage.removeItem(LEGACY_NOTES_SESSION_STORAGE_KEY);
-    return legacy;
-  } catch {
-    return null;
-  }
+  return readAccountPlatformSession(LEGACY_NOTES_SESSION_STORAGE_KEY);
 }
 
 export function storeSession(session: SupabaseSession | null): void {
-  if (typeof window === 'undefined') return;
-  try {
-    if (session) window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
-    else window.localStorage.removeItem(SESSION_STORAGE_KEY);
-    window.localStorage.removeItem(LEGACY_NOTES_SESSION_STORAGE_KEY);
-  } catch {
-    // A live in-memory session can still work if browser storage is unavailable.
-  }
+  storeAccountPlatformSession(session, LEGACY_NOTES_SESSION_STORAGE_KEY);
 }
 
 export async function signInWithPassword(
   email: string,
   password: string,
 ): Promise<SupabaseSession> {
-  const response = await authRequest('/auth/v1/token?grant_type=password', {
-    method: 'POST',
-    body: JSON.stringify({ email, password }),
-  });
-  return parseSession(response);
+  try {
+    return await signInAccountWithPassword(email, password);
+  } catch (error) {
+    throw mapAccountPlatformError(error);
+  }
 }
 
 export async function signUpWithPassword(
@@ -136,17 +101,17 @@ const refreshRequests = new Map<string, Promise<SupabaseSession>>();
 export function refreshSession(session: SupabaseSession): Promise<SupabaseSession> {
   const existing = refreshRequests.get(session.refresh_token);
   if (existing) return existing;
-  const operation = authRequest('/auth/v1/token?grant_type=refresh_token', {
-    method: 'POST',
-    body: JSON.stringify({ refresh_token: session.refresh_token }),
-  })
-    .then(parseSession)
+  const operation = refreshAccountPlatformSession(session)
+    .catch((error: unknown) => {
+      throw mapAccountPlatformError(error);
+    })
     .finally(() => refreshRequests.delete(session.refresh_token));
   refreshRequests.set(session.refresh_token, operation);
   return operation;
 }
 
 export async function ensureFreshSession(session: SupabaseSession): Promise<SupabaseSession> {
+  void recordNotesAccountActivity(session);
   const nowSeconds = Math.floor(Date.now() / 1000);
   if (session.expires_at - nowSeconds > 60) return session;
   return refreshSession(session);
@@ -154,7 +119,9 @@ export async function ensureFreshSession(session: SupabaseSession): Promise<Supa
 
 export async function signOutSession(session: SupabaseSession): Promise<void> {
   try {
-    await request('/auth/v1/logout?scope=local', session.access_token, { method: 'POST' });
+    await signOutAccountPlatformSession(session);
+  } catch (error) {
+    throw mapAccountPlatformError(error);
   } finally {
     if (readStoredSession()?.access_token === session.access_token) storeSession(null);
   }
@@ -189,8 +156,6 @@ export async function listRemoteRecords(session: SupabaseSession): Promise<Remot
     order: 'entity_type.asc,entity_id.asc',
     limit: '500',
   });
-  // Keyset pagination avoids the API row cap and offset shifts while other devices write.
-  // Continue to an empty page: a project may configure a lower cap than our requested limit.
   for (let page = 0; page < 2000; page += 1) {
     const response = await request(`/rest/v1/notes_sync_records?${query}`, session.access_token);
     const rows = (await response.json()) as RemoteSyncRecord[];
@@ -354,6 +319,13 @@ function parseSession(response: AuthResponse): SupabaseSession {
     token_type: response.token_type ?? 'bearer',
     user: response.user,
   };
+}
+
+function mapAccountPlatformError(error: unknown): Error {
+  if (error instanceof AccountPlatformRequestError) {
+    return new SupabaseRequestError(error.message, error.status);
+  }
+  return error instanceof Error ? error : new Error('THIEPN Account request failed.');
 }
 
 function encodeStoragePath(path: string): string {
