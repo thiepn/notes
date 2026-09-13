@@ -75,8 +75,8 @@ test.describe('P21 post-v1 daily-use polish', () => {
     await expect(page.getByRole('button', { name: 'Clear search query' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Reset', exact: true })).toHaveCount(0);
 
-    await page.getByRole('button', { name: 'Search filters' }).click();
-    const filters = page.getByRole('region', { name: 'Search filters' });
+    await page.getByRole('button', { name: 'Search filters', exact: true }).click();
+    const filters = page.getByRole('dialog', { name: 'Search filters' });
     await expect(filters).toBeVisible();
     await filters.getByLabel('Type').selectOption('text');
 
