@@ -4,8 +4,7 @@
 
 export const THIEPN_ACCOUNT_SDK_VERSION = '1.2.0';
 export const THIEPN_ACCOUNT_PLATFORM_VERSION = '1.0.0';
-export const THIEPN_ACCOUNT_SDK_SOURCE_SHA =
-  '124221f39a932d50f9a86ad5c3da2d8fd1fe50af';
+export const THIEPN_ACCOUNT_SDK_SOURCE_SHA = '124221f39a932d50f9a86ad5c3da2d8fd1fe50af';
 export const NOTES_PLATFORM_APP_ID = 'notes';
 export const THIEPN_ACCOUNT_SESSION_KEY = 'sb-hycegznamzjhwinegaai-auth-token';
 
@@ -166,9 +165,7 @@ export async function signOutAccountPlatformSession(
   });
 }
 
-export async function recordNotesAccountActivity(
-  session: AccountPlatformSession,
-): Promise<void> {
+export async function recordNotesAccountActivity(session: AccountPlatformSession): Promise<void> {
   const userId = session.user.id;
   if (!userId || activityMarkedForUserId === userId) return;
   const query = new URLSearchParams({
