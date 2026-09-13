@@ -13,12 +13,12 @@ The retired Notes-specific key is `notes.supabase.session.v1`. A6 ends the migra
 
 ## A6 legacy inventory and disposition
 
-| Legacy artifact | A6 disposition |
-| --- | --- |
-| `notes.supabase.session.v1` | Ignored as auth input and deleted with targeted cleanup |
-| Legacy-to-shared token promotion | Removed |
-| Shared THIEPN Account storage | Retained as the only persisted session authority |
-| Notes content, attachments, sync records and ownership data | Untouched |
+| Legacy artifact                                             | A6 disposition                                          |
+| ----------------------------------------------------------- | ------------------------------------------------------- |
+| `notes.supabase.session.v1`                                 | Ignored as auth input and deleted with targeted cleanup |
+| Legacy-to-shared token promotion                            | Removed                                                 |
+| Shared THIEPN Account storage                               | Retained as the only persisted session authority        |
+| Notes content, attachments, sync records and ownership data | Untouched                                               |
 
 No broad browser-storage wipe is used.
 
@@ -28,19 +28,19 @@ The dedicated auth-storage tests verify the exact shared and retired key contrac
 
 ## Production/manual certification matrix
 
-| Check | Status |
-| --- | --- |
-| Existing shared THIEPN Account restores in Notes | PENDING MANUAL |
+| Check                                             | Status         |
+| ------------------------------------------------- | -------------- |
+| Existing shared THIEPN Account restores in Notes  | PENDING MANUAL |
 | Existing pre-A6 user retains Notes ownership/data | PENDING MANUAL |
-| Sign-in flow on production origin | PENDING MANUAL |
-| Sign-out propagation across supported apps/tabs | PENDING MANUAL |
-| Expired/revoked session recovery | PENDING MANUAL |
-| Offline vs signed-out state | PENDING MANUAL |
-| Multi-device security-change behavior | PENDING MANUAL |
-| Account deletion behavior | PENDING MANUAL |
-| Chromium production smoke test | PENDING MANUAL |
-| Firefox/Zen production smoke test | PENDING MANUAL |
-| Safari/WebKit production smoke test | PENDING MANUAL |
+| Sign-in flow on production origin                 | PENDING MANUAL |
+| Sign-out propagation across supported apps/tabs   | PENDING MANUAL |
+| Expired/revoked session recovery                  | PENDING MANUAL |
+| Offline vs signed-out state                       | PENDING MANUAL |
+| Multi-device security-change behavior             | PENDING MANUAL |
+| Account deletion behavior                         | PENDING MANUAL |
+| Chromium production smoke test                    | PENDING MANUAL |
+| Firefox/Zen production smoke test                 | PENDING MANUAL |
+| Safari/WebKit production smoke test               | PENDING MANUAL |
 
 ## Security finding resolved
 
