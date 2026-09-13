@@ -230,9 +230,9 @@ test('P1 medium header keeps search and global actions separated and reachable',
 
     const filters = page.getByRole('button', { name: 'Search filters', exact: true });
     await filters.click();
-    await expect(page.getByRole('region', { name: 'Search filters' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Search filters' })).toBeVisible();
     await filters.click();
-    await expect(page.getByRole('region', { name: 'Search filters' })).toHaveCount(0);
+    await expect(page.getByRole('dialog', { name: 'Search filters' })).toHaveCount(0);
 
     await expect(
       page.getByRole('button', { name: 'Open settings', exact: true }),
