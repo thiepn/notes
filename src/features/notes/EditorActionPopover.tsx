@@ -171,7 +171,8 @@ function surfaceControls(
   if (!surface) return [];
   const selector = kind === 'menu' ? '[role="menuitem"]:not([disabled])' : DIALOG_CONTROL_SELECTOR;
   return Array.from(surface.querySelectorAll<HTMLElement>(selector)).filter((element) => {
-    if (element.hidden || element.tabIndex < 0 || element.getClientRects().length === 0) return false;
+    if (element.hidden || element.tabIndex < 0 || element.getClientRects().length === 0)
+      return false;
     if (element.closest('[inert], [aria-hidden="true"]')) return false;
     return getComputedStyle(element).visibility !== 'hidden';
   });
