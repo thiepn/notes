@@ -381,6 +381,8 @@ export function AppHeader({
             activeFilterCount > 0 ? `Search filters, ${activeFilterCount} active` : 'Search filters'
           }
           aria-expanded={filtersOpen}
+          aria-haspopup="dialog"
+          aria-controls="search-filters-panel"
           aria-pressed={filtersOpen || filtersActive}
           data-active={filtersOpen || filtersActive}
           onClick={onToggleFilters}
