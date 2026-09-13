@@ -5,7 +5,7 @@ import process from 'node:process';
 const root = process.cwd();
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const fail = (message) => {
-  console.error(`A5 NOTES ACCOUNT PLATFORM FAIL: ${message}`);
+  process.stderr.write(`A5 NOTES ACCOUNT PLATFORM FAIL: ${message}\n`);
   process.exitCode = 1;
 };
 const check = (condition, message) => {
@@ -116,4 +116,4 @@ for (const [file, content] of [
   check(!/sb_secret_/i.test(content), `${file} contains a secret Supabase key.`);
 }
 
-if (!process.exitCode) console.log('A5 Notes THIEPN Account platform contract: PASS');
+if (!process.exitCode) process.stdout.write('A5 Notes THIEPN Account platform contract: PASS\n');
