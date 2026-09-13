@@ -54,7 +54,9 @@ test.describe('P25 search filters', () => {
   });
 });
 
-test('search assist supports Home and End navigation and Escape returns to search', async ({ page }) => {
+test('search assist supports Home and End navigation and Escape returns to search', async ({
+  page,
+}) => {
   await page.goto('./');
   await waitForNotesWorkspace(page);
 
@@ -76,7 +78,9 @@ test('search assist supports Home and End navigation and Escape returns to searc
   await expect(search).toBeFocused();
 });
 
-test('removing a saved search returns focus to the search box instead of losing it', async ({ page }) => {
+test('removing a saved search returns focus to the search box instead of losing it', async ({
+  page,
+}) => {
   await page.goto('./');
   await waitForNotesWorkspace(page);
   await page.evaluate(async () => {
