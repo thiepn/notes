@@ -56,7 +56,9 @@ export function SearchFiltersPanel({
 
   useEffect(() => {
     if (!modal) {
-      const frame = window.requestAnimationFrame(() => closeRef.current?.focus({ preventScroll: true }));
+      const frame = window.requestAnimationFrame(() =>
+        closeRef.current?.focus({ preventScroll: true }),
+      );
       return () => window.cancelAnimationFrame(frame);
     }
   }, [modal]);
