@@ -96,7 +96,7 @@ test('active filter chips are individually removable and Escape unwinds search i
 
   const input = page.getByRole('searchbox', { name: 'Search notes' });
   await page.getByRole('button', { name: 'Search filters' }).click();
-  const filters = page.getByRole('region', { name: 'Search filters' });
+  const filters = page.getByRole('dialog', { name: 'Search filters' });
   await filters.getByLabel('Type').selectOption('checklist');
   await filters.getByLabel('Work').check();
   await expect(page.locator(`[data-note-id="${ids.checklistId}"]`)).toBeVisible();
@@ -105,7 +105,7 @@ test('active filter chips are individually removable and Escape unwinds search i
   await expect(page.getByRole('button', { name: 'Remove filter Label: Work' })).toBeVisible();
   await expect(page.locator('.search-filter-count')).toHaveText('2');
 
-  await page.getByRole('button', { name: 'Close search filters' }).first().click();
+  await filters.getByRole('button', { name: 'Close search filters' }).click();
   await page.getByRole('button', { name: 'Remove filter Type: Checklist' }).click();
   await expect(page.getByRole('button', { name: 'Remove filter Type: Checklist' })).toHaveCount(0);
   await expect(page.locator('.search-filter-count')).toHaveText('1');
@@ -125,8 +125,9 @@ test('mobile filters open as a bottom sheet and can be dismissed explicitly', as
   await page.goto('./');
   await page.getByRole('button', { name: 'Search filters' }).click();
 
-  const filters = page.getByRole('region', { name: 'Search filters' });
+  const filters = page.getByRole('dialog', { name: 'Search filters' });
   await expect(filters).toBeVisible();
+  await expect(filters).toHaveAttribute('aria-modal', 'true');
   expect(await filters.evaluate((element) => getComputedStyle(element).position)).toBe('fixed');
   await expect(page.getByRole('heading', { name: 'Search', level: 1 })).toBeHidden();
 
