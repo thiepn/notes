@@ -113,6 +113,7 @@ describe('A5 Notes THIEPN Account platform adapter', () => {
   });
 
   it('refreshes through the shared account endpoint and preserves HTTP status failures', async () => {
+    const unavailable = () => Response.json({ msg: 'unavailable' }, { status: 503 });
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
@@ -123,7 +124,8 @@ describe('A5 Notes THIEPN Account platform adapter', () => {
           user: session.user,
         }),
       )
-      .mockResolvedValueOnce(Response.json({ msg: 'unavailable' }, { status: 503 }));
+      .mockResolvedValueOnce(unavailable())
+      .mockResolvedValueOnce(unavailable());
     vi.stubGlobal('fetch', fetchMock);
 
     const refreshed = await refreshAccountPlatformSession(session);
