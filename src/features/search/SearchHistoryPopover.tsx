@@ -1,4 +1,5 @@
 import { Bookmark, Clock3, Search, X } from 'lucide-react';
+import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 
 import type { LabelRecord } from '../../db';
 import {
@@ -40,12 +41,23 @@ export function SearchHistoryPopover({
     return null;
   }
 
+  const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'Home' && event.key !== 'End') return;
+    const items = navigableItems(event.currentTarget);
+    if (items.length === 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const target = event.key === 'Home' ? items[0] : items.at(-1);
+    target?.focus({ preventScroll: true });
+  };
+
   return (
     <div
       className="search-history-popover search-assist-popover"
       id="search-assist-popover"
       role="dialog"
       aria-label="Search history"
+      onKeyDown={handleKeyDown}
     >
       {suggestions.length > 0 ? (
         <section className="search-history-section" aria-labelledby="search-suggestions-title">
@@ -87,7 +99,10 @@ export function SearchHistoryPopover({
                 kind="saved"
                 savedSearchId={search.id}
                 onApply={() => onApply(search)}
-                onRemove={() => onRemoveSaved(search.id)}
+                onRemove={() => {
+                  onRemoveSaved(search.id);
+                  focusSearchInput();
+                }}
               />
             ))}
           </div>
@@ -100,7 +115,13 @@ export function SearchHistoryPopover({
             <span id="recent-searches-title">
               <Clock3 aria-hidden="true" /> Recent searches
             </span>
-            <button type="button" onClick={onClearRecent}>
+            <button
+              type="button"
+              onClick={() => {
+                onClearRecent();
+                focusSearchInput();
+              }}
+            >
               Clear
             </button>
           </div>
@@ -159,4 +180,18 @@ function SearchHistoryRow({
       ) : null}
     </div>
   );
+}
+
+function navigableItems(root: HTMLElement): HTMLButtonElement[] {
+  return Array.from(root.querySelectorAll<HTMLButtonElement>('[data-search-nav="true"]')).filter(
+    (button) => !button.disabled && button.getClientRects().length > 0,
+  );
+}
+
+function focusSearchInput(): void {
+  window.requestAnimationFrame(() => {
+    document
+      .querySelector<HTMLInputElement>('input[aria-label="Search notes"]')
+      ?.focus({ preventScroll: true });
+  });
 }

@@ -1,5 +1,7 @@
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { RotateCcw, X } from 'lucide-react';
 
+import { useDialogFocusTrap } from '../../components/ui/useDialogFocusTrap';
 import { NOTE_COLORS, type LabelRecord, type NoteColor } from '../../db';
 import { DEFAULT_SEARCH_FILTERS, type SearchFilters } from './searchTypes';
 
@@ -17,6 +19,8 @@ const COLOR_LABELS: Record<NoteColor, string> = {
   gray: 'Gray',
 };
 
+const MOBILE_FILTER_QUERY = '(max-width: 600px)';
+
 interface SearchFiltersPanelProps {
   filters: SearchFilters;
   labels: LabelRecord[];
@@ -30,6 +34,47 @@ export function SearchFiltersPanel({
   onChange,
   onClose,
 }: SearchFiltersPanelProps) {
+  const panelRef = useRef<HTMLElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const [modal, setModal] = useState(() =>
+    typeof window === 'undefined' ? false : window.matchMedia(MOBILE_FILTER_QUERY).matches,
+  );
+
+  useDialogFocusTrap(panelRef, {
+    enabled: modal,
+    onEscape: onClose,
+    initialFocusRef: closeRef,
+  });
+
+  useEffect(() => {
+    const media = window.matchMedia(MOBILE_FILTER_QUERY);
+    const update = () => setModal(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+
+  useEffect(() => {
+    if (!modal) {
+      const frame = window.requestAnimationFrame(() =>
+        closeRef.current?.focus({ preventScroll: true }),
+      );
+      return () => window.cancelAnimationFrame(frame);
+    }
+  }, [modal]);
+
+  useEffect(
+    () => () => {
+      window.requestAnimationFrame(() => {
+        const trigger = document.querySelector<HTMLButtonElement>(
+          '.search-shell button[aria-label^="Search filters"]',
+        );
+        trigger?.focus({ preventScroll: true });
+      });
+    },
+    [],
+  );
+
   const toggleColor = (color: NoteColor) => {
     const colors = filters.colors.includes(color)
       ? filters.colors.filter((item) => item !== color)
@@ -44,14 +89,31 @@ export function SearchFiltersPanel({
     onChange({ ...filters, labelIds });
   };
 
+  const handleKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
+    if (event.key !== 'Escape' || modal) return;
+    event.preventDefault();
+    event.stopPropagation();
+    onClose();
+  };
+
   return (
-    <section className="search-filters" aria-label="Search filters">
+    <section
+      ref={panelRef}
+      id="search-filters-panel"
+      className="search-filters"
+      role="dialog"
+      aria-label="Search filters"
+      aria-modal={modal || undefined}
+      tabIndex={-1}
+      onKeyDown={handleKeyDown}
+    >
       <header className="search-filters-header">
         <div>
           <strong>Filters</strong>
           <span>Refine local results</span>
         </div>
         <button
+          ref={closeRef}
           className="search-filters-close"
           type="button"
           aria-label="Close search filters"

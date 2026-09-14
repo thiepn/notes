@@ -256,10 +256,9 @@ export function AppHeader({
         className="search-shell"
         role="search"
         onFocusCapture={(event) => {
+          if (event.target !== searchInputRef.current) return;
           setSearchHistoryOpen(true);
-          if (event.target === searchInputRef.current) {
-            void labelsRepository.list().then(setSearchLabels, () => undefined);
-          }
+          void labelsRepository.list().then(setSearchLabels, () => undefined);
         }}
         onBlurCapture={(event) => {
           const next = event.relatedTarget;
@@ -381,9 +380,14 @@ export function AppHeader({
             activeFilterCount > 0 ? `Search filters, ${activeFilterCount} active` : 'Search filters'
           }
           aria-expanded={filtersOpen}
+          aria-haspopup="dialog"
+          aria-controls="search-filters-panel"
           aria-pressed={filtersOpen || filtersActive}
           data-active={filtersOpen || filtersActive}
-          onClick={onToggleFilters}
+          onClick={() => {
+            setSearchHistoryOpen(false);
+            onToggleFilters();
+          }}
         >
           <SlidersHorizontal />
           {activeFilterCount > 0 ? (
