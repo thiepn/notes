@@ -1,0 +1,8 @@
+{
+  "platform": "THIEPN Account Platform",
+  "platformRelease": "1.0.0",
+  "platformCommit": "169e083f268e895cd44d8a5fe706ba5d4532bfa2",
+  "accountContract": "1.0",
+  "sdkContract": "1.x",
+  "integrationMode": "certified-legacy"
+}
