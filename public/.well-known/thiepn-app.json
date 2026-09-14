@@ -1,11 +1,18 @@
 {
+  "schemaVersion": "1.0",
   "app": "notes",
+  "displayName": "Notes",
+  "path": "/notes/",
   "accountContract": "1.0",
+  "sdkContract": "1.x",
+  "integrationMode": "certified-legacy",
   "operationsVersion": "A7.1",
-  "degradedMode": "local-first",
   "sessionAuthority": "thiepn-account",
+  "degradedMode": "local-first",
+  "authEntryPoints": ["email-password", "password-recovery"],
   "health": {
-    "localDataUsableWithoutCloud": true,
-    "networkFailureLogsOutUser": false
+    "localDataPreservedOnBackendFailure": true,
+    "networkFailureLogsOutUser": false,
+    "readRetries": "bounded-safe-reads-only"
   }
 }

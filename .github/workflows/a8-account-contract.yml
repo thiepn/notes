@@ -1,0 +1,38 @@
+name: A8 Account Consumer Contract
+
+on:
+  pull_request:
+    paths:
+      - 'public/.well-known/thiepn-app.json'
+      - 'src/features/sync/**'
+      - 'docs/account-platform/**'
+      - '.github/workflows/a8-account-contract.yml'
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Validate Notes A8 contract
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const manifest=JSON.parse(fs.readFileSync('public/.well-known/thiepn-app.json','utf8'));
+          const api=fs.readFileSync('src/features/sync/supabaseApi.ts','utf8');
+          const expected={schemaVersion:'1.0',app:'notes',displayName:'Notes',path:'/notes/',accountContract:'1.0',sdkContract:'1.x',integrationMode:'certified-legacy',operationsVersion:'A7.1',sessionAuthority:'thiepn-account'};
+          for(const [key,value] of Object.entries(expected))if(manifest[key]!==value)throw new Error(`Notes A8 manifest mismatch: ${key}`);
+          if(manifest.health?.networkFailureLogsOutUser!==false)throw new Error('Network failure must not log Notes out.');
+          if(!api.includes('hycegznamzjhwinegaai'))throw new Error('Canonical THIEPN project missing.');
+          if(!api.includes('sb-hycegznamzjhwinegaai-auth-token'))throw new Error('Canonical shared storage key missing.');
+          if(!api.includes('/auth/v1/logout?scope=local'))throw new Error('Notes ordinary sign-out is not explicitly local.');
+          if(api.includes('localStorage.clear('))throw new Error('Broad browser storage clearing is forbidden.');
+          console.log('Notes A8 consumer contract passed.');
+          NODE
