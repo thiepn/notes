@@ -76,10 +76,6 @@ export function RevisionHistoryDialog({
   useEffect(() => {
     let cancelled = false;
     initialSelectionFocusedRef.current = false;
-    setLoading(true);
-    setErrorMessage(null);
-    setStatusMessage(null);
-    setFocusTarget(null);
     void repository
       .list(note.id)
       .then((loaded) => {
