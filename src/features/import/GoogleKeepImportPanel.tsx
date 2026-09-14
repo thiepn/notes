@@ -1,4 +1,11 @@
-import { useRef, useState, type ChangeEvent, type DragEvent, type RefCallback } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type DragEvent,
+  type RefCallback,
+} from 'react';
 import {
   FileArchive,
   FolderOpen,
@@ -37,6 +44,9 @@ interface DisplayProgress {
 export function GoogleKeepImportPanel({ onImported }: GoogleKeepImportPanelProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const directoryInputRef = useRef<HTMLInputElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const resultRef = useRef<HTMLDivElement>(null);
+  const errorRef = useRef<HTMLParagraphElement>(null);
   const [selected, setSelected] = useState<PreparedKeepImport | null>(null);
   const [selection, setSelection] = useState<GoogleKeepImportSelection>({
     ...DEFAULT_GOOGLE_KEEP_IMPORT_SELECTION,
@@ -53,10 +63,35 @@ export function GoogleKeepImportPanel({ onImported }: GoogleKeepImportPanelProps
     if (node) node.setAttribute('webkitdirectory', '');
   };
 
+  useEffect(() => {
+    if (!selected) return;
+    const frame = window.requestAnimationFrame(() => {
+      previewRef.current?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [selected]);
+
+  useEffect(() => {
+    if (!result) return;
+    const frame = window.requestAnimationFrame(() => {
+      resultRef.current?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [result]);
+
+  useEffect(() => {
+    if (!errorMessage) return;
+    const frame = window.requestAnimationFrame(() => {
+      errorRef.current?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [errorMessage]);
+
   const inspectFiles = async (files: File[]) => {
     if (files.length === 0 || busy) return;
 
     setSelected(null);
+    setSelection({ ...DEFAULT_GOOGLE_KEEP_IMPORT_SELECTION });
     setResult(null);
     setBusy('inspect');
     setProgress({ completed: 0, total: files.length, message: 'Reading selected files…' });
@@ -74,8 +109,8 @@ export function GoogleKeepImportPanel({ onImported }: GoogleKeepImportPanelProps
       const prepared = await keepImportRepository.inspect(files, (next: KeepImportProgress) => {
         setProgress(next);
       });
-      setSelected(prepared);
       setStorageWarning(await estimateStorageWarning(prepared));
+      setSelected(prepared);
       setStatusMessage('Google Keep source inspected. No local notes have been changed.');
     } catch (error) {
       setErrorMessage(toErrorMessage(error));
@@ -111,13 +146,13 @@ export function GoogleKeepImportPanel({ onImported }: GoogleKeepImportPanelProps
 
     try {
       const imported = await keepImportRepository.importPrepared(selected, selection, setProgress);
-      setResult(imported);
+      await onImported();
       setSelected(null);
       setStorageWarning(null);
+      setResult(imported);
       setStatusMessage(
         `Google Keep import complete. ${imported.importedNotes} ${imported.importedNotes === 1 ? 'note' : 'notes'} added without replacing existing local notes.`,
       );
-      await onImported();
     } catch (error) {
       setErrorMessage(toErrorMessage(error));
     } finally {
@@ -130,7 +165,11 @@ export function GoogleKeepImportPanel({ onImported }: GoogleKeepImportPanelProps
   const pendingAttachments = selected ? selectedAttachmentCount(selected, selection) : 0;
 
   return (
-    <section className="backup-card keep-import-card" aria-labelledby="keep-import-title">
+    <section
+      className="backup-card keep-import-card"
+      aria-labelledby="keep-import-title"
+      aria-busy={busy !== null || undefined}
+    >
       <div className="backup-card-icon" aria-hidden="true">
         <Import />
       </div>
@@ -154,6 +193,7 @@ export function GoogleKeepImportPanel({ onImported }: GoogleKeepImportPanelProps
         accept="application/zip,.zip,application/json,.json,text/html,.html,image/*,audio/*,application/pdf"
         multiple
         aria-label="Choose Google Takeout archives"
+        disabled={busy !== null}
         onChange={handleInputFiles}
       />
       <input
@@ -162,6 +202,7 @@ export function GoogleKeepImportPanel({ onImported }: GoogleKeepImportPanelProps
         type="file"
         multiple
         aria-label="Choose extracted Google Keep folder"
+        disabled={busy !== null}
         onChange={handleInputFiles}
       />
 
@@ -209,14 +250,19 @@ export function GoogleKeepImportPanel({ onImported }: GoogleKeepImportPanelProps
       </details>
 
       {progress ? (
-        <div className="keep-import-progress" role="status" aria-live="polite">
+        <div className="keep-import-progress" role="status" aria-live="polite" aria-atomic="true">
           <progress max={Math.max(progress.total, 1)} value={progress.completed} />
           <span>{progress.message}</span>
         </div>
       ) : null}
 
       {selected ? (
-        <div className="backup-preview keep-import-preview" aria-label="Google Keep import preview">
+        <div
+          ref={previewRef}
+          className="backup-preview keep-import-preview"
+          aria-label="Google Keep import preview"
+          tabIndex={-1}
+        >
           <div className="backup-preview-heading">
             <div>
               <strong>{formatSourceSummary(selected)}</strong>
@@ -239,7 +285,7 @@ export function GoogleKeepImportPanel({ onImported }: GoogleKeepImportPanelProps
             <ImportStat label="HTML fallback" value={selected.stats.htmlFallbackNotes} />
           </dl>
 
-          <fieldset className="keep-import-options">
+          <fieldset className="keep-import-options" disabled={busy !== null}>
             <legend>Import</legend>
             <label>
               <input
@@ -341,7 +387,12 @@ export function GoogleKeepImportPanel({ onImported }: GoogleKeepImportPanelProps
       ) : null}
 
       {result ? (
-        <div className="backup-preview keep-import-result" aria-label="Google Keep import result">
+        <div
+          ref={resultRef}
+          className="backup-preview keep-import-result"
+          aria-label="Google Keep import result"
+          tabIndex={-1}
+        >
           <div className="backup-preview-heading">
             <div>
               <strong>Google Keep import complete</strong>
@@ -365,7 +416,12 @@ export function GoogleKeepImportPanel({ onImported }: GoogleKeepImportPanelProps
         </p>
       ) : null}
       {errorMessage ? (
-        <p className="backup-error keep-import-message" role="alert">
+        <p
+          ref={errorRef}
+          className="backup-error keep-import-message"
+          role="alert"
+          tabIndex={-1}
+        >
           {errorMessage}
         </p>
       ) : null}
