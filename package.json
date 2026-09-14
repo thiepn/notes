@@ -35,6 +35,7 @@
     "e2e:p26": "playwright test e2e/p26-organization-interaction-refinement.spec.ts --retries=0",
     "e2e:p27": "playwright test e2e/p27-note-lifecycle-refinement.spec.ts --retries=0",
     "e2e:p28": "playwright test e2e/p28-backup-import-recovery-refinement.spec.ts --retries=0",
+    "e2e:p29": "playwright test e2e/p29-history-revision-recovery-refinement.spec.ts --retries=0",
     "e2e:pwa": "playwright test --config=playwright.pwa.config.ts",
     "release:check": "npm run format:check && npm run foundation:check && npm run release:contract && npm run lint && npm run test && npm run build",
     "release:certify": "npm run release:check && npm run e2e:compat && npm run e2e:release && npm run e2e:p20 && npm run e2e:pwa"
