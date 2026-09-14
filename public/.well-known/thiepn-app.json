@@ -1,0 +1,11 @@
+{
+  "app": "notes",
+  "accountContract": "1.0",
+  "operationsVersion": "A7.1",
+  "degradedMode": "local-first",
+  "sessionAuthority": "thiepn-account",
+  "health": {
+    "localDataUsableWithoutCloud": true,
+    "networkFailureLogsOutUser": false
+  }
+}
