@@ -11,7 +11,6 @@ import { Clock3, Copy, History, RotateCcw, Undo2, X } from 'lucide-react';
 
 import { IconButton } from '../../components/ui/IconButton';
 import type {
-  ChecklistItemRecord,
   NoteRecord,
   RevisionCopyResult,
   RevisionEntry,
@@ -22,7 +21,6 @@ import type {
 
 interface RevisionHistoryDialogProps {
   note: NoteRecord;
-  currentItems?: ChecklistItemRecord[];
   repository: RevisionsRepository;
   onClose(): void;
   onRestored(result: RevisionRestoreResult): void;
@@ -42,7 +40,6 @@ type FocusTarget = 'status' | 'error' | 'undo' | null;
 
 export function RevisionHistoryDialog({
   note,
-  currentItems = [],
   repository,
   onClose,
   onRestored,
@@ -57,6 +54,7 @@ export function RevisionHistoryDialog({
   const initialSelectionFocusedRef = useRef(false);
   const [entries, setEntries] = useState<RevisionEntry[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [currentSnapshot, setCurrentSnapshot] = useState<RevisionSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyAction, setBusyAction] = useState<HistoryAction>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -88,6 +86,7 @@ export function RevisionHistoryDialog({
         if (cancelled) return;
         setEntries(loaded);
         setSelectedId((current) => current ?? loaded[0]?.record.id ?? null);
+        setCurrentSnapshot(loaded[0]?.snapshot ?? null);
       })
       .catch((error: unknown) => {
         if (cancelled) return;
@@ -140,14 +139,16 @@ export function RevisionHistoryDialog({
   );
   const currentEntryId = useMemo(
     () =>
-      entries.find((entry) => snapshotMatchesCurrent(entry.snapshot, note, currentItems))?.record.id ??
-      null,
-    [currentItems, entries, note],
+      currentSnapshot
+        ? (entries.find((entry) => snapshotsEqual(entry.snapshot, currentSnapshot))?.record.id ?? null)
+        : null,
+    [currentSnapshot, entries],
   );
-  const selectedMatchesCurrent = selected
-    ? snapshotMatchesCurrent(selected.snapshot, note, currentItems)
-    : false;
-  const selectedChangesType = selected ? selected.snapshot.type !== note.type : false;
+  const selectedMatchesCurrent = Boolean(
+    selected && currentSnapshot && snapshotsEqual(selected.snapshot, currentSnapshot),
+  );
+  const currentType = currentSnapshot?.type ?? note.type;
+  const selectedChangesType = selected ? selected.snapshot.type !== currentType : false;
 
   const handleLayerPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.target === event.currentTarget && !busy) onClose();
@@ -201,6 +202,7 @@ export function RevisionHistoryDialog({
     try {
       const result = await repository.restore(note.id, selected.record.id, note.revision);
       onRestored(result);
+      setCurrentSnapshot(snapshotFromRestore(result));
       setLastRestore(result);
       setStatusMessage(
         `Revision ${selected.record.noteRevision} restored. Undo restore is available until you close history.`,
@@ -232,6 +234,7 @@ export function RevisionHistoryDialog({
     try {
       const result = await repository.restore(note.id, lastRestore.undoRevisionId, note.revision);
       onRestored(result);
+      setCurrentSnapshot(snapshotFromRestore(result));
       setLastRestore(null);
       setStatusMessage('Restore undone. The note is back to its pre-restore recoverable state.');
       let refreshFailed = false;
@@ -367,7 +370,7 @@ export function RevisionHistoryDialog({
                     {selectedMatchesCurrent
                       ? 'This snapshot already matches the current recoverable note state.'
                       : selectedChangesType
-                        ? `Restoring changes this note from ${typeLabel(note.type).toLowerCase()} to ${typeLabel(selected.snapshot.type).toLowerCase()} and replaces its recoverable content.`
+                        ? `Restoring changes this note from ${typeLabel(currentType).toLowerCase()} to ${typeLabel(selected.snapshot.type).toLowerCase()} and replaces its recoverable content.`
                         : selected.snapshot.type === 'checklist'
                           ? 'Restoring replaces the current title, checklist rows, check states, hierarchy, and color.'
                           : 'Restoring replaces the current title, text, and color.'}
@@ -457,24 +460,38 @@ export function RevisionHistoryDialog({
   );
 }
 
-function snapshotMatchesCurrent(
-  snapshot: RevisionSnapshot,
-  note: NoteRecord,
-  currentItems: ChecklistItemRecord[],
-): boolean {
-  if (snapshot.type !== note.type || snapshot.title !== note.title || snapshot.color !== note.color) {
+function snapshotFromRestore(result: RevisionRestoreResult): RevisionSnapshot {
+  return {
+    version: 1,
+    type: result.note.type,
+    title: result.note.title,
+    content: result.note.type === 'text' ? result.note.content : '',
+    color: result.note.color,
+    items:
+      result.note.type === 'checklist'
+        ? result.items.map((item) => ({
+            id: item.id,
+            text: item.text,
+            checked: item.checked,
+            parentId: item.parentId,
+          }))
+        : [],
+  };
+}
+
+function snapshotsEqual(a: RevisionSnapshot, b: RevisionSnapshot): boolean {
+  if (a.type !== b.type || a.title !== b.title || a.content !== b.content || a.color !== b.color) {
     return false;
   }
-  if (snapshot.type === 'text') return snapshot.content === note.content;
-  if (snapshot.items.length !== currentItems.length) return false;
-  return snapshot.items.every((item, index) => {
-    const current = currentItems[index];
+  if (a.items.length !== b.items.length) return false;
+  return a.items.every((item, index) => {
+    const other = b.items[index];
     return (
-      current !== undefined &&
-      current.id === item.id &&
-      current.text === item.text &&
-      current.checked === item.checked &&
-      current.parentId === item.parentId
+      other !== undefined &&
+      item.id === other.id &&
+      item.text === other.text &&
+      item.checked === other.checked &&
+      item.parentId === other.parentId
     );
   });
 }
