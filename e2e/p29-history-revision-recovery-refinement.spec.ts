@@ -57,7 +57,9 @@ test('current history state is explicit and keyboard revision navigation is dete
   await expect(current).toHaveAttribute('data-current', 'true');
   await expect(current).toContainText('Current');
   await expect(history.getByText('Current recoverable version')).toBeVisible();
-  await expect(history.getByRole('button', { name: 'Current version' })).toBeDisabled();
+  await expect(
+    history.getByRole('button', { name: 'Current version', exact: true }),
+  ).toBeDisabled();
 
   await page.keyboard.press('End');
   await expect(historical).toBeFocused();
@@ -139,7 +141,9 @@ test('restore locks history while busy, keeps failure retryable, and focuses Und
   await expect(history.getByRole('status')).toContainText('restored');
   const undo = history.getByRole('button', { name: 'Undo restore' });
   await expect(undo).toBeFocused();
-  await expect(history.getByRole('button', { name: 'Current version' })).toBeDisabled();
+  await expect(
+    history.getByRole('button', { name: 'Current version', exact: true }),
+  ).toBeDisabled();
 
   const restored = await page.evaluate(async (id) => {
     const db = await import('/notes/src/db/index.ts');
@@ -189,7 +193,9 @@ test('a post-restore history refresh failure never misreports the committed reco
   await expect(warning).toContainText('could not refresh');
   await expect(warning).toContainText('Synthetic P29 history refresh failure');
   await expect(warning).toBeFocused();
-  await expect(history.getByRole('button', { name: 'Current version' })).toBeDisabled();
+  await expect(
+    history.getByRole('button', { name: 'Current version', exact: true }),
+  ).toBeDisabled();
   await expect(history.getByRole('button', { name: 'Undo restore' })).toBeVisible();
 
   const stored = await page.evaluate(async (id) => {
