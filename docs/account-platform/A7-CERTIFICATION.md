@@ -34,17 +34,17 @@ Frontend rollback follows the central `ROLLBACK.md`. Cloud/data recovery follows
 
 ## Certification matrix
 
-| Check | Status |
-| --- | --- |
-| Failure taxonomy implemented | PASS |
-| Network failure distinct from logout | PASS |
-| Bounded read retries | PASS |
-| Auth/write retries prohibited by implementation | PASS |
-| Redacted operations log shape | PASS |
-| Local-first degraded mode | PASS by implementation; CI pending |
-| Existing full Notes CI/E2E | PENDING A7 PR CI |
-| Production shell synthetic check | PENDING central A7 monitor |
-| Real signed-in production session/revocation smoke | MANUAL REQUIRED |
+| Check                                              | Status                             |
+| -------------------------------------------------- | ---------------------------------- |
+| Failure taxonomy implemented                       | PASS                               |
+| Network failure distinct from logout               | PASS                               |
+| Bounded read retries                               | PASS                               |
+| Auth/write retries prohibited by implementation    | PASS                               |
+| Redacted operations log shape                      | PASS                               |
+| Local-first degraded mode                          | PASS by implementation; CI pending |
+| Existing full Notes CI/E2E                         | PENDING A7 PR CI                   |
+| Production shell synthetic check                   | PENDING central A7 monitor         |
+| Real signed-in production session/revocation smoke | MANUAL REQUIRED                    |
 
 ## Verdict
 
