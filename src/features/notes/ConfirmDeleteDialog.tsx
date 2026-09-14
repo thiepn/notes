@@ -23,10 +23,15 @@ export function ConfirmDeleteDialog({
 }: ConfirmDeleteDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
-  useDialogFocusTrap(dialogRef, {
-    onEscape: busy ? undefined : onCancel,
-    initialFocusRef: cancelRef,
-  });
+  useDialogFocusTrap(
+    dialogRef,
+    busy
+      ? { initialFocusRef: cancelRef }
+      : {
+          onEscape: onCancel,
+          initialFocusRef: cancelRef,
+        },
+  );
 
   const handleLayerPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!busy && event.target === event.currentTarget) onCancel();
