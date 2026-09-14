@@ -180,7 +180,9 @@ test('saved searches persist query and filter snapshots through the backed-up se
   await history.getByRole('button', { name: 'Open saved search: milk' }).click();
   await expect(input).toHaveValue('milk');
 
-  await page.getByRole('button', { name: 'Search filters', exact: true }).click();
+  const restoredFilterTrigger = page.getByRole('button', { name: 'Search filters, 1 active' });
+  await expect(restoredFilterTrigger).toBeVisible();
+  await restoredFilterTrigger.click();
   await expect(page.getByRole('dialog', { name: 'Search filters' }).getByLabel('Type')).toHaveValue(
     'checklist',
   );
