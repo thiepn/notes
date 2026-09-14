@@ -6,6 +6,8 @@ interface ConfirmDeleteDialogProps {
   title?: string;
   count?: number;
   context?: 'selection' | 'trash';
+  busy?: boolean;
+  error?: string | null;
   onCancel(): void;
   onConfirm(): void;
 }
@@ -14,15 +16,25 @@ export function ConfirmDeleteDialog({
   title = '',
   count,
   context = 'selection',
+  busy = false,
+  error = null,
   onCancel,
   onConfirm,
 }: ConfirmDeleteDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
-  useDialogFocusTrap(dialogRef, { onEscape: onCancel, initialFocusRef: cancelRef });
+  useDialogFocusTrap(
+    dialogRef,
+    busy
+      ? { initialFocusRef: cancelRef }
+      : {
+          onEscape: onCancel,
+          initialFocusRef: cancelRef,
+        },
+  );
 
   const handleLayerPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.target === event.currentTarget) onCancel();
+    if (!busy && event.target === event.currentTarget) onCancel();
   };
 
   const emptyingTrash = context === 'trash' && count !== undefined;
@@ -34,6 +46,9 @@ export function ConfirmDeleteDialog({
       : title
         ? `“${title}” will be permanently deleted.`
         : 'This note will be permanently deleted.';
+  const describedBy = error
+    ? 'confirm-delete-description confirm-delete-error'
+    : 'confirm-delete-description';
 
   return (
     <div className="confirm-dialog-layer" onPointerDown={handleLayerPointerDown}>
@@ -43,8 +58,9 @@ export function ConfirmDeleteDialog({
         className="confirm-dialog"
         role="alertdialog"
         aria-modal="true"
+        aria-busy={busy || undefined}
         aria-labelledby="confirm-delete-title"
-        aria-describedby="confirm-delete-description"
+        aria-describedby={describedBy}
       >
         <h2 id="confirm-delete-title">
           {emptyingTrash
@@ -54,12 +70,22 @@ export function ConfirmDeleteDialog({
               : 'Delete note permanently?'}
         </h2>
         <p id="confirm-delete-description">{description} This cannot be undone.</p>
+        {error ? (
+          <p id="confirm-delete-error" role="alert">
+            {error}
+          </p>
+        ) : null}
         <div className="confirm-dialog-actions">
-          <button ref={cancelRef} type="button" onClick={onCancel}>
+          <button ref={cancelRef} type="button" disabled={busy} onClick={onCancel}>
             Cancel
           </button>
-          <button className="confirm-dialog-danger" type="button" onClick={onConfirm}>
-            Delete permanently
+          <button
+            className="confirm-dialog-danger"
+            type="button"
+            disabled={busy}
+            onClick={onConfirm}
+          >
+            {busy ? 'Deleting…' : 'Delete permanently'}
           </button>
         </div>
       </div>

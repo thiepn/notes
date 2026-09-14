@@ -136,6 +136,9 @@ export function NotesWorkspace({
   const [deleteCandidate, setDeleteCandidate] = useState<NoteRecord | null>(null);
   const [bulkDeleteIds, setBulkDeleteIds] = useState<string[] | null>(null);
   const [bulkDeleteSource, setBulkDeleteSource] = useState<'selection' | 'trash'>('selection');
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const pendingDeleteFocusRef = useRef<string | null>(null);
   const [attachmentRefreshByNote, setAttachmentRefreshByNote] = useState<Record<string, number>>(
     {},
   );
@@ -359,9 +362,11 @@ export function NotesWorkspace({
   const handleArchive = useCallback(
     async (note: NoteRecord) => {
       const wasPinned = note.pinnedAt !== null;
+      const focusTarget = captureLifecycleFocus([note.id]);
       try {
         await notesRepository.archive(note.id, note.revision);
         await refreshCollection();
+        focusLifecycleDestination(focusTarget);
         showToast('Note archived.', async () => {
           const restored = await notesRepository.unarchive(note.id);
           if (wasPinned) await notesRepository.setPinned(note.id, true, restored.revision);
@@ -376,9 +381,11 @@ export function NotesWorkspace({
 
   const handleUnarchive = useCallback(
     async (note: NoteRecord) => {
+      const focusTarget = captureLifecycleFocus([note.id]);
       try {
         await notesRepository.unarchive(note.id, note.revision);
         await refreshCollection();
+        focusLifecycleDestination(focusTarget);
         showToast('Note moved to Notes.', async () => {
           await notesRepository.archive(note.id);
           await refreshCollection();
@@ -394,9 +401,11 @@ export function NotesWorkspace({
     async (note: NoteRecord) => {
       const wasArchived = note.archivedAt !== null;
       const wasPinned = note.pinnedAt !== null;
+      const focusTarget = captureLifecycleFocus([note.id]);
       try {
         await notesRepository.trash(note.id, note.revision);
         await refreshCollection();
+        focusLifecycleDestination(focusTarget);
         showToast('Note moved to trash.', async () => {
           const restored = await notesRepository.restore(note.id);
           if (wasArchived) await notesRepository.archive(note.id, restored.revision);
@@ -412,9 +421,11 @@ export function NotesWorkspace({
 
   const handleRestore = useCallback(
     async (note: NoteRecord) => {
+      const focusTarget = captureLifecycleFocus([note.id]);
       try {
         await notesRepository.restore(note.id, note.revision);
         await refreshCollection();
+        focusLifecycleDestination(focusTarget);
         showToast('Note restored to Notes.', async () => {
           await notesRepository.trash(note.id);
           await refreshCollection();
@@ -478,18 +489,40 @@ export function NotesWorkspace({
     [labelIdsByNote, refreshCollection, showToast],
   );
 
+  const beginDeleteConfirmation = useCallback((noteIds: string[]) => {
+    pendingDeleteFocusRef.current = captureLifecycleFocus(noteIds);
+    setDeleteBusy(false);
+    setDeleteError(null);
+  }, []);
+
+  const cancelDeleteConfirmation = useCallback(() => {
+    if (deleteBusy) return;
+    setDeleteCandidate(null);
+    setBulkDeleteIds(null);
+    setBulkDeleteSource('selection');
+    setDeleteError(null);
+    pendingDeleteFocusRef.current = null;
+  }, [deleteBusy]);
+
   const handleConfirmDelete = useCallback(async () => {
     const note = deleteCandidate;
-    if (!note) return;
-    setDeleteCandidate(null);
+    if (!note || deleteBusy) return;
+    setDeleteBusy(true);
+    setDeleteError(null);
     try {
       await notesRepository.deletePermanently(note.id);
       await refreshCollection();
+      const focusTarget = pendingDeleteFocusRef.current;
+      pendingDeleteFocusRef.current = null;
+      setDeleteCandidate(null);
       showToast('Note deleted permanently.');
+      focusLifecycleDestination(focusTarget);
     } catch {
-      showToast('Note could not be deleted.');
+      setDeleteError('Note could not be deleted. Try again.');
+    } finally {
+      setDeleteBusy(false);
     }
-  }, [deleteCandidate, refreshCollection, showToast]);
+  }, [deleteBusy, deleteCandidate, refreshCollection, showToast]);
 
   const handleUndo = useCallback(() => {
     const undo = toast?.undo;
@@ -507,11 +540,15 @@ export function NotesWorkspace({
       trash: (note) => void handleTrash(note),
       restore: (note) => void handleRestore(note),
       duplicate: (note) => void handleDuplicate(note),
-      deletePermanently: (note) => setDeleteCandidate(note),
+      deletePermanently: (note) => {
+        beginDeleteConfirmation([note.id]);
+        setDeleteCandidate(note);
+      },
       setColor: (note, color) => void handleSetColor(note, color),
       setLabels: (note, labelIds) => void handleSetLabels(note, labelIds),
     }),
     [
+      beginDeleteConfirmation,
       handleArchive,
       handleDuplicate,
       handleRestore,
@@ -553,9 +590,11 @@ export function NotesWorkspace({
     const targets = toBulkTargets(visibleNotes);
     const previous = toLifecycleStates(visibleNotes);
     const count = visibleNotes.length;
+    const focusTarget = captureLifecycleFocus(visibleNotes.map((note) => note.id));
     try {
       await bulkActionsRepository.restore(targets);
       await refreshCollection();
+      focusLifecycleDestination(focusTarget);
       showToast(`Restored ${count} ${count === 1 ? 'note' : 'notes'} to Notes.`, async () => {
         await bulkActionsRepository.restoreLifecycle(previous);
         await refreshCollection();
@@ -668,10 +707,12 @@ export function NotesWorkspace({
     const targets = toBulkTargets(selectedNotes);
     const previous = toLifecycleStates(selectedNotes);
     const count = selectedNotes.length;
+    const focusTarget = captureLifecycleFocus(selectedNotes.map((note) => note.id));
     try {
       await bulkActionsRepository.archive(targets);
       clearSelection();
       await refreshCollection();
+      focusLifecycleDestination(focusTarget);
       showToast(`${count} ${count === 1 ? 'note' : 'notes'} archived.`, async () => {
         await bulkActionsRepository.restoreLifecycle(previous);
         await refreshCollection();
@@ -686,10 +727,12 @@ export function NotesWorkspace({
     const targets = toBulkTargets(selectedNotes);
     const previous = toLifecycleStates(selectedNotes);
     const count = selectedNotes.length;
+    const focusTarget = captureLifecycleFocus(selectedNotes.map((note) => note.id));
     try {
       await bulkActionsRepository.unarchive(targets);
       clearSelection();
       await refreshCollection();
+      focusLifecycleDestination(focusTarget);
       showToast(`${count} ${count === 1 ? 'note' : 'notes'} moved to Notes.`, async () => {
         await bulkActionsRepository.restoreLifecycle(previous);
         await refreshCollection();
@@ -704,10 +747,12 @@ export function NotesWorkspace({
     const targets = toBulkTargets(selectedNotes);
     const previous = toLifecycleStates(selectedNotes);
     const count = selectedNotes.length;
+    const focusTarget = captureLifecycleFocus(selectedNotes.map((note) => note.id));
     try {
       await bulkActionsRepository.trash(targets);
       clearSelection();
       await refreshCollection();
+      focusLifecycleDestination(focusTarget);
       showToast(`${count} ${count === 1 ? 'note' : 'notes'} moved to trash.`, async () => {
         await bulkActionsRepository.restoreLifecycle(previous);
         await refreshCollection();
@@ -722,10 +767,12 @@ export function NotesWorkspace({
     const targets = toBulkTargets(selectedNotes);
     const previous = toLifecycleStates(selectedNotes);
     const count = selectedNotes.length;
+    const focusTarget = captureLifecycleFocus(selectedNotes.map((note) => note.id));
     try {
       await bulkActionsRepository.restore(targets);
       clearSelection();
       await refreshCollection();
+      focusLifecycleDestination(focusTarget);
       showToast(`${count} ${count === 1 ? 'note' : 'notes'} restored.`, async () => {
         await bulkActionsRepository.restoreLifecycle(previous);
         await refreshCollection();
@@ -800,24 +847,33 @@ export function NotesWorkspace({
   const handleConfirmBulkDelete = useCallback(async () => {
     const noteIds = bulkDeleteIds;
     const source = bulkDeleteSource;
-    if (!noteIds || noteIds.length === 0) return;
-    setBulkDeleteIds(null);
-    setBulkDeleteSource('selection');
+    if (!noteIds || noteIds.length === 0 || deleteBusy) return;
+    setDeleteBusy(true);
+    setDeleteError(null);
     try {
       const deleted = await bulkActionsRepository.deletePermanently(noteIds);
       clearSelection();
       await refreshCollection();
+      const focusTarget = pendingDeleteFocusRef.current;
+      pendingDeleteFocusRef.current = null;
+      setBulkDeleteIds(null);
+      setBulkDeleteSource('selection');
       showToast(
         source === 'trash'
           ? 'Trash emptied.'
           : `${deleted} ${deleted === 1 ? 'note' : 'notes'} deleted permanently.`,
       );
+      focusLifecycleDestination(focusTarget);
     } catch {
-      showToast(
-        source === 'trash' ? 'Trash could not be emptied.' : 'Selected notes could not be deleted.',
+      setDeleteError(
+        source === 'trash'
+          ? 'Trash could not be emptied. Try again.'
+          : 'Selected notes could not be deleted. Try again.',
       );
+    } finally {
+      setDeleteBusy(false);
     }
-  }, [bulkDeleteIds, bulkDeleteSource, clearSelection, refreshCollection, showToast]);
+  }, [bulkDeleteIds, bulkDeleteSource, clearSelection, deleteBusy, refreshCollection, showToast]);
 
   const editingNote = notes.find((note) => note.id === editingNoteId) ?? null;
   const emptyCopy = filterLabelId
@@ -878,8 +934,10 @@ export function NotesWorkspace({
                 onTrash={() => void handleBulkTrash()}
                 onRestore={() => void handleBulkRestore()}
                 onDeletePermanently={() => {
+                  const noteIds = selectedNotes.map((note) => note.id);
+                  beginDeleteConfirmation(noteIds);
                   setBulkDeleteSource('selection');
-                  setBulkDeleteIds(selectedNotes.map((note) => note.id));
+                  setBulkDeleteIds(noteIds);
                 }}
                 onSetColor={(color) => void handleBulkSetColor(color)}
                 onSetLabelMembership={(labelId, assigned) =>
@@ -902,8 +960,10 @@ export function NotesWorkspace({
                       className="notes-collection-action-danger"
                       type="button"
                       onClick={() => {
+                        const noteIds = visibleNotes.map((note) => note.id);
+                        beginDeleteConfirmation(noteIds);
                         setBulkDeleteSource('trash');
-                        setBulkDeleteIds(visibleNotes.map((note) => note.id));
+                        setBulkDeleteIds(noteIds);
                       }}
                     >
                       Empty trash
@@ -980,7 +1040,12 @@ export function NotesWorkspace({
           ) : null}
         </div>
       ) : loaded ? (
-        <section className="empty-state" aria-labelledby={`empty-${mode}-title`}>
+        <section
+          className="empty-state"
+          tabIndex={-1}
+          data-lifecycle-focus-fallback
+          aria-labelledby={`empty-${mode}-title`}
+        >
           <span className="empty-state-icon" aria-hidden="true">
             <NotebookPen />
           </span>
@@ -1036,7 +1101,9 @@ export function NotesWorkspace({
         <Suspense fallback={null}>
           <ConfirmDeleteDialog
             title={deleteCandidate.title}
-            onCancel={() => setDeleteCandidate(null)}
+            busy={deleteBusy}
+            error={deleteError}
+            onCancel={cancelDeleteConfirmation}
             onConfirm={() => void handleConfirmDelete()}
           />
         </Suspense>
@@ -1046,10 +1113,9 @@ export function NotesWorkspace({
           <ConfirmDeleteDialog
             count={bulkDeleteIds.length}
             context={bulkDeleteSource}
-            onCancel={() => {
-              setBulkDeleteIds(null);
-              setBulkDeleteSource('selection');
-            }}
+            busy={deleteBusy}
+            error={deleteError}
+            onCancel={cancelDeleteConfirmation}
             onConfirm={() => void handleConfirmBulkDelete()}
           />
         </Suspense>
@@ -1186,4 +1252,46 @@ function toLifecycleStates(notes: NoteRecord[]): BulkLifecycleState[] {
     archivedAt: note.archivedAt,
     trashedAt: note.trashedAt,
   }));
+}
+
+function captureLifecycleFocus(removedNoteIds: readonly string[]): string | null {
+  const removed = new Set(removedNoteIds);
+  const cards = Array.from(document.querySelectorAll<HTMLElement>('[data-note-card]'));
+  const activeCard =
+    document.activeElement instanceof Element
+      ? document.activeElement.closest<HTMLElement>('[data-note-card]')
+      : null;
+  const activeIndex = activeCard ? cards.indexOf(activeCard) : -1;
+
+  if (activeIndex >= 0) {
+    for (let index = activeIndex + 1; index < cards.length; index += 1) {
+      const noteId = cards[index]?.dataset.noteId;
+      if (noteId && !removed.has(noteId)) return noteId;
+    }
+    for (let index = activeIndex - 1; index >= 0; index -= 1) {
+      const noteId = cards[index]?.dataset.noteId;
+      if (noteId && !removed.has(noteId)) return noteId;
+    }
+  }
+
+  for (const card of cards) {
+    const noteId = card.dataset.noteId;
+    if (noteId && !removed.has(noteId)) return noteId;
+  }
+  return null;
+}
+
+function focusLifecycleDestination(preferredNoteId: string | null): void {
+  window.requestAnimationFrame(() => {
+    const cards = Array.from(document.querySelectorAll<HTMLElement>('[data-note-card]'));
+    const preferredCard = preferredNoteId
+      ? cards.find((card) => card.dataset.noteId === preferredNoteId)
+      : null;
+    const card = preferredCard ?? cards[0] ?? null;
+    const primaryControl = card?.querySelector<HTMLElement>(
+      'button.note-card-open, button[aria-label^="Restore note:"]',
+    );
+    const fallback = document.querySelector<HTMLElement>('[data-lifecycle-focus-fallback]');
+    (primaryControl ?? fallback)?.focus({ preventScroll: true });
+  });
 }
