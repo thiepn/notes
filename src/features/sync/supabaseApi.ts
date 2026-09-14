@@ -1,3 +1,10 @@
+import {
+  classifyOperationalStatus,
+  createOperationId,
+  logOperationalEvent,
+  runSafeReadWithRetry,
+} from './operations';
+
 export class SupabaseRequestError extends Error {
   constructor(
     message: string,
@@ -281,17 +288,42 @@ export async function deleteAttachmentObject(
 }
 
 async function authRequest(path: string, init: RequestInit): Promise<AuthResponse> {
-  const response = await fetch(`${SUPABASE_URL}${path}`, {
-    ...init,
-    signal: init.signal ?? AbortSignal.timeout(30_000),
-    headers: {
-      apikey: SUPABASE_PUBLISHABLE_KEY,
-      'Content-Type': 'application/json',
-      ...(init.headers ?? {}),
-    },
-  });
+  const operationId = createOperationId();
+  const started = Date.now();
+  let response: Response;
+  try {
+    response = await fetch(`${SUPABASE_URL}${path}`, {
+      ...init,
+      signal: init.signal ?? AbortSignal.timeout(30_000),
+      headers: {
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        'Content-Type': 'application/json',
+        ...(init.headers ?? {}),
+      },
+    });
+  } catch {
+    logOperationalEvent({
+      event: 'notes.auth.failure',
+      operationId,
+      category: 'network',
+      status: 0,
+      durationMs: Date.now() - started,
+    });
+    throw new SupabaseRequestError(
+      'THIEPN Account could not be reached. Check your connection and try again.',
+      0,
+    );
+  }
+
   const payload = (await response.json().catch(() => ({}))) as AuthResponse;
   if (!response.ok) {
+    logOperationalEvent({
+      event: 'notes.auth.failure',
+      operationId,
+      category: classifyOperationalStatus(response.status),
+      status: response.status,
+      durationMs: Date.now() - started,
+    });
     throw new SupabaseRequestError(
       payload.error_description ??
         payload.msg ??
@@ -309,17 +341,92 @@ async function request(
   init: RequestInit = {},
   jsonContentType = true,
 ): Promise<Response> {
-  const response = await fetch(`${SUPABASE_URL}${path}`, {
-    ...init,
-    signal: init.signal ?? AbortSignal.timeout(30_000),
-    headers: {
-      apikey: SUPABASE_PUBLISHABLE_KEY,
-      Authorization: `Bearer ${accessToken}`,
-      ...(jsonContentType ? { 'Content-Type': 'application/json' } : {}),
-      ...(init.headers ?? {}),
-    },
-  });
-  if (!response.ok) throw await responseError(response);
+  const method = String(init.method ?? 'GET').toUpperCase();
+  const safeRead = method === 'GET' || method === 'HEAD';
+  const operationId = createOperationId();
+  const started = Date.now();
+
+  const perform = async (): Promise<Response> =>
+    fetch(`${SUPABASE_URL}${path}`, {
+      ...init,
+      signal: init.signal ?? AbortSignal.timeout(30_000),
+      headers: {
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${accessToken}`,
+        ...(jsonContentType ? { 'Content-Type': 'application/json' } : {}),
+        ...(init.headers ?? {}),
+      },
+    });
+
+  let response: Response;
+  if (safeRead) {
+    const result = await runSafeReadWithRetry(async (attempt) => {
+      try {
+        const value = await perform();
+        if (attempt > 1) {
+          logOperationalEvent({
+            event: 'notes.read.retry',
+            operationId,
+            category: classifyOperationalStatus(value.status),
+            status: value.status,
+            attempt,
+          });
+        }
+        return { value, status: value.status };
+      } catch {
+        logOperationalEvent({
+          event: 'notes.read.retry',
+          operationId,
+          category: 'network',
+          status: 0,
+          attempt,
+        });
+        return { value: null, status: 0 };
+      }
+    });
+    if (!result.value) {
+      logOperationalEvent({
+        event: 'notes.read.failure',
+        operationId,
+        category: 'network',
+        status: 0,
+        attempt: result.attemptsUsed,
+        durationMs: Date.now() - started,
+      });
+      throw new SupabaseRequestError(
+        'Cloud service could not be reached. Local notes are unchanged.',
+        0,
+      );
+    }
+    response = result.value;
+  } else {
+    try {
+      response = await perform();
+    } catch {
+      logOperationalEvent({
+        event: 'notes.request.failure',
+        operationId,
+        category: 'network',
+        status: 0,
+        durationMs: Date.now() - started,
+      });
+      throw new SupabaseRequestError(
+        'Cloud service could not be reached. Local notes are unchanged.',
+        0,
+      );
+    }
+  }
+
+  if (!response.ok) {
+    logOperationalEvent({
+      event: safeRead ? 'notes.read.failure' : 'notes.request.failure',
+      operationId,
+      category: classifyOperationalStatus(response.status),
+      status: response.status,
+      durationMs: Date.now() - started,
+    });
+    throw await responseError(response);
+  }
   return response;
 }
 
