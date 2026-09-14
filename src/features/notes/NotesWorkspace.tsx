@@ -873,14 +873,7 @@ export function NotesWorkspace({
     } finally {
       setDeleteBusy(false);
     }
-  }, [
-    bulkDeleteIds,
-    bulkDeleteSource,
-    clearSelection,
-    deleteBusy,
-    refreshCollection,
-    showToast,
-  ]);
+  }, [bulkDeleteIds, bulkDeleteSource, clearSelection, deleteBusy, refreshCollection, showToast]);
 
   const editingNote = notes.find((note) => note.id === editingNoteId) ?? null;
   const emptyCopy = filterLabelId
