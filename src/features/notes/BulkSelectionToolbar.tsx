@@ -109,6 +109,15 @@ export function BulkSelectionToolbar({
     };
   }, [openPanel]);
 
+  const handleColorChange = (color: NoteColor) => {
+    const trigger = colorTriggerRef.current;
+    setOpenPanel(null);
+    onSetColor(color);
+    window.requestAnimationFrame(() => {
+      if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+    });
+  };
+
   return (
     <div
       ref={toolbarRef}
@@ -166,13 +175,7 @@ export function BulkSelectionToolbar({
                 <Palette />
               </IconButton>
               {openPanel === 'color' ? (
-                <BulkColorPanel
-                  id="bulk-color-panel"
-                  onChange={(color) => {
-                    setOpenPanel(null);
-                    onSetColor(color);
-                  }}
-                />
+                <BulkColorPanel id="bulk-color-panel" onChange={handleColorChange} />
               ) : null}
             </div>
 
