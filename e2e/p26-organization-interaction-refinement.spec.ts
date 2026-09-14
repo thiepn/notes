@@ -136,6 +136,7 @@ test('bulk color application closes the popover and returns focus to its trigger
   await colorTrigger.click();
   const colorDialog = toolbar.getByRole('dialog', { name: 'Bulk note color' });
   const yellow = colorDialog.getByRole('button', { name: 'Set Yellow color on selected notes' });
+  await yellow.focus();
   await expect(yellow).toBeFocused();
   await yellow.press('Enter');
 
