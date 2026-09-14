@@ -59,7 +59,9 @@ test('single lifecycle removal moves focus to the next remaining note', async ({
   ).toBeFocused();
 });
 
-test('trash restore keeps focus on the remaining note and then the empty state', async ({ page }) => {
+test('trash restore keeps focus on the remaining note and then the empty state', async ({
+  page,
+}) => {
   await seedTrashedNotes(page, ['Trash focus one', 'Trash focus two']);
   await page.reload();
   await openTrash(page);
@@ -135,9 +137,7 @@ test('permanent delete stays busy, survives failure, and retries without losing 
   expect(deletingId).not.toBeNull();
   expect(remainingId).not.toBeNull();
 
-  await deletingCard
-    .getByRole('button', { name: /^Delete note permanently:/ })
-    .click();
+  await deletingCard.getByRole('button', { name: /^Delete note permanently:/ }).click();
   const dialog = page.getByRole('alertdialog', { name: 'Delete note permanently?' });
   await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
 
@@ -197,7 +197,10 @@ test('bulk delete cancellation restores its trigger and empty trash focuses the 
   await dialog.getByRole('button', { name: 'Delete permanently' }).click();
   await expect(page.locator('[data-note-card]')).toHaveCount(3);
   await expect(
-    page.locator('[data-note-card]').first().getByRole('button', { name: /^Restore note:/ }),
+    page
+      .locator('[data-note-card]')
+      .first()
+      .getByRole('button', { name: /^Restore note:/ }),
   ).toBeFocused();
 
   const emptyTrash = page.getByRole('button', { name: 'Empty trash' });
