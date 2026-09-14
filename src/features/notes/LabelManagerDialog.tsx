@@ -21,6 +21,7 @@ interface LabelManagerDialogProps {
 }
 
 type LabelSort = 'name' | 'usage';
+type LabelAction = 'rename' | 'delete';
 
 export function LabelManagerDialog({
   labels,
@@ -42,6 +43,9 @@ export function LabelManagerDialog({
   const [busy, setBusy] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const newLabelRef = useRef<HTMLInputElement>(null);
+  const renameTriggerRefs = useRef(new Map<string, HTMLButtonElement>());
+  const deleteTriggerRefs = useRef(new Map<string, HTMLButtonElement>());
+  const deleteCancelRefs = useRef(new Map<string, HTMLButtonElement>());
   const showLabelSearch = labels.length >= 6;
   const normalizedLabelQuery = showLabelSearch ? labelQuery.trim().toLocaleLowerCase() : '';
   const unusedCount = labels.filter((label) => (usageCounts[label.id] ?? 0) === 0).length;
@@ -58,7 +62,41 @@ export function LabelManagerDialog({
       return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
     });
 
-  useDialogFocusTrap(dialogRef, { onEscape: onClose, initialFocusRef: newLabelRef });
+  const restoreActionFocus = (action: LabelAction, labelId: string) => {
+    afterUiUpdate(() => {
+      const target =
+        action === 'rename'
+          ? renameTriggerRefs.current.get(labelId)
+          : deleteTriggerRefs.current.get(labelId);
+      target?.focus({ preventScroll: true });
+    });
+  };
+
+  const cancelRename = (labelId: string) => {
+    setEditingId(null);
+    setEditingName('');
+    restoreActionFocus('rename', labelId);
+  };
+
+  const cancelDelete = (labelId: string) => {
+    setDeleteCandidateId(null);
+    restoreActionFocus('delete', labelId);
+  };
+
+  const handleDialogEscape = () => {
+    if (busy) return;
+    if (editingId) {
+      cancelRename(editingId);
+      return;
+    }
+    if (deleteCandidateId) {
+      cancelDelete(deleteCandidateId);
+      return;
+    }
+    onClose();
+  };
+
+  useDialogFocusTrap(dialogRef, { onEscape: handleDialogEscape, initialFocusRef: newLabelRef });
 
   useEffect(() => {
     let cancelled = false;
@@ -72,6 +110,14 @@ export function LabelManagerDialog({
       cancelled = true;
     };
   }, [labels]);
+
+  useEffect(() => {
+    if (!deleteCandidateId) return;
+    const frame = window.requestAnimationFrame(() => {
+      deleteCancelRefs.current.get(deleteCandidateId)?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [deleteCandidateId]);
 
   const run = async (operation: () => Promise<void>) => {
     setBusy(true);
@@ -97,6 +143,7 @@ export function LabelManagerDialog({
     void run(async () => {
       await onCreate(name);
       setNewLabelName('');
+      afterUiUpdate(() => newLabelRef.current?.focus({ preventScroll: true }));
     });
   };
 
@@ -107,6 +154,7 @@ export function LabelManagerDialog({
       await onRename(labelId, name);
       setEditingId(null);
       setEditingName('');
+      restoreActionFocus('rename', labelId);
     });
   };
 
@@ -119,6 +167,7 @@ export function LabelManagerDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="label-manager-title"
+        aria-busy={busy}
       >
         <div className="label-manager-heading">
           <div>
@@ -231,10 +280,7 @@ export function LabelManagerDialog({
                       <IconButton
                         label={`Cancel renaming ${label.name}`}
                         disabled={busy}
-                        onClick={() => {
-                          setEditingId(null);
-                          setEditingName('');
-                        }}
+                        onClick={() => cancelRename(label.id)}
                       >
                         <X />
                       </IconButton>
@@ -249,15 +295,22 @@ export function LabelManagerDialog({
                           void run(async () => {
                             await onDelete(label.id);
                             setDeleteCandidateId(null);
+                            afterUiUpdate(() =>
+                              newLabelRef.current?.focus({ preventScroll: true }),
+                            );
                           });
                         }}
                       >
                         Delete
                       </button>
                       <button
+                        ref={(element) => {
+                          if (element) deleteCancelRefs.current.set(label.id, element);
+                          else deleteCancelRefs.current.delete(label.id);
+                        }}
                         type="button"
                         disabled={busy}
-                        onClick={() => setDeleteCandidateId(null)}
+                        onClick={() => cancelDelete(label.id)}
                       >
                         Cancel
                       </button>
@@ -270,6 +323,10 @@ export function LabelManagerDialog({
                       </span>
                       <div className="label-manager-actions">
                         <IconButton
+                          ref={(element) => {
+                            if (element) renameTriggerRefs.current.set(label.id, element);
+                            else renameTriggerRefs.current.delete(label.id);
+                          }}
                           label={`Rename label ${label.name}`}
                           disabled={busy}
                           onClick={() => {
@@ -281,11 +338,16 @@ export function LabelManagerDialog({
                           <Pencil />
                         </IconButton>
                         <IconButton
+                          ref={(element) => {
+                            if (element) deleteTriggerRefs.current.set(label.id, element);
+                            else deleteTriggerRefs.current.delete(label.id);
+                          }}
                           label={`Delete label ${label.name}`}
                           disabled={busy}
                           onClick={() => {
                             setDeleteCandidateId(label.id);
                             setEditingId(null);
+                            setEditingName('');
                           }}
                         >
                           <Trash2 />
@@ -301,4 +363,8 @@ export function LabelManagerDialog({
       </div>
     </div>
   );
+}
+
+function afterUiUpdate(callback: () => void): void {
+  window.requestAnimationFrame(() => window.requestAnimationFrame(callback));
 }
