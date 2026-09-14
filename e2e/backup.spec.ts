@@ -178,10 +178,17 @@ test('full backup round-trips every v2 table and downloads a pre-restore safety 
   const preview = page.getByLabel('Validated backup preview');
   await expect(preview.getByText('Validated', { exact: true })).toBeVisible();
   await expect(preview).toContainText('Saved versions');
+  await expect(preview).toBeFocused();
   await preview.getByRole('checkbox').check();
+  await preview.getByRole('button', { name: 'Review restore' }).click();
+
+  const restoreDialog = page.getByRole('alertdialog', {
+    name: 'Restore and replace local library?',
+  });
+  await expect(restoreDialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
 
   const safetyDownloadPromise = page.waitForEvent('download');
-  await preview.getByRole('button', { name: 'Restore and replace local library' }).click();
+  await restoreDialog.getByRole('button', { name: 'Restore library' }).click();
   const safetyDownload = await safetyDownloadPromise;
   const safetyPath = await safetyDownload.path();
   expect(safetyPath).toBeTruthy();
