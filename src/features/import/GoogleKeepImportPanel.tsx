@@ -416,12 +416,7 @@ export function GoogleKeepImportPanel({ onImported }: GoogleKeepImportPanelProps
         </p>
       ) : null}
       {errorMessage ? (
-        <p
-          ref={errorRef}
-          className="backup-error keep-import-message"
-          role="alert"
-          tabIndex={-1}
-        >
+        <p ref={errorRef} className="backup-error keep-import-message" role="alert" tabIndex={-1}>
           {errorMessage}
         </p>
       ) : null}
