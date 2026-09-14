@@ -1,11 +1,5 @@
 export type OperationalFailureCategory =
-  | 'network'
-  | 'authentication'
-  | 'authorization'
-  | 'rate_limit'
-  | 'request'
-  | 'service'
-  | 'unknown';
+  'network' | 'authentication' | 'authorization' | 'rate_limit' | 'request' | 'service' | 'unknown';
 
 export function classifyOperationalStatus(status: number): OperationalFailureCategory {
   if (status === 0) return 'network';
