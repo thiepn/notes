@@ -140,7 +140,8 @@ export function RevisionHistoryDialog({
   const currentEntryId = useMemo(
     () =>
       currentSnapshot
-        ? (entries.find((entry) => snapshotsEqual(entry.snapshot, currentSnapshot))?.record.id ?? null)
+        ? (entries.find((entry) => snapshotsEqual(entry.snapshot, currentSnapshot))?.record.id ??
+          null)
         : null,
     [currentSnapshot, entries],
   );
@@ -178,10 +179,7 @@ export function RevisionHistoryDialog({
     itemRefs.current.get(entry.record.id)?.focus({ preventScroll: true });
   };
 
-  const handleRevisionKeyDown = (
-    event: ReactKeyboardEvent<HTMLButtonElement>,
-    index: number,
-  ) => {
+  const handleRevisionKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>, index: number) => {
     if (busy) return;
     let targetIndex: number | null = null;
     if (event.key === 'ArrowDown') targetIndex = Math.min(entries.length - 1, index + 1);
@@ -293,7 +291,12 @@ export function RevisionHistoryDialog({
             <h2 id="revision-history-title">Version history</h2>
             <p>{note.title || 'Untitled note'}</p>
           </div>
-          <IconButton ref={closeRef} label="Close version history" disabled={busy} onClick={onClose}>
+          <IconButton
+            ref={closeRef}
+            label="Close version history"
+            disabled={busy}
+            onClick={onClose}
+          >
             <X />
           </IconButton>
         </header>
@@ -356,7 +359,11 @@ export function RevisionHistoryDialog({
                 <div
                   className="revision-preview-context"
                   data-state={
-                    selectedMatchesCurrent ? 'current' : selectedChangesType ? 'type-change' : 'saved'
+                    selectedMatchesCurrent
+                      ? 'current'
+                      : selectedChangesType
+                        ? 'type-change'
+                        : 'saved'
                   }
                 >
                   <strong>
