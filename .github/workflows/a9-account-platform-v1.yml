@@ -1,0 +1,36 @@
+name: A9 Account Platform v1
+
+on:
+  pull_request:
+    paths:
+      - 'public/.well-known/thiepn-account-release.json'
+      - 'public/.well-known/thiepn-app.json'
+      - 'docs/account-platform/**'
+      - '.github/workflows/a9-account-platform-v1.yml'
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  release-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Verify Notes Platform v1 alignment
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const app=JSON.parse(fs.readFileSync('public/.well-known/thiepn-app.json','utf8'));
+          const release=JSON.parse(fs.readFileSync('public/.well-known/thiepn-account-release.json','utf8'));
+          const commit='169e083f268e895cd44d8a5fe706ba5d4532bfa2';
+          if(release.platform!=='THIEPN Account Platform'||release.platformRelease!=='1.0.0'||release.platformCommit!==commit)throw new Error('Notes Platform v1 release identity mismatch.');
+          for(const key of ['accountContract','sdkContract','integrationMode'])if(release[key]!==app[key])throw new Error(`Notes release/app contract mismatch: ${key}`);
+          if(app.accountContract!=='1.0'||app.sdkContract!=='1.x'||app.integrationMode!=='certified-legacy'||app.sessionAuthority!=='thiepn-account')throw new Error('Notes A8 account contract regressed.');
+          if(app.health?.networkFailureLogsOutUser!==false)throw new Error('Notes degraded-mode logout contract regressed.');
+          console.log('Notes Account Platform v1 release contract passed.');
+          NODE
