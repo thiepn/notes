@@ -29,6 +29,7 @@ import {
 } from './backupPresentation';
 import { BackupRepository, backupFilename } from './backupRepository';
 import { downloadPortableArchive } from './portableArchive';
+import { RestoreConfirmDialog } from './RestoreConfirmDialog';
 
 const backupRepository = new BackupRepository(notesDatabase);
 
@@ -45,8 +46,14 @@ interface SelectedBackup {
 
 export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const statusRef = useRef<HTMLParagraphElement>(null);
+  const errorRef = useRef<HTMLParagraphElement>(null);
   const [selected, setSelected] = useState<SelectedBackup | null>(null);
   const [confirmed, setConfirmed] = useState(false);
+  const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
+  const [restoreFocusVersion, setRestoreFocusVersion] = useState(0);
   const [busy, setBusy] = useState<'export' | 'portable' | 'inspect' | 'restore' | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -85,6 +92,36 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
+
+  useEffect(() => {
+    if (!selected) return;
+    const frame = window.requestAnimationFrame(() => {
+      previewRef.current?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [selected]);
+
+  useEffect(() => {
+    if (!errorMessage) return;
+    const frame = window.requestAnimationFrame(() => {
+      errorRef.current?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [errorMessage]);
+
+  useEffect(() => {
+    if (restoreFocusVersion === 0) return;
+    let secondFrame = 0;
+    const firstFrame = window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(() => {
+        statusRef.current?.focus({ preventScroll: true });
+      });
+    });
+    return () => {
+      window.cancelAnimationFrame(firstFrame);
+      if (secondFrame) window.cancelAnimationFrame(secondFrame);
+    };
+  }, [restoreFocusVersion]);
 
   const downloadCurrentBackup = async () => {
     setBusy('export');
@@ -137,6 +174,8 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
 
     setSelected(null);
     setConfirmed(false);
+    setRestoreDialogOpen(false);
+    setRestoreError(null);
     setBusy('inspect');
     setErrorMessage(null);
     setStatusMessage(null);
@@ -155,9 +194,22 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
     }
   };
 
+  const openRestoreConfirmation = () => {
+    if (!selected || !confirmed || busy) return;
+    setRestoreError(null);
+    setRestoreDialogOpen(true);
+  };
+
+  const cancelRestore = () => {
+    if (busy === 'restore') return;
+    setRestoreError(null);
+    setRestoreDialogOpen(false);
+  };
+
   const restore = async () => {
     if (!selected || !confirmed || busy) return;
     setBusy('restore');
+    setRestoreError(null);
     setErrorMessage(null);
     setStatusMessage(null);
 
@@ -166,14 +218,17 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
       const safetyFilename = backupFilename(safety.document.exportedAt, 'notes-before-restore');
       triggerJsonDownload(safety.json, safetyFilename);
       const stats = await backupRepository.restorePrepared(selected.prepared);
+      await onRestored();
       setCurrentStats(stats);
+      setSelected(null);
       setConfirmed(false);
+      setRestoreDialogOpen(false);
       setStatusMessage(
         `Restore complete. ${stats.notes} notes, ${stats.attachments} attachments, and ${stats.reminders} reminders recovered. Safety backup downloaded as ${safetyFilename}.`,
       );
-      await onRestored();
+      setRestoreFocusVersion((version) => version + 1);
     } catch (error) {
-      setErrorMessage(toErrorMessage(error));
+      setRestoreError(`Restore could not be completed. ${toErrorMessage(error)} Try again.`);
     } finally {
       setBusy(null);
     }
@@ -188,7 +243,7 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
     selected && currentStats ? backupComparisonRows(currentStats, selected.prepared.stats) : [];
 
   return (
-    <div className="backup-workspace">
+    <div className="backup-workspace" aria-busy={busy !== null || undefined}>
       <section className="backup-card backup-primary" aria-labelledby="backup-download-title">
         <div className="backup-card-icon" aria-hidden="true">
           <DatabaseBackup />
@@ -295,6 +350,7 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
           type="file"
           accept="application/json,.json"
           aria-label="Choose backup file"
+          disabled={busy !== null}
           onChange={(event) => void inspectFile(event)}
         />
         <button
@@ -308,7 +364,12 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
         </button>
 
         {selected ? (
-          <div className="backup-preview" aria-label="Validated backup preview">
+          <div
+            ref={previewRef}
+            className="backup-preview"
+            aria-label="Validated backup preview"
+            tabIndex={-1}
+          >
             <div className="backup-preview-heading">
               <div>
                 <strong>{selected.fileName}</strong>
@@ -386,6 +447,7 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
               <input
                 type="checkbox"
                 checked={confirmed}
+                disabled={busy !== null}
                 onChange={(event) => setConfirmed(event.target.checked)}
               />
               <span>I understand that this backup will replace the current local library.</span>
@@ -395,22 +457,22 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
               className="backup-button backup-button-danger"
               type="button"
               disabled={!confirmed || busy !== null}
-              onClick={() => void restore()}
+              onClick={openRestoreConfirmation}
             >
               <HardDriveUpload aria-hidden="true" />
-              {busy === 'restore' ? 'Restoring…' : 'Restore and replace local library'}
+              Review restore
             </button>
           </div>
         ) : null}
       </section>
 
       {statusMessage ? (
-        <p className="backup-status" role="status">
+        <p ref={statusRef} className="backup-status" role="status" tabIndex={-1}>
           {statusMessage}
         </p>
       ) : null}
       {errorMessage ? (
-        <p className="backup-error" role="alert">
+        <p ref={errorRef} className="backup-error" role="alert" tabIndex={-1}>
           {errorMessage}
         </p>
       ) : null}
@@ -426,6 +488,16 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
           duplicated later.
         </p>
       </section>
+
+      {restoreDialogOpen && selected ? (
+        <RestoreConfirmDialog
+          fileName={selected.fileName}
+          busy={busy === 'restore'}
+          error={restoreError}
+          onCancel={cancelRestore}
+          onConfirm={() => void restore()}
+        />
+      ) : null}
     </div>
   );
 }
