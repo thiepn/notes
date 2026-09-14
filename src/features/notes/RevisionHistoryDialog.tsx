@@ -199,7 +199,7 @@ export function RevisionHistoryDialog({
       setCurrentSnapshot(snapshotFromRestore(result));
       setLastRestore(result);
       setStatusMessage(
-        `Revision ${selected.record.noteRevision} restored. Undo restore is available until you close history.`,
+        `Version restored from revision ${selected.record.noteRevision}. Undo restore is available until you close history.`,
       );
       let refreshFailed = false;
       try {
