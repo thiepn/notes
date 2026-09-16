@@ -1,7 +1,7 @@
 {
   "name": "@thiepn/notes",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "description": "Local-first, zero-friction notes PWA hosted at thiepn.dev/notes.",
   "homepage": "https://thiepn.dev/notes/",
