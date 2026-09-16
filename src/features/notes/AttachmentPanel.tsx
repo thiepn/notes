@@ -51,9 +51,7 @@ interface AttachmentPanelProps {
 
 type AddSource = 'picker' | 'drop' | 'paste' | 'camera';
 type AttachmentAction =
-  | { kind: 'add'; source: AddSource }
-  | { kind: 'remove'; attachmentId: string }
-  | null;
+  { kind: 'add'; source: AddSource } | { kind: 'remove'; attachmentId: string } | null;
 type FeedbackFocus = 'status' | 'error' | null;
 
 export function AttachmentPanel({
@@ -362,9 +360,7 @@ export function AttachmentPanel({
         <div className="attachment-image-grid" aria-label="Attached images">
           {previewImages.map((attachment) => {
             const blocked =
-              busy ||
-              loading ||
-              (pendingRemoveId !== null && pendingRemoveId !== attachment.id);
+              busy || loading || (pendingRemoveId !== null && pendingRemoveId !== attachment.id);
             const removing =
               busyAction?.kind === 'remove' && busyAction.attachmentId === attachment.id;
             return (
@@ -389,9 +385,7 @@ export function AttachmentPanel({
         <div className="attachment-audio-list" aria-label="Voice recordings">
           {audioAttachments.map((attachment) => {
             const blocked =
-              busy ||
-              loading ||
-              (pendingRemoveId !== null && pendingRemoveId !== attachment.id);
+              busy || loading || (pendingRemoveId !== null && pendingRemoveId !== attachment.id);
             const removing =
               busyAction?.kind === 'remove' && busyAction.attachmentId === attachment.id;
             return (
@@ -415,9 +409,7 @@ export function AttachmentPanel({
         <div className="attachment-file-list" aria-label="Other attachments">
           {otherAttachments.map((attachment) => {
             const blocked =
-              busy ||
-              loading ||
-              (pendingRemoveId !== null && pendingRemoveId !== attachment.id);
+              busy || loading || (pendingRemoveId !== null && pendingRemoveId !== attachment.id);
             const removing =
               busyAction?.kind === 'remove' && busyAction.attachmentId === attachment.id;
             return (
