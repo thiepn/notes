@@ -57,7 +57,7 @@ test('account request exposes specific busy state and locks editable credentials
   const { section, email, password } = await fillSignedOutFields(page);
   await section.getByRole('button', { name: 'Forgot password' }).click();
 
-  await expect(page.getByText('Sending password-reset link…', { exact: true })).toBeVisible();
+  await expect(page.getByText('Sending recovery email…', { exact: true })).toBeVisible();
   await expect(section).toHaveAttribute('aria-busy', 'true');
   await expect(email).toBeDisabled();
   await expect(password).toBeDisabled();
