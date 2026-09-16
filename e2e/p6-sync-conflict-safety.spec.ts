@@ -97,7 +97,8 @@ async function cloud(page: Page, rows: VersionedRemoteSyncRecord[]) {
           (url.searchParams.get('version') ?? '').replace(/^eq\./u, ''),
         );
         const index = rows.findIndex(
-          (row) => row.entity_type === type && row.entity_id === id && row.version === expectedVersion,
+          (row) =>
+            row.entity_type === type && row.entity_id === id && row.version === expectedVersion,
         );
         if (index < 0) return json([]);
         const patch = request.postDataJSON() as Partial<VersionedRemoteSyncRecord>;
