@@ -1,8 +1,9 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { LockKeyhole, StickyNote } from 'lucide-react';
 
 import { notesDocumentTitle } from '../../app/documentContext';
 import { usePrivacy } from './PrivacyContext';
+import { readPrivacyAttemptState } from './privacy';
 
 export function PrivacyGate({ children }: { children: ReactNode }) {
   const { locked, unlock, unlockBlockedUntil } = usePrivacy();
@@ -10,6 +11,13 @@ export function PrivacyGate({ children }: { children: ReactNode }) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   const [now, setNow] = useState(Date.now);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const feedbackRef = useRef<HTMLParagraphElement>(null);
+  const wasBlockedRef = useRef(false);
+
+  const blockedForMs = locked ? Math.max(0, (unlockBlockedUntil ?? 0) - now) : 0;
+  const blocked = blockedForMs > 0;
+  const blockedSeconds = Math.max(1, Math.ceil(blockedForMs / 1000));
 
   useEffect(() => {
     if (!locked) return;
@@ -22,11 +30,23 @@ export function PrivacyGate({ children }: { children: ReactNode }) {
     return () => window.clearInterval(timer);
   }, [locked, unlockBlockedUntil]);
 
-  if (!locked) return children;
+  useEffect(() => {
+    if (!locked || checking || (!blocked && !errorMessage)) return;
+    const frame = window.requestAnimationFrame(() =>
+      feedbackRef.current?.focus({ preventScroll: true }),
+    );
+    return () => window.cancelAnimationFrame(frame);
+  }, [blocked, checking, errorMessage, locked]);
 
-  const blockedForMs = Math.max(0, (unlockBlockedUntil ?? 0) - now);
-  const blocked = blockedForMs > 0;
-  const blockedSeconds = Math.max(1, Math.ceil(blockedForMs / 1000));
+  useEffect(() => {
+    const wasBlocked = wasBlockedRef.current;
+    wasBlockedRef.current = blocked;
+    if (!locked || !wasBlocked || blocked) return;
+    const frame = window.requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true }));
+    return () => window.cancelAnimationFrame(frame);
+  }, [blocked, locked]);
+
+  if (!locked) return children;
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -37,7 +57,12 @@ export function PrivacyGate({ children }: { children: ReactNode }) {
       const valid = await unlock(passcode);
       if (!valid) {
         setPasscode('');
-        setErrorMessage('Incorrect passcode.');
+        const attempt = readPrivacyAttemptState();
+        const nextNow = Date.now();
+        setNow(nextNow);
+        setErrorMessage(
+          attempt && attempt.blockedUntil > nextNow ? null : 'Incorrect passcode.',
+        );
         return;
       }
       setPasscode('');
@@ -58,25 +83,27 @@ export function PrivacyGate({ children }: { children: ReactNode }) {
         </span>
         <h1 id="privacy-lock-title">Notes is locked</h1>
         <p>Enter the device-local privacy passcode to show your notes.</p>
-        <form onSubmit={(event) => void submit(event)}>
+        <form onSubmit={(event) => void submit(event)} aria-busy={checking || undefined}>
           <label>
             <span>Passcode</span>
             <input
+              ref={inputRef}
               autoFocus
               type="password"
               autoComplete="current-password"
               value={passcode}
-              disabled={blocked}
+              disabled={blocked || checking}
+              aria-invalid={errorMessage ? 'true' : undefined}
               onChange={(event) => setPasscode(event.target.value)}
             />
           </label>
           {blocked ? (
-            <p className="privacy-error" role="status">
+            <p ref={feedbackRef} className="privacy-error" role="status" tabIndex={-1}>
               Too many attempts. Try again in {blockedSeconds}{' '}
               {blockedSeconds === 1 ? 'second' : 'seconds'}.
             </p>
           ) : errorMessage ? (
-            <p className="privacy-error" role="alert">
+            <p ref={feedbackRef} className="privacy-error" role="alert" tabIndex={-1}>
               {errorMessage}
             </p>
           ) : null}
