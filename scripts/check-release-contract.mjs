@@ -11,8 +11,8 @@ const exists = (file) => fs.existsSync(path.join(root, file));
 const packageJson = JSON.parse(read('package.json'));
 const scripts = packageJson.scripts ?? {};
 
-if (packageJson.version !== '1.0.0') {
-  fail('P34 stable release metadata requires package.json version 1.0.0.');
+if (packageJson.version !== '1.0.1') {
+  fail('P34 terminal patch release requires package.json version 1.0.1.');
 }
 
 const requiredScripts = [
@@ -119,12 +119,13 @@ for (const deploymentInvariant of [
   'sw.js',
   'curl --fail --silent --show-error --location',
   'name: stable release marker',
-  'Release v1.0.0',
   'package_version',
-  'test "$package_version" = "1.0.0"',
-  'P34 post-v1 final hardening and certification complete.',
-  'gh release create v1.0.0',
+  'release_tag="v$package_version"',
+  'Release $release_tag',
+  'gh release view "$release_tag"',
+  'gh release create "$release_tag"',
   'test "$tag_sha" = "$RELEASE_SHA"',
+  'P34 post-v1 final hardening and certification complete.',
 ]) {
   if (!deploy.includes(deploymentInvariant)) {
     fail(`Pages deployment must preserve certified release invariant: ${deploymentInvariant}`);
