@@ -50,6 +50,9 @@ interface AttachmentPanelProps {
 }
 
 type AddSource = 'picker' | 'drop' | 'paste' | 'camera';
+type AttachmentAction =
+  { kind: 'add'; source: AddSource } | { kind: 'remove'; attachmentId: string } | null;
+type FeedbackFocus = 'status' | 'error' | null;
 
 export function AttachmentPanel({
   noteId,
@@ -59,17 +62,25 @@ export function AttachmentPanel({
   refreshKey = 0,
   onChanged,
 }: AttachmentPanelProps) {
+  const panelRef = useRef<HTMLElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const statusRef = useRef<HTMLSpanElement>(null);
+  const errorRef = useRef<HTMLSpanElement>(null);
   const [createdNoteId, setCreatedNoteId] = useState<string | null>(null);
+  const [loadedNoteId, setLoadedNoteId] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<AttachmentRecord[]>([]);
-  const [busy, setBusy] = useState(false);
+  const [busyAction, setBusyAction] = useState<AttachmentAction>(null);
   const [dragActive, setDragActive] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [feedbackFocus, setFeedbackFocus] = useState<FeedbackFocus>(null);
   const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
   const [lightboxId, setLightboxId] = useState<string | null>(null);
   const targetNoteId = noteId ?? createdNoteId;
+  const busy = busyAction !== null;
+  const loading = Boolean(targetNoteId && loadedNoteId !== targetNoteId);
+  const mutationLocked = busy || loading || pendingRemoveId !== null;
 
   useEffect(() => {
     if (!targetNoteId) return;
@@ -79,21 +90,66 @@ export function AttachmentPanel({
       .then((storedAttachments) => {
         if (cancelled) return;
         setAttachments(storedAttachments);
+        setLoadedNoteId(targetNoteId);
       })
       .catch(() => {
-        if (!cancelled) setErrorMessage('Attachments could not be loaded.');
+        if (cancelled) return;
+        setErrorMessage('Attachments could not be loaded.');
+        setLoadedNoteId(targetNoteId);
       });
     return () => {
       cancelled = true;
     };
   }, [refreshKey, repository, targetNoteId]);
 
+  useEffect(() => {
+    if (busy || !feedbackFocus) return;
+    const target = feedbackFocus === 'error' ? errorRef.current : statusRef.current;
+    const frame = window.requestAnimationFrame(() => {
+      target?.focus({ preventScroll: true });
+      setFeedbackFocus((current) => (current === feedbackFocus ? null : current));
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [busy, feedbackFocus]);
+
+  const focusRemoveTrigger = useCallback((attachmentId: string) => {
+    window.requestAnimationFrame(() => {
+      const trigger = Array.from(
+        panelRef.current?.querySelectorAll<HTMLButtonElement>('[data-attachment-remove-id]') ?? [],
+      ).find((button) => button.dataset.attachmentRemoveId === attachmentId);
+      trigger?.focus({ preventScroll: true });
+    });
+  }, []);
+
+  const cancelRemove = useCallback(
+    (attachmentId: string) => {
+      if (busy) return;
+      setPendingRemoveId(null);
+      focusRemoveTrigger(attachmentId);
+    },
+    [busy, focusRemoveTrigger],
+  );
+
+  useEffect(() => {
+    if (!pendingRemoveId || busy) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      event.stopPropagation();
+      cancelRemove(pendingRemoveId);
+    };
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [busy, cancelRemove, pendingRemoveId]);
+
   const addFiles = useCallback(
     async (files: File[], source: AddSource = 'picker') => {
-      if (!editable || files.length === 0 || busy) return;
-      setBusy(true);
+      if (!editable || files.length === 0 || busy || loading || pendingRemoveId) return;
+      setBusyAction({ kind: 'add', source });
+      setDragActive(false);
       setStatusMessage(null);
       setErrorMessage(null);
+      setFeedbackFocus(null);
       try {
         const target = targetNoteId ?? (await ensureNoteId?.()) ?? null;
         if (!target) throw new Error('Save the note before adding an image.');
@@ -101,19 +157,31 @@ export function AttachmentPanel({
         await assertStorageLooksSufficient(files);
         const result = await repository.addImages(target, files);
         setAttachments(result.attachments);
+        setLoadedNoteId(target);
         setStatusMessage(formatAddResult(result.added, result.skippedDuplicates, source));
         onChanged?.(target);
       } catch (error) {
         setErrorMessage(toErrorMessage(error));
+        setFeedbackFocus('error');
       } finally {
-        setBusy(false);
+        setBusyAction(null);
       }
     },
-    [busy, editable, ensureNoteId, noteId, onChanged, repository, targetNoteId],
+    [
+      busy,
+      editable,
+      ensureNoteId,
+      loading,
+      noteId,
+      onChanged,
+      pendingRemoveId,
+      repository,
+      targetNoteId,
+    ],
   );
 
   useEffect(() => {
-    if (!editable) return;
+    if (!editable || mutationLocked) return;
     const handlePaste = (event: ClipboardEvent) => {
       const files = Array.from(event.clipboardData?.files ?? []).filter((file) =>
         file.type.toLocaleLowerCase().startsWith('image/'),
@@ -124,33 +192,57 @@ export function AttachmentPanel({
     };
     document.addEventListener('paste', handlePaste);
     return () => document.removeEventListener('paste', handlePaste);
-  }, [addFiles, editable]);
+  }, [addFiles, editable, mutationLocked]);
 
-  const removeAttachment = async (attachmentId: string) => {
-    if (!editable || !targetNoteId || busy) return;
-    setBusy(true);
+  const requestRemove = (attachmentId: string) => {
+    if (!editable || busy || loading || pendingRemoveId) return;
     setStatusMessage(null);
     setErrorMessage(null);
+    setFeedbackFocus(null);
+    setPendingRemoveId(attachmentId);
+  };
+
+  const removeAttachment = async (attachmentId: string) => {
+    if (!editable || !targetNoteId || busy || loading || pendingRemoveId !== attachmentId) return;
+    setBusyAction({ kind: 'remove', attachmentId });
+    setStatusMessage(null);
+    setErrorMessage(null);
+    setFeedbackFocus(null);
     try {
       const remaining = await repository.remove(targetNoteId, attachmentId);
       setAttachments(remaining);
       setPendingRemoveId(null);
       if (lightboxId === attachmentId) setLightboxId(null);
       setStatusMessage('Attachment removed.');
+      setFeedbackFocus('status');
       onChanged?.(targetNoteId);
     } catch (error) {
       setErrorMessage(toErrorMessage(error));
+      setFeedbackFocus('error');
     } finally {
-      setBusy(false);
+      setBusyAction(null);
     }
   };
 
-  const handleDrop = (event: ReactDragEvent<HTMLDivElement>) => {
+  const handleDrop = (event: ReactDragEvent<HTMLElement>) => {
     if (!editable) return;
     event.preventDefault();
     setDragActive(false);
+    if (mutationLocked) return;
     void addFiles(Array.from(event.dataTransfer.files), 'drop');
   };
+
+  const closeLightbox = useCallback(() => {
+    const returnToId = lightboxId;
+    setLightboxId(null);
+    if (!returnToId) return;
+    window.requestAnimationFrame(() => {
+      const trigger = Array.from(
+        panelRef.current?.querySelectorAll<HTMLButtonElement>('[data-attachment-open-id]') ?? [],
+      ).find((button) => button.dataset.attachmentOpenId === returnToId);
+      trigger?.focus({ preventScroll: true });
+    });
+  }, [lightboxId]);
 
   const previewImages = attachments.filter((attachment) =>
     isPreviewableImageMimeType(attachment.mimeType),
@@ -171,16 +263,19 @@ export function AttachmentPanel({
 
   return (
     <section
+      ref={panelRef}
       className="attachment-panel"
       data-drag-active={dragActive}
+      data-action={loading ? 'loading' : (busyAction?.kind ?? undefined)}
+      aria-busy={busy || loading || undefined}
       aria-label="Attachments"
       onDragEnter={(event) => {
-        if (!editable || !hasFiles(event.dataTransfer)) return;
+        if (!editable || mutationLocked || !hasFiles(event.dataTransfer)) return;
         event.preventDefault();
         setDragActive(true);
       }}
       onDragOver={(event) => {
-        if (!editable || !hasFiles(event.dataTransfer)) return;
+        if (!editable || mutationLocked || !hasFiles(event.dataTransfer)) return;
         event.preventDefault();
         event.dataTransfer.dropEffect = 'copy';
       }}
@@ -192,8 +287,10 @@ export function AttachmentPanel({
     >
       <div className="attachment-panel-heading">
         <div>
-          <strong>{attachments.length > 0 ? 'Attachments' : 'Images'}</strong>
-          {attachments.length > 0 ? (
+          <strong>{loading || attachments.length > 0 ? 'Attachments' : 'Images'}</strong>
+          {loading ? (
+            <span>Loading saved media…</span>
+          ) : attachments.length > 0 ? (
             <>
               <span>{formatAttachmentSummary(summary)}</span>
               {breakdown ? <small className="attachment-panel-breakdown">{breakdown}</small> : null}
@@ -211,6 +308,7 @@ export function AttachmentPanel({
               accept={NATIVE_IMAGE_ACCEPT}
               multiple
               aria-label="Choose images"
+              disabled={mutationLocked}
               onChange={(event) => {
                 const files = Array.from(event.target.files ?? []);
                 event.target.value = '';
@@ -224,6 +322,7 @@ export function AttachmentPanel({
               accept="image/*"
               capture="environment"
               aria-label="Take photo"
+              disabled={mutationLocked}
               onChange={(event) => {
                 const files = Array.from(event.target.files ?? []);
                 event.target.value = '';
@@ -234,20 +333,24 @@ export function AttachmentPanel({
               className="attachment-add-button attachment-camera-button"
               type="button"
               aria-label="Take a photo"
-              disabled={busy}
+              disabled={mutationLocked}
               onClick={() => cameraInputRef.current?.click()}
             >
               <Camera aria-hidden="true" />
-              Camera
+              {busyAction?.kind === 'add' && busyAction.source === 'camera'
+                ? 'Capturing…'
+                : 'Camera'}
             </button>
             <button
               className="attachment-add-button"
               type="button"
-              disabled={busy}
+              disabled={mutationLocked}
               onClick={() => inputRef.current?.click()}
             >
               <ImagePlus aria-hidden="true" />
-              {busy ? 'Working…' : 'Add image'}
+              {busyAction?.kind === 'add' && busyAction.source !== 'camera'
+                ? 'Adding…'
+                : 'Add image'}
             </button>
           </div>
         ) : null}
@@ -255,61 +358,82 @@ export function AttachmentPanel({
 
       {previewImages.length > 0 ? (
         <div className="attachment-image-grid" aria-label="Attached images">
-          {previewImages.map((attachment) => (
-            <AttachmentImageTile
-              key={attachment.id}
-              attachment={attachment}
-              editable={editable}
-              pendingRemove={pendingRemoveId === attachment.id}
-              busy={busy}
-              onOpen={() => setLightboxId(attachment.id)}
-              onRequestRemove={() => setPendingRemoveId(attachment.id)}
-              onCancelRemove={() => setPendingRemoveId(null)}
-              onConfirmRemove={() => void removeAttachment(attachment.id)}
-            />
-          ))}
+          {previewImages.map((attachment) => {
+            const blocked =
+              busy || loading || (pendingRemoveId !== null && pendingRemoveId !== attachment.id);
+            const removing =
+              busyAction?.kind === 'remove' && busyAction.attachmentId === attachment.id;
+            return (
+              <AttachmentImageTile
+                key={attachment.id}
+                attachment={attachment}
+                editable={editable}
+                pendingRemove={pendingRemoveId === attachment.id}
+                blocked={blocked}
+                removing={removing}
+                onOpen={() => setLightboxId(attachment.id)}
+                onRequestRemove={() => requestRemove(attachment.id)}
+                onCancelRemove={() => cancelRemove(attachment.id)}
+                onConfirmRemove={() => void removeAttachment(attachment.id)}
+              />
+            );
+          })}
         </div>
       ) : null}
 
       {audioAttachments.length > 0 ? (
         <div className="attachment-audio-list" aria-label="Voice recordings">
-          {audioAttachments.map((attachment) => (
-            <AttachmentAudioRow
-              key={attachment.id}
-              attachment={attachment}
-              editable={editable}
-              pendingRemove={pendingRemoveId === attachment.id}
-              busy={busy}
-              onRequestRemove={() => setPendingRemoveId(attachment.id)}
-              onCancelRemove={() => setPendingRemoveId(null)}
-              onConfirmRemove={() => void removeAttachment(attachment.id)}
-            />
-          ))}
+          {audioAttachments.map((attachment) => {
+            const blocked =
+              busy || loading || (pendingRemoveId !== null && pendingRemoveId !== attachment.id);
+            const removing =
+              busyAction?.kind === 'remove' && busyAction.attachmentId === attachment.id;
+            return (
+              <AttachmentAudioRow
+                key={attachment.id}
+                attachment={attachment}
+                editable={editable}
+                pendingRemove={pendingRemoveId === attachment.id}
+                blocked={blocked}
+                removing={removing}
+                onRequestRemove={() => requestRemove(attachment.id)}
+                onCancelRemove={() => cancelRemove(attachment.id)}
+                onConfirmRemove={() => void removeAttachment(attachment.id)}
+              />
+            );
+          })}
         </div>
       ) : null}
 
       {otherAttachments.length > 0 ? (
         <div className="attachment-file-list" aria-label="Other attachments">
-          {otherAttachments.map((attachment) => (
-            <AttachmentFileRow
-              key={attachment.id}
-              attachment={attachment}
-              editable={editable}
-              pendingRemove={pendingRemoveId === attachment.id}
-              busy={busy}
-              onRequestRemove={() => setPendingRemoveId(attachment.id)}
-              onCancelRemove={() => setPendingRemoveId(null)}
-              onConfirmRemove={() => void removeAttachment(attachment.id)}
-            />
-          ))}
+          {otherAttachments.map((attachment) => {
+            const blocked =
+              busy || loading || (pendingRemoveId !== null && pendingRemoveId !== attachment.id);
+            const removing =
+              busyAction?.kind === 'remove' && busyAction.attachmentId === attachment.id;
+            return (
+              <AttachmentFileRow
+                key={attachment.id}
+                attachment={attachment}
+                editable={editable}
+                pendingRemove={pendingRemoveId === attachment.id}
+                blocked={blocked}
+                removing={removing}
+                onRequestRemove={() => requestRemove(attachment.id)}
+                onCancelRemove={() => cancelRemove(attachment.id)}
+                onConfirmRemove={() => void removeAttachment(attachment.id)}
+              />
+            );
+          })}
         </div>
       ) : null}
 
-      {editable && attachments.length === 0 ? (
+      {editable && !loading && attachments.length === 0 ? (
         <button
           className="attachment-empty-dropzone"
           type="button"
-          disabled={busy}
+          disabled={mutationLocked}
           onClick={() => inputRef.current?.click()}
         >
           <ImagePlus aria-hidden="true" />
@@ -323,9 +447,13 @@ export function AttachmentPanel({
       {dragActive ? <div className="attachment-drop-overlay">Drop images to attach</div> : null}
 
       <div className="attachment-panel-state" aria-live="polite">
-        {statusMessage ? <span>{statusMessage}</span> : null}
+        {statusMessage ? (
+          <span ref={statusRef} role="status" tabIndex={-1}>
+            {statusMessage}
+          </span>
+        ) : null}
         {errorMessage ? (
-          <span className="attachment-panel-error" role="alert">
+          <span ref={errorRef} className="attachment-panel-error" role="alert" tabIndex={-1}>
             {errorMessage}
           </span>
         ) : null}
@@ -336,7 +464,7 @@ export function AttachmentPanel({
           attachments={previewImages}
           index={lightboxIndex}
           onIndexChange={(index) => setLightboxId(previewImages[index]?.id ?? null)}
-          onClose={() => setLightboxId(null)}
+          onClose={closeLightbox}
         />
       ) : null}
     </section>
@@ -347,7 +475,8 @@ function AttachmentImageTile({
   attachment,
   editable,
   pendingRemove,
-  busy,
+  blocked,
+  removing,
   onOpen,
   onRequestRemove,
   onCancelRemove,
@@ -356,7 +485,8 @@ function AttachmentImageTile({
   attachment: AttachmentRecord;
   editable: boolean;
   pendingRemove: boolean;
-  busy: boolean;
+  blocked: boolean;
+  removing: boolean;
   onOpen(): void;
   onRequestRemove(): void;
   onCancelRemove(): void;
@@ -369,6 +499,7 @@ function AttachmentImageTile({
       <button
         className="attachment-image-open"
         type="button"
+        data-attachment-open-id={attachment.id}
         aria-label={`Open image: ${label}`}
         onClick={onOpen}
       >
@@ -396,10 +527,10 @@ function AttachmentImageTile({
         pendingRemove ? (
           <div className="attachment-remove-confirm" role="group" aria-label={`Remove ${label}?`}>
             <span>Remove?</span>
-            <button type="button" disabled={busy} onClick={onConfirmRemove}>
-              Yes
+            <button type="button" autoFocus disabled={blocked} onClick={onConfirmRemove}>
+              {removing ? 'Removing…' : 'Yes'}
             </button>
-            <button type="button" disabled={busy} onClick={onCancelRemove}>
+            <button type="button" disabled={blocked} onClick={onCancelRemove}>
               No
             </button>
           </div>
@@ -407,8 +538,9 @@ function AttachmentImageTile({
           <button
             className="attachment-remove-button"
             type="button"
+            data-attachment-remove-id={attachment.id}
             aria-label={`Remove image: ${label}`}
-            disabled={busy}
+            disabled={blocked}
             onClick={onRequestRemove}
           >
             <Trash2 aria-hidden="true" />
@@ -423,7 +555,8 @@ function AttachmentAudioRow({
   attachment,
   editable,
   pendingRemove,
-  busy,
+  blocked,
+  removing,
   onRequestRemove,
   onCancelRemove,
   onConfirmRemove,
@@ -431,7 +564,8 @@ function AttachmentAudioRow({
   attachment: AttachmentRecord;
   editable: boolean;
   pendingRemove: boolean;
-  busy: boolean;
+  blocked: boolean;
+  removing: boolean;
   onRequestRemove(): void;
   onCancelRemove(): void;
   onConfirmRemove(): void;
@@ -488,16 +622,17 @@ function AttachmentAudioRow({
             <>
               <button
                 type="button"
+                autoFocus
                 aria-label={`Confirm remove voice recording: ${name}`}
-                disabled={busy}
+                disabled={blocked}
                 onClick={onConfirmRemove}
               >
-                Remove
+                {removing ? 'Removing…' : 'Remove'}
               </button>
               <button
                 type="button"
                 aria-label={`Cancel remove voice recording: ${name}`}
-                disabled={busy}
+                disabled={blocked}
                 onClick={onCancelRemove}
               >
                 Cancel
@@ -506,8 +641,9 @@ function AttachmentAudioRow({
           ) : (
             <button
               type="button"
+              data-attachment-remove-id={attachment.id}
               aria-label={`Remove voice recording: ${name}`}
-              disabled={busy}
+              disabled={blocked}
               onClick={onRequestRemove}
             >
               <Trash2 aria-hidden="true" />
@@ -523,7 +659,8 @@ function AttachmentFileRow({
   attachment,
   editable,
   pendingRemove,
-  busy,
+  blocked,
+  removing,
   onRequestRemove,
   onCancelRemove,
   onConfirmRemove,
@@ -531,7 +668,8 @@ function AttachmentFileRow({
   attachment: AttachmentRecord;
   editable: boolean;
   pendingRemove: boolean;
-  busy: boolean;
+  blocked: boolean;
+  removing: boolean;
   onRequestRemove(): void;
   onCancelRemove(): void;
   onConfirmRemove(): void;
@@ -564,10 +702,10 @@ function AttachmentFileRow({
             role="group"
             aria-label={`Remove ${name}?`}
           >
-            <button type="button" disabled={busy} onClick={onConfirmRemove}>
-              Remove
+            <button type="button" autoFocus disabled={blocked} onClick={onConfirmRemove}>
+              {removing ? 'Removing…' : 'Remove'}
             </button>
-            <button type="button" disabled={busy} onClick={onCancelRemove}>
+            <button type="button" disabled={blocked} onClick={onCancelRemove}>
               Cancel
             </button>
           </div>
@@ -575,8 +713,9 @@ function AttachmentFileRow({
           <button
             className="attachment-file-action attachment-file-remove"
             type="button"
+            data-attachment-remove-id={attachment.id}
             aria-label={`Remove attachment: ${name}`}
-            disabled={busy}
+            disabled={blocked}
             onClick={onRequestRemove}
           >
             <Trash2 aria-hidden="true" />
@@ -599,7 +738,8 @@ function AttachmentLightbox({
   onClose(): void;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
-  useDialogFocusTrap(dialogRef, { onEscape: onClose });
+  const closeRef = useRef<HTMLButtonElement>(null);
+  useDialogFocusTrap(dialogRef, { onEscape: onClose, initialFocusRef: closeRef });
   const attachment = attachments[index];
   const url = useBlobUrl(attachment?.data ?? null);
   const [dimensions, setDimensions] = useState<{
@@ -633,11 +773,6 @@ function AttachmentLightbox({
     onIndexChange((index + direction + attachments.length) % attachments.length);
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     event.stopPropagation();
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      onClose();
-      return;
-    }
     if (event.key === 'ArrowLeft' && attachments.length > 1) {
       event.preventDefault();
       move(-1);
@@ -663,7 +798,7 @@ function AttachmentLightbox({
       }}
     >
       <div className="attachment-lightbox-toolbar">
-        <span className="attachment-lightbox-position">
+        <span className="attachment-lightbox-position" aria-live="polite">
           {index + 1} / {attachments.length}
         </span>
         <button
@@ -673,7 +808,7 @@ function AttachmentLightbox({
         >
           <Download aria-hidden="true" />
         </button>
-        <button type="button" aria-label="Close image viewer" autoFocus onClick={onClose}>
+        <button ref={closeRef} type="button" aria-label="Close image viewer" onClick={onClose}>
           <X aria-hidden="true" />
         </button>
       </div>
