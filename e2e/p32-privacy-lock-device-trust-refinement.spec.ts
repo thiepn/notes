@@ -132,5 +132,7 @@ test('a stricter auto-lock preference uses time already spent hidden instead of 
     window.dispatchEvent(new StorageEvent('storage', { key: preferencesKey, newValue: next }));
   }, PREFERENCES_KEY);
 
-  await expect(page.getByRole('heading', { name: 'Notes is locked' })).toBeVisible({ timeout: 2_000 });
+  await expect(page.getByRole('heading', { name: 'Notes is locked' })).toBeVisible({
+    timeout: 2_000,
+  });
 });
