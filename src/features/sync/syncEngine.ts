@@ -76,6 +76,7 @@ async function synchronizeUnlocked(
     deferred: 0,
   };
   const failedKeys = new Set<string>();
+  const blockedNoteIds = new Set<string>();
 
   const [localEntities, remoteRecords, shadow] = await Promise.all([
     buildLocalSnapshot(session.user.id),
@@ -98,6 +99,12 @@ async function synchronizeUnlocked(
         : remote?.entity_type === 'note'
           ? remote.entity_id
           : (local?.payload.noteId ?? remote?.payload?.noteId);
+    const isNoteEntity = local?.type === 'note' || remote?.entity_type === 'note';
+    if (typeof noteId === 'string' && blockedNoteIds.has(noteId) && !isNoteEntity) {
+      failedKeys.add(key);
+      result.deferred += 1;
+      continue;
+    }
     if (
       typeof noteId === 'string' &&
       Array.from(document.querySelectorAll<HTMLElement>('[data-editing-note]')).some(
@@ -157,6 +164,7 @@ async function synchronizeUnlocked(
       // the freshly fetched final remote state is reconciled on the next pass rather than retried blind.
       if (error instanceof SyncWriteConflictError) {
         failedKeys.add(key);
+        if (typeof noteId === 'string' && isNoteEntity) blockedNoteIds.add(noteId);
         result.conflicts += 1;
         result.deferred += 1;
         continue;
