@@ -66,19 +66,24 @@ test('authoritative attachment loading gates mutation controls until the list re
 }) => {
   await page.goto('./');
   await waitForNotes(page);
-  await seedAttachmentNote(page);
+  const { noteId } = await seedAttachmentNote(page);
   await page.reload();
   await waitForNotes(page);
 
-  await page.evaluate(async () => {
+  await page.evaluate(async (targetNoteId) => {
     const module = await import('/notes/src/db/repositories/attachmentsRepository.ts');
     const prototype = module.AttachmentsRepository.prototype;
     const original = prototype.list;
     let release: (() => void) | null = null;
-    let blockNext = true;
+    let blockedTarget = false;
     prototype.list = async function (...args: Parameters<typeof original>) {
-      if (blockNext) {
-        blockNext = false;
+      if (!blockedTarget && args[0] === targetNoteId) {
+        blockedTarget = true;
+        (
+          window as typeof window & {
+            __p30AttachmentLoadBlocked?: boolean;
+          }
+        ).__p30AttachmentLoadBlocked = true;
         await new Promise<void>((resolve) => {
           release = resolve;
         });
@@ -93,11 +98,19 @@ test('authoritative attachment loading gates mutation controls until the list re
       release?.();
       release = null;
     };
-  });
+  }, noteId);
 
   await page.getByRole('button', { name: 'Open note: P30 attachment note' }).click();
   const editor = page.getByRole('dialog', { name: 'Edit note' });
   const panel = editor.getByRole('region', { name: 'Attachments' });
+  await page.waitForFunction(
+    () =>
+      (
+        window as typeof window & {
+          __p30AttachmentLoadBlocked?: boolean;
+        }
+      ).__p30AttachmentLoadBlocked === true,
+  );
 
   await expect(panel).toHaveAttribute('aria-busy', 'true');
   await expect(panel.getByText('Loading saved media…')).toBeVisible();
