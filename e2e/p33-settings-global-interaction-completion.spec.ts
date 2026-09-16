@@ -45,7 +45,9 @@ test('settings sections support directional, Home, and End keyboard navigation o
 
   await advanced.press('Home');
   await expect(appearance).toBeFocused();
-  await expect(settings.getByRole('region', { name: 'Appearance' })).toBeVisible();
+  await expect(
+    settings.getByRole('region', { name: 'Appearance', exact: true }),
+  ).toBeVisible();
 });
 
 test('clearing recent search history moves focus to explicit completion feedback', async ({
