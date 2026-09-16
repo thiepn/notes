@@ -62,6 +62,9 @@ jobs:
       - name: P20 release certification without retries
         run: npm run e2e:p20
 
+      - name: P34 final certification without retries
+        run: npm run e2e:p34
+
       - name: PWA offline certification
         run: npm run e2e:pwa
 
