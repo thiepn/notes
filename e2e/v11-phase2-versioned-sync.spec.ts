@@ -235,6 +235,29 @@ test('a concurrent create is rejected instead of merged over the remote row', as
   ).toBe('Concurrent create');
 });
 
+test('a note create conflict defers dependent checklist rows in the same pass', async ({ page }) => {
+  const rows: VersionedRemoteSyncRecord[] = [];
+  const control: CloudControl = { stalePatchAttempts: 0, createCollisionAttempts: 0 };
+  await installCloud(page, rows, control);
+  await page.goto('./');
+  await expect(page.getByRole('button', { name: 'Create a text note' })).toBeVisible();
+  const created = await page.evaluate(async () => {
+    const db = await import('/notes/src/db/index.ts');
+    return new db.ChecklistsRepository(db.notesDatabase).create('Concurrent checklist', [
+      { id: crypto.randomUUID(), text: 'Local child one', checked: false, parentId: null },
+      { id: crypto.randomUUID(), text: 'Local child two', checked: false, parentId: null },
+    ]);
+  });
+  control.collideCreateId = created.note.id;
+
+  const result = await sync(page);
+
+  expect(control.createCollisionAttempts).toBe(1);
+  expect(result.deferred).toBeGreaterThanOrEqual(3);
+  expect(rows.filter((row) => row.entity_type === 'note')).toHaveLength(1);
+  expect(rows.some((row) => row.entity_type === 'checklist_item')).toBe(false);
+});
+
 test('a stale delete cannot tombstone a newer remote edit', async ({ page }) => {
   const rows: VersionedRemoteSyncRecord[] = [];
   const control: CloudControl = { stalePatchAttempts: 0, createCollisionAttempts: 0 };
