@@ -1,10 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import {
-  listRemoteRecords,
-  refreshSession,
-  SupabaseRequestError,
-  type SupabaseSession,
-} from './supabaseApi';
+import { refreshSession, SupabaseRequestError, type SupabaseSession } from './supabaseApi';
+import { listVersionedRemoteRecords } from './versionedSyncApi';
+
 const session: SupabaseSession = {
   access_token: 'test-access',
   refresh_token: 'test-refresh',
@@ -16,11 +13,14 @@ const row = (n: number) => ({
   user_id: 'test-owner',
   entity_type: 'note',
   entity_id: `note-${String(n).padStart(5, '0')}`,
+  version: 1,
 });
+
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
+
 describe('bounded cloud API requests', () => {
   it('reads beyond the server row cap using an ordered cursor', async () => {
     const pages = [
@@ -31,12 +31,13 @@ describe('bounded cloud API requests', () => {
     ];
     const fetchMock = vi.fn(async () => Response.json(pages.shift()));
     vi.stubGlobal('fetch', fetchMock);
-    const result = await listRemoteRecords(session);
+    const result = await listVersionedRemoteRecords(session);
     expect(result).toHaveLength(1001);
     expect(fetchMock).toHaveBeenCalledTimes(4);
     const calls = fetchMock.mock.calls as unknown as Array<[string, RequestInit]>;
     expect(new URL(calls[0]![0]).searchParams.get('order')).toBe('entity_type.asc,entity_id.asc');
     expect(new URL(calls[1]![0]).searchParams.get('or')).toContain('note-00499');
+    expect(new URL(calls[0]![0]).searchParams.get('select')).toContain('version');
     expect(calls[0]![1].signal).toBeDefined();
   });
   it('continues when a project has a smaller page cap than requested', async () => {
@@ -45,21 +46,21 @@ describe('bounded cloud API requests', () => {
       'fetch',
       vi.fn(async () => Response.json(pages.shift())),
     );
-    expect(await listRemoteRecords(session)).toHaveLength(2);
+    expect(await listVersionedRemoteRecords(session)).toHaveLength(2);
   });
   it('rejects a repeated cursor instead of looping or returning incomplete data', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => Response.json([row(0)])),
     );
-    await expect(listRemoteRecords(session)).rejects.toThrow('did not advance');
+    await expect(listVersionedRemoteRecords(session)).rejects.toThrow('did not advance');
   });
   it('rejects records from a different account', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => Response.json([{ ...row(0), user_id: 'someone-else' }])),
     );
-    await expect(listRemoteRecords(session)).rejects.toThrow('different account');
+    await expect(listVersionedRemoteRecords(session)).rejects.toThrow('different account');
   });
   it('coalesces simultaneous refreshes so a token is not consumed twice', async () => {
     const fetchMock = vi.fn(async () =>
