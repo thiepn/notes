@@ -61,7 +61,9 @@ async function openAttachmentEditor(page: Page): Promise<{
   return { editor, panel, noteId };
 }
 
-test('authoritative attachment loading gates mutation controls until the list resolves', async ({ page }) => {
+test('authoritative attachment loading gates mutation controls until the list resolves', async ({
+  page,
+}) => {
   await page.goto('./');
   await waitForNotes(page);
   await seedAttachmentNote(page);
@@ -135,7 +137,9 @@ test('remove confirmation receives focus and Escape cancels only that intent', a
   await expect(panel.getByRole('button', { name: 'Add image' })).toBeEnabled();
 });
 
-test('failed removal preserves confirmation for retry and focuses the truthful error', async ({ page }) => {
+test('failed removal preserves confirmation for retry and focuses the truthful error', async ({
+  page,
+}) => {
   const { panel, noteId } = await openAttachmentEditor(page);
 
   await page.evaluate(async () => {
