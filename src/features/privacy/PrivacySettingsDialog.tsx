@@ -1,10 +1,12 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BellOff, EyeOff, LockKeyhole, ShieldCheck, Trash2, X } from 'lucide-react';
 
 import { useDialogFocusTrap } from '../../components/ui/useDialogFocusTrap';
 import { clearRecentSearches } from '../search/searchHistory';
 import { usePrivacy } from './PrivacyContext';
 import { supportsPrivacyLock, validatePrivacyPasscode } from './privacy';
+
+type PrivacyAction = 'enable' | 'change' | 'disable' | null;
 
 export function PrivacySettingsDialog({
   onClose,
@@ -27,12 +29,27 @@ export function PrivacySettingsDialog({
   const [newPasscode, setNewPasscode] = useState('');
   const [confirmPasscode, setConfirmPasscode] = useState('');
   const [currentPasscode, setCurrentPasscode] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [activeAction, setActiveAction] = useState<PrivacyAction>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const dialogRef = useRef<HTMLElement>(null);
+  const statusRef = useRef<HTMLParagraphElement>(null);
+  const errorRef = useRef<HTMLParagraphElement>(null);
+  const busy = activeAction !== null;
 
-  useDialogFocusTrap(dialogRef, { onEscape: onClose });
+  const requestClose = () => {
+    if (!busy) onClose();
+  };
+
+  useDialogFocusTrap(dialogRef, { onEscape: requestClose });
+
+  useEffect(() => {
+    if (busy) return;
+    const target = errorMessage ? errorRef.current : message ? statusRef.current : null;
+    if (!target) return;
+    const frame = window.requestAnimationFrame(() => target.focus({ preventScroll: true }));
+    return () => window.cancelAnimationFrame(frame);
+  }, [busy, errorMessage, message]);
 
   const resetFeedback = () => {
     setMessage(null);
@@ -47,13 +64,14 @@ export function PrivacySettingsDialog({
   };
 
   const enable = async () => {
+    if (busy) return;
     resetFeedback();
     const validation = validateNewPasscode();
     if (validation) {
       setErrorMessage(validation);
       return;
     }
-    setBusy(true);
+    setActiveAction('enable');
     try {
       await enableLock(newPasscode);
       setNewPasscode('');
@@ -66,11 +84,12 @@ export function PrivacySettingsDialog({
         error instanceof Error ? error.message : 'Privacy lock could not be enabled.',
       );
     } finally {
-      setBusy(false);
+      setActiveAction(null);
     }
   };
 
   const change = async () => {
+    if (busy) return;
     resetFeedback();
     const validation = validateNewPasscode();
     if (validation) {
@@ -81,7 +100,7 @@ export function PrivacySettingsDialog({
       setErrorMessage('Enter the current passcode first.');
       return;
     }
-    setBusy(true);
+    setActiveAction('change');
     try {
       if (!(await changePasscode(currentPasscode, newPasscode))) {
         setErrorMessage('Current passcode is incorrect.');
@@ -96,17 +115,18 @@ export function PrivacySettingsDialog({
         error instanceof Error ? error.message : 'Privacy passcode could not be changed.',
       );
     } finally {
-      setBusy(false);
+      setActiveAction(null);
     }
   };
 
   const disable = async () => {
+    if (busy) return;
     resetFeedback();
     if (!currentPasscode) {
       setErrorMessage('Enter the current passcode first.');
       return;
     }
-    setBusy(true);
+    setActiveAction('disable');
     try {
       if (!(await disableLock(currentPasscode))) {
         setErrorMessage('Current passcode is incorrect.');
@@ -116,13 +136,26 @@ export function PrivacySettingsDialog({
       setNewPasscode('');
       setConfirmPasscode('');
       setMessage('Privacy lock disabled on this device.');
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Privacy lock could not be disabled.',
+      );
     } finally {
-      setBusy(false);
+      setActiveAction(null);
     }
   };
 
+  const primaryActionLabel =
+    activeAction === 'enable'
+      ? 'Enabling…'
+      : activeAction === 'change'
+        ? 'Changing…'
+        : lockEnabled
+          ? 'Change passcode'
+          : 'Enable privacy lock';
+
   return (
-    <div className="privacy-dialog-layer" role="presentation" onPointerDown={onClose}>
+    <div className="privacy-dialog-layer" role="presentation" onPointerDown={requestClose}>
       <section
         ref={dialogRef}
         tabIndex={-1}
@@ -131,6 +164,7 @@ export function PrivacySettingsDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="privacy-settings-title"
+        aria-busy={busy || undefined}
         onPointerDown={(event) => event.stopPropagation()}
       >
         <header className="privacy-dialog-header">
@@ -143,7 +177,12 @@ export function PrivacySettingsDialog({
               <h2 id="privacy-settings-title">Privacy settings</h2>
             </div>
           </div>
-          <button type="button" aria-label="Close privacy settings" onClick={onClose}>
+          <button
+            type="button"
+            aria-label="Close privacy settings"
+            disabled={busy}
+            onClick={requestClose}
+          >
             <X />
           </button>
         </header>
@@ -170,6 +209,7 @@ export function PrivacySettingsDialog({
               <input
                 type="checkbox"
                 checked={hidePreviews}
+                disabled={busy}
                 onChange={(event) => setPreferences({ hidePreviews: event.target.checked })}
               />
             </label>
@@ -188,6 +228,7 @@ export function PrivacySettingsDialog({
               <input
                 type="checkbox"
                 checked={privateNotifications}
+                disabled={busy}
                 onChange={(event) => setPreferences({ privateNotifications: event.target.checked })}
               />
             </label>
@@ -207,6 +248,7 @@ export function PrivacySettingsDialog({
                 <button
                   className="privacy-secondary-button"
                   type="button"
+                  disabled={busy}
                   onClick={() => {
                     onClose();
                     lock();
@@ -217,6 +259,11 @@ export function PrivacySettingsDialog({
               ) : null}
             </div>
 
+            <p className="privacy-boundary">
+              Reloading always starts locked. Auto-lock applies only to the Notes tab that was
+              hidden; Lock now also locks sibling Notes tabs in this browser profile.
+            </p>
+
             {supportsPrivacyLock() ? (
               <>
                 {lockEnabled ? (
@@ -225,6 +272,7 @@ export function PrivacySettingsDialog({
                     <input
                       type="password"
                       autoComplete="current-password"
+                      disabled={busy}
                       value={currentPasscode}
                       onChange={(event) => setCurrentPasscode(event.target.value)}
                     />
@@ -237,6 +285,7 @@ export function PrivacySettingsDialog({
                     <input
                       type="password"
                       autoComplete="new-password"
+                      disabled={busy}
                       value={newPasscode}
                       onChange={(event) => setNewPasscode(event.target.value)}
                     />
@@ -246,6 +295,7 @@ export function PrivacySettingsDialog({
                     <input
                       type="password"
                       autoComplete="new-password"
+                      disabled={busy}
                       value={confirmPasscode}
                       onChange={(event) => setConfirmPasscode(event.target.value)}
                     />
@@ -259,7 +309,7 @@ export function PrivacySettingsDialog({
                     onClick={() => void (lockEnabled ? change() : enable())}
                   >
                     <LockKeyhole aria-hidden="true" />
-                    {lockEnabled ? 'Change passcode' : 'Enable privacy lock'}
+                    {primaryActionLabel}
                   </button>
                   {lockEnabled ? (
                     <button
@@ -268,7 +318,7 @@ export function PrivacySettingsDialog({
                       disabled={busy || !currentPasscode}
                       onClick={() => void disable()}
                     >
-                      Disable lock
+                      {activeAction === 'disable' ? 'Disabling…' : 'Disable lock'}
                     </button>
                   ) : null}
                 </div>
@@ -282,7 +332,7 @@ export function PrivacySettingsDialog({
             <label className="privacy-field privacy-auto-lock-field">
               <span>Auto-lock after Notes is hidden</span>
               <select
-                disabled={!lockEnabled}
+                disabled={!lockEnabled || busy}
                 value={autoLockMinutes === null ? 'never' : String(autoLockMinutes)}
                 onChange={(event) =>
                   setPreferences({
@@ -314,6 +364,7 @@ export function PrivacySettingsDialog({
               <button
                 className="privacy-secondary-button"
                 type="button"
+                disabled={busy}
                 onClick={() => {
                   clearRecentSearches();
                   setMessage('Recent search history cleared.');
@@ -326,12 +377,12 @@ export function PrivacySettingsDialog({
           </section>
 
           {message ? (
-            <p className="privacy-success" role="status">
+            <p ref={statusRef} className="privacy-success" role="status" tabIndex={-1}>
               {message}
             </p>
           ) : null}
           {errorMessage ? (
-            <p className="privacy-error" role="alert">
+            <p ref={errorRef} className="privacy-error" role="alert" tabIndex={-1}>
               {errorMessage}
             </p>
           ) : null}

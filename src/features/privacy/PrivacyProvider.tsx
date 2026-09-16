@@ -123,7 +123,7 @@ export function PrivacyProvider({ children }: { children: ReactNode }) {
 
     document.addEventListener('visibilitychange', handleVisibility);
     if (document.visibilityState === 'hidden') {
-      hiddenAtRef.current = Date.now();
+      hiddenAtRef.current ??= Date.now();
       scheduleFromHiddenState();
     }
 
