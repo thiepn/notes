@@ -385,12 +385,7 @@ async function tombstoneRemote(
     if (
       typeof storagePath === 'string' &&
       typeof checksum === 'string' &&
-      isSupportedAttachmentStoragePath(
-        session.user.id,
-        remote.entity_id,
-        checksum,
-        storagePath,
-      )
+      isSupportedAttachmentStoragePath(session.user.id, remote.entity_id, checksum, storagePath)
     ) {
       try {
         await deleteAttachmentObject(session, storagePath);
@@ -457,12 +452,7 @@ async function applyRemote(
       if (
         typeof storagePath !== 'string' ||
         typeof checksum !== 'string' ||
-        !isSupportedAttachmentStoragePath(
-          session.user.id,
-          remote.entity_id,
-          checksum,
-          storagePath,
-        )
+        !isSupportedAttachmentStoragePath(session.user.id, remote.entity_id, checksum, storagePath)
       ) {
         throw new Error('Cloud attachment has an invalid storage path.');
       }
@@ -588,10 +578,7 @@ async function entity(
   };
 }
 
-function createShadow(
-  local: LocalEntity[],
-  remote: VersionedRemoteSyncRecord[],
-): SyncShadow {
+function createShadow(local: LocalEntity[], remote: VersionedRemoteSyncRecord[]): SyncShadow {
   const localMap = new Map(local.map((item) => [item.key, item]));
   const remoteMap = new Map(remote.map((item) => [recordKey(item), item]));
   const keys = new Set([...localMap.keys(), ...remoteMap.keys()]);
@@ -645,9 +632,7 @@ function isNoteBeingEdited(noteId: string): boolean {
   );
 }
 
-function recordKey(
-  record: Pick<VersionedRemoteSyncRecord, 'entity_type' | 'entity_id'>,
-): string {
+function recordKey(record: Pick<VersionedRemoteSyncRecord, 'entity_type' | 'entity_id'>): string {
   return entityKey(record.entity_type, record.entity_id);
 }
 
