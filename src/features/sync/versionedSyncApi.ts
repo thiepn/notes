@@ -4,11 +4,7 @@ import {
   logOperationalEvent,
   runSafeReadWithRetry,
 } from './operations';
-import {
-  SupabaseRequestError,
-  type RemoteSyncRecord,
-  type SupabaseSession,
-} from './supabaseApi';
+import { SupabaseRequestError, type RemoteSyncRecord, type SupabaseSession } from './supabaseApi';
 
 const SUPABASE_URL = 'https://hycegznamzjhwinegaai.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_1rZzRPzfLMaAH5pIgCwIjA_19UPMIsR';
@@ -19,10 +15,7 @@ export interface VersionedRemoteSyncRecord extends RemoteSyncRecord {
   version: number;
 }
 
-export type RemoteSyncMutation = Omit<
-  VersionedRemoteSyncRecord,
-  'updated_at' | 'version'
->;
+export type RemoteSyncMutation = Omit<VersionedRemoteSyncRecord, 'updated_at' | 'version'>;
 
 export class SyncWriteConflictError extends Error {
   constructor(
