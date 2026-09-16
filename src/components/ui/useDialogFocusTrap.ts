@@ -29,11 +29,12 @@ export function useDialogFocusTrap<
   const setupDialog = useEffectEvent(() => {
     const container = containerRef.current;
     if (!container || options.enabled === false) return;
+    const visibleModals = () =>
+      Array.from(document.querySelectorAll<HTMLElement>('[aria-modal="true"]')).filter(
+        (node) => node.getClientRects().length > 0,
+      );
     const isTopmost = () => {
-      const dialogs = Array.from(
-        document.querySelectorAll<HTMLElement>('[aria-modal="true"]'),
-      ).filter((node) => node.getClientRects().length > 0);
-      const top = dialogs.at(-1);
+      const top = visibleModals().at(-1);
       return !top || top === container;
     };
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -80,16 +81,14 @@ export function useDialogFocusTrap<
           active === null || active === document.body || active === document.documentElement;
         const focusStayedInsideClosingSurface =
           active instanceof Node && container.contains(active);
-        const anotherVisibleModal = Array.from(
-          document.querySelectorAll<HTMLElement>('[aria-modal="true"]'),
-        ).some((node) => node !== container && node.getClientRects().length > 0);
-        if (
-          !anotherVisibleModal &&
-          (focusIsUnclaimed || focusStayedInsideClosingSurface) &&
-          previous.isConnected
-        ) {
-          previous.focus({ preventScroll: true });
-        }
+        if (!focusIsUnclaimed && !focusStayedInsideClosingSurface) return;
+
+        const remainingModals = visibleModals().filter((node) => node !== container);
+        const topRemainingModal = remainingModals.at(-1) ?? null;
+        if (topRemainingModal && !topRemainingModal.contains(previous)) return;
+        if (previous.closest('[inert], [aria-hidden="true"]')) return;
+
+        previous.focus({ preventScroll: true });
       });
     };
   });

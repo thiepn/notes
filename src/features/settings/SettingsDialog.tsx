@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import {
   BellRing,
   Cloud,
@@ -24,9 +24,11 @@ import type { ThemePreference } from '../../theme/theme';
 
 export type SettingsSection =
   'appearance' | 'sync' | 'privacy' | 'notifications' | 'search' | 'advanced';
+export type SettingsInitialFocus = 'close' | 'privacy-lock';
 
 interface SettingsDialogProps {
   initialSection?: SettingsSection;
+  initialFocus?: SettingsInitialFocus;
   onClose(): void;
   onOpenBackup(): void;
   onOpenPrivacyLock(): void;
@@ -84,21 +86,77 @@ const THEME_OPTIONS: Array<{ value: ThemePreference; label: string; detail: stri
 
 export function SettingsDialog({
   initialSection = 'appearance',
+  initialFocus,
   onClose,
   onOpenBackup,
   onOpenPrivacyLock,
 }: SettingsDialogProps) {
   const [section, setSection] = useState<SettingsSection>(initialSection);
   const [recentSearchCount, setRecentSearchCount] = useState(() => readRecentSearches().length);
+  const [recentSearchFeedback, setRecentSearchFeedback] = useState<string | null>(null);
   const dialogRef = useRef<HTMLElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const privacyLockRef = useRef<HTMLButtonElement>(null);
+  const recentSearchFeedbackRef = useRef<HTMLParagraphElement>(null);
+  const sectionButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const { preference, setPreference } = useTheme();
   const { hidePreviews, privateNotifications, autoLockMinutes, lockEnabled, setPreferences, lock } =
     usePrivacy();
+  const resolvedInitialFocus =
+    initialFocus ?? (initialSection === 'privacy' ? 'privacy-lock' : 'close');
 
-  useDialogFocusTrap(dialogRef, { onEscape: onClose, initialFocusRef: closeRef });
+  useDialogFocusTrap(dialogRef, {
+    onEscape: onClose,
+    initialFocusRef: resolvedInitialFocus === 'privacy-lock' ? privacyLockRef : closeRef,
+  });
 
   const activeSection = SECTIONS.find((item) => item.id === section) ?? SECTIONS[0]!;
+  const activeSectionIndex = SECTIONS.findIndex((item) => item.id === section);
+
+  useEffect(() => {
+    const activeButton = sectionButtonRefs.current[activeSectionIndex];
+    if (!activeButton) return;
+    const frame = window.requestAnimationFrame(() => {
+      activeButton.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeSectionIndex]);
+
+  const activateSectionAt = (index: number, focus = false) => {
+    const normalizedIndex = (index + SECTIONS.length) % SECTIONS.length;
+    const next = SECTIONS[normalizedIndex];
+    if (!next) return;
+    setSection(next.id);
+    setRecentSearchFeedback(null);
+    if (focus) sectionButtonRefs.current[normalizedIndex]?.focus({ preventScroll: true });
+  };
+
+  const handleSectionKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    let nextIndex: number | null = null;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowRight') nextIndex = index + 1;
+    if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') nextIndex = index - 1;
+    if (event.key === 'Home') nextIndex = 0;
+    if (event.key === 'End') nextIndex = SECTIONS.length - 1;
+    if (nextIndex === null) return;
+    event.preventDefault();
+    activateSectionAt(nextIndex, true);
+  };
+
+  const clearRecentHistory = () => {
+    clearRecentSearches();
+    setRecentSearchCount(0);
+    setRecentSearchFeedback('Recent search history cleared. Saved searches were kept.');
+    window.requestAnimationFrame(() =>
+      recentSearchFeedbackRef.current?.focus({ preventScroll: true }),
+    );
+  };
+
+  const openBackupWorkspace = () => {
+    onOpenBackup();
+    window.requestAnimationFrame(() =>
+      document.getElementById('main-content')?.focus({ preventScroll: true }),
+    );
+  };
 
   return (
     <div className="settings-dialog-layer" role="presentation" onPointerDown={onClose}>
@@ -128,14 +186,19 @@ export function SettingsDialog({
 
         <div className="settings-dialog-layout">
           <nav className="settings-navigation" aria-label="Settings sections">
-            {SECTIONS.map(({ id, label, description, icon: Icon }) => (
+            {SECTIONS.map(({ id, label, description, icon: Icon }, index) => (
               <button
+                ref={(node) => {
+                  sectionButtonRefs.current[index] = node;
+                }}
                 key={id}
                 className="settings-nav-item"
                 type="button"
                 data-active={section === id}
                 aria-current={section === id ? 'page' : undefined}
-                onClick={() => setSection(id)}
+                aria-controls={`settings-section-${id}`}
+                onClick={() => activateSectionAt(index)}
+                onKeyDown={(event) => handleSectionKeyDown(event, index)}
               >
                 <Icon aria-hidden="true" />
                 <span>
@@ -146,9 +209,15 @@ export function SettingsDialog({
             ))}
           </nav>
 
-          <div className="settings-content" data-section={section}>
+          <div
+            className="settings-content"
+            data-section={section}
+            id={`settings-section-${section}`}
+            role="region"
+            aria-labelledby={`settings-section-heading-${section}`}
+          >
             <div className="settings-section-heading">
-              <h3>{activeSection.label}</h3>
+              <h3 id={`settings-section-heading-${section}`}>{activeSection.label}</h3>
               <p>{activeSection.description}</p>
             </div>
 
@@ -234,7 +303,7 @@ export function SettingsDialog({
                           : 'Optional passcode gate for this browser profile.'}
                       </small>
                     </span>
-                    <button type="button" onClick={onOpenPrivacyLock}>
+                    <button ref={privacyLockRef} type="button" onClick={onOpenPrivacyLock}>
                       {lockEnabled ? 'Manage passcode' : 'Set up privacy lock'}
                     </button>
                   </div>
@@ -309,10 +378,7 @@ export function SettingsDialog({
                   <button
                     type="button"
                     disabled={recentSearchCount === 0}
-                    onClick={() => {
-                      clearRecentSearches();
-                      setRecentSearchCount(0);
-                    }}
+                    onClick={clearRecentHistory}
                   >
                     <Trash2 aria-hidden="true" /> Clear recent
                   </button>
@@ -321,6 +387,16 @@ export function SettingsDialog({
                   Saved searches are intentional library settings and remain available from the
                   search box. Clearing recent history does not remove them.
                 </p>
+                {recentSearchFeedback ? (
+                  <p
+                    ref={recentSearchFeedbackRef}
+                    className="settings-action-status"
+                    role="status"
+                    tabIndex={-1}
+                  >
+                    {recentSearchFeedback}
+                  </p>
+                ) : null}
               </section>
             ) : null}
 
@@ -339,7 +415,7 @@ export function SettingsDialog({
                         Takeout archives.
                       </small>
                     </span>
-                    <button type="button" onClick={onOpenBackup}>
+                    <button type="button" onClick={openBackupWorkspace}>
                       Open backup & import
                     </button>
                   </div>
