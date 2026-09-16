@@ -120,6 +120,9 @@ jobs:
             exit 0
           fi
 
+          package_version="$(node -p "JSON.parse(require('fs').readFileSync('package.json', 'utf8')).version")"
+          test "$package_version" = "1.0.0"
+
           if gh release view v1.0.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             tag_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v1.0.0" --jq '.object.sha')"
             test "$tag_sha" = "$RELEASE_SHA"
@@ -131,7 +134,7 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --target "$RELEASE_SHA" \
             --title "Notes v1.0.0" \
-            --notes "P20 release certification complete. Production deployment and post-deploy smoke passed for exact SHA $RELEASE_SHA. Certified gates: formatting, foundation/release contracts, lint, TypeScript, 228 unit tests, cross-browser compatibility, complete Chromium release regression with retries disabled, focused P20 cross-system certification with retries disabled, and PWA/offline certification."
+            --notes "P34 post-v1 final hardening and certification complete. Production deployment and post-deploy smoke passed for exact SHA $RELEASE_SHA. Permanent gates include formatting, foundation/release contracts, lint, TypeScript, the complete unit suite, production build/performance budget, cross-browser compatibility, the complete Chromium release regression with retries disabled, focused P20 and P34 certification with retries disabled, and PWA/offline certification."
 
           tag_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v1.0.0" --jq '.object.sha')"
           test "$tag_sha" = "$RELEASE_SHA"
