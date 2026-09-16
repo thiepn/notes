@@ -78,7 +78,9 @@ export function SyncSettings() {
   const signedIn = email !== null;
   const busy = activeAction !== null;
   const attention =
-    signedIn && accessGranted && !recoveryMode &&
+    signedIn &&
+    accessGranted &&
+    !recoveryMode &&
     (status === 'offline' || status === 'pending' || status === 'error')
       ? syncAttentionCopy(status, lastResult)
       : null;
@@ -150,7 +152,11 @@ export function SyncSettings() {
         </p>
       ) : null}
 
-      <section className="settings-group" aria-label="Cloud sync" aria-busy={busy || status === 'syncing'}>
+      <section
+        className="settings-group"
+        aria-label="Cloud sync"
+        aria-busy={busy || status === 'syncing'}
+      >
         <div className="settings-group-copy">
           <strong>Cross-device sync</strong>
           <span>
