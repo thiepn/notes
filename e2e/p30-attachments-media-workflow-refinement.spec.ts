@@ -74,19 +74,20 @@ test('authoritative attachment loading gates mutation controls until the list re
     const module = await import('/notes/src/db/repositories/attachmentsRepository.ts');
     const prototype = module.AttachmentsRepository.prototype;
     const original = prototype.list;
-    let release: (() => void) | null = null;
-    let blockedTarget = false;
+    let released = false;
+    let releaseGate: (() => void) | null = null;
+    const gate = new Promise<void>((resolve) => {
+      releaseGate = resolve;
+    });
+
     prototype.list = async function (...args: Parameters<typeof original>) {
-      if (!blockedTarget && args[0] === targetNoteId) {
-        blockedTarget = true;
+      if (args[0] === targetNoteId && !released) {
         (
           window as typeof window & {
             __p30AttachmentLoadBlocked?: boolean;
           }
         ).__p30AttachmentLoadBlocked = true;
-        await new Promise<void>((resolve) => {
-          release = resolve;
-        });
+        await gate;
       }
       return original.apply(this, args);
     };
@@ -95,8 +96,9 @@ test('authoritative attachment loading gates mutation controls until the list re
         __p30ReleaseAttachmentLoad?: () => void;
       }
     ).__p30ReleaseAttachmentLoad = () => {
-      release?.();
-      release = null;
+      released = true;
+      releaseGate?.();
+      releaseGate = null;
     };
   }, noteId);
 
