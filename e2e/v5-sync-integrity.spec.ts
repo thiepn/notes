@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createHash, randomUUID } from 'node:crypto';
-import type { RemoteSyncRecord, SupabaseSession } from '../src/features/sync/supabaseApi';
+import type { SupabaseSession } from '../src/features/sync/supabaseApi';
+import type { VersionedRemoteSyncRecord } from '../src/features/sync/versionedSyncApi';
 
 const HOST = 'https://hycegznamzjhwinegaai.supabase.co';
 const USER = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -20,7 +21,7 @@ function stable(value: unknown): string {
     .map((k) => `${JSON.stringify(k)}:${stable(record[k])}`)
     .join(',')}}`;
 }
-function remoteNote(title: string, id = randomUUID()): RemoteSyncRecord {
+function remoteNote(title: string, id = randomUUID()): VersionedRemoteSyncRecord {
   const now = Date.now();
   const payload = {
     id,
@@ -45,14 +46,19 @@ function remoteNote(title: string, id = randomUUID()): RemoteSyncRecord {
     client_updated_at: now,
     deleted_at: null,
     updated_at: new Date(now).toISOString(),
+    version: 1,
   };
 }
-async function cloud(page: Page, rows: RemoteSyncRecord[], onUpload?: () => Promise<void>) {
+async function cloud(
+  page: Page,
+  rows: VersionedRemoteSyncRecord[],
+  onUpload?: () => Promise<void>,
+) {
   await page.route(`${HOST}/**`, async (route) => {
     const request = route.request();
     const url = new URL(request.url());
-    const json = (data: unknown) =>
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) });
+    const json = (data: unknown, status = 200) =>
+      route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(data) });
     if (url.pathname === '/auth/v1/token') return json({ ...session, expires_in: 3600 });
     if (url.pathname === '/auth/v1/logout') return route.fulfill({ status: 204 });
     if (url.pathname === '/rest/v1/rpc/has_notes_sync_access') return json(true);
@@ -81,13 +87,46 @@ async function cloud(page: Page, rows: RemoteSyncRecord[], onUpload?: () => Prom
       }
       if (request.method() === 'POST') {
         await onUpload?.();
-        const record = request.postDataJSON() as RemoteSyncRecord;
-        const index = rows.findIndex(
-          (r) => r.entity_type === record.entity_type && r.entity_id === record.entity_id,
+        const incoming = request.postDataJSON() as Omit<VersionedRemoteSyncRecord, 'version'>;
+        const duplicate = rows.some(
+          (row) => row.entity_type === incoming.entity_type && row.entity_id === incoming.entity_id,
         );
-        if (index < 0) rows.push(record);
-        else rows[index] = record;
-        return route.fulfill({ status: 204 });
+        if (duplicate) return json({ code: '23505' }, 409);
+        const created: VersionedRemoteSyncRecord = {
+          ...incoming,
+          version: 1,
+          updated_at: new Date().toISOString(),
+        };
+        rows.push(created);
+        return json([created], 201);
+      }
+      if (request.method() === 'PATCH') {
+        await onUpload?.();
+        const type = (url.searchParams.get('entity_type') ?? '').replace(/^eq\./u, '');
+        const id = (url.searchParams.get('entity_id') ?? '').replace(/^eq\./u, '');
+        const expectedVersion = Number(
+          (url.searchParams.get('version') ?? '').replace(/^eq\./u, ''),
+        );
+        const index = rows.findIndex(
+          (row) =>
+            row.entity_type === type &&
+            row.entity_id === id &&
+            row.version === expectedVersion,
+        );
+        if (index < 0) return json([]);
+        const patch = request.postDataJSON() as Partial<VersionedRemoteSyncRecord>;
+        const current = rows[index]!;
+        const updated: VersionedRemoteSyncRecord = {
+          ...current,
+          payload: patch.payload ?? null,
+          payload_hash: patch.payload_hash ?? null,
+          client_updated_at: patch.client_updated_at ?? current.client_updated_at,
+          deleted_at: patch.deleted_at ?? null,
+          version: current.version + 1,
+          updated_at: new Date().toISOString(),
+        };
+        rows[index] = updated;
+        return json([updated]);
       }
     }
     return route.abort();
@@ -131,18 +170,16 @@ test('invalid cloud checksums never replace the local library', async ({ page })
 });
 
 test('incoming notes refresh in place while an active note is deferred', async ({ page }) => {
-  const rows: RemoteSyncRecord[] = [];
+  const rows: VersionedRemoteSyncRecord[] = [];
   await cloud(page, rows);
   const local = await seedLocal(page);
   await sync(page);
   await page.getByRole('button', { name: 'Open note: Local draft' }).click();
   const editor = page.getByRole('dialog', { name: 'Edit note', exact: true });
   const replacement = remoteNote('Cloud edited title', local.id);
-  rows.splice(
-    rows.findIndex((r) => r.entity_id === local.id),
-    1,
-    replacement,
-  );
+  const existingIndex = rows.findIndex((r) => r.entity_id === local.id);
+  replacement.version = (rows[existingIndex]?.version ?? 0) + 1;
+  rows.splice(existingIndex, 1, replacement);
   rows.push(remoteNote('A new incoming note'));
   const result = await sync(page);
   expect(result.deferred).toBeGreaterThan(0);
@@ -160,7 +197,7 @@ test('incoming notes refresh in place while an active note is deferred', async (
 test('a local edit during upload stays pending and uploads on the following sync', async ({
   page,
 }) => {
-  const rows: RemoteSyncRecord[] = [];
+  const rows: VersionedRemoteSyncRecord[] = [];
   let release!: () => void;
   let started = false;
   const gate = new Promise<void>((resolve) => {
@@ -198,7 +235,7 @@ test('a local edit during upload stays pending and uploads on the following sync
 test('offline startup retains the canonical sign-in and automatically reconnects', async ({
   page,
 }) => {
-  const rows: RemoteSyncRecord[] = [];
+  const rows: VersionedRemoteSyncRecord[] = [];
   await cloud(page, rows);
   await page.addInitScript((value) => {
     localStorage.setItem('sb-hycegznamzjhwinegaai-auth-token', JSON.stringify(value));
