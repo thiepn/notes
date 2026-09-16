@@ -48,12 +48,17 @@ test('settings sections support directional, Home, and End keyboard navigation o
   await expect(settings.getByRole('region', { name: 'Appearance' })).toBeVisible();
 });
 
-test('clearing recent search history moves focus to explicit completion feedback', async ({ page }) => {
+test('clearing recent search history moves focus to explicit completion feedback', async ({
+  page,
+}) => {
   await page.goto('./');
   await page.evaluate(async () => {
     const search = await import('/notes/src/features/search/searchHistory.ts');
     const types = await import('/notes/src/features/search/searchTypes.ts');
-    search.rememberRecentSearch({ query: 'p33 disposable history', filters: types.DEFAULT_SEARCH_FILTERS });
+    search.rememberRecentSearch({
+      query: 'p33 disposable history',
+      filters: types.DEFAULT_SEARCH_FILTERS,
+    });
   });
 
   const settings = await openSettings(page);
@@ -68,7 +73,9 @@ test('clearing recent search history moves focus to explicit completion feedback
   await expect(clear).toBeDisabled();
 });
 
-test('closing privacy-lock management returns to its originating Settings control', async ({ page }) => {
+test('closing privacy-lock management returns to its originating Settings control', async ({
+  page,
+}) => {
   await page.goto('./');
   const settings = await openSettings(page);
   await settings.getByRole('button', { name: 'Privacy' }).click();
