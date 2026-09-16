@@ -15,13 +15,16 @@ import type { AttachmentRecord } from '../../db';
 import {
   deleteAttachmentObject,
   downloadAttachment,
-  listRemoteRecords,
-  type RemoteSyncRecord,
   type SupabaseSession,
   type SyncEntityType,
   uploadAttachment,
-  upsertRemoteRecord,
 } from './supabaseApi';
+import {
+  listVersionedRemoteRecords,
+  SyncWriteConflictError,
+  type VersionedRemoteSyncRecord,
+  writeVersionedRemoteRecord,
+} from './versionedSyncApi';
 
 const SYNC_SHADOW_KEY = 'sync.supabase.shadow.v2';
 
@@ -76,7 +79,7 @@ async function synchronizeUnlocked(
 
   const [localEntities, remoteRecords, shadow] = await Promise.all([
     buildLocalSnapshot(session.user.id),
-    listRemoteRecords(session),
+    listVersionedRemoteRecords(session),
     readShadow(session.user.id),
   ]);
 
@@ -120,7 +123,7 @@ async function synchronizeUnlocked(
 
       if (localChanged && !remoteChanged) {
         if (local) {
-          await pushLocal(session, local);
+          await pushLocal(session, local, remote?.version ?? null);
           result.uploaded += 1;
         } else if (remote && remote.deleted_at === null) {
           await tombstoneRemote(session, remote);
@@ -132,7 +135,7 @@ async function synchronizeUnlocked(
       if (!localChanged && remoteChanged) {
         if (!remote) {
           if (local) {
-            await pushLocal(session, local);
+            await pushLocal(session, local, null);
             result.uploaded += 1;
           }
         } else if (remote.deleted_at !== null) {
@@ -150,6 +153,14 @@ async function synchronizeUnlocked(
       result.conflicts += 1;
       await resolveConcurrentChange(session, local, remote, remoteRecords, result);
     } catch (error) {
+      // A CAS rejection is expected concurrency, not a transport failure. Keep the old shadow so
+      // the freshly fetched final remote state is reconciled on the next pass rather than retried blind.
+      if (error instanceof SyncWriteConflictError) {
+        failedKeys.add(key);
+        result.conflicts += 1;
+        result.deferred += 1;
+        continue;
+      }
       // Keep the prior shadow for this key so a later sync retries it instead of silently accepting loss.
       failedKeys.add(key);
       console.error(`Notes sync could not reconcile ${key}.`, error);
@@ -159,7 +170,7 @@ async function synchronizeUnlocked(
 
   const [finalLocal, finalRemote] = await Promise.all([
     buildLocalSnapshot(session.user.id),
-    listRemoteRecords(session),
+    listVersionedRemoteRecords(session),
   ]);
   if (!isCurrent()) throw new Error('Sync cancelled because the account changed.');
   const observed = createShadow(finalLocal, finalRemote);
@@ -181,12 +192,12 @@ async function synchronizeUnlocked(
 async function reconcileInitial(
   session: SupabaseSession,
   local: LocalEntity | undefined,
-  remote: RemoteSyncRecord | undefined,
-  remoteRecords: RemoteSyncRecord[],
+  remote: VersionedRemoteSyncRecord | undefined,
+  remoteRecords: VersionedRemoteSyncRecord[],
   result: SyncResult,
 ): Promise<void> {
   if (local && !remote) {
-    await pushLocal(session, local);
+    await pushLocal(session, local, null);
     result.uploaded += 1;
     return;
   }
@@ -199,7 +210,7 @@ async function reconcileInitial(
 
   if (remote.deleted_at !== null) {
     if (local.updatedAt > remote.client_updated_at) {
-      await pushLocal(session, local);
+      await pushLocal(session, local, remote.version);
       result.uploaded += 1;
     } else {
       await deleteLocalEntity(local.type, local.id);
@@ -220,7 +231,7 @@ async function reconcileInitial(
     result,
   );
   if (localWins) {
-    await pushLocal(session, local);
+    await pushLocal(session, local, remote.version);
     result.uploaded += 1;
   } else {
     await applyRemote(session, remote);
@@ -231,8 +242,8 @@ async function reconcileInitial(
 async function resolveConcurrentChange(
   session: SupabaseSession,
   local: LocalEntity | undefined,
-  remote: RemoteSyncRecord | undefined,
-  remoteRecords: RemoteSyncRecord[],
+  remote: VersionedRemoteSyncRecord | undefined,
+  remoteRecords: VersionedRemoteSyncRecord[],
   result: SyncResult,
 ): Promise<void> {
   // When one side deleted while the other side changed, preserve the surviving content.
@@ -243,7 +254,7 @@ async function resolveConcurrentChange(
     return;
   }
   if (local && (!remote || remote.deleted_at !== null)) {
-    await pushLocal(session, local);
+    await pushLocal(session, local, remote?.version ?? null);
     result.uploaded += 1;
     return;
   }
@@ -259,7 +270,7 @@ async function resolveConcurrentChange(
     result,
   );
   if (localWins) {
-    await pushLocal(session, local);
+    await pushLocal(session, local, remote.version);
     result.uploaded += 1;
   } else {
     await applyRemote(session, remote);
@@ -270,8 +281,8 @@ async function resolveConcurrentChange(
 async function preserveNoteConflict(
   userId: string,
   local: LocalEntity,
-  remote: RemoteSyncRecord,
-  remoteRecords: RemoteSyncRecord[],
+  remote: VersionedRemoteSyncRecord,
+  remoteRecords: VersionedRemoteSyncRecord[],
   source: ConflictCopySource,
   result: SyncResult,
 ): Promise<void> {
@@ -286,7 +297,11 @@ async function preserveNoteConflict(
   result.conflictCopies += 1;
 }
 
-async function pushLocal(session: SupabaseSession, local: LocalEntity): Promise<void> {
+async function pushLocal(
+  session: SupabaseSession,
+  local: LocalEntity,
+  expectedVersion: number | null,
+): Promise<void> {
   let payload = local.payload;
   if (local.type === 'attachment' && local.attachment) {
     const storagePath = await uploadAttachment(session, local.attachment.id, local.attachment.data);
@@ -294,18 +309,42 @@ async function pushLocal(session: SupabaseSession, local: LocalEntity): Promise<
   }
 
   const payloadHash = await hashPayload(payload);
-  await upsertRemoteRecord(session, {
-    user_id: session.user.id,
-    entity_type: local.type,
-    entity_id: local.id,
-    payload,
-    payload_hash: payloadHash,
-    client_updated_at: local.updatedAt,
-    deleted_at: null,
-  });
+  await writeVersionedRemoteRecord(
+    session,
+    {
+      user_id: session.user.id,
+      entity_type: local.type,
+      entity_id: local.id,
+      payload,
+      payload_hash: payloadHash,
+      client_updated_at: local.updatedAt,
+      deleted_at: null,
+    },
+    expectedVersion,
+  );
 }
 
-async function tombstoneRemote(session: SupabaseSession, remote: RemoteSyncRecord): Promise<void> {
+async function tombstoneRemote(
+  session: SupabaseSession,
+  remote: VersionedRemoteSyncRecord,
+): Promise<void> {
+  const timestamp = Date.now();
+  await writeVersionedRemoteRecord(
+    session,
+    {
+      user_id: session.user.id,
+      entity_type: remote.entity_type,
+      entity_id: remote.entity_id,
+      payload: null,
+      payload_hash: null,
+      client_updated_at: timestamp,
+      deleted_at: timestamp,
+    },
+    remote.version,
+  );
+
+  // Only clean binary storage after the tombstone CAS succeeds. A stale delete therefore cannot
+  // remove bytes belonging to a newer metadata record. Phase 3 moves attachments to immutable paths.
   if (remote.entity_type === 'attachment' && remote.payload) {
     const storagePath = remote.payload.storagePath;
     if (typeof storagePath === 'string') {
@@ -317,20 +356,12 @@ async function tombstoneRemote(session: SupabaseSession, remote: RemoteSyncRecor
       }
     }
   }
-
-  const timestamp = Date.now();
-  await upsertRemoteRecord(session, {
-    user_id: session.user.id,
-    entity_type: remote.entity_type,
-    entity_id: remote.entity_id,
-    payload: null,
-    payload_hash: null,
-    client_updated_at: timestamp,
-    deleted_at: timestamp,
-  });
 }
 
-async function applyRemote(session: SupabaseSession, remote: RemoteSyncRecord): Promise<void> {
+async function applyRemote(
+  session: SupabaseSession,
+  remote: VersionedRemoteSyncRecord,
+): Promise<void> {
   if (!remote.payload) return;
   const payload = remote.payload;
   if (remote.user_id !== session.user.id)
@@ -479,15 +510,20 @@ async function entity(
   };
 }
 
-function createShadow(local: LocalEntity[], remote: RemoteSyncRecord[]): SyncShadow {
+function createShadow(
+  local: LocalEntity[],
+  remote: VersionedRemoteSyncRecord[],
+): SyncShadow {
   const localMap = new Map(local.map((item) => [item.key, item]));
   const remoteMap = new Map(remote.map((item) => [recordKey(item), item]));
   const keys = new Set([...localMap.keys(), ...remoteMap.keys()]);
   const shadow: SyncShadow = {};
   for (const key of keys) {
+    const remoteRecord = remoteMap.get(key);
     shadow[key] = {
       localHash: localMap.get(key)?.hash ?? null,
-      remoteHash: remoteMap.has(key) ? signatureForRemote(remoteMap.get(key)!) : null,
+      remoteHash: remoteRecord ? signatureForRemote(remoteRecord) : null,
+      remoteVersion: remoteRecord?.version ?? null,
     };
   }
   return shadow;
@@ -512,7 +548,9 @@ async function writeShadow(userId: string, shadow: SyncShadow): Promise<void> {
   });
 }
 
-function recordKey(record: Pick<RemoteSyncRecord, 'entity_type' | 'entity_id'>): string {
+function recordKey(
+  record: Pick<VersionedRemoteSyncRecord, 'entity_type' | 'entity_id'>,
+): string {
   return entityKey(record.entity_type, record.entity_id);
 }
 
@@ -520,7 +558,7 @@ function entityKey(type: SyncEntityType, id: string): string {
   return `${type}:${id}`;
 }
 
-function signatureForRemote(record: RemoteSyncRecord): string {
+function signatureForRemote(record: VersionedRemoteSyncRecord): string {
   return record.deleted_at === null
     ? (record.payload_hash ?? 'missing-hash')
     : `deleted:${record.deleted_at}`;
