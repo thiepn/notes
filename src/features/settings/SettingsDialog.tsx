@@ -91,7 +91,7 @@ const THEME_OPTIONS: Array<{ value: ThemePreference; label: string; detail: stri
 
 export function SettingsDialog({
   initialSection = 'appearance',
-  initialFocus = 'close',
+  initialFocus,
   onClose,
   onOpenBackup,
   onOpenPrivacyLock,
@@ -107,10 +107,12 @@ export function SettingsDialog({
   const { preference, setPreference } = useTheme();
   const { hidePreviews, privateNotifications, autoLockMinutes, lockEnabled, setPreferences, lock } =
     usePrivacy();
+  const resolvedInitialFocus =
+    initialFocus ?? (initialSection === 'privacy' ? 'privacy-lock' : 'close');
 
   useDialogFocusTrap(dialogRef, {
     onEscape: onClose,
-    initialFocusRef: initialFocus === 'privacy-lock' ? privacyLockRef : closeRef,
+    initialFocusRef: resolvedInitialFocus === 'privacy-lock' ? privacyLockRef : closeRef,
   });
 
   const activeSection = SECTIONS.find((item) => item.id === section) ?? SECTIONS[0]!;
@@ -151,6 +153,13 @@ export function SettingsDialog({
     setRecentSearchFeedback('Recent search history cleared. Saved searches were kept.');
     window.requestAnimationFrame(() =>
       recentSearchFeedbackRef.current?.focus({ preventScroll: true }),
+    );
+  };
+
+  const openBackupWorkspace = () => {
+    onOpenBackup();
+    window.requestAnimationFrame(() =>
+      document.getElementById('main-content')?.focus({ preventScroll: true }),
     );
   };
 
@@ -411,7 +420,7 @@ export function SettingsDialog({
                         Takeout archives.
                       </small>
                     </span>
-                    <button type="button" onClick={onOpenBackup}>
+                    <button type="button" onClick={openBackupWorkspace}>
                       Open backup & import
                     </button>
                   </div>
