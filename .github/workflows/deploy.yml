@@ -107,35 +107,35 @@ jobs:
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 1
 
-      - name: Publish v1.0.0 for the marked release commit
+      - name: Publish marked stable release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           set -euo pipefail
 
-          subject="$(git log -1 --pretty=%s)"
-          if [[ "$subject" != "Release v1.0.0" ]]; then
-            echo "No v1.0.0 release marker on this deployment; skipping stable release publication."
-            exit 0
-          fi
-
           package_version="$(node -p "JSON.parse(require('fs').readFileSync('package.json', 'utf8')).version")"
-          test "$package_version" = "1.0.0"
+          release_tag="v$package_version"
+          subject="$(git log -1 --pretty=%s)"
 
-          if gh release view v1.0.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            tag_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v1.0.0" --jq '.object.sha')"
-            test "$tag_sha" = "$RELEASE_SHA"
-            echo "v1.0.0 already exists at the certified production SHA."
+          if [[ "$subject" != "Release $release_tag" ]]; then
+            echo "No $release_tag release marker on this deployment; skipping stable release publication."
             exit 0
           fi
 
-          gh release create v1.0.0 \
+          if gh release view "$release_tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            tag_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$release_tag" --jq '.object.sha')"
+            test "$tag_sha" = "$RELEASE_SHA"
+            echo "$release_tag already exists at the certified production SHA."
+            exit 0
+          fi
+
+          gh release create "$release_tag" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$RELEASE_SHA" \
-            --title "Notes v1.0.0" \
+            --title "Notes $release_tag" \
             --notes "P34 post-v1 final hardening and certification complete. Production deployment and post-deploy smoke passed for exact SHA $RELEASE_SHA. Permanent gates include formatting, foundation/release contracts, lint, TypeScript, the complete unit suite, production build/performance budget, cross-browser compatibility, the complete Chromium release regression with retries disabled, focused P20 and P34 certification with retries disabled, and PWA/offline certification."
 
-          tag_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v1.0.0" --jq '.object.sha')"
+          tag_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$release_tag" --jq '.object.sha')"
           test "$tag_sha" = "$RELEASE_SHA"
-          echo "Published Notes v1.0.0 at $RELEASE_SHA"
+          echo "Published Notes $release_tag at $RELEASE_SHA"
