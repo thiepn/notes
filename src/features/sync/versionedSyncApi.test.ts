@@ -48,7 +48,8 @@ describe('versioned sync transport', () => {
 
     expect(rows).toHaveLength(1);
     expect(rows[0]?.version).toBe(4);
-    const url = new URL(String(fetchMock.mock.calls[0]?.[0]));
+    const calls = fetchMock.mock.calls as unknown as Array<[string, RequestInit]>;
+    const url = new URL(String(calls[0]?.[0]));
     expect(url.searchParams.get('select')).toContain('version');
   });
 
