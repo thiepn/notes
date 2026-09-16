@@ -1,7 +1,7 @@
 {
   "name": "@thiepn/notes",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "description": "Local-first, zero-friction notes PWA hosted at thiepn.dev/notes.",
   "homepage": "https://thiepn.dev/notes/",
@@ -40,9 +40,10 @@
     "e2e:p31": "playwright test e2e/p31-account-sync-conflict-interaction-refinement.spec.ts --retries=0",
     "e2e:p32": "playwright test e2e/p32-privacy-lock-device-trust-refinement.spec.ts --retries=0",
     "e2e:p33": "playwright test e2e/p33-settings-global-interaction-completion.spec.ts --retries=0",
+    "e2e:p34": "playwright test e2e/p34-post-v1-final-hardening-certification.spec.ts --retries=0",
     "e2e:pwa": "playwright test --config=playwright.pwa.config.ts",
     "release:check": "npm run format:check && npm run foundation:check && npm run release:contract && npm run lint && npm run test && npm run build",
-    "release:certify": "npm run release:check && npm run e2e:compat && npm run e2e:release && npm run e2e:p20 && npm run e2e:pwa"
+    "release:certify": "npm run release:check && npm run e2e:compat && npm run e2e:release && npm run e2e:p20 && npm run e2e:p34 && npm run e2e:pwa"
   },
   "dependencies": {
     "@tesseract.js-data/deu": "1.0.0",
