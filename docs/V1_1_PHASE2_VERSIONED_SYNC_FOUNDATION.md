@@ -28,7 +28,13 @@ The existing primary key, payload columns, RLS policies, ownership gate, account
 
 The migration was applied before the v1.1 client changes and is intentionally backward-compatible with v1.0.1: an old unconditional upsert still succeeds, but the server increments the version rather than allowing the old client to reset it.
 
-A transactionally rolled-back production probe verified insert `1` -> update `2` without retaining probe data.
+Transactionally rolled-back production probes verified:
+
+- insert begins at version `1`;
+- a fresh conditional update advances exactly to version `2`;
+- a subsequent stale `WHERE version = 1` update affects zero rows;
+- the stale attempt leaves the stored version and payload unchanged;
+- no probe data remains after rollback.
 
 ## Versioned transport
 
@@ -96,7 +102,9 @@ A `SyncWriteConflictError` is expected concurrency rather than a network/server 
 - the stale mutation is not retried blindly;
 - the final remote snapshot is still fetched, so the next reconciliation starts from fresh cloud state.
 
-Phase 3 will consume that fresh state in the same synchronization operation rather than waiting for the next pass.
+A rejected **note** mutation also blocks note-dependent records for the remainder of that stale reconciliation pass. Checklist items, note-label edges, reminders, revisions, and attachments associated with the rejected note remain local/pending instead of being uploaded against an unresolved parent identity. Independent labels may continue syncing normally.
+
+Phase 3 will consume the freshly fetched remote state in the same synchronization operation rather than waiting for the next pass.
 
 ## Sync shadow
 
@@ -132,6 +140,7 @@ Browser coverage verifies:
 
 - a stale local update cannot overwrite a newer remote edit;
 - a concurrent create cannot merge over the remote identity;
+- a note create collision defers dependent checklist rows in the same pass;
 - a stale local delete cannot tombstone a newer remote edit;
 - existing P6 conflict-copy behavior still runs through the versioned cloud protocol;
 - changed-during-upload state remains pending for the next sync.
