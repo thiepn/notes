@@ -9,6 +9,12 @@ import {
   reminderRecordSchema,
   revisionRecordSchema,
 } from '../../db/validation';
+import {
+  immutableAttachmentStoragePath,
+  isSupportedAttachmentStoragePath,
+  sha256Blob,
+  uploadImmutableAttachment,
+} from './attachmentStorage';
 import { preserveSyncConflictCopy, type ConflictCopySource } from './conflictPreservation';
 import { acknowledgedShadow, type SyncShadow } from './syncState';
 import type { AttachmentRecord } from '../../db';
@@ -17,7 +23,6 @@ import {
   downloadAttachment,
   type SupabaseSession,
   type SyncEntityType,
-  uploadAttachment,
 } from './supabaseApi';
 import {
   listVersionedRemoteRecords,
@@ -27,6 +32,7 @@ import {
 } from './versionedSyncApi';
 
 const SYNC_SHADOW_KEY = 'sync.supabase.shadow.v2';
+const MAX_CAS_RECONCILIATION_ROUNDS = 3;
 
 interface LocalEntity {
   key: string;
@@ -76,110 +82,68 @@ async function synchronizeUnlocked(
     deferred: 0,
   };
   const failedKeys = new Set<string>();
-  const blockedNoteIds = new Set<string>();
+  const shadow = await readShadow(session.user.id);
 
-  const [localEntities, remoteRecords, shadow] = await Promise.all([
-    buildLocalSnapshot(session.user.id),
-    listVersionedRemoteRecords(session),
-    readShadow(session.user.id),
-  ]);
-
-  const localByKey = new Map(localEntities.map((entity) => [entity.key, entity]));
-  const remoteByKey = new Map(remoteRecords.map((record) => [recordKey(record), record]));
-  const keys = new Set([...localByKey.keys(), ...remoteByKey.keys(), ...Object.keys(shadow)]);
-
-  for (const key of [...keys].sort(compareSyncKeys)) {
-    const local = localByKey.get(key);
-    const remote = remoteByKey.get(key);
-    const previous = shadow[key];
+  for (let round = 0; round < MAX_CAS_RECONCILIATION_ROUNDS; round += 1) {
     if (!isCurrent()) throw new Error('Sync cancelled because the account changed.');
-    const noteId =
-      local?.type === 'note'
-        ? local.id
-        : remote?.entity_type === 'note'
-          ? remote.entity_id
-          : (local?.payload.noteId ?? remote?.payload?.noteId);
-    const isNoteEntity = local?.type === 'note' || remote?.entity_type === 'note';
-    if (typeof noteId === 'string' && blockedNoteIds.has(noteId) && !isNoteEntity) {
-      failedKeys.add(key);
-      result.deferred += 1;
-      continue;
-    }
-    if (
-      typeof noteId === 'string' &&
-      Array.from(document.querySelectorAll<HTMLElement>('[data-editing-note]')).some(
-        (node) => node.dataset.editingNote === noteId,
-      )
-    ) {
-      failedKeys.add(key);
-      result.deferred += 1;
-      continue;
-    }
-    const localSignature = local?.hash ?? null;
-    const remoteSignature = remote ? signatureForRemote(remote) : null;
 
-    try {
-      if (!previous) {
-        await reconcileInitial(session, local, remote, remoteRecords, result);
+    // Every retry round begins from a newly observed remote snapshot. A rejected write is never
+    // replayed blindly: the decision is recomputed against the current server version and local state.
+    const remoteRecords = await listVersionedRemoteRecords(session);
+    const localEntities = await buildLocalSnapshot(session.user.id, remoteRecords);
+    const localByKey = new Map(localEntities.map((entity) => [entity.key, entity]));
+    const remoteByKey = new Map(remoteRecords.map((record) => [recordKey(record), record]));
+    const keys = new Set([...localByKey.keys(), ...remoteByKey.keys(), ...Object.keys(shadow)]);
+    const casKeys = new Set<string>();
+    const blockedNoteIds = new Set<string>();
+    const blockedKeys = new Set<string>();
+
+    for (const key of [...keys].sort(compareSyncKeys)) {
+      if (failedKeys.has(key)) continue;
+      const local = localByKey.get(key);
+      const remote = remoteByKey.get(key);
+      const previous = shadow[key];
+      if (!isCurrent()) throw new Error('Sync cancelled because the account changed.');
+
+      const noteId = noteIdFor(local, remote);
+      const isNoteEntity = local?.type === 'note' || remote?.entity_type === 'note';
+      if (typeof noteId === 'string' && blockedNoteIds.has(noteId) && !isNoteEntity) {
+        blockedKeys.add(key);
         continue;
       }
-
-      const localChanged = localSignature !== previous.localHash;
-      const remoteChanged = remoteSignature !== previous.remoteHash;
-      if (!localChanged && !remoteChanged) continue;
-
-      if (localChanged && !remoteChanged) {
-        if (local) {
-          await pushLocal(session, local, remote?.version ?? null);
-          result.uploaded += 1;
-        } else if (remote && remote.deleted_at === null) {
-          await tombstoneRemote(session, remote);
-          result.deletedRemote += 1;
-        }
-        continue;
-      }
-
-      if (!localChanged && remoteChanged) {
-        if (!remote) {
-          if (local) {
-            await pushLocal(session, local, null);
-            result.uploaded += 1;
-          }
-        } else if (remote.deleted_at !== null) {
-          if (local) {
-            await deleteLocalEntity(local.type, local.id);
-            result.deletedLocal += 1;
-          }
-        } else {
-          await applyRemote(session, remote);
-          result.downloaded += 1;
-        }
-        continue;
-      }
-
-      result.conflicts += 1;
-      await resolveConcurrentChange(session, local, remote, remoteRecords, result);
-    } catch (error) {
-      // A CAS rejection is expected concurrency, not a transport failure. Keep the old shadow so
-      // the freshly fetched final remote state is reconciled on the next pass rather than retried blind.
-      if (error instanceof SyncWriteConflictError) {
+      if (typeof noteId === 'string' && isNoteBeingEdited(noteId)) {
         failedKeys.add(key);
-        if (typeof noteId === 'string' && isNoteEntity) blockedNoteIds.add(noteId);
-        result.conflicts += 1;
         result.deferred += 1;
         continue;
       }
-      // Keep the prior shadow for this key so a later sync retries it instead of silently accepting loss.
-      failedKeys.add(key);
-      console.error(`Notes sync could not reconcile ${key}.`, error);
-      result.failed += 1;
+
+      try {
+        await reconcileObserved(session, local, remote, previous, remoteRecords, result);
+      } catch (error) {
+        if (error instanceof SyncWriteConflictError) {
+          casKeys.add(key);
+          if (typeof noteId === 'string' && isNoteEntity) blockedNoteIds.add(noteId);
+          result.conflicts += 1;
+          continue;
+        }
+        failedKeys.add(key);
+        console.error(`Notes sync could not reconcile ${key}.`, error);
+        result.failed += 1;
+      }
+    }
+
+    if (casKeys.size === 0) break;
+    if (round === MAX_CAS_RECONCILIATION_ROUNDS - 1) {
+      for (const key of new Set([...casKeys, ...blockedKeys])) {
+        if (failedKeys.has(key)) continue;
+        failedKeys.add(key);
+        result.deferred += 1;
+      }
     }
   }
 
-  const [finalLocal, finalRemote] = await Promise.all([
-    buildLocalSnapshot(session.user.id),
-    listVersionedRemoteRecords(session),
-  ]);
+  const finalRemote = await listVersionedRemoteRecords(session);
+  const finalLocal = await buildLocalSnapshot(session.user.id, finalRemote);
   if (!isCurrent()) throw new Error('Sync cancelled because the account changed.');
   const observed = createShadow(finalLocal, finalRemote);
   for (const [key, entry] of Object.entries(observed)) {
@@ -195,6 +159,63 @@ async function synchronizeUnlocked(
     dispatchAppEvent('cloudSyncApplied');
   }
   return result;
+}
+
+async function reconcileObserved(
+  session: SupabaseSession,
+  local: LocalEntity | undefined,
+  remote: VersionedRemoteSyncRecord | undefined,
+  previous: SyncShadow[string] | undefined,
+  remoteRecords: VersionedRemoteSyncRecord[],
+  result: SyncResult,
+): Promise<void> {
+  // A later CAS round re-observes writes that already succeeded earlier in this synchronization.
+  // Treat already-converged state as settled even though the pre-sync shadow is intentionally unchanged.
+  if (local && remote?.deleted_at === null && local.hash === remote.payload_hash) return;
+  if (!local && (!remote || remote.deleted_at !== null)) return;
+
+  if (!previous) {
+    await reconcileInitial(session, local, remote, remoteRecords, result);
+    return;
+  }
+
+  const localSignature = local?.hash ?? null;
+  const remoteSignature = remote ? signatureForRemote(remote) : null;
+  const localChanged = localSignature !== previous.localHash;
+  const remoteChanged = remoteSignature !== previous.remoteHash;
+  if (!localChanged && !remoteChanged) return;
+
+  if (localChanged && !remoteChanged) {
+    if (local) {
+      await pushLocal(session, local, remote?.version ?? null);
+      result.uploaded += 1;
+    } else if (remote && remote.deleted_at === null) {
+      await tombstoneRemote(session, remote);
+      result.deletedRemote += 1;
+    }
+    return;
+  }
+
+  if (!localChanged && remoteChanged) {
+    if (!remote) {
+      if (local) {
+        await pushLocal(session, local, null);
+        result.uploaded += 1;
+      }
+    } else if (remote.deleted_at !== null) {
+      if (local) {
+        await deleteLocalEntity(local.type, local.id);
+        result.deletedLocal += 1;
+      }
+    } else {
+      await applyRemote(session, remote);
+      result.downloaded += 1;
+    }
+    return;
+  }
+
+  result.conflicts += 1;
+  await resolveConcurrentChange(session, local, remote, remoteRecords, result);
 }
 
 async function reconcileInitial(
@@ -312,7 +333,12 @@ async function pushLocal(
 ): Promise<void> {
   let payload = local.payload;
   if (local.type === 'attachment' && local.attachment) {
-    const storagePath = await uploadAttachment(session, local.attachment.id, local.attachment.data);
+    const storagePath = await uploadImmutableAttachment(
+      session,
+      local.attachment.id,
+      local.attachment.checksum,
+      local.attachment.data,
+    );
     payload = { ...payload, storagePath };
   }
 
@@ -351,11 +377,21 @@ async function tombstoneRemote(
     remote.version,
   );
 
-  // Only clean binary storage after the tombstone CAS succeeds. A stale delete therefore cannot
-  // remove bytes belonging to a newer metadata record. Phase 3 moves attachments to immutable paths.
+  // Metadata CAS is authoritative. Binary cleanup happens only after it succeeds and only for a
+  // path that belongs to this exact attachment identity/content generation.
   if (remote.entity_type === 'attachment' && remote.payload) {
     const storagePath = remote.payload.storagePath;
-    if (typeof storagePath === 'string') {
+    const checksum = remote.payload.checksum;
+    if (
+      typeof storagePath === 'string' &&
+      typeof checksum === 'string' &&
+      isSupportedAttachmentStoragePath(
+        session.user.id,
+        remote.entity_id,
+        checksum,
+        storagePath,
+      )
+    ) {
       try {
         await deleteAttachmentObject(session, storagePath);
       } catch (error) {
@@ -393,6 +429,9 @@ async function applyRemote(
       ) {
         await new RevisionsRepository(notesDatabase).checkpoint(valid.id, 'edit');
       }
+      if (valid.type !== 'checklist') {
+        await notesDatabase.checklistItems.where('noteId').equals(valid.id).delete();
+      }
       await notesDatabase.notes.put(valid);
       return;
     }
@@ -414,14 +453,28 @@ async function applyRemote(
       return;
     case 'attachment': {
       const storagePath = payload.storagePath;
-      if (storagePath !== `${session.user.id}/${remote.entity_id}`)
-        throw new Error('Cloud attachment is missing its storage path.');
+      const checksum = payload.checksum;
+      if (
+        typeof storagePath !== 'string' ||
+        typeof checksum !== 'string' ||
+        !isSupportedAttachmentStoragePath(
+          session.user.id,
+          remote.entity_id,
+          checksum,
+          storagePath,
+        )
+      ) {
+        throw new Error('Cloud attachment has an invalid storage path.');
+      }
       const data = await downloadAttachment(session, storagePath);
       const { storagePath: _storagePath, ...metadata } = payload;
       void _storagePath;
       const attachment = attachmentRecordSchema.parse({ ...metadata, data });
       if (data.size !== attachment.size)
         throw new Error('Cloud attachment size did not match. Please retry.');
+      if ((await sha256Blob(data)) !== attachment.checksum) {
+        throw new Error('Cloud attachment bytes failed checksum validation. Local data was kept.');
+      }
       await notesDatabase.attachments.put(attachment);
       return;
     }
@@ -456,7 +509,10 @@ async function deleteLocalEntity(type: SyncEntityType, id: string): Promise<void
   }
 }
 
-async function buildLocalSnapshot(userId: string): Promise<LocalEntity[]> {
+async function buildLocalSnapshot(
+  userId: string,
+  remoteRecords: VersionedRemoteSyncRecord[],
+): Promise<LocalEntity[]> {
   const [notes, checklistItems, labels, noteLabels, attachments, reminders, revisions] =
     await Promise.all([
       notesDatabase.notes.toArray(),
@@ -468,6 +524,11 @@ async function buildLocalSnapshot(userId: string): Promise<LocalEntity[]> {
       notesDatabase.revisions.toArray(),
     ]);
 
+  const remoteAttachments = new Map(
+    remoteRecords
+      .filter((record) => record.entity_type === 'attachment' && record.deleted_at === null)
+      .map((record) => [record.entity_id, record]),
+  );
   const entities: LocalEntity[] = [];
   for (const note of notes) entities.push(await entity('note', note.id, note, note.updatedAt));
   for (const item of checklistItems)
@@ -479,6 +540,15 @@ async function buildLocalSnapshot(userId: string): Promise<LocalEntity[]> {
     entities.push(await entity('note_label', id, link, link.assignedAt));
   }
   for (const attachment of attachments) {
+    const remote = remoteAttachments.get(attachment.id);
+    const remotePath = remote?.payload?.storagePath;
+    const remoteChecksum = remote?.payload?.checksum;
+    const storagePath =
+      typeof remotePath === 'string' &&
+      remoteChecksum === attachment.checksum &&
+      isSupportedAttachmentStoragePath(userId, attachment.id, attachment.checksum, remotePath)
+        ? remotePath
+        : immutableAttachmentStoragePath(userId, attachment.id, attachment.checksum);
     const payload = {
       id: attachment.id,
       noteId: attachment.noteId,
@@ -487,7 +557,7 @@ async function buildLocalSnapshot(userId: string): Promise<LocalEntity[]> {
       size: attachment.size,
       checksum: attachment.checksum,
       createdAt: attachment.createdAt,
-      storagePath: `${userId}/${attachment.id}`,
+      storagePath,
     };
     entities.push({
       ...(await entity('attachment', attachment.id, payload, attachment.createdAt)),
@@ -554,6 +624,25 @@ async function writeShadow(userId: string, shadow: SyncShadow): Promise<void> {
     value: JSON.stringify(shadow),
     updatedAt: Date.now(),
   });
+}
+
+function noteIdFor(
+  local: LocalEntity | undefined,
+  remote: VersionedRemoteSyncRecord | undefined,
+): string | undefined {
+  const noteId =
+    local?.type === 'note'
+      ? local.id
+      : remote?.entity_type === 'note'
+        ? remote.entity_id
+        : (local?.payload.noteId ?? remote?.payload?.noteId);
+  return typeof noteId === 'string' ? noteId : undefined;
+}
+
+function isNoteBeingEdited(noteId: string): boolean {
+  return Array.from(document.querySelectorAll<HTMLElement>('[data-editing-note]')).some(
+    (node) => node.dataset.editingNote === noteId,
+  );
 }
 
 function recordKey(
