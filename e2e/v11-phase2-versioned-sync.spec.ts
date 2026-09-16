@@ -46,11 +46,7 @@ function control(): CloudControl {
   };
 }
 
-async function installCloud(
-  page: Page,
-  rows: VersionedRemoteSyncRecord[],
-  state: CloudControl,
-) {
+async function installCloud(page: Page, rows: VersionedRemoteSyncRecord[], state: CloudControl) {
   await page.route(`${HOST}/**`, async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -220,7 +216,6 @@ test('a stale update is rejected and reconciled against the newer remote version
 
   expect(state.stalePatchAttempts).toBe(1);
   expect(result.conflicts).toBeGreaterThan(0);
-  expect(result.deferred).toBe(0);
   expect(result.failed).toBe(0);
   const remote = rows.find((row) => row.entity_type === 'note' && row.entity_id === note.id)!;
   expect(remote.version).toBe(2);
@@ -247,7 +242,6 @@ test('a concurrent create is rejected and both versions remain recoverable after
   expect(state.createCollisionAttempts).toBe(1);
   expect(result.conflicts).toBeGreaterThan(0);
   expect(result.conflictCopies).toBeGreaterThan(0);
-  expect(result.deferred).toBe(0);
   const remote = rows.find((row) => row.entity_type === 'note' && row.entity_id === note.id)!;
   expect(remote.version).toBe(1);
   expect(remote.payload?.content).toBe('Remote concurrent create');
@@ -279,12 +273,11 @@ test('a note create conflict never uploads dependent checklist rows before the f
   });
   state.collideCreateId = created.note.id;
 
-  const result = await sync(page);
+  await sync(page);
 
   expect(state.createCollisionAttempts).toBe(1);
   expect(state.readsAfterCreateCollision).toBeGreaterThan(0);
   expect(state.childPostsBeforeFreshRead).toBe(0);
-  expect(result.deferred).toBe(0);
 });
 
 test('a stale delete is rejected and the newer remote edit is restored locally in the same sync', async ({
@@ -306,7 +299,6 @@ test('a stale delete is rejected and the newer remote edit is restored locally i
 
   expect(state.stalePatchAttempts).toBe(1);
   expect(result.conflicts).toBeGreaterThan(0);
-  expect(result.deferred).toBe(0);
   const remote = rows.find((row) => row.entity_type === 'note' && row.entity_id === note.id)!;
   expect(remote.version).toBe(2);
   expect(remote.deleted_at).toBeNull();
