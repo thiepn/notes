@@ -36,7 +36,7 @@ test('settings sections support directional, Home, and End keyboard navigation o
 
   await account.press('ArrowDown');
   await expect(privacy).toBeFocused();
-  await expect(settings.getByRole('region', { name: 'Privacy' })).toBeVisible();
+  await expect(settings.getByRole('region', { name: 'Privacy', exact: true })).toBeVisible();
 
   await privacy.press('End');
   await expect(advanced).toBeFocused();
