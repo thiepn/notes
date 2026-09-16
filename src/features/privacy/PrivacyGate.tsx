@@ -42,7 +42,9 @@ export function PrivacyGate({ children }: { children: ReactNode }) {
     const wasBlocked = wasBlockedRef.current;
     wasBlockedRef.current = blocked;
     if (!locked || !wasBlocked || blocked) return;
-    const frame = window.requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true }));
+    const frame = window.requestAnimationFrame(() =>
+      inputRef.current?.focus({ preventScroll: true }),
+    );
     return () => window.cancelAnimationFrame(frame);
   }, [blocked, locked]);
 
@@ -60,9 +62,7 @@ export function PrivacyGate({ children }: { children: ReactNode }) {
         const attempt = readPrivacyAttemptState();
         const nextNow = Date.now();
         setNow(nextNow);
-        setErrorMessage(
-          attempt && attempt.blockedUntil > nextNow ? null : 'Incorrect passcode.',
-        );
+        setErrorMessage(attempt && attempt.blockedUntil > nextNow ? null : 'Incorrect passcode.');
         return;
       }
       setPasscode('');
