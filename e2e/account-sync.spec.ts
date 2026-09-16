@@ -61,11 +61,15 @@ test.describe('Supabase account and sync', () => {
     const section = await fillSignedOutCredentials(page);
 
     await section.getByRole('button', { name: 'Forgot password' }).click();
-    await expect(page.getByRole('status')).toContainText('password-reset link');
+    await expect(page.getByRole('status')).toContainText(
+      'If that email belongs to an account, a password-reset link has been sent.',
+    );
     expect(recoveryRedirect).toBe('https://thiepn.dev/notes/?auth=recovery');
 
     await section.getByRole('button', { name: 'Resend verification' }).click();
-    await expect(page.getByRole('status')).toContainText('verification email');
+    await expect(page.getByRole('status')).toContainText(
+      'A new verification email has been requested.',
+    );
     expect(resendRedirect).toBe('https://thiepn.dev/notes/?auth=confirm');
     expect(resendBody).toMatchObject({ type: 'signup', email: EMAIL });
   });

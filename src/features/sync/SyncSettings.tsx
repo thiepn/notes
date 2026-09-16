@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Cloud,
   CloudOff,
@@ -13,6 +13,25 @@ import {
 } from 'lucide-react';
 
 import { syncStatusLabel, useSync } from './SyncContext';
+import { formatSyncActivity, syncAttentionCopy } from './syncPresentation';
+
+type AccountAction =
+  | 'signin'
+  | 'signup'
+  | 'claim'
+  | 'sync'
+  | 'password-reset'
+  | 'resend-verification'
+  | 'change-email'
+  | 'resend-email-change'
+  | 'reauthenticate'
+  | 'change-password'
+  | 'refresh-sessions'
+  | 'signout-others'
+  | 'signout-all'
+  | 'signout-local'
+  | 'delete-cloud'
+  | 'delete-account';
 
 export function SyncSettings() {
   const {
@@ -23,6 +42,7 @@ export function SyncSettings() {
     recoveryMode,
     lastSyncedAt,
     message,
+    lastResult,
     sessions,
     signIn,
     signUp,
@@ -51,13 +71,31 @@ export function SyncSettings() {
   const [reauthNonce, setReauthNonce] = useState('');
   const [deleteCloudConfirm, setDeleteCloudConfirm] = useState('');
   const [deleteAccountConfirm, setDeleteAccountConfirm] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [activeAction, setActiveAction] = useState<AccountAction | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const actionErrorRef = useRef<HTMLParagraphElement>(null);
 
   const signedIn = email !== null;
+  const busy = activeAction !== null;
+  const attention =
+    signedIn &&
+    accessGranted &&
+    !recoveryMode &&
+    (status === 'offline' || status === 'pending' || status === 'error')
+      ? syncAttentionCopy(status, lastResult)
+      : null;
 
-  const runBusy = async (operation: () => Promise<void>) => {
-    setBusy(true);
+  useEffect(() => {
+    if (busy || !actionError) return;
+    const frame = window.requestAnimationFrame(() =>
+      actionErrorRef.current?.focus({ preventScroll: true }),
+    );
+    return () => window.cancelAnimationFrame(frame);
+  }, [actionError, busy]);
+
+  const runBusy = async (action: AccountAction, operation: () => Promise<void>) => {
+    if (busy) return;
+    setActiveAction(action);
     setActionError(null);
     try {
       await operation();
@@ -68,12 +106,12 @@ export function SyncSettings() {
           : 'The action could not be completed. Please try again.',
       );
     } finally {
-      setBusy(false);
+      setActiveAction(null);
     }
   };
 
   const submit = async (mode: 'signin' | 'signup') => {
-    await runBusy(async () => {
+    await runBusy(mode, async () => {
       if (mode === 'signin') await signIn(formEmail, password);
       else await signUp(formEmail, password);
       setPassword('');
@@ -81,7 +119,7 @@ export function SyncSettings() {
   };
 
   const submitSetupCode = async () => {
-    await runBusy(async () => {
+    await runBusy('claim', async () => {
       const claimed = await claimAccess(setupCode);
       if (claimed) setSetupCode('');
     });
@@ -92,7 +130,7 @@ export function SyncSettings() {
     const options: { currentPassword?: string; nonce?: string } = {};
     if (!recoveryMode && currentPassword) options.currentPassword = currentPassword;
     if (reauthNonce) options.nonce = reauthNonce;
-    await runBusy(async () => {
+    await runBusy('change-password', async () => {
       await changePassword(newPassword, options);
       setCurrentPassword('');
       setNewPassword('');
@@ -104,16 +142,21 @@ export function SyncSettings() {
   return (
     <>
       {actionError ? (
-        <p role="alert" className="settings-error">
+        <p ref={actionErrorRef} role="alert" tabIndex={-1} className="settings-error">
           {actionError}
         </p>
       ) : null}
-      {busy ? (
+      {activeAction ? (
         <p className="settings-note" role="status" aria-live="polite">
-          Working…
+          {accountActionLabel(activeAction)}
         </p>
       ) : null}
-      <section className="settings-group" aria-label="Cloud sync" aria-busy={busy}>
+
+      <section
+        className="settings-group"
+        aria-label="Cloud sync"
+        aria-busy={busy || status === 'syncing'}
+      >
         <div className="settings-group-copy">
           <strong>Cross-device sync</strong>
           <span>
@@ -139,12 +182,50 @@ export function SyncSettings() {
             <button
               type="button"
               disabled={busy || status === 'syncing'}
-              onClick={() => void runBusy(syncNow)}
+              onClick={() => void runBusy('sync', syncNow)}
             >
               <RefreshCw aria-hidden="true" /> Sync now
             </button>
           ) : null}
         </div>
+
+        {lastResult && signedIn && accessGranted ? (
+          <div className="settings-setting-row" data-testid="last-sync-activity">
+            <span className="settings-row-icon" aria-hidden="true">
+              <RefreshCw />
+            </span>
+            <span>
+              <strong>Last sync activity</strong>
+              <small>{formatSyncActivity(lastResult)}</small>
+            </span>
+          </div>
+        ) : null}
+
+        {lastResult?.conflictCopies ? (
+          <p className="settings-note">
+            {lastResult.conflictCopies}{' '}
+            {lastResult.conflictCopies === 1 ? 'safety copy was' : 'safety copies were'} kept in
+            Notes so a conflicting version is not silently lost.
+          </p>
+        ) : null}
+
+        {attention ? (
+          <div className="settings-choice-list" data-testid="sync-attention">
+            <p className="settings-note">
+              <strong>{attention.title}</strong>
+              <br />
+              {attention.detail}
+            </p>
+            <button
+              className="settings-secondary-action"
+              type="button"
+              disabled={busy || status === 'syncing'}
+              onClick={() => void runBusy('sync', syncNow)}
+            >
+              <RefreshCw aria-hidden="true" /> {attention.action}
+            </button>
+          </div>
+        ) : null}
 
         {message && !actionError && !busy ? <p role="status">{message}</p> : null}
 
@@ -158,6 +239,7 @@ export function SyncSettings() {
               <input
                 type="password"
                 autoComplete="off"
+                disabled={busy}
                 value={setupCode}
                 onChange={(event) => setSetupCode(event.target.value)}
               />
@@ -198,6 +280,7 @@ export function SyncSettings() {
               <input
                 type="email"
                 autoComplete="email"
+                disabled={busy}
                 value={formEmail}
                 onChange={(event) => setFormEmail(event.target.value)}
               />
@@ -211,6 +294,7 @@ export function SyncSettings() {
                 type="password"
                 autoComplete="current-password"
                 minLength={8}
+                disabled={busy}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
               />
@@ -239,7 +323,7 @@ export function SyncSettings() {
                 type="button"
                 disabled={busy || !formEmail.trim()}
                 onClick={() =>
-                  void runBusy(async () => {
+                  void runBusy('password-reset', async () => {
                     await requestPasswordReset(formEmail);
                   })
                 }
@@ -251,7 +335,7 @@ export function SyncSettings() {
                 type="button"
                 disabled={busy || !formEmail.trim()}
                 onClick={() =>
-                  void runBusy(async () => {
+                  void runBusy('resend-verification', async () => {
                     await resendVerification(formEmail);
                   })
                 }
@@ -270,6 +354,7 @@ export function SyncSettings() {
             <span>Your recovery link was verified. Choose the replacement password now.</span>
           </div>
           <PasswordFields
+            disabled={busy}
             newPassword={newPassword}
             confirmPassword={confirmPassword}
             onNewPassword={setNewPassword}
@@ -316,6 +401,7 @@ export function SyncSettings() {
                 <input
                   type="email"
                   autoComplete="email"
+                  disabled={busy}
                   value={newEmail}
                   onChange={(event) => setNewEmail(event.target.value)}
                 />
@@ -326,7 +412,7 @@ export function SyncSettings() {
                   type="button"
                   disabled={busy || !newEmail.trim() || newEmail.trim() === email}
                   onClick={() =>
-                    void runBusy(async () => {
+                    void runBusy('change-email', async () => {
                       await changeEmail(newEmail);
                       setNewEmail('');
                     })
@@ -339,7 +425,7 @@ export function SyncSettings() {
                     className="settings-secondary-action"
                     type="button"
                     disabled={busy}
-                    onClick={() => void runBusy(resendEmailChange)}
+                    onClick={() => void runBusy('resend-email-change', resendEmailChange)}
                   >
                     Resend email-change confirmation
                   </button>
@@ -358,11 +444,13 @@ export function SyncSettings() {
                 <input
                   type="password"
                   autoComplete="current-password"
+                  disabled={busy}
                   value={currentPassword}
                   onChange={(event) => setCurrentPassword(event.target.value)}
                 />
               </label>
               <PasswordFields
+                disabled={busy}
                 newPassword={newPassword}
                 confirmPassword={confirmPassword}
                 onNewPassword={setNewPassword}
@@ -379,6 +467,7 @@ export function SyncSettings() {
                   type="text"
                   inputMode="numeric"
                   autoComplete="one-time-code"
+                  disabled={busy}
                   value={reauthNonce}
                   onChange={(event) => setReauthNonce(event.target.value.trim())}
                 />
@@ -388,7 +477,7 @@ export function SyncSettings() {
                   className="settings-secondary-action"
                   type="button"
                   disabled={busy}
-                  onClick={() => void runBusy(requestReauthentication)}
+                  onClick={() => void runBusy('reauthenticate', requestReauthentication)}
                 >
                   <ShieldCheck aria-hidden="true" /> Send verification code
                 </button>{' '}
@@ -441,7 +530,7 @@ export function SyncSettings() {
                 className="settings-secondary-action"
                 type="button"
                 disabled={busy || !accessGranted}
-                onClick={() => void runBusy(refreshSessions)}
+                onClick={() => void runBusy('refresh-sessions', refreshSessions)}
               >
                 <RefreshCw aria-hidden="true" /> Refresh sessions
               </button>{' '}
@@ -449,7 +538,7 @@ export function SyncSettings() {
                 className="settings-secondary-action"
                 type="button"
                 disabled={busy || !accessGranted}
-                onClick={() => void runBusy(signOutOtherDevices)}
+                onClick={() => void runBusy('signout-others', signOutOtherDevices)}
               >
                 <LogOut aria-hidden="true" /> Sign out other devices
               </button>{' '}
@@ -457,7 +546,7 @@ export function SyncSettings() {
                 className="settings-secondary-action"
                 type="button"
                 disabled={busy}
-                onClick={() => void runBusy(signOutAllDevices)}
+                onClick={() => void runBusy('signout-all', signOutAllDevices)}
               >
                 Sign out everywhere
               </button>
@@ -466,7 +555,7 @@ export function SyncSettings() {
               className="settings-secondary-action"
               type="button"
               disabled={busy}
-              onClick={() => void runBusy(signOut)}
+              onClick={() => void runBusy('signout-local', signOut)}
             >
               Sign out on this device
             </button>
@@ -493,6 +582,7 @@ export function SyncSettings() {
                 <input
                   type="text"
                   autoComplete="off"
+                  disabled={busy}
                   value={deleteCloudConfirm}
                   onChange={(event) => setDeleteCloudConfirm(event.target.value)}
                 />
@@ -502,7 +592,7 @@ export function SyncSettings() {
                 type="button"
                 disabled={busy || deleteCloudConfirm !== 'DELETE CLOUD'}
                 onClick={() =>
-                  void runBusy(async () => {
+                  void runBusy('delete-cloud', async () => {
                     await deleteCloudData();
                     setDeleteCloudConfirm('');
                   })
@@ -522,6 +612,7 @@ export function SyncSettings() {
                 <input
                   type="text"
                   autoComplete="off"
+                  disabled={busy}
                   value={deleteAccountConfirm}
                   onChange={(event) => setDeleteAccountConfirm(event.target.value)}
                 />
@@ -531,7 +622,7 @@ export function SyncSettings() {
                 type="button"
                 disabled={busy || deleteAccountConfirm !== 'DELETE ACCOUNT'}
                 onClick={() =>
-                  void runBusy(async () => {
+                  void runBusy('delete-account', async () => {
                     const result = await deleteAccount();
                     if (result.deleted) setDeleteAccountConfirm('');
                   })
@@ -548,11 +639,13 @@ export function SyncSettings() {
 }
 
 function PasswordFields({
+  disabled,
   newPassword,
   confirmPassword,
   onNewPassword,
   onConfirmPassword,
 }: {
+  disabled: boolean;
   newPassword: string;
   confirmPassword: string;
   onNewPassword(value: string): void;
@@ -569,6 +662,7 @@ function PasswordFields({
           type="password"
           autoComplete="new-password"
           minLength={8}
+          disabled={disabled}
           value={newPassword}
           onChange={(event) => onNewPassword(event.target.value)}
         />
@@ -582,12 +676,50 @@ function PasswordFields({
           type="password"
           autoComplete="new-password"
           minLength={8}
+          disabled={disabled}
           value={confirmPassword}
           onChange={(event) => onConfirmPassword(event.target.value)}
         />
       </label>
     </>
   );
+}
+
+function accountActionLabel(action: AccountAction): string {
+  switch (action) {
+    case 'signin':
+      return 'Signing in…';
+    case 'signup':
+      return 'Creating account…';
+    case 'claim':
+      return 'Claiming private workspace…';
+    case 'sync':
+      return 'Syncing now…';
+    case 'password-reset':
+      return 'Sending recovery email…';
+    case 'resend-verification':
+      return 'Requesting verification email…';
+    case 'change-email':
+      return 'Requesting email change…';
+    case 'resend-email-change':
+      return 'Requesting email-change confirmation…';
+    case 'reauthenticate':
+      return 'Sending verification code…';
+    case 'change-password':
+      return 'Updating password…';
+    case 'refresh-sessions':
+      return 'Refreshing sessions…';
+    case 'signout-others':
+      return 'Signing out other devices…';
+    case 'signout-all':
+      return 'Signing out everywhere…';
+    case 'signout-local':
+      return 'Signing out on this device…';
+    case 'delete-cloud':
+      return 'Deleting cloud Notes data…';
+    case 'delete-account':
+      return 'Deleting account identity…';
+  }
 }
 
 function passwordMatchCopy(password: string, confirmation: string): string {

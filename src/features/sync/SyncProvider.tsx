@@ -65,15 +65,20 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     [updateSession],
   );
 
-  const refreshSessionListFor = useCallback(async (targetSession: SupabaseSession) => {
-    try {
-      const { listAuthSessions } = await import('./accountApi');
-      const list = await listAuthSessions(targetSession);
-      if (sessionRef.current?.user.id === targetSession.user.id) setSessions(list);
-    } catch {
-      setSessions([]);
-    }
-  }, []);
+  const refreshSessionListFor = useCallback(
+    async (targetSession: SupabaseSession): Promise<boolean> => {
+      try {
+        const { listAuthSessions } = await import('./accountApi');
+        const list = await listAuthSessions(targetSession);
+        if (sessionRef.current?.user.id === targetSession.user.id) setSessions(list);
+        return true;
+      } catch {
+        if (sessionRef.current?.user.id === targetSession.user.id) setSessions([]);
+        return false;
+      }
+    },
+    [],
+  );
 
   const runSync = useCallback(
     async (targetSession: SupabaseSession) => {
@@ -192,6 +197,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     if (!session || recoveryMode) return;
     if (!navigator.onLine) {
       setStatus('offline');
+      setMessage('Offline. Changes are saved locally and will sync when you reconnect.');
       return;
     }
     const epoch = sessionEpochRef.current;
@@ -231,7 +237,6 @@ export function SyncProvider({ children }: { children: ReactNode }) {
             setRecoveryMode(true);
             setStatus('recovery');
             setMessage('Password recovery verified. Choose a new password below.');
-            // Do not merge data or run background sync before the replacement password is set.
             dispatchAppEvent('openSyncSettings');
             return;
           }
@@ -251,6 +256,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         if (!initialSession) return;
         if (!navigator.onLine) {
           setStatus('offline');
+          setMessage('Offline. Changes are saved locally and will sync when you reconnect.');
           return;
         }
         const fresh = await ensureFreshSession(initialSession);
@@ -436,7 +442,9 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     }
     const fresh = await ensureFreshSession(session);
     if (fresh.access_token !== session.access_token) updateSession(fresh);
-    await refreshSessionListFor(fresh);
+    const refreshed = await refreshSessionListFor(fresh);
+    if (!refreshed) throw new Error('Session details could not be refreshed. Try again.');
+    setMessage('Session details refreshed.');
   }, [accessGranted, refreshSessionListFor, session, updateSession]);
 
   const signOutOtherDevices = useCallback(async () => {
@@ -444,8 +452,12 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     const fresh = await ensureFreshSession(session);
     const { signOutScoped } = await import('./accountApi');
     await signOutScoped(fresh, 'others');
-    setMessage('Other signed-in sessions were revoked.');
-    await refreshSessionListFor(fresh);
+    const refreshed = await refreshSessionListFor(fresh);
+    setMessage(
+      refreshed
+        ? 'Other signed-in sessions were revoked.'
+        : 'Other signed-in sessions were revoked, but the session list could not be refreshed yet.',
+    );
   }, [refreshSessionListFor, session]);
 
   const signOutAllDevices = useCallback(async () => {
