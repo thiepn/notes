@@ -696,7 +696,7 @@ function accountActionLabel(action: AccountAction): string {
     case 'sync':
       return 'Syncing now…';
     case 'password-reset':
-      return 'Sending password-reset link…';
+      return 'Sending recovery email…';
     case 'resend-verification':
       return 'Requesting verification email…';
     case 'change-email':
