@@ -135,6 +135,6 @@ test.describe('P34 post-v1 final hardening and certification', () => {
 
     await page.getByRole('button', { name: 'Show notes' }).click();
     await expect(page.getByRole('heading', { name: 'Notes', level: 1 })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'New note' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'New note', exact: true })).toBeVisible();
   });
 });
