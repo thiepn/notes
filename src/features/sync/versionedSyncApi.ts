@@ -1,4 +1,10 @@
 import {
+  classifyOperationalStatus,
+  createOperationId,
+  logOperationalEvent,
+  runSafeReadWithRetry,
+} from './operations';
+import {
   SupabaseRequestError,
   type RemoteSyncRecord,
   type SupabaseSession,
@@ -92,7 +98,6 @@ export async function writeVersionedRemoteRecord(
     if (response.status === 409) {
       throw new SyncWriteConflictError(record.entity_type, record.entity_id, null);
     }
-    if (!response.ok) throw await responseError(response);
     return readSingleMutationRow(response, session.user.id, record, null);
   }
 
@@ -117,7 +122,6 @@ export async function writeVersionedRemoteRecord(
       deleted_at: record.deleted_at,
     }),
   });
-  if (!response.ok) throw await responseError(response);
 
   const rows = (await response.json()) as VersionedRemoteSyncRecord[];
   if (!Array.isArray(rows)) throw new Error('Cloud sync returned an invalid mutation result.');
@@ -174,9 +178,12 @@ async function request(
   init: RequestInit,
   allowConflict = false,
 ): Promise<Response> {
-  let response: Response;
-  try {
-    response = await fetch(`${SUPABASE_URL}${path}`, {
+  const method = String(init.method ?? 'GET').toUpperCase();
+  const safeRead = method === 'GET' || method === 'HEAD';
+  const operationId = createOperationId();
+  const started = Date.now();
+  const perform = async (): Promise<Response> =>
+    fetch(`${SUPABASE_URL}${path}`, {
       ...init,
       signal: init.signal ?? AbortSignal.timeout(30_000),
       headers: {
@@ -186,13 +193,74 @@ async function request(
         ...(init.headers ?? {}),
       },
     });
-  } catch {
-    throw new SupabaseRequestError(
-      'Cloud service could not be reached. Local notes are unchanged.',
-      0,
-    );
+
+  let response: Response;
+  if (safeRead) {
+    const result = await runSafeReadWithRetry(async (attempt) => {
+      try {
+        const value = await perform();
+        if (attempt > 1) {
+          logOperationalEvent({
+            event: 'notes.read.retry',
+            operationId,
+            category: classifyOperationalStatus(value.status),
+            status: value.status,
+            attempt,
+          });
+        }
+        return { value, status: value.status };
+      } catch {
+        logOperationalEvent({
+          event: 'notes.read.retry',
+          operationId,
+          category: 'network',
+          status: 0,
+          attempt,
+        });
+        return { value: null, status: 0 };
+      }
+    });
+    if (!result.value) {
+      logOperationalEvent({
+        event: 'notes.read.failure',
+        operationId,
+        category: 'network',
+        status: 0,
+        attempt: result.attemptsUsed,
+        durationMs: Date.now() - started,
+      });
+      throw new SupabaseRequestError(
+        'Cloud service could not be reached. Local notes are unchanged.',
+        0,
+      );
+    }
+    response = result.value;
+  } else {
+    try {
+      response = await perform();
+    } catch {
+      logOperationalEvent({
+        event: 'notes.request.failure',
+        operationId,
+        category: 'network',
+        status: 0,
+        durationMs: Date.now() - started,
+      });
+      throw new SupabaseRequestError(
+        'Cloud service could not be reached. Local notes are unchanged.',
+        0,
+      );
+    }
   }
+
   if (!response.ok && !(allowConflict && response.status === 409)) {
+    logOperationalEvent({
+      event: safeRead ? 'notes.read.failure' : 'notes.request.failure',
+      operationId,
+      category: classifyOperationalStatus(response.status),
+      status: response.status,
+      durationMs: Date.now() - started,
+    });
     throw await responseError(response);
   }
   return response;
