@@ -227,7 +227,9 @@ test('attachment bytes use immutable generations and a stale metadata CAS cannot
   const firstRemote = state.rows.find(
     (row) => row.entity_type === 'attachment' && row.entity_id === seeded.attachmentId,
   )!;
-  expect(firstRemote.payload?.storagePath).toBe(`${USER}/${seeded.attachmentId}/${seeded.checksum}`);
+  expect(firstRemote.payload?.storagePath).toBe(
+    `${USER}/${seeded.attachmentId}/${seeded.checksum}`,
+  );
   expect(state.objects.get(String(firstRemote.payload?.storagePath))?.toString()).toBe(
     'initial attachment bytes',
   );
