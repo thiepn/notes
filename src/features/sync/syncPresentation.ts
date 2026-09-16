@@ -44,12 +44,7 @@ export function syncAttentionCopy(
   };
 }
 
-function pushCount(
-  parts: string[],
-  count: number,
-  singular: string,
-  plural = singular,
-): void {
+function pushCount(parts: string[], count: number, singular: string, plural = singular): void {
   if (count <= 0) return;
   parts.push(`${count} ${count === 1 ? singular : plural}`);
 }
