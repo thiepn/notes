@@ -18,7 +18,9 @@ async function createTerminalNote(page: Page) {
     .getByLabel('Note text')
     .fill('p34-terminal-search-evidence survives reload and final navigation');
   await composer.getByRole('button', { name: 'Close' }).click();
-  await expect(page.getByRole('button', { name: 'Open note: P34 final release note' })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Open note: P34 final release note' }),
+  ).toBeVisible();
 }
 
 test.describe('P34 post-v1 final hardening and certification', () => {
@@ -67,7 +69,9 @@ test.describe('P34 post-v1 final hardening and certification', () => {
 
     await page.getByRole('button', { name: 'Notes', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Notes', level: 1 })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Open note: P34 final release note' })).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Open note: P34 final release note' }),
+    ).toBeVisible();
   });
 
   test('global modal closure restores the normal keyboard shell instead of leaving stale modal state', async ({
