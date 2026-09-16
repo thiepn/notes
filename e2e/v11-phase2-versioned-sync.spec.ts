@@ -33,12 +33,23 @@ interface CloudControl {
   collideCreateId?: string;
   stalePatchAttempts: number;
   createCollisionAttempts: number;
+  readsAfterCreateCollision: number;
+  childPostsBeforeFreshRead: number;
+}
+
+function control(): CloudControl {
+  return {
+    stalePatchAttempts: 0,
+    createCollisionAttempts: 0,
+    readsAfterCreateCollision: 0,
+    childPostsBeforeFreshRead: 0,
+  };
 }
 
 async function installCloud(
   page: Page,
   rows: VersionedRemoteSyncRecord[],
-  control: CloudControl,
+  state: CloudControl,
 ) {
   await page.route(`${HOST}/**`, async (route) => {
     const request = route.request();
@@ -53,6 +64,7 @@ async function installCloud(
     if (url.pathname !== '/rest/v1/notes_sync_records') return route.abort();
 
     if (request.method() === 'GET') {
+      if (state.createCollisionAttempts > 0) state.readsAfterCreateCollision += 1;
       const cursor = url.searchParams.get('or');
       const sorted = [...rows].sort((a, b) =>
         `${a.entity_type}:${a.entity_id}`.localeCompare(`${b.entity_type}:${b.entity_id}`),
@@ -72,11 +84,18 @@ async function installCloud(
     if (request.method() === 'POST') {
       const incoming = request.postDataJSON() as Omit<VersionedRemoteSyncRecord, 'version'>;
       if (
-        incoming.entity_type === 'note' &&
-        incoming.entity_id === control.collideCreateId &&
-        control.createCollisionAttempts === 0
+        incoming.entity_type === 'checklist_item' &&
+        state.createCollisionAttempts > 0 &&
+        state.readsAfterCreateCollision === 0
       ) {
-        control.createCollisionAttempts += 1;
+        state.childPostsBeforeFreshRead += 1;
+      }
+      if (
+        incoming.entity_type === 'note' &&
+        incoming.entity_id === state.collideCreateId &&
+        state.createCollisionAttempts === 0
+      ) {
+        state.createCollisionAttempts += 1;
         const remotePayload = {
           ...incoming.payload!,
           title: 'Created on another device',
@@ -115,11 +134,11 @@ async function installCloud(
 
       if (
         type === 'note' &&
-        id === control.stalePatchId &&
-        control.stalePatchAttempts === 0 &&
+        id === state.stalePatchId &&
+        state.stalePatchAttempts === 0 &&
         index >= 0
       ) {
-        control.stalePatchAttempts += 1;
+        state.stalePatchAttempts += 1;
         const current = rows[index]!;
         const remotePayload = {
           ...current.payload!,
@@ -180,10 +199,12 @@ async function createLocal(page: Page, title: string) {
   }, title);
 }
 
-test('a stale update cannot overwrite a newer remote version', async ({ page }) => {
+test('a stale update is rejected and reconciled against the newer remote version in the same sync', async ({
+  page,
+}) => {
   const rows: VersionedRemoteSyncRecord[] = [];
-  const control: CloudControl = { stalePatchAttempts: 0, createCollisionAttempts: 0 };
-  await installCloud(page, rows, control);
+  const state = control();
+  await installCloud(page, rows, state);
   const note = await createLocal(page, 'Versioned update');
   await sync(page);
 
@@ -193,13 +214,13 @@ test('a stale update cannot overwrite a newer remote version', async ({ page }) 
     const current = await repository.require(id);
     await repository.update(id, { content: 'Stale local edit' }, current.revision);
   }, note.id);
-  control.stalePatchId = note.id;
+  state.stalePatchId = note.id;
 
   const result = await sync(page);
 
-  expect(control.stalePatchAttempts).toBe(1);
+  expect(state.stalePatchAttempts).toBe(1);
   expect(result.conflicts).toBeGreaterThan(0);
-  expect(result.deferred).toBeGreaterThan(0);
+  expect(result.deferred).toBe(0);
   expect(result.failed).toBe(0);
   const remote = rows.find((row) => row.entity_type === 'note' && row.entity_id === note.id)!;
   expect(remote.version).toBe(2);
@@ -209,36 +230,44 @@ test('a stale update cannot overwrite a newer remote version', async ({ page }) 
       const db = await import('/notes/src/db/index.ts');
       return (await new db.NotesRepository(db.notesDatabase).require(id)).content;
     }, note.id),
-  ).toBe('Stale local edit');
+  ).toBe('A newer remote edit arrived first.');
 });
 
-test('a concurrent create is rejected instead of merged over the remote row', async ({ page }) => {
+test('a concurrent create is rejected and both versions remain recoverable after same-pass reconciliation', async ({
+  page,
+}) => {
   const rows: VersionedRemoteSyncRecord[] = [];
-  const control: CloudControl = { stalePatchAttempts: 0, createCollisionAttempts: 0 };
-  await installCloud(page, rows, control);
+  const state = control();
+  await installCloud(page, rows, state);
   const note = await createLocal(page, 'Concurrent create');
-  control.collideCreateId = note.id;
+  state.collideCreateId = note.id;
 
   const result = await sync(page);
 
-  expect(control.createCollisionAttempts).toBe(1);
+  expect(state.createCollisionAttempts).toBe(1);
   expect(result.conflicts).toBeGreaterThan(0);
-  expect(result.deferred).toBeGreaterThan(0);
+  expect(result.conflictCopies).toBeGreaterThan(0);
+  expect(result.deferred).toBe(0);
   const remote = rows.find((row) => row.entity_type === 'note' && row.entity_id === note.id)!;
   expect(remote.version).toBe(1);
   expect(remote.payload?.content).toBe('Remote concurrent create');
-  expect(
-    await page.evaluate(async (id) => {
-      const db = await import('/notes/src/db/index.ts');
-      return (await new db.NotesRepository(db.notesDatabase).require(id)).title;
-    }, note.id),
-  ).toBe('Concurrent create');
+  const local = await page.evaluate(async (id) => {
+    const db = await import('/notes/src/db/index.ts');
+    return {
+      current: await new db.NotesRepository(db.notesDatabase).require(id),
+      notes: await db.notesDatabase.notes.toArray(),
+    };
+  }, note.id);
+  expect(local.current.title).toBe('Created on another device');
+  expect(local.notes.some((item) => item.title.includes('conflict copy (this device'))).toBe(true);
 });
 
-test('a note create conflict defers dependent checklist rows in the same pass', async ({ page }) => {
+test('a note create conflict never uploads dependent checklist rows before the fresh reconciliation read', async ({
+  page,
+}) => {
   const rows: VersionedRemoteSyncRecord[] = [];
-  const control: CloudControl = { stalePatchAttempts: 0, createCollisionAttempts: 0 };
-  await installCloud(page, rows, control);
+  const state = control();
+  await installCloud(page, rows, state);
   await page.goto('./');
   await expect(page.getByRole('button', { name: 'Create a text note' })).toBeVisible();
   const created = await page.evaluate(async () => {
@@ -248,20 +277,22 @@ test('a note create conflict defers dependent checklist rows in the same pass', 
       { id: crypto.randomUUID(), text: 'Local child two', checked: false, parentId: null },
     ]);
   });
-  control.collideCreateId = created.note.id;
+  state.collideCreateId = created.note.id;
 
   const result = await sync(page);
 
-  expect(control.createCollisionAttempts).toBe(1);
-  expect(result.deferred).toBeGreaterThanOrEqual(3);
-  expect(rows.filter((row) => row.entity_type === 'note')).toHaveLength(1);
-  expect(rows.some((row) => row.entity_type === 'checklist_item')).toBe(false);
+  expect(state.createCollisionAttempts).toBe(1);
+  expect(state.readsAfterCreateCollision).toBeGreaterThan(0);
+  expect(state.childPostsBeforeFreshRead).toBe(0);
+  expect(result.deferred).toBe(0);
 });
 
-test('a stale delete cannot tombstone a newer remote edit', async ({ page }) => {
+test('a stale delete is rejected and the newer remote edit is restored locally in the same sync', async ({
+  page,
+}) => {
   const rows: VersionedRemoteSyncRecord[] = [];
-  const control: CloudControl = { stalePatchAttempts: 0, createCollisionAttempts: 0 };
-  await installCloud(page, rows, control);
+  const state = control();
+  await installCloud(page, rows, state);
   const note = await createLocal(page, 'Versioned delete');
   await sync(page);
 
@@ -269,15 +300,21 @@ test('a stale delete cannot tombstone a newer remote edit', async ({ page }) => 
     const db = await import('/notes/src/db/index.ts');
     await db.notesDatabase.notes.delete(id);
   }, note.id);
-  control.stalePatchId = note.id;
+  state.stalePatchId = note.id;
 
   const result = await sync(page);
 
-  expect(control.stalePatchAttempts).toBe(1);
+  expect(state.stalePatchAttempts).toBe(1);
   expect(result.conflicts).toBeGreaterThan(0);
-  expect(result.deferred).toBeGreaterThan(0);
+  expect(result.deferred).toBe(0);
   const remote = rows.find((row) => row.entity_type === 'note' && row.entity_id === note.id)!;
   expect(remote.version).toBe(2);
   expect(remote.deleted_at).toBeNull();
   expect(remote.payload?.content).toBe('A newer remote edit arrived first.');
+  expect(
+    await page.evaluate(async (id) => {
+      const db = await import('/notes/src/db/index.ts');
+      return (await new db.NotesRepository(db.notesDatabase).require(id)).content;
+    }, note.id),
+  ).toBe('A newer remote edit arrived first.');
 });
