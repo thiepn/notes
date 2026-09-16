@@ -4,7 +4,7 @@
 
 P34 is the endpoint of the P21–P33 post-v1 refinement sequence.
 
-It is not a feature phase and must not become another open-ended polish cycle. Its purpose is to audit the release machinery, close demonstrated release-critical inconsistencies, certify the complete product as one system, and publish a stable `v1.0.0` marker only from the exact production commit that passed every permanent gate.
+It is not a feature phase and must not become another open-ended polish cycle. Its purpose is to audit the release machinery, close demonstrated release-critical inconsistencies, certify the complete product as one system, and publish the terminal P34 stable release only from the exact production commit that passed every permanent gate.
 
 Authoritative baseline:
 
@@ -12,7 +12,8 @@ Authoritative baseline:
 P33 merged main: 6bc824e97479c815e5ba4ae8f4868f245b440281
 Repository: thiepn/notes
 Production: https://thiepn.dev/notes/
-Stable release target: v1.0.0
+Existing historical stable release: v1.0.0
+P34 stable release target: v1.0.1
 ```
 
 P34 permits only:
@@ -31,7 +32,9 @@ P34 does not authorize new product features, redesigns, schema work, or another 
 
 Before P34, the deployment workflow was already prepared to publish `v1.0.0`, while `package.json` still declared `0.0.0`.
 
-P34 makes `1.0.0` the explicit application release version and makes the stable-release job verify that version on the exact certified production SHA before it may create the GitHub release.
+P34 first aligned the application manifest with stable release metadata. Terminal publication then exposed an additional historical constraint: `v1.0.0` had already been published during P20 and points to its original certified release commit. P34 intentionally preserves that immutable release history rather than moving a published tag.
+
+The terminal P34 release is therefore `v1.0.1`.
 
 ### Finding 2 — release publication evidence was stale
 
@@ -56,6 +59,12 @@ with retries disabled, adds it to `release:certify`, and makes CI run it permane
 P34 extends the release contract to reject committed `.only`, `.skip`, or `.fixme` markers in repository test/spec files.
 
 This does not replace code review or complete coverage analysis. It prevents a simple class of accidental release-gate bypass from silently reaching a certified candidate.
+
+### Finding 5 — stable release tags must remain immutable
+
+The first P34 publication attempt correctly refused to overwrite the existing `v1.0.0` tag because it points to the earlier P20 release SHA.
+
+P34 hardens the publication workflow so it derives the tag from the certified commit's `package.json` version. A marked release commit must have the exact subject `Release v<package-version>`. If that tag already exists, publication succeeds only when it already points to the exact certified production SHA; otherwise it fails instead of silently moving history.
 
 ## Permanent release gates
 
@@ -88,7 +97,7 @@ CI mirrors these permanent gates. A focused P34 pass is not sufficient when the 
 
 The focused scenarios verify:
 
-- stable `1.0.0` release metadata and production PWA manifest invariants;
+- stable release metadata and production PWA manifest invariants;
 - a persisted note can survive reload, re-enter normal search, and continue through the final Settings/Privacy/Backup interaction chain without stale modal or focus state;
 - a small-mobile top-level release journey can open Settings and return to the normal application shell without horizontal overflow or stranded modal state.
 
@@ -102,18 +111,20 @@ After deployment:
 
 1. the live shell, manifest, and service worker must pass the production smoke job;
 2. the stable release job checks the exact deployed commit;
-3. only a commit whose subject is exactly `Release v1.0.0` is eligible to publish the stable release;
-4. that commit must declare package version `1.0.0`;
-5. GitHub release `v1.0.0` is created against that exact SHA;
-6. an existing `v1.0.0` tag must already resolve to that exact SHA or publication fails.
+3. it reads the application version from `package.json` and derives `release_tag=v<version>`;
+4. only a commit whose subject is exactly `Release <release_tag>` is eligible to publish;
+5. the release/tag is created against that exact SHA;
+6. if that tag already exists, it must already resolve to that exact SHA or publication fails.
 
-The P34 PR is therefore merged with stable release commit title:
+For terminal P34 publication the release commit title is:
 
 ```text
-Release v1.0.0
+Release v1.0.1
 ```
 
-A normal later commit does not republish or move the stable tag.
+The previously published `v1.0.0` release remains untouched at its original P20-certified SHA.
+
+A normal later commit does not republish or move any stable tag.
 
 ## Architecture boundaries
 
@@ -168,13 +179,13 @@ P34 preserves the existing documented product boundaries:
 P34 is complete only when:
 
 ```text
-exact P34 candidate head
+exact P34 v1.0.1 candidate head
 → complete CI green
-→ merge as Release v1.0.0
+→ merge as Release v1.0.1
 → merged main CI green
 → exact-SHA Pages deployment green
 → production smoke green
-→ v1.0.0 release/tag resolves to the deployed main SHA
+→ v1.0.1 release/tag resolves to the deployed main SHA
 ```
 
 After that condition is satisfied:
