@@ -53,7 +53,10 @@ describe('versioned sync transport', () => {
   });
 
   it('rejects invalid remote versions', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => Response.json([{ ...remote(1), version: 0 }])));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Response.json([{ ...remote(1), version: 0 }])),
+    );
     await expect(listVersionedRemoteRecords(session)).rejects.toThrow('invalid record version');
   });
 
@@ -99,7 +102,10 @@ describe('versioned sync transport', () => {
   });
 
   it('treats a zero-row conditional update as a stale write', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => Response.json([])));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Response.json([])),
+    );
 
     await expect(writeVersionedRemoteRecord(session, mutation, 3)).rejects.toMatchObject({
       name: 'SyncWriteConflictError',
@@ -108,7 +114,10 @@ describe('versioned sync transport', () => {
   });
 
   it('rejects a server response that skips a version', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => Response.json([remote(9)])));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Response.json([remote(9)])),
+    );
     await expect(writeVersionedRemoteRecord(session, mutation, 7)).rejects.toThrow(
       'advance the record version exactly once',
     );
