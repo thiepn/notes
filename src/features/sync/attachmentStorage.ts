@@ -1,13 +1,5 @@
-import {
-  classifyOperationalStatus,
-  createOperationId,
-  logOperationalEvent,
-} from './operations';
-import {
-  downloadAttachment,
-  SupabaseRequestError,
-  type SupabaseSession,
-} from './supabaseApi';
+import { classifyOperationalStatus, createOperationId, logOperationalEvent } from './operations';
+import { downloadAttachment, SupabaseRequestError, type SupabaseSession } from './supabaseApi';
 
 const SUPABASE_URL = 'https://hycegznamzjhwinegaai.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_1rZzRPzfLMaAH5pIgCwIjA_19UPMIsR';
