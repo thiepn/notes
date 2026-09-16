@@ -35,7 +35,9 @@ async function fillSignedOutFields(page: Page) {
   return { section, email, password };
 }
 
-test('account request exposes specific busy state and locks editable credentials', async ({ page }) => {
+test('account request exposes specific busy state and locks editable credentials', async ({
+  page,
+}) => {
   let releaseRequest: (() => void) | null = null;
   const requestGate = new Promise<void>((resolve) => {
     releaseRequest = resolve;
@@ -69,7 +71,9 @@ test('account request exposes specific busy state and locks editable credentials
   await expect(page.getByRole('status')).toContainText('password-reset link');
 });
 
-test('failed account request focuses the retryable alert and unlocks the form', async ({ page }) => {
+test('failed account request focuses the retryable alert and unlocks the form', async ({
+  page,
+}) => {
   let releaseRequest: (() => void) | null = null;
   const requestGate = new Promise<void>((resolve) => {
     releaseRequest = resolve;
