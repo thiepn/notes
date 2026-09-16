@@ -117,7 +117,7 @@ test('authoritative attachment loading gates mutation controls until the list re
   await expect(panel).toHaveAttribute('aria-busy', 'true');
   await expect(panel.getByText('Loading saved media…')).toBeVisible();
   await expect(panel.getByLabel('Choose images')).toBeDisabled();
-  await expect(panel.getByRole('button', { name: 'Take a photo' })).toBeDisabled();
+  await expect(panel.getByLabel('Take photo')).toBeDisabled();
   await expect(panel.getByRole('button', { name: 'Add image' })).toBeDisabled();
 
   await page.evaluate(() => {
