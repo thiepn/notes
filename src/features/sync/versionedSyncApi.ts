@@ -10,6 +10,16 @@ const SUPABASE_URL = 'https://hycegznamzjhwinegaai.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_1rZzRPzfLMaAH5pIgCwIjA_19UPMIsR';
 const REMOTE_SELECT =
   'user_id,entity_type,entity_id,payload,payload_hash,client_updated_at,deleted_at,updated_at,version';
+const REMOTE_ENTITY_ID_PATTERN = /^[a-zA-Z0-9:-]+$/u;
+const REMOTE_ENTITY_TYPES = new Set<RemoteSyncRecord['entity_type']>([
+  'note',
+  'checklist_item',
+  'label',
+  'note_label',
+  'attachment',
+  'reminder',
+  'revision',
+]);
 
 export interface VersionedRemoteSyncRecord extends RemoteSyncRecord {
   version: number;
@@ -54,9 +64,6 @@ export async function listVersionedRemoteRecords(
     validateRemoteRows(rows, session.user.id);
 
     const last = rows.at(-1)!;
-    if (!/^[a-z_]+$/u.test(last.entity_type) || !/^[a-zA-Z0-9:-]+$/u.test(last.entity_id)) {
-      throw new Error('Cloud sync returned an invalid record cursor.');
-    }
     const next = `${last.entity_type}:${last.entity_id}`;
     if (next === cursor) {
       throw new Error('Cloud pagination did not advance. No changes were applied.');
@@ -137,6 +144,12 @@ function validateRemoteRows(rows: VersionedRemoteSyncRecord[], expectedUserId: s
   for (const row of rows) {
     if (row.user_id !== expectedUserId) {
       throw new Error('Cloud sync returned a different account’s record.');
+    }
+    if (!REMOTE_ENTITY_TYPES.has(row.entity_type)) {
+      throw new Error('Cloud sync returned an invalid entity type.');
+    }
+    if (typeof row.entity_id !== 'string' || !REMOTE_ENTITY_ID_PATTERN.test(row.entity_id)) {
+      throw new Error('Cloud sync returned an invalid record identity.');
     }
     if (!Number.isSafeInteger(row.version) || row.version < 1) {
       throw new Error('Cloud sync returned an invalid record version.');
