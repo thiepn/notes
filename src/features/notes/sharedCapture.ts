@@ -8,7 +8,6 @@ import {
   noteRecordSchema,
   prepareImageAttachment,
   settingRecordSchema,
-  type AttachmentRecord,
   type NoteRecord,
   type PreparedImageAttachment,
 } from '../../db';
