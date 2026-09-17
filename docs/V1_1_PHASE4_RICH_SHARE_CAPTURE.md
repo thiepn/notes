@@ -172,6 +172,22 @@ Phase 4 requires no Supabase DDL, RLS, RPC, or Storage-policy change.
 
 The durable result is written to the same local Notes/attachments stores already synchronized by the existing v1.1 sync engine. Attachment cloud upload remains governed by Phase 3's immutable content-addressed storage contract.
 
+## Certification gates
+
+The exact Phase 4 candidate must pass, without relying on retries to hide product defects:
+
+- Prettier format check;
+- foundation and P34 release contracts;
+- ESLint;
+- TypeScript `--noEmit`;
+- complete Vitest suite;
+- production build and performance budget;
+- Chromium/Firefox/WebKit compatibility suite;
+- complete no-retry browser regression suite, including Phase 4 adversarial cases;
+- P20 and P34 certification specs;
+- production-mode PWA/offline suite, including rich-share cases;
+- A8 account-consumer contract.
+
 ## Definition of done
 
 Phase 4 is complete when:
