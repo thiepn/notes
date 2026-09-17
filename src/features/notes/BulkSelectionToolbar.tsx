@@ -338,7 +338,7 @@ function BulkLabelPanel({
                     key={label.id}
                     type="button"
                     data-state={all ? 'all' : mixed ? 'mixed' : 'none'}
-                    aria-pressed={all}
+                    aria-pressed={mixed ? 'mixed' : all}
                     aria-label={`${all ? 'Remove' : 'Add'} label ${label.name} ${all ? 'from' : 'to'} selected notes`}
                     onClick={() => onChange(label.id, !all)}
                   >
