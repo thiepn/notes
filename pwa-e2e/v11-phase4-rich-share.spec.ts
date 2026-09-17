@@ -19,6 +19,7 @@ async function submitRichShare(
     includeImage?: boolean;
     includePdf?: boolean;
     includeText?: boolean;
+    includeUnsupported?: boolean;
   },
 ) {
   await page.evaluate(async (value) => {
@@ -63,6 +64,13 @@ async function submitRichShare(
         new File(['Offline shared attachment'], 'offline-share.txt', { type: 'text/plain' }),
       );
     }
+    if (value.includeUnsupported) {
+      transfer.items.add(
+        new File(['MZ-not-an-app-file'], 'unsupported.exe', {
+          type: 'application/x-msdownload',
+        }),
+      );
+    }
 
     if (transfer.files.length > 0) {
       const files = document.createElement('input');
@@ -103,6 +111,13 @@ async function attachmentState(page: Page, title: string) {
         })),
       ),
     };
+  }, title);
+}
+
+async function noteExists(page: Page, title: string) {
+  return page.evaluate(async (noteTitle) => {
+    const db = await import('/notes/src/db/index.ts');
+    return (await db.notesDatabase.notes.toArray()).some((note) => note.title === noteTitle);
   }, title);
 }
 
@@ -177,4 +192,26 @@ test('installed PWA can receive a supported file while the network is offline', 
   } finally {
     await setOffline(context, false);
   }
+});
+
+test('service-worker intake rejects the entire share when any supplied file is unsupported', async ({
+  page,
+}) => {
+  await page.goto('./');
+  await waitForServiceWorkerControl(page);
+
+  await submitRichShare(page, {
+    title: 'Must not become a partial note',
+    text: 'The accompanying unsupported file is part of this share.',
+    includeText: true,
+    includeUnsupported: true,
+  });
+
+  await expect(page).toHaveURL(/\/notes\/$/u);
+  await expect.poll(() => noteExists(page, 'Must not become a partial note')).toBe(false);
+  const pendingShares = await page.evaluate(async () => {
+    const cache = await caches.open('notes-share-target-v2');
+    return (await cache.keys()).length;
+  });
+  expect(pendingShares).toBe(0);
 });
