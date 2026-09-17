@@ -17,7 +17,9 @@ export {
   MAX_NATIVE_IMAGE_DIMENSION,
   MAX_TOTAL_ATTACHMENT_BYTES_PER_NOTE,
   NATIVE_IMAGE_ACCEPT,
+  prepareImageAttachment,
   type AddImagesResult,
+  type PreparedImageAttachment,
 } from './repositories/attachmentsRepository';
 export {
   BulkActionsRepository,
