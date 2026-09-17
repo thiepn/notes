@@ -4,7 +4,8 @@ async function waitForServiceWorkerControl(page: Page) {
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;
   });
-  if (!(await page.evaluate(() => Boolean(navigator.serviceWorker.controller)))) await page.reload();
+  if (!(await page.evaluate(() => Boolean(navigator.serviceWorker.controller))))
+    await page.reload();
   await expect
     .poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller)))
     .toBe(true);
