@@ -4,7 +4,8 @@ async function waitForServiceWorkerControl(page: Page) {
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;
   });
-  if (!(await page.evaluate(() => Boolean(navigator.serviceWorker.controller)))) await page.reload();
+  if (!(await page.evaluate(() => Boolean(navigator.serviceWorker.controller))))
+    await page.reload();
   await expect
     .poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller)))
     .toBe(true);
@@ -12,7 +13,13 @@ async function waitForServiceWorkerControl(page: Page) {
 
 async function submitRichShare(
   page: Page,
-  options: { title: string; text?: string; includeImage?: boolean; includePdf?: boolean; includeText?: boolean },
+  options: {
+    title: string;
+    text?: string;
+    includeImage?: boolean;
+    includePdf?: boolean;
+    includeText?: boolean;
+  },
 ) {
   await page.evaluate(async (value) => {
     const form = document.createElement('form');
@@ -37,7 +44,10 @@ async function submitRichShare(
       if (!context) throw new Error('Canvas unavailable.');
       context.fillRect(0, 0, 4, 4);
       const blob = await new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob((result) => (result ? resolve(result) : reject(new Error('PNG encode failed.'))), 'image/png');
+        canvas.toBlob(
+          (result) => (result ? resolve(result) : reject(new Error('PNG encode failed.'))),
+          'image/png',
+        );
       });
       transfer.items.add(new File([blob], 'shared-photo.png', { type: 'image/png' }));
     }
@@ -71,9 +81,14 @@ async function submitRichShare(
 async function attachmentState(page: Page, title: string) {
   return page.evaluate(async (noteTitle) => {
     const db = await import('/notes/src/db/index.ts');
-    const note = (await db.notesDatabase.notes.toArray()).find((candidate) => candidate.title === noteTitle);
+    const note = (await db.notesDatabase.notes.toArray()).find(
+      (candidate) => candidate.title === noteTitle,
+    );
     if (!note) return null;
-    const attachments = await db.notesDatabase.attachments.where('noteId').equals(note.id).toArray();
+    const attachments = await db.notesDatabase.attachments
+      .where('noteId')
+      .equals(note.id)
+      .toArray();
     return {
       noteId: note.id,
       attachments: await Promise.all(
@@ -81,9 +96,10 @@ async function attachmentState(page: Page, title: string) {
           name: attachment.name,
           mimeType: attachment.mimeType,
           checksumLength: attachment.checksum.length,
-          text: attachment.mimeType === 'application/pdf' || attachment.mimeType === 'text/plain'
-            ? await attachment.data.text()
-            : null,
+          text:
+            attachment.mimeType === 'application/pdf' || attachment.mimeType === 'text/plain'
+              ? await attachment.data.text()
+              : null,
         })),
       ),
     };
@@ -94,7 +110,9 @@ async function setOffline(context: BrowserContext, offline: boolean) {
   await context.setOffline(offline);
 }
 
-test('installed PWA captures a shared image and generic file into one durable note', async ({ page }) => {
+test('installed PWA captures a shared image and generic file into one durable note', async ({
+  page,
+}) => {
   await page.goto('./');
   await waitForServiceWorkerControl(page);
 
@@ -111,7 +129,11 @@ test('installed PWA captures a shared image and generic file into one durable no
   expect(state?.attachments).toHaveLength(2);
   expect(state?.attachments).toEqual(
     expect.arrayContaining([
-      expect.objectContaining({ name: 'shared-photo.png', mimeType: 'image/png', checksumLength: 64 }),
+      expect.objectContaining({
+        name: 'shared-photo.png',
+        mimeType: 'image/png',
+        checksumLength: 64,
+      }),
       expect.objectContaining({
         name: 'shared-reference.pdf',
         mimeType: 'application/pdf',
@@ -128,7 +150,10 @@ test('installed PWA captures a shared image and generic file into one durable no
   expect(pendingShares).toBe(0);
 });
 
-test('installed PWA can receive a supported file while the network is offline', async ({ page, context }) => {
+test('installed PWA can receive a supported file while the network is offline', async ({
+  page,
+  context,
+}) => {
   await page.goto('./');
   await waitForServiceWorkerControl(page);
   await setOffline(context, true);
