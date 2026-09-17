@@ -56,7 +56,7 @@ This remains valuable and must not be removed. v1.1 adds a lower-level guarantee
 
 ### Current share target
 
-The P10 share target currently accepts:
+The P10 share target originally accepted:
 
 ```text
 title
@@ -66,7 +66,7 @@ url
 
 The service worker stores the payload in a bounded device-local handoff cache and redirects with only an opaque share token. Successful consumption removes the one-time payload; failed note persistence leaves it recoverable for retry.
 
-v1.1 preserves this privacy model and extends the staged payload to attachments rather than placing shared bytes in URL state.
+Phase 4 extends this privacy model to supported attachments without placing shared bytes in URL state. See `V1_1_PHASE4_RICH_SHARE_CAPTURE.md` for the implemented contract.
 
 ## T1 — Server-enforced optimistic concurrency
 
@@ -180,32 +180,37 @@ The existing private `notes-attachments` bucket and ownership/RLS policy model r
 
 ### Existing behavior retained
 
-Text/title/URL sharing keeps the P10 one-time Cache Storage handoff. Shared content must never be placed in query parameters or fragments.
+Text/title/URL sharing keeps the P10 one-time Cache Storage handoff. Shared content is never placed in query parameters or fragments; only an opaque share token appears in fragment state.
 
-### New accepted payload
+### Implemented payload
 
-The Web Share Target may additionally accept a bounded list of files compatible with the existing Notes attachment rules. Initial v1.1 support is intentionally conservative:
+Phase 4 additionally accepts a bounded list of supported attachment files:
 
-- images accepted by the existing image/attachment pipeline;
-- audio/files only when the existing attachment validator and product limits accept them;
-- no executable-content special handling;
-- no automatic OCR, transcription, or cloud processing merely because an item was shared.
+- images accepted by the existing privacy-safe image pipeline;
+- supported voice/audio files;
+- PDF, supported Office document formats, plain text, Markdown, CSV, and JSON;
+- no executable or unknown file types.
 
-The app must create one recoverable staged capture, attach accepted files through the same attachment repository used by ordinary capture, and surface per-file validation failures rather than silently dropping bytes.
+The service worker uses all-or-nothing validation for supplied files: it must not silently drop an unsupported/empty/invalid file and persist the remainder as a partial note.
+
+The app creates one recoverable staged capture and validates attachments again before durable persistence. Shared images pass through the same image sanitization/metadata-removal path used by ordinary capture.
 
 ### Staging and crash safety
 
 Incoming share payloads remain bounded and device-local.
 
-- The service worker stages text metadata plus shared `File` objects without exposing contents in the URL.
+- The v2 service worker stages text metadata plus shared `File` objects in Cache Storage without exposing contents in the URL.
+- v1 text-only staged JSON remains readable during rollout.
 - The opaque token remains until the note and all accepted attachments are durably persisted.
 - A reload after a failed local write can retry the same staged share.
-- Successful persistence consumes the token exactly once.
-- Privacy lock may delay consumption, but lock-screen UI must not reveal staged title/text/file names.
+- Note, attachments, and a device-local exact-once ledger commit in one IndexedDB transaction.
+- Replaying the same token after commit resolves to the already-created note rather than creating a duplicate.
+- Privacy lock delays consumption, and lock-screen UI does not reveal staged title/text/file names.
+- Local capture remains functional while offline.
 
 ### Scope boundary
 
-v1.1 does not add webpage scraping, background URL fetching, automatic summaries, OCR-on-share, or remote upload before local persistence succeeds.
+v1.1 does not add webpage scraping, background URL fetching, automatic summaries, OCR-on-share, transcription-on-share, or remote upload before local persistence succeeds.
 
 ## Preserved portability contract
 
@@ -221,7 +226,7 @@ The following remain release invariants:
 - `manifest.json` and `README.md`;
 - exact JSON backup remains the authoritative Notes restore format.
 
-Any new v1.1 synchronization metadata such as remote versions must remain absent from portable user data.
+New synchronization metadata and the Phase 4 exact-once share-consumption ledger remain absent from portable user data.
 
 ## Migration and rollout contract
 
@@ -234,7 +239,7 @@ The database migration must be backward-compatible with the deployed v1.0.1 clie
 5. Deploy the v1.1 client only after the schema is live and verified.
 6. Do not remove backward compatibility in v1.1.
 
-At Phase 1 completion no production DDL is executed. Schema changes belong to the implementation phase after contract and tests are ready.
+Phase 4 requires no additional Supabase DDL, RLS, RPC, or Storage-policy mutation.
 
 ## Security requirements
 
@@ -244,7 +249,7 @@ At Phase 1 completion no production DDL is executed. Schema changes belong to th
 - The browser continues to use only the publishable Supabase key; no service-role/secret key enters client code.
 - Attachment storage remains private and ownership-scoped.
 - No new `SECURITY DEFINER` function is introduced merely to bypass RLS.
-- After DDL, Supabase security and performance advisors must be checked before release.
+- Shared attachment bytes remain in local Cache Storage/IndexedDB until normal synchronization later uploads them through existing authenticated attachment sync.
 
 ## Failure invariants
 
@@ -255,9 +260,11 @@ v1.1 is blocked if any tested path can do one of the following:
 3. overwrite newer attachment bytes before record-level concurrency rejection;
 4. acknowledge a rejected or divergent state into the sync shadow;
 5. lose both versions of a detected note/checklist conflict;
-6. delete a staged share before durable local capture succeeds;
+6. delete a valid staged share before durable local capture succeeds;
 7. expose staged shared content while privacy lock is active;
-8. regress P7 portable export, P10 text/URL sharing, P17 offline/recovery behavior, P31 sync truthfulness, or P34 release gates.
+8. create duplicate notes from one share token;
+9. silently produce a partial note from a mixed valid/invalid file handoff;
+10. regress P7 portable export, P10 text/URL sharing, P17 offline/recovery behavior, P31 sync truthfulness, or P34 release gates.
 
 ## Implementation sequence
 
@@ -283,12 +290,14 @@ v1.1 is blocked if any tested path can do one of the following:
 - make attachment object paths immutable/content-addressed;
 - cover edit/edit, edit/delete, create/create, attachment/attachment, and interrupted-upload races.
 
-### Phase 4 — Rich capture
+### Phase 4 — Rich capture — implemented
 
-- extend manifest share-target file declarations;
-- stage shared files privately through the service worker;
-- persist shared attachments through the established local repositories;
-- handle lock, retry, partial validation, offline, and one-time consumption correctly.
+- extended manifest share-target file declarations;
+- added private bounded v2 file staging while retaining v1 handoff compatibility;
+- reused established image/attachment safety rules;
+- added atomic note + attachment + exact-once-ledger persistence;
+- preserved privacy-lock deferral and offline local capture;
+- added all-or-nothing validation and adversarial replay/lock/offline/legacy coverage.
 
 ### Phase 5 — Adversarial hardening
 
@@ -332,7 +341,7 @@ Notes v1.1 is complete only when:
 3. note/checklist conflict preservation remains intact;
 4. attachment bytes cannot be overwritten by a stale client before metadata conflict detection;
 5. existing text/title/URL share capture remains intact;
-6. supported image/file shares can be captured privately and recoverably;
+6. supported image/file shares can be captured privately, atomically, offline, and exactly once;
 7. portable archive and exact backup contracts remain unchanged;
 8. v1.0.1 local libraries upgrade without local data migration loss;
 9. the shared Supabase backend retains current authorization boundaries;
