@@ -1,6 +1,7 @@
 export interface ShadowEntry {
   localHash: string | null;
   remoteHash: string | null;
+  remoteVersion?: number | null;
 }
 export type SyncShadow = Record<string, ShadowEntry>;
 

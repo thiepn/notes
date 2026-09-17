@@ -11,7 +11,7 @@ async function waitForServiceWorkerControl(page: Page) {
     .toBe(true);
 }
 
-test('production manifest exposes P10 shortcuts and POST share target', async ({
+test('production manifest exposes P10 shortcuts and rich POST share target', async ({
   page,
   request,
 }) => {
@@ -27,7 +27,12 @@ test('production manifest exposes P10 shortcuts and POST share target', async ({
       action?: string;
       method?: string;
       enctype?: string;
-      params?: Record<string, string>;
+      params?: {
+        title?: string;
+        text?: string;
+        url?: string;
+        files?: Array<{ name?: string; accept?: string[] }>;
+      };
     };
   };
 
@@ -38,11 +43,26 @@ test('production manifest exposes P10 shortcuts and POST share target', async ({
       expect.objectContaining({ name: 'Search notes', url: '/notes/?view=search' }),
     ]),
   );
-  expect(manifest.share_target).toEqual({
+  expect(manifest.share_target).toMatchObject({
     action: '/notes/share-target',
     method: 'POST',
     enctype: 'multipart/form-data',
-    params: { title: 'title', text: 'text', url: 'url' },
+    params: {
+      title: 'title',
+      text: 'text',
+      url: 'url',
+      files: [
+        {
+          name: 'files',
+          accept: expect.arrayContaining([
+            'image/jpeg',
+            'image/png',
+            'application/pdf',
+            'text/plain',
+          ]),
+        },
+      ],
+    },
   });
 });
 
@@ -82,7 +102,7 @@ test('installed PWA receives shared text through the service worker and consumes
   await expect(page).toHaveURL(/\/notes\/$/u);
 
   const pendingShares = await page.evaluate(async () => {
-    const cache = await caches.open('notes-share-target-v1');
+    const cache = await caches.open('notes-share-target-v2');
     return (await cache.keys()).filter((request) =>
       new URL(request.url).pathname.startsWith('/notes/share-payload/'),
     ).length;

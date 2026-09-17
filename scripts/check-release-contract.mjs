@@ -11,8 +11,8 @@ const exists = (file) => fs.existsSync(path.join(root, file));
 const packageJson = JSON.parse(read('package.json'));
 const scripts = packageJson.scripts ?? {};
 
-if (packageJson.version !== '1.0.1') {
-  fail('P34 terminal patch release requires package.json version 1.0.1.');
+if (packageJson.version !== '1.1.0') {
+  fail('Notes v1.1 release requires package.json version 1.1.0.');
 }
 
 const requiredScripts = [
@@ -29,6 +29,7 @@ const requiredScripts = [
   'e2e:p20',
   'e2e:p34',
   'e2e:pwa',
+  'e2e:production-share',
   'release:check',
   'release:certify',
 ];
@@ -57,6 +58,17 @@ if (
 if (scripts['e2e:p34'] && !/--retries=0/u.test(scripts['e2e:p34'])) {
   fail('e2e:p34 must run with retries disabled so terminal certification cannot hide flakes.');
 }
+if (
+  scripts['e2e:production-share'] &&
+  !/playwright\.production\.config\.ts/u.test(scripts['e2e:production-share'])
+) {
+  fail('e2e:production-share must use the dedicated production Playwright config.');
+}
+if (scripts['e2e:production-share'] && !/--retries=0/u.test(scripts['e2e:production-share'])) {
+  fail(
+    'e2e:production-share must run with retries disabled so production failures are not hidden.',
+  );
+}
 
 const certify = scripts['release:certify'] ?? '';
 for (const gate of [
@@ -77,6 +89,7 @@ const requiredFiles = [
   'docs/P19_ACCESSIBILITY_INTERACTION_QUALITY.md',
   'docs/P20_RELEASE_CERTIFICATION.md',
   'docs/P34_POST_V1_FINAL_HARDENING_CERTIFICATION.md',
+  'docs/V1_1_PHASE6_RELEASE_CERTIFICATION_SHIP.md',
   'docs/INTERACTION_ACCESSIBILITY.md',
   'docs/BACKUP.md',
   'docs/KEYBOARD.md',
@@ -86,6 +99,7 @@ const requiredFiles = [
   'e2e/p34-post-v1-final-hardening-certification.spec.ts',
   'playwright.compat.config.ts',
   'playwright.pwa.config.ts',
+  'playwright.production.config.ts',
   '.github/workflows/ci.yml',
   '.github/workflows/deploy.yml',
 ];
@@ -114,10 +128,13 @@ for (const deploymentInvariant of [
   'github.event.workflow_run.head_sha',
   'npm ci --no-audit --no-fund',
   'needs: deploy',
+  'needs: smoke',
   'https://thiepn.dev/notes/',
   'manifest.webmanifest',
   'sw.js',
   'curl --fail --silent --show-error --location',
+  'playwright install --with-deps chromium',
+  'npm run e2e:production-share',
   'name: stable release marker',
   'package_version',
   'release_tag="v$package_version"',
@@ -125,7 +142,7 @@ for (const deploymentInvariant of [
   'gh release view "$release_tag"',
   'gh release create "$release_tag"',
   'test "$tag_sha" = "$RELEASE_SHA"',
-  'P34 post-v1 final hardening and certification complete.',
+  'Notes v1.1 Trust & Capture is certified and shipped.',
 ]) {
   if (!deploy.includes(deploymentInvariant)) {
     fail(`Pages deployment must preserve certified release invariant: ${deploymentInvariant}`);
@@ -164,6 +181,21 @@ for (const heading of [
   if (!p34Doc.includes(heading)) fail(`P34 documentation must include ${heading}.`);
 }
 
+const phase6Doc = exists('docs/V1_1_PHASE6_RELEASE_CERTIFICATION_SHIP.md')
+  ? read('docs/V1_1_PHASE6_RELEASE_CERTIFICATION_SHIP.md')
+  : '';
+for (const heading of [
+  '# Notes v1.1 — Phase 6: Release Certification & Ship',
+  '## Release candidate',
+  '## Pre-merge certification',
+  '## Merge and deployment invariant',
+  '## Production verification',
+  '## Stable release publication',
+  '## Stop condition',
+]) {
+  if (!phase6Doc.includes(heading)) fail(`Phase 6 documentation must include ${heading}.`);
+}
+
 for (const file of collectTestFiles()) {
   const source = read(file);
   const forbiddenMarkers = [
@@ -184,7 +216,7 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('[release-contract] P34 final release contract passed.');
+console.log('[release-contract] Notes v1.1 release contract passed.');
 
 function collectTestFiles() {
   const roots = ['e2e', 'compat-e2e', 'pwa-e2e', 'src'];

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Archive,
   Check,
@@ -74,16 +74,17 @@ export function BulkSelectionToolbar({
     return counts;
   }, [labelIdsByNote, selectedNotes]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!openPanel) return;
 
-    const focusFrame = window.requestAnimationFrame(() => {
-      const panel = toolbarRef.current?.querySelector<HTMLElement>('.bulk-selection-popover');
-      const first = panel?.querySelector<HTMLElement>(
-        'input:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      );
-      first?.focus({ preventScroll: true });
-    });
+    // Focus the first control as part of the mount commit instead of scheduling a later frame.
+    // A delayed focus callback could otherwise steal focus back after a keyboard user had already
+    // moved to another control in the popover.
+    const panel = toolbarRef.current?.querySelector<HTMLElement>('.bulk-selection-popover');
+    const first = panel?.querySelector<HTMLElement>(
+      'input:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    );
+    first?.focus({ preventScroll: true });
 
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target;
@@ -103,7 +104,6 @@ export function BulkSelectionToolbar({
     document.addEventListener('pointerdown', handlePointerDown, true);
     window.addEventListener('keydown', handleKeyDown, true);
     return () => {
-      window.cancelAnimationFrame(focusFrame);
       document.removeEventListener('pointerdown', handlePointerDown, true);
       window.removeEventListener('keydown', handleKeyDown, true);
     };
@@ -342,17 +342,16 @@ function BulkLabelPanel({
                     aria-label={`${all ? 'Remove' : 'Add'} label ${label.name} ${all ? 'from' : 'to'} selected notes`}
                     onClick={() => onChange(label.id, !all)}
                   >
-                    <span className="bulk-label-check" aria-hidden="true">
-                      {all ? <Check /> : mixed ? <CheckCheck /> : null}
-                    </span>
                     <span>{label.name}</span>
-                    {mixed ? <span className="bulk-label-mixed">Some</span> : null}
+                    <span className="bulk-label-state" aria-hidden="true">
+                      {all ? <CheckCheck /> : mixed ? <Check /> : null}
+                    </span>
                   </button>
                 );
               })}
             </div>
           ) : (
-            <p className="note-organization-empty">No matching labels.</p>
+            <p className="note-organization-empty">No labels match “{query.trim()}”.</p>
           )}
         </>
       )}
@@ -361,5 +360,5 @@ function BulkLabelPanel({
 }
 
 function displayColor(color: NoteColor): string {
-  return color.charAt(0).toUpperCase() + color.slice(1);
+  return color === 'default' ? 'Default' : color.slice(0, 1).toLocaleUpperCase() + color.slice(1);
 }

@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createHash } from 'node:crypto';
-import type { RemoteSyncRecord, SupabaseSession } from '../src/features/sync/supabaseApi';
+import type { SupabaseSession } from '../src/features/sync/supabaseApi';
+import type { VersionedRemoteSyncRecord } from '../src/features/sync/versionedSyncApi';
 
 const HOST = 'https://hycegznamzjhwinegaai.supabase.co';
 const USER = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -27,8 +28,8 @@ function hash(payload: Record<string, unknown>): string {
 }
 
 function replaceRemote(
-  rows: RemoteSyncRecord[],
-  type: RemoteSyncRecord['entity_type'],
+  rows: VersionedRemoteSyncRecord[],
+  type: VersionedRemoteSyncRecord['entity_type'],
   id: string,
   payload: Record<string, unknown>,
   updatedAt: number,
@@ -43,15 +44,16 @@ function replaceRemote(
     client_updated_at: updatedAt,
     deleted_at: null,
     updated_at: new Date(updatedAt).toISOString(),
+    version: current.version + 1,
   };
 }
 
-async function cloud(page: Page, rows: RemoteSyncRecord[]) {
+async function cloud(page: Page, rows: VersionedRemoteSyncRecord[]) {
   await page.route(`${HOST}/**`, async (route) => {
     const request = route.request();
     const url = new URL(request.url());
-    const json = (data: unknown) =>
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) });
+    const json = (data: unknown, status = 200) =>
+      route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(data) });
 
     if (url.pathname === '/auth/v1/token') return json({ ...session, expires_in: 3600 });
     if (url.pathname === '/auth/v1/logout') return route.fulfill({ status: 204 });
@@ -75,13 +77,43 @@ async function cloud(page: Page, rows: RemoteSyncRecord[]) {
         );
       }
       if (request.method() === 'POST') {
-        const record = request.postDataJSON() as RemoteSyncRecord;
-        const index = rows.findIndex(
-          (row) => row.entity_type === record.entity_type && row.entity_id === record.entity_id,
+        const incoming = request.postDataJSON() as Omit<VersionedRemoteSyncRecord, 'version'>;
+        const duplicate = rows.some(
+          (row) => row.entity_type === incoming.entity_type && row.entity_id === incoming.entity_id,
         );
-        if (index < 0) rows.push(record);
-        else rows[index] = record;
-        return route.fulfill({ status: 204 });
+        if (duplicate) return json({ code: '23505' }, 409);
+        const created: VersionedRemoteSyncRecord = {
+          ...incoming,
+          version: 1,
+          updated_at: new Date().toISOString(),
+        };
+        rows.push(created);
+        return json([created], 201);
+      }
+      if (request.method() === 'PATCH') {
+        const type = (url.searchParams.get('entity_type') ?? '').replace(/^eq\./u, '');
+        const id = (url.searchParams.get('entity_id') ?? '').replace(/^eq\./u, '');
+        const expectedVersion = Number(
+          (url.searchParams.get('version') ?? '').replace(/^eq\./u, ''),
+        );
+        const index = rows.findIndex(
+          (row) =>
+            row.entity_type === type && row.entity_id === id && row.version === expectedVersion,
+        );
+        if (index < 0) return json([]);
+        const patch = request.postDataJSON() as Partial<VersionedRemoteSyncRecord>;
+        const current = rows[index]!;
+        const updated: VersionedRemoteSyncRecord = {
+          ...current,
+          payload: patch.payload ?? null,
+          payload_hash: patch.payload_hash ?? null,
+          client_updated_at: patch.client_updated_at ?? current.client_updated_at,
+          deleted_at: patch.deleted_at ?? null,
+          version: current.version + 1,
+          updated_at: new Date().toISOString(),
+        };
+        rows[index] = updated;
+        return json([updated]);
       }
     }
     return route.abort();
@@ -102,7 +134,7 @@ async function waitForNotes(page: Page) {
 }
 
 test('a losing cloud text edit is preserved as a visible conflict copy', async ({ page }) => {
-  const rows: RemoteSyncRecord[] = [];
+  const rows: VersionedRemoteSyncRecord[] = [];
   await cloud(page, rows);
   await waitForNotes(page);
 
@@ -163,7 +195,7 @@ test('a losing cloud text edit is preserved as a visible conflict copy', async (
 test('a losing local checklist edit preserves nested items in a conflict copy', async ({
   page,
 }) => {
-  const rows: RemoteSyncRecord[] = [];
+  const rows: VersionedRemoteSyncRecord[] = [];
   await cloud(page, rows);
   await waitForNotes(page);
 

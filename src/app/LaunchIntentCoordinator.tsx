@@ -1,19 +1,24 @@
 import { useEffect } from 'react';
 
-import { NotesRepository, notesDatabase } from '../db';
+import { notesDatabase } from '../db';
 import { requestLinkedNoteOpen } from '../features/links/navigation';
+import {
+  SharedCaptureRepository,
+  SharedCaptureValidationError,
+  deleteStagedShare,
+  deleteStagedShareByKey,
+  prepareSharedCapture,
+  readStagedShare,
+} from '../features/notes/sharedCapture';
 import { dispatchAppEvent } from './events';
 import {
   clearLaunchIntentFromLocation,
   consumePreparedLaunchIntent,
-  sanitizeSharedPayload,
-  sharePayloadPath,
   type LaunchCapture,
   type LaunchIntent,
 } from './launchIntent';
 
-const notesRepository = new NotesRepository(notesDatabase);
-const SHARE_CACHE = 'notes-share-target-v1';
+const sharedCaptureRepository = new SharedCaptureRepository(notesDatabase);
 const UI_RETRY_ATTEMPTS = 80;
 const UI_RETRY_MS = 50;
 
@@ -52,38 +57,53 @@ async function handleLaunchIntent(intent: LaunchIntent): Promise<boolean> {
 }
 
 async function consumeSharedNote(shareKey: string): Promise<boolean> {
-  if (!('caches' in window)) return false;
-  const payloadUrl = new URL(sharePayloadPath(shareKey), window.location.origin).toString();
-
   try {
-    const cache = await window.caches.open(SHARE_CACHE);
-    const response = await cache.match(payloadUrl);
-    if (!response) return true;
+    const consumed = await sharedCaptureRepository.lookup(shareKey);
+    if (consumed) {
+      await bestEffortDeleteStagedShare(shareKey);
+      if (consumed.note) {
+        dispatchAppEvent('cloudSyncApplied');
+        await requestLinkedNoteOpen(consumed.note.id);
+      }
+      return true;
+    }
 
-    let payload: ReturnType<typeof sanitizeSharedPayload>;
+    const staged = await readStagedShare(shareKey);
+    if (!staged) return true;
+
+    let capture;
     try {
-      payload = sanitizeSharedPayload(await response.json());
-    } catch {
-      await cache.delete(payloadUrl);
+      capture = await prepareSharedCapture(staged);
+    } catch (error) {
+      if (!(error instanceof SharedCaptureValidationError)) throw error;
+      console.warn('A shared payload was rejected by local attachment validation.', error);
+      await deleteStagedShare(staged).catch(() => undefined);
       return true;
     }
 
-    if (!payload) {
-      await cache.delete(payloadUrl);
+    if (!capture) {
+      await deleteStagedShare(staged).catch(() => undefined);
       return true;
     }
 
-    const created = await notesRepository.create({
-      title: payload.title,
-      content: payload.content,
-    });
-    dispatchAppEvent('cloudSyncApplied');
-    await requestLinkedNoteOpen(created.id);
-    await cache.delete(payloadUrl);
+    const committed = await sharedCaptureRepository.commit(shareKey, capture);
+    await deleteStagedShare(staged).catch(() => undefined);
+    if (committed.note) {
+      dispatchAppEvent('cloudSyncApplied');
+      await requestLinkedNoteOpen(committed.note.id);
+    }
     return true;
   } catch {
-    // Preserve the token in the URL after transient storage/write failures so reload can retry.
+    // Before the exact-once transaction commits, keep the share token intact so a reload can retry.
     return false;
+  }
+}
+
+async function bestEffortDeleteStagedShare(shareKey: string): Promise<void> {
+  try {
+    await deleteStagedShareByKey(shareKey);
+  } catch {
+    // The exact-once ledger is already authoritative; leftover Cache Storage is harmless and bounded.
   }
 }
 
