@@ -108,12 +108,7 @@ async function installCloud(page: Page, state: CloudState) {
       const expectedVersion = Number((url.searchParams.get('version') ?? '').replace(/^eq\./u, ''));
       const index = state.rows.findIndex((row) => row.entity_type === type && row.entity_id === id);
 
-      if (
-        type === 'note' &&
-        id === state.stormNoteId &&
-        state.stormRemaining > 0 &&
-        index >= 0
-      ) {
+      if (type === 'note' && id === state.stormNoteId && state.stormRemaining > 0 && index >= 0) {
         state.stormRemaining -= 1;
         state.stormSequence += 1;
         const current = state.rows[index]!;
@@ -270,7 +265,9 @@ test('navigator locks serialize simultaneous sync calls so one local create is u
   expect(results.reduce((total, result) => total + result.failed, 0)).toBe(0);
 });
 
-test('an active checklist editor defers the parent and children until editing ends', async ({ page }) => {
+test('an active checklist editor defers the parent and children until editing ends', async ({
+  page,
+}) => {
   const state = createCloudState();
   await installCloud(page, state);
   await openReady(page);
