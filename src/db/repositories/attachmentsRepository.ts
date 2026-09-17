@@ -23,7 +23,7 @@ export interface AddImagesResult {
   skippedDuplicates: number;
 }
 
-interface PreparedImage {
+export interface PreparedImageAttachment {
   name: string;
   mimeType: string;
   size: number;
@@ -75,9 +75,9 @@ export class AttachmentsRepository {
       throw new InvalidNoteStateError(noteId, 'Images cannot be added to a trashed note.');
     }
 
-    const prepared: PreparedImage[] = [];
+    const prepared: PreparedImageAttachment[] = [];
     for (const file of files) {
-      prepared.push(await prepareImage(file));
+      prepared.push(await prepareImageAttachment(file));
       await yieldToBrowser();
     }
 
@@ -97,7 +97,7 @@ export class AttachmentsRepository {
           .map((row) => attachmentRecordSchema.parse(row))
           .sort(compareAttachments);
         const checksums = new Set(existing.map((attachment) => attachment.checksum));
-        const additions: PreparedImage[] = [];
+        const additions: PreparedImageAttachment[] = [];
         let skippedDuplicates = 0;
 
         for (const image of prepared) {
@@ -179,7 +179,7 @@ export function isPreviewableImageMimeType(mimeType: string): boolean {
   return PREVIEWABLE_IMAGE_MIME_TYPES.has(mimeType.trim().toLocaleLowerCase());
 }
 
-async function prepareImage(file: File): Promise<PreparedImage> {
+export async function prepareImageAttachment(file: File): Promise<PreparedImageAttachment> {
   if (!Number.isSafeInteger(file.size) || file.size < 0) {
     throw new RangeError('This image has an invalid file size.');
   }
