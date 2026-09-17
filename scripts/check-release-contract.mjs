@@ -65,7 +65,9 @@ if (
   fail('e2e:production-share must use the dedicated production Playwright config.');
 }
 if (scripts['e2e:production-share'] && !/--retries=0/u.test(scripts['e2e:production-share'])) {
-  fail('e2e:production-share must run with retries disabled so production failures are not hidden.');
+  fail(
+    'e2e:production-share must run with retries disabled so production failures are not hidden.',
+  );
 }
 
 const certify = scripts['release:certify'] ?? '';
