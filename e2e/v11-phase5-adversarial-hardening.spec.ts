@@ -106,7 +106,7 @@ async function installCloud(page: Page, state: CloudState) {
       const type = (url.searchParams.get('entity_type') ?? '').replace(/^eq\./u, '');
       const id = (url.searchParams.get('entity_id') ?? '').replace(/^eq\./u, '');
       const expectedVersion = Number((url.searchParams.get('version') ?? '').replace(/^eq\./u, ''));
-      let index = state.rows.findIndex((row) => row.entity_type === type && row.entity_id === id);
+      const index = state.rows.findIndex((row) => row.entity_type === type && row.entity_id === id);
 
       if (
         type === 'note' &&
@@ -203,7 +203,11 @@ test('three consecutive CAS races are bounded, preserve the local edit, and conv
     const db = await import('/notes/src/db/index.ts');
     const repository = new db.NotesRepository(db.notesDatabase);
     const current = await repository.require(id);
-    await repository.update(id, { title: 'Local survives storm', content: 'Keep this local edit' }, current.revision);
+    await repository.update(
+      id,
+      { title: 'Local survives storm', content: 'Keep this local edit' },
+      current.revision,
+    );
   }, note.id);
 
   state.stormNoteId = note.id;
@@ -216,18 +220,21 @@ test('three consecutive CAS races are bounded, preserve the local edit, and conv
   const duringStorm = await page.evaluate(async (id) => {
     const db = await import('/notes/src/db/index.ts');
     const current = await new db.NotesRepository(db.notesDatabase).require(id);
-    const shadow = await db.notesDatabase.settings.get(`sync.supabase.shadow.v2:${'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'}`);
+    const shadow = await db.notesDatabase.settings.get(
+      'sync.supabase.shadow.v2:eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+    );
     return { title: current.title, content: current.content, shadow: shadow?.value ?? null };
   }, note.id);
   expect(duringStorm.title).toBe('Local survives storm');
   expect(duringStorm.content).toBe('Keep this local edit');
-  expect(state.rows.find((row) => row.entity_type === 'note' && row.entity_id === note.id)?.payload?.content).toBe(
-    'Remote mutation 3',
-  );
+  expect(
+    state.rows.find((row) => row.entity_type === 'note' && row.entity_id === note.id)?.payload
+      ?.content,
+  ).toBe('Remote mutation 3');
 
   state.stormNoteId = undefined;
   const recoveryResult = await synchronize(page);
-+  expect(recoveryResult.failed).toBe(0);
+  expect(recoveryResult.failed).toBe(0);
   const remoteAfter = state.rows.find(
     (row) => row.entity_type === 'note' && row.entity_id === note.id,
   );
@@ -337,9 +344,10 @@ test('share capture rolls back note and attachment writes when the exact-once le
       settings.add = originalAdd;
     }
 
+    const notes = await db.notesDatabase.notes.toArray();
     return {
       rejected,
-      noteCount: await db.notesDatabase.notes.where('title').equals('Must roll back').count(),
+      noteCount: notes.filter((note) => note.title === 'Must roll back').length,
       attachmentCount: await db.notesDatabase.attachments.count(),
       ledger: await db.notesDatabase.settings.get(
         'internal.share-capture.v1:66666666-6666-4666-8666-666666666666',
