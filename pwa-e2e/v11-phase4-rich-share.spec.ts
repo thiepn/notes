@@ -86,39 +86,13 @@ async function submitRichShare(
   }, options);
 }
 
-async function attachmentState(page: Page, title: string) {
-  return page.evaluate(async (noteTitle) => {
-    const db = await import('/notes/src/db/index.ts');
-    const note = (await db.notesDatabase.notes.toArray()).find(
-      (candidate) => candidate.title === noteTitle,
-    );
-    if (!note) return null;
-    const attachments = await db.notesDatabase.attachments
-      .where('noteId')
-      .equals(note.id)
-      .toArray();
-    return {
-      noteId: note.id,
-      attachments: await Promise.all(
-        attachments.map(async (attachment) => ({
-          name: attachment.name,
-          mimeType: attachment.mimeType,
-          checksumLength: attachment.checksum.length,
-          text:
-            attachment.mimeType === 'application/pdf' || attachment.mimeType === 'text/plain'
-              ? await attachment.data.text()
-              : null,
-        })),
-      ),
-    };
-  }, title);
-}
-
-async function noteExists(page: Page, title: string) {
-  return page.evaluate(async (noteTitle) => {
-    const db = await import('/notes/src/db/index.ts');
-    return (await db.notesDatabase.notes.toArray()).some((note) => note.title === noteTitle);
-  }, title);
+async function pendingRichShares(page: Page) {
+  return page.evaluate(async () => {
+    const cache = await caches.open('notes-share-target-v2');
+    return (await cache.keys()).filter((request) =>
+      new URL(request.url).pathname.startsWith('/notes/share-payload/'),
+    ).length;
+  });
 }
 
 async function setOffline(context: BrowserContext, offline: boolean) {
@@ -139,30 +113,15 @@ test('installed PWA captures a shared image and generic file into one durable no
   });
 
   await expect(page.getByLabel('Title')).toHaveValue('Phase 4 rich share');
-  await expect.poll(() => attachmentState(page, 'Phase 4 rich share')).not.toBeNull();
-  const state = await attachmentState(page, 'Phase 4 rich share');
-  expect(state?.attachments).toHaveLength(2);
-  expect(state?.attachments).toEqual(
-    expect.arrayContaining([
-      expect.objectContaining({
-        name: 'shared-photo.png',
-        mimeType: 'image/png',
-        checksumLength: 64,
-      }),
-      expect.objectContaining({
-        name: 'shared-reference.pdf',
-        mimeType: 'application/pdf',
-        checksumLength: 64,
-        text: expect.stringContaining('Phase 4 shared reference'),
-      }),
-    ]),
-  );
-
-  const pendingShares = await page.evaluate(async () => {
-    const cache = await caches.open('notes-share-target-v2');
-    return (await cache.keys()).length;
-  });
-  expect(pendingShares).toBe(0);
+  await expect(page.getByLabel('Note text')).toContainText('Shared with an image and a PDF.');
+  const attachments = page.getByRole('region', { name: 'Attachments' });
+  await expect(attachments).toContainText('2 attachments');
+  await expect(page.getByRole('button', { name: 'Open image: shared-photo.png' })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Download attachment: shared-reference.pdf' }),
+  ).toBeVisible();
+  await expect(attachments).toContainText('PDF document');
+  expect(await pendingRichShares(page)).toBe(0);
 });
 
 test('installed PWA can receive a supported file while the network is offline', async ({
@@ -180,15 +139,16 @@ test('installed PWA can receive a supported file while the network is offline', 
     });
 
     await expect(page.getByLabel('Title')).toHaveValue('Phase 4 offline share');
-    const state = await attachmentState(page, 'Phase 4 offline share');
-    expect(state?.attachments).toEqual([
-      expect.objectContaining({
-        name: 'offline-share.txt',
-        mimeType: 'text/plain',
-        checksumLength: 64,
-        text: 'Offline shared attachment',
-      }),
-    ]);
+    await expect(page.getByLabel('Note text')).toContainText(
+      'This share was handed off without network access.',
+    );
+    const attachments = page.getByRole('region', { name: 'Attachments' });
+    await expect(attachments).toContainText('1 attachment');
+    await expect(
+      page.getByRole('button', { name: 'Download attachment: offline-share.txt' }),
+    ).toBeVisible();
+    await expect(attachments).toContainText('Text document');
+    expect(await pendingRichShares(page)).toBe(0);
   } finally {
     await setOffline(context, false);
   }
@@ -208,10 +168,8 @@ test('service-worker intake rejects the entire share when any supplied file is u
   });
 
   await expect(page).toHaveURL(/\/notes\/$/u);
-  await expect.poll(() => noteExists(page, 'Must not become a partial note')).toBe(false);
-  const pendingShares = await page.evaluate(async () => {
-    const cache = await caches.open('notes-share-target-v2');
-    return (await cache.keys()).length;
-  });
-  expect(pendingShares).toBe(0);
+  await expect(
+    page.getByRole('button', { name: 'Open note: Must not become a partial note' }),
+  ).toHaveCount(0);
+  expect(await pendingRichShares(page)).toBe(0);
 });
