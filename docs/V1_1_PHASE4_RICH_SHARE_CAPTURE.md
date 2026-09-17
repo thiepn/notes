@@ -22,7 +22,7 @@ Executable/unknown file types are not accepted.
 
 The service worker rejects the entire incoming handoff if any supplied file is unsupported, empty, invalid-sized, the share exceeds the file-count limit, or the staged bytes exceed the handoff limit. It does not silently turn a partially accepted share into a note.
 
-## Private staging
+## Device-local staging
 
 Shared bytes never enter query parameters or the URL fragment.
 
@@ -30,10 +30,10 @@ The service worker:
 
 1. receives the multipart POST at `/notes/share-target`;
 2. validates the bounded handoff;
-3. stores sanitized metadata and the original `File` objects in device-local Cache Storage under `notes-share-target-v2`;
+3. stores sanitized metadata and the original `File` objects in origin-scoped Cache Storage under `notes-share-target-v2`;
 4. redirects to `/notes/#share=<opaque UUID>`.
 
-Only the opaque UUID is visible in navigation state.
+Only the opaque UUID is visible in navigation state. The Cache Storage staging is local to the browser profile/origin, but it is **not end-to-end encrypted storage** and is protected by the browser/OS profile boundary rather than the app passcode itself. Phase 4 does not claim otherwise.
 
 Staging limits:
 
@@ -115,7 +115,7 @@ When Notes is locked:
 - the lock screen receives no shared title, text, URL, or filename;
 - consumption begins only after successful unlock.
 
-Phase 4 therefore extends the share target without weakening P8/P32 privacy-lock behavior.
+The app passcode therefore prevents the Notes UI from consuming or displaying the staged payload before unlock, while the underlying origin-scoped staging remains subject to the browser/OS storage boundary described above.
 
 ## Offline behavior
 
@@ -145,7 +145,7 @@ Phase 4 is blocked if any tested path can:
 2. silently create a partial note after rejecting one of the supplied files;
 3. delete a valid staged share before durable local persistence succeeds;
 4. create two notes from one share token;
-5. expose staged content before privacy unlock;
+5. expose staged content in the Notes lock-screen UI before privacy unlock;
 6. require network access for local share capture;
 7. bypass existing image privacy processing or attachment limits;
 8. break consumption of a v1 text-only staged share;
@@ -180,7 +180,7 @@ Phase 4 is complete when:
 - local validation uses the established attachment safety rules;
 - note + attachments + exact-once ledger commit atomically;
 - replay cannot duplicate capture;
-- privacy lock delays consumption without disclosure;
+- privacy lock delays app consumption/display without weakening the browser/OS storage boundary claim;
 - capture works offline;
 - legacy text-only staged shares remain compatible;
 - invalid/mixed unsupported shares cannot create partial durable notes;
