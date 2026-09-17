@@ -92,7 +92,37 @@ jobs:
           if (manifest.scope !== '/notes/') throw new Error('Production manifest scope mismatch.');
           NODE
 
-          echo "Production smoke passed for $PROD_URL"
+          echo "Production static smoke passed for $PROD_URL"
+
+      - name: Checkout certified production commit
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Setup Node for production browser smoke
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install production smoke dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Install production smoke browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Verify live rich Share-to-Notes capture
+        env:
+          PROD_URL: https://thiepn.dev/notes/
+        run: npm run e2e:production-share
+
+      - name: Retain production smoke diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-smoke-${{ github.event.workflow_run.head_sha }}
+          path: production-smoke-results
+          retention-days: 7
+          if-no-files-found: warn
 
   release:
     name: stable release marker
@@ -134,7 +164,7 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --target "$RELEASE_SHA" \
             --title "Notes $release_tag" \
-            --notes "P34 post-v1 final hardening and certification complete. Production deployment and post-deploy smoke passed for exact SHA $RELEASE_SHA. Permanent gates include formatting, foundation/release contracts, lint, TypeScript, the complete unit suite, production build/performance budget, cross-browser compatibility, the complete Chromium release regression with retries disabled, focused P20 and P34 certification with retries disabled, and PWA/offline certification."
+            --notes "Notes v1.1 Trust & Capture is certified and shipped. Production deployment, static smoke, and live rich Share-to-Notes smoke passed for exact SHA $RELEASE_SHA. v1.1 adds server-enforced versioned sync CAS with bounded reconciliation, immutable content-addressed attachment generations, rich Share-to-Notes capture with exact-once local commit semantics, and adversarial hardening. Permanent gates include formatting, foundation/release contracts, lint, TypeScript, the complete unit suite, production build/performance budget, cross-browser compatibility, the complete Chromium release regression with retries disabled, focused P20 and P34 certification with retries disabled, PWA/offline certification, and the A8 account-consumer contract on the certified pre-merge head."
 
           tag_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$release_tag" --jq '.object.sha')"
           test "$tag_sha" = "$RELEASE_SHA"
