@@ -112,7 +112,9 @@ test('replaying the same share token resolves to the exact same durable note', a
     return {
       count: notes.length,
       originalId: original?.id ?? null,
-      replayExists: notes.some((candidate) => candidate.title === 'This replay must not create a note'),
+      replayExists: notes.some(
+        (candidate) => candidate.title === 'This replay must not create a note',
+      ),
       attachments: original
         ? await db.notesDatabase.attachments.where('noteId').equals(original.id).count()
         : 0,
@@ -125,7 +127,9 @@ test('replaying the same share token resolves to the exact same durable note', a
   expect(await cacheHasShare(page, RICH_CACHE, key)).toBe(false);
 });
 
-test('privacy lock leaves a staged rich share untouched until the user unlocks Notes', async ({ page }) => {
+test('privacy lock leaves a staged rich share untouched until the user unlocks Notes', async ({
+  page,
+}) => {
   const key = '44444444-4444-4444-8444-444444444442';
   const passcode = 'phase4-private-share';
   await page.goto('./');
