@@ -88,18 +88,20 @@ globalThis.addEventListener('fetch', (event) => {
         const files = form.getAll('files').filter(isFileEntry);
         if (files.length > MAX_SHARED_FILES) throw new Error('Too many shared files.');
         let totalBytes = 0;
-        let acceptedFiles = 0;
         for (const file of files) {
-          if (!Number.isSafeInteger(file.size) || file.size <= 0) continue;
+          if (!Number.isSafeInteger(file.size) || file.size <= 0) {
+            throw new Error('A shared file is empty or has an invalid size.');
+          }
           const mimeType = sharedFileMimeType(file);
-          if (!SUPPORTED_MIME_TYPES.has(mimeType)) continue;
+          if (!SUPPORTED_MIME_TYPES.has(mimeType)) {
+            throw new Error('A shared file type is not supported.');
+          }
           totalBytes += file.size;
           if (totalBytes > MAX_SHARED_STAGED_BYTES) throw new Error('Shared payload is too large.');
           staged.append('files', file, safeFileName(file.name));
-          acceptedFiles += 1;
         }
 
-        if (!title && !text && !sharedUrl && acceptedFiles === 0) {
+        if (!title && !text && !sharedUrl && files.length === 0) {
           return redirect('/notes/');
         }
 
