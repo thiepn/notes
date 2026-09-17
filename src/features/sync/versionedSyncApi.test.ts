@@ -61,6 +61,36 @@ describe('versioned sync transport', () => {
     await expect(listVersionedRemoteRecords(session)).rejects.toThrow('invalid record version');
   });
 
+  it('rejects unknown runtime entity types before reconciliation', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        Response.json([
+          {
+            ...remote(1),
+            entity_type: 'unknown_runtime_type',
+          },
+        ]),
+      ),
+    );
+
+    await expect(listVersionedRemoteRecords(session)).rejects.toThrow('invalid entity type');
+  });
+
+  it('validates every remote identity instead of trusting only the pagination cursor row', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        Response.json([
+          { ...remote(1), entity_id: 'bad,identity' },
+          { ...remote(2), entity_id: 'valid-last-row' },
+        ]),
+      ),
+    );
+
+    await expect(listVersionedRemoteRecords(session)).rejects.toThrow('invalid record identity');
+  });
+
   it('creates without merge semantics and accepts server version 1', async () => {
     const fetchMock = vi.fn(async () => Response.json([remote(1)], { status: 201 }));
     vi.stubGlobal('fetch', fetchMock);
