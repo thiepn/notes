@@ -280,7 +280,9 @@ export async function readStagedShare(shareKey: string): Promise<StagedSharePayl
   }
 }
 
-export async function deleteStagedShare(payload: Pick<StagedSharePayload, 'cacheName' | 'payloadUrl'>) {
+export async function deleteStagedShare(
+  payload: Pick<StagedSharePayload, 'cacheName' | 'payloadUrl'>,
+) {
   if (!('caches' in window)) return;
   const cache = await window.caches.open(payload.cacheName);
   await cache.delete(payload.payloadUrl);
@@ -343,7 +345,11 @@ export async function prepareSharedCapture(
   const title =
     explicitTitle ||
     linkTitleFromUrl(url || text) ||
-    (prepared.length === 1 ? prepared[0]?.name : prepared.length > 1 ? `${prepared.length} shared files` : '') ||
+    (prepared.length === 1
+      ? prepared[0]?.name
+      : prepared.length > 1
+        ? `${prepared.length} shared files`
+        : '') ||
     '';
   if (!title && !content && prepared.length === 0) return null;
   return { title: title.slice(0, MAX_SHARE_TITLE), content, attachments: prepared };
