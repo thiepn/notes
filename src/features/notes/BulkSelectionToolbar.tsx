@@ -360,7 +360,5 @@ function BulkLabelPanel({
 }
 
 function displayColor(color: NoteColor): string {
-  return color === 'default'
-    ? 'Default'
-    : color.slice(0, 1).toLocaleUpperCase() + color.slice(1);
+  return color === 'default' ? 'Default' : color.slice(0, 1).toLocaleUpperCase() + color.slice(1);
 }
