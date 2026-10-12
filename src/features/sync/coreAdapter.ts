@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 
 import { useSync, type SyncStatus } from './SyncContext';
-import { hasNotesCoreConsent } from './coreConsent';
+import { hasNotesCoreConsent, getNotesCoreRevision } from './coreConsent';
 
 /** B9 consumer contract: Notes still owns Supabase writes and rich-data transport. */
 export type NotesCorePermission = {
@@ -52,6 +52,8 @@ export function useNotesCoreSyncAdapter() {
           state: latest.status,
         };
         if (!canRequestNotesCoreSync(permission, expectedOwner)) return 'denied';
+        const deviceRevision = getNotesCoreRevision(expectedOwner);
+        if (deviceRevision === null) return 'denied';
         await syncNow();
         // A completed request is not a confirmed cloud write. The native
         // engine reports success separately. Account/device revocation wins.
@@ -60,7 +62,8 @@ export function useNotesCoreSyncAdapter() {
           after.accountId !== expectedOwner ||
           !after.accessGranted ||
           after.recoveryMode ||
-          !hasNotesCoreConsent(expectedOwner)
+          !hasNotesCoreConsent(expectedOwner) ||
+          getNotesCoreRevision(expectedOwner) !== deviceRevision
         )
           return 'denied';
         return 'requested';
