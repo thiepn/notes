@@ -56,6 +56,12 @@ export function changeNotesCoreConsent(ownerId: string | null, enabled: boolean)
   }
 }
 
+/** Explicitly rotate the separate device consent before Account exit or deletion. */
+export function revokeNotesCoreOnAccountExit(ownerId: string | null): boolean {
+  if (!ownerId) return false;
+  return changeNotesCoreConsent(ownerId, false);
+}
+
 /** A revision is bound to each request; toggling off then on invalidates the old grant. */
 export function getNotesCoreRevision(ownerId: string | null): number | null {
   if (!ownerId) return null;
