@@ -12,22 +12,32 @@ describe('B16 owner-scoped original Notes incident history', () => {
   it('does not leak history across accounts and caps local observations', () => {
     let history: RecoveryHistory = { ownerId: null, entries: [] };
     for (let i = 0; i < 20; i++) {
-      history = appendRecoveryEntry(history, one, {
-        action: 'native-retry-requested',
-        nativeStatus: 'pending',
-        grantRevision: 3,
-        lastConfirmedNativeSync: null,
-      }, i + 100);
+      history = appendRecoveryEntry(
+        history,
+        one,
+        {
+          action: 'native-retry-requested',
+          nativeStatus: 'pending',
+          grantRevision: 3,
+          lastConfirmedNativeSync: null,
+        },
+        i + 100,
+      );
     }
     expect(visibleRecoveryEntries(history, one)).toHaveLength(16);
     expect(visibleRecoveryEntries(history, two)).toEqual([]);
     expect(history.entries[0]?.at).toBe(104);
-    history = appendRecoveryEntry(history, two, {
-      action: 'core-device-revoked',
-      nativeStatus: 'offline',
-      grantRevision: 4,
-      lastConfirmedNativeSync: null,
-    }, 200);
+    history = appendRecoveryEntry(
+      history,
+      two,
+      {
+        action: 'core-device-revoked',
+        nativeStatus: 'offline',
+        grantRevision: 4,
+        lastConfirmedNativeSync: null,
+      },
+      200,
+    );
     expect(history.entries).toHaveLength(1);
     expect(history.entries[0]?.externalCustody).toBe('NOT_TESTED');
     expect(visibleRecoveryEntries(history, one)).toEqual([]);
