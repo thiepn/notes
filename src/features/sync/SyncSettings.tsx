@@ -234,8 +234,12 @@ export function SyncSettings() {
                 onClick={() => void runBusy('sync', async () => {
                   const outcome = await corePort.requestSync(accountId ?? '');
                   setCoreMessage(outcome === 'requested'
-                    ? 'Requested through the Notes sync engine. Check the Notes sync status above for confirmation.'
-                    : 'Core request denied. Verify this device permission and Account access.');
+                    ? 'Notes accepted the request. Check native sync status and last successful sync above for confirmation.'
+                    : outcome === 'revoked-during-request'
+                      ? 'Account identity or Core permission changed during the request. No success is claimed; check Notes sync status.'
+                      : outcome === 'busy'
+                        ? 'A Notes coordination request is already running.'
+                        : 'Core request denied. Verify this device permission and Account access.');
                 })}
               >
                 <RefreshCw aria-hidden="true" /> Request sync via Core

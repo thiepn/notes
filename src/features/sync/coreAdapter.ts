@@ -1,9 +1,9 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import { useSync, type SyncStatus } from './SyncContext';
 import { hasNotesCoreConsent } from './coreConsent';
+import { requestOwnedNotesSync, type CoreRequestOutcome } from './coreRequest';
 
-/** B9 consumer contract: Notes still owns Supabase writes and rich-data transport. */
 export type NotesCorePermission = {
   ownerId: string | null;
   authorized: boolean;
@@ -13,38 +13,41 @@ export function canRequestNotesCoreSync(
   permission: NotesCorePermission,
   expectedOwner: string,
 ): boolean {
-  return (
-    permission.ownerId === expectedOwner &&
-    permission.authorized &&
-    !['local', 'setup', 'recovery', 'offline', 'connecting'].includes(permission.state)
-  );
+  return permission.ownerId === expectedOwner && permission.authorized &&
+    !['local','setup','recovery','offline','connecting'].includes(permission.state);
 }
-/**
- * Use inside Notes only. External Core consumers must never receive a
- * SupabaseSession, access token, or native Notes record from this interface.
- * A completed request is NOT proof that Notes' state became 'synced'.
- */
+
+/** Notes' own app-only request port. No native data/tokens leave SyncProvider. */
 export function useNotesCoreSyncAdapter() {
   const { accountId, accessGranted, recoveryMode, status, syncNow } = useSync();
-  return useMemo(
-    () => ({
-      readStatus: (): NotesCorePermission => ({
-        ownerId: accountId,
-        authorized: accessGranted && !recoveryMode && hasNotesCoreConsent(accountId),
-        state: status,
-      }),
-      requestSync: async (expectedOwner: string): Promise<'requested' | 'denied'> => {
-        const current = {
-          ownerId: accountId,
-          authorized: accessGranted && !recoveryMode && hasNotesCoreConsent(accountId),
-          state: status,
-        };
-        if (!canRequestNotesCoreSync(current, expectedOwner)) return 'denied';
-        await syncNow();
-        // Notes owns the eventual outcome; callers must separately re-read it.
-        return 'requested';
-      },
+  const live = useRef<NotesCorePermission>({ ownerId: null, authorized: false, state: 'local' });
+  const pending = useRef(false);
+  useEffect(() => {
+    live.current = {
+      ownerId: accountId,
+      authorized: accessGranted && !recoveryMode,
+      state: status,
+    };
+  }, [accountId, accessGranted, recoveryMode, status]);
+  return useMemo(() => ({
+    readStatus: (): NotesCorePermission => ({
+      ...live.current,
+      authorized: live.current.authorized && hasNotesCoreConsent(live.current.ownerId),
     }),
-    [accountId, accessGranted, recoveryMode, status, syncNow],
-  );
+    requestSync: async (expectedOwner: string): Promise<CoreRequestOutcome> => {
+      if (pending.current) return 'busy';
+      pending.current = true;
+      try {
+        return await requestOwnedNotesSync(expectedOwner,
+          () => ({
+            ...live.current,
+            authorized: live.current.authorized && hasNotesCoreConsent(live.current.ownerId),
+          }),
+          syncNow,
+        );
+      } finally {
+        pending.current = false;
+      }
+    },
+  }), [syncNow]);
 }
