@@ -65,13 +65,22 @@ export function SyncSettings() {
     syncNow,
   } = useSync();
   const corePort = useNotesCoreSyncAdapter();
-  const [coreConsent, setCoreConsent] = useState(() => hasNotesCoreConsent(accountId));
-  const [coreMessage, setCoreMessage] = useState<string | null>(null);
-  const [coreRequests, setCoreRequests] = useState(0);
-  useEffect(() => {
-    setCoreConsent(hasNotesCoreConsent(accountId));
-    setCoreMessage(null);
-  }, [accountId]);
+  // Account-scoped state is derived during render; no synchronous effect
+  // reset is needed, and a previous owner's message never leaks to this one.
+  const [corePreference, setCorePreference] = useState(() => ({
+    ownerId: accountId,
+    enabled: hasNotesCoreConsent(accountId),
+  }));
+  const coreConsent =
+    corePreference.ownerId === accountId ? corePreference.enabled : hasNotesCoreConsent(accountId);
+  const [coreMessage, setCoreMessage] = useState<{
+    ownerId: string | null;
+    text: string;
+  } | null>(null);
+  const [coreRequests, setCoreRequests] = useState<{
+    ownerId: string | null;
+    count: number;
+  }>({ ownerId: accountId, count: 0 });
   const [formEmail, setFormEmail] = useState('');
   const [password, setPassword] = useState('');
   const [setupCode, setSetupCode] = useState('');
@@ -205,7 +214,11 @@ export function SyncSettings() {
             <label>
               <span>
                 <strong>Allow Core to request sync on this device</strong>
-                <small>Optional. Notes still uses its original private cloud and native 15-second foreground sync. This permission only allows owner-verified coordination requests; Core cannot read Notes or attachments.</small>
+                <small>
+                  Optional. Notes still uses its original private cloud and native 15-second
+                  foreground sync. This permission only allows owner-verified coordination requests;
+                  Core cannot read Notes or attachments.
+                </small>
               </span>
               <input
                 type="checkbox"
@@ -216,12 +229,18 @@ export function SyncSettings() {
                   const enabled = event.target.checked;
                   const saved = changeNotesCoreConsent(accountId, enabled);
                   if (saved) {
-                    setCoreConsent(enabled);
-                    setCoreMessage(enabled
-                      ? 'Core coordination allowed for this account on this device.'
-                      : 'Core coordination revoked on this device. Native Notes sync continues.');
+                    setCorePreference({ ownerId: accountId, enabled });
+                    setCoreMessage({
+                      ownerId: accountId,
+                      text: enabled
+                        ? 'Core coordination allowed for this account on this device.'
+                        : 'Core coordination revoked on this device. Native Notes sync continues.',
+                    });
                   } else {
-                    setCoreMessage('Could not save the permission. Core coordination remains blocked.');
+                    setCoreMessage({
+                      ownerId: accountId,
+                      text: 'Could not save the permission. Core coordination remains blocked.',
+                    });
                   }
                 }}
               />
@@ -232,19 +251,38 @@ export function SyncSettings() {
                 className="settings-secondary-action"
                 data-testid="core-coordination-request"
                 disabled={busy || status === 'syncing'}
-                onClick={() => void runBusy('sync', async () => {
-                  const outcome = await corePort.requestSync(accountId ?? '');
-                  if (outcome === 'requested') setCoreRequests((count) => count + 1);
-                  setCoreMessage(outcome === 'requested'
-                    ? 'Requested through the Notes sync engine. Check the Notes sync status above for confirmation.'
-                    : 'Core request denied. Verify this device permission and Account access.');
-                })}
+                onClick={() =>
+                  void runBusy('sync', async () => {
+                    const outcome = await corePort.requestSync(accountId ?? '');
+                    if (outcome === 'requested')
+                      setCoreRequests((state) => ({
+                        ownerId: accountId,
+                        count: state.ownerId === accountId ? state.count + 1 : 1,
+                      }));
+                    setCoreMessage({
+                      ownerId: accountId,
+                      text:
+                        outcome === 'requested'
+                          ? 'Requested through the Notes sync engine. Check the Notes sync status above for confirmation.'
+                          : 'Core request denied. Verify this device permission and Account access.',
+                    });
+                  })
+                }
               >
                 <RefreshCw aria-hidden="true" /> Request sync via Core
               </button>
             ) : null}
-            {coreRequests > 0 ? <p className="settings-note">Core coordination requests this session: {coreRequests}. Native status remains authoritative.</p> : null}
-            {coreMessage ? <p role="status" className="settings-note">{coreMessage}</p> : null}
+            {coreRequests.ownerId === accountId && coreRequests.count > 0 ? (
+              <p className="settings-note">
+                Core coordination requests this session: {coreRequests.count}. Native status remains
+                authoritative.
+              </p>
+            ) : null}
+            {coreMessage?.ownerId === accountId ? (
+              <p role="status" className="settings-note">
+                {coreMessage.text}
+              </p>
+            ) : null}
           </div>
         ) : null}
 
@@ -318,6 +356,72 @@ export function SyncSettings() {
           First sync merges this device’s existing library with the cloud library. Theme,
           privacy-lock passcode, and disposable search history remain device-local.
         </p>
+      </section>
+
+      <section
+        className="settings-group"
+        aria-label="Ecosystem sync dashboard"
+        data-testid="b12-ecosystem-dashboard"
+      >
+        <div className="settings-group-copy">
+          <strong>Ecosystem sync</strong>
+          <span>
+            Each THIEPN app controls its own records, Account permissions and sync status. No
+            cross-app private records are loaded here.
+          </span>
+        </div>
+        <div className="settings-choice-list">
+          <div className="settings-setting-row">
+            <span className="settings-row-icon" aria-hidden="true">
+              <Cloud />
+            </span>
+            <span>
+              <strong>Notes · {syncStatusLabel(status)}</strong>
+              <small data-testid="b12-notes-native-status">
+                {signedIn && accessGranted
+                  ? status === 'synced' && lastSyncedAt
+                    ? 'Confirmed by Notes at ' + new Date(lastSyncedAt).toLocaleString()
+                    : status === 'pending'
+                      ? 'Saved locally; Notes cloud confirmation is pending.'
+                      : status === 'offline'
+                        ? 'Offline. Your native Notes remain accessible; retry when online.'
+                        : status === 'error'
+                          ? 'Native Notes reported an error. Review the attention message above.'
+                          : 'Notes owns the result of any synchronization request.'
+                  : 'Local-only or workspace permission not granted.'}
+              </small>
+            </span>
+          </div>
+          <div className="settings-setting-row">
+            <span>
+              <strong>Library · separate app</strong>
+              <small>
+                Review reading-state sync, conflict choices and device consent in Library's own
+                dashboard.
+              </small>
+            </span>
+            <a href="/library/account" rel="noopener">
+              Open Library sync
+            </a>
+          </div>
+          <div className="settings-setting-row">
+            <span>
+              <strong>Hub · read-only metadata</strong>
+              <small>
+                Sharing is device-scoped and temporary. Hub does not synchronize Notes attachments
+                or records.
+              </small>
+            </span>
+            <a href="/" rel="noopener">
+              Open Hub
+            </a>
+          </div>
+          <p className="settings-note">
+            For actual Notes backup or restore, use Settings → Data &amp; advanced → Backup &amp;
+            import. Core's experimental recovery lab is synthetic and is not a live backup
+            destination.
+          </p>
+        </div>
       </section>
 
       {!signedIn ? (
