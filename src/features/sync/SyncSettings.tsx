@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 
 import { syncStatusLabel, useSync } from './SyncContext';
+import { useNotesCoreSyncAdapter } from './coreAdapter';
+import { hasNotesCoreConsent, changeNotesCoreConsent } from './coreConsent';
 import { formatSyncActivity, syncAttentionCopy } from './syncPresentation';
 
 type AccountAction =
@@ -37,6 +39,7 @@ export function SyncSettings() {
   const {
     status,
     email,
+    accountId,
     pendingEmail,
     accessGranted,
     recoveryMode,
@@ -61,6 +64,13 @@ export function SyncSettings() {
     signOut,
     syncNow,
   } = useSync();
+  const corePort = useNotesCoreSyncAdapter();
+  const [coreConsent, setCoreConsent] = useState(() => hasNotesCoreConsent(accountId));
+  const [coreMessage, setCoreMessage] = useState<string | null>(null);
+  useEffect(() => {
+    setCoreConsent(hasNotesCoreConsent(accountId));
+    setCoreMessage(null);
+  }, [accountId]);
   const [formEmail, setFormEmail] = useState('');
   const [password, setPassword] = useState('');
   const [setupCode, setSetupCode] = useState('');
@@ -188,6 +198,52 @@ export function SyncSettings() {
             </button>
           ) : null}
         </div>
+
+        {signedIn && accessGranted && !recoveryMode ? (
+          <div className="settings-choice-list" data-testid="core-coordination-controls">
+            <label>
+              <span>
+                <strong>Allow Core to request sync on this device</strong>
+                <small>Optional. Notes still uses its original private cloud and native 15-second foreground sync. This permission only allows owner-verified coordination requests; Core cannot read Notes or attachments.</small>
+              </span>
+              <input
+                type="checkbox"
+                data-testid="core-coordination-toggle"
+                checked={coreConsent}
+                disabled={busy || status === 'syncing'}
+                onChange={(event) => {
+                  const enabled = event.target.checked;
+                  const saved = changeNotesCoreConsent(accountId, enabled);
+                  if (saved) {
+                    setCoreConsent(enabled);
+                    setCoreMessage(enabled
+                      ? 'Core coordination allowed for this account on this device.'
+                      : 'Core coordination revoked on this device. Native Notes sync continues.');
+                  } else {
+                    setCoreMessage('Could not save the permission. Core coordination remains blocked.');
+                  }
+                }}
+              />
+            </label>
+            {coreConsent ? (
+              <button
+                type="button"
+                className="settings-secondary-action"
+                data-testid="core-coordination-request"
+                disabled={busy || status === 'syncing'}
+                onClick={() => void runBusy('sync', async () => {
+                  const outcome = await corePort.requestSync(accountId ?? '');
+                  setCoreMessage(outcome === 'requested'
+                    ? 'Requested through the Notes sync engine. Check the Notes sync status above for confirmation.'
+                    : 'Core request denied. Verify this device permission and Account access.');
+                })}
+              >
+                <RefreshCw aria-hidden="true" /> Request sync via Core
+              </button>
+            ) : null}
+            {coreMessage ? <p role="status" className="settings-note">{coreMessage}</p> : null}
+          </div>
+        ) : null}
 
         {lastResult && signedIn && accessGranted ? (
           <div className="settings-setting-row" data-testid="last-sync-activity">

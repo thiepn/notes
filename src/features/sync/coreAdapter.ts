@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 
 import { useSync, type SyncStatus } from './SyncContext';
+import { hasNotesCoreConsent } from './coreConsent';
 
 /** B9 consumer contract: Notes still owns Supabase writes and rich-data transport. */
 export type NotesCorePermission = {
@@ -29,13 +30,13 @@ export function useNotesCoreSyncAdapter() {
     () => ({
       readStatus: (): NotesCorePermission => ({
         ownerId: accountId,
-        authorized: accessGranted && !recoveryMode,
+        authorized: accessGranted && !recoveryMode && hasNotesCoreConsent(accountId),
         state: status,
       }),
       requestSync: async (expectedOwner: string): Promise<'requested' | 'denied'> => {
         const current = {
           ownerId: accountId,
-          authorized: accessGranted && !recoveryMode,
+          authorized: accessGranted && !recoveryMode && hasNotesCoreConsent(accountId),
           state: status,
         };
         if (!canRequestNotesCoreSync(current, expectedOwner)) return 'denied';
