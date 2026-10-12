@@ -1,7 +1,11 @@
 import type { SyncStatus } from './SyncContext';
 
-export type RecoveryAction = 'inspect' | 'native-retry-requested' |
-  'native-backup-opened' | 'core-consent-enabled' | 'core-device-revoked';
+export type RecoveryAction =
+  | 'inspect'
+  | 'native-retry-requested'
+  | 'native-backup-opened'
+  | 'core-consent-enabled'
+  | 'core-device-revoked';
 
 export interface RecoveryEntry {
   action: RecoveryAction;
@@ -28,12 +32,15 @@ export function appendRecoveryEntry(
   const existing = previous.ownerId === ownerId ? previous.entries : [];
   return {
     ownerId,
-    entries: [...existing, {
-      ...entry,
-      at,
-      authority: 'original-notes' as const,
-      externalCustody: 'NOT_TESTED' as const,
-    }].slice(-16),
+    entries: [
+      ...existing,
+      {
+        ...entry,
+        at,
+        authority: 'original-notes' as const,
+        externalCustody: 'NOT_TESTED' as const,
+      },
+    ].slice(-16),
   };
 }
 export function visibleRecoveryEntries(history: RecoveryHistory, ownerId: string | null) {
@@ -42,13 +49,14 @@ export function visibleRecoveryEntries(history: RecoveryHistory, ownerId: string
 export function nativeRecoveryEvidence(status: SyncStatus, lastSyncedAt: number | null) {
   return {
     confirmed: status === 'synced' && lastSyncedAt !== null,
-    detail: status === 'synced' && lastSyncedAt !== null
-      ? 'Original SyncProvider previously confirmed synchronization.'
-      : status === 'offline' || status === 'pending'
-        ? 'Local notes remain available; no new cloud confirmation exists.'
-        : status === 'error'
-          ? 'Export through BackupWorkspace before attempting native sync again.'
-          : 'SyncProvider owns cloud confirmation; BackupWorkspace owns exports.',
+    detail:
+      status === 'synced' && lastSyncedAt !== null
+        ? 'Original SyncProvider previously confirmed synchronization.'
+        : status === 'offline' || status === 'pending'
+          ? 'Local notes remain available; no new cloud confirmation exists.'
+          : status === 'error'
+            ? 'Export through BackupWorkspace before attempting native sync again.'
+            : 'SyncProvider owns cloud confirmation; BackupWorkspace owns exports.',
     externalCustody: 'NOT_TESTED' as const,
   };
 }
