@@ -15,6 +15,6 @@ test('B12 native Notes ecosystem overview is truthful and private for a guest', 
     .toHaveAttribute('href', '/library/account');
   await expect(board.getByRole('link', { name: 'Open Hub' }))
     .toHaveAttribute('href', '/');
-  await expect(board.getByText(/No cross-app private records/u)).toHaveCount(0);
+  await expect(board.getByText(/No cross-app private records/u)).toBeVisible();
   await expect(settings.getByTestId('core-coordination-toggle')).toHaveCount(0);
 });

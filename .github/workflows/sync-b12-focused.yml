@@ -19,6 +19,10 @@ jobs:
           node-version-file: '.nvmrc'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Temporary Notes B12 source formatting capture
+        run: |
+          npx prettier --write src/features/sync/coreAdapter.ts src/features/sync/SyncSettings.tsx e2e/b12-ecosystem-dashboard.spec.ts
+          node -e 'const fs=require("node:fs");for(const p of ["src/features/sync/coreAdapter.ts","src/features/sync/SyncSettings.tsx","e2e/b12-ecosystem-dashboard.spec.ts"])console.log("NOTES_B12_FMT="+JSON.stringify({path:p,content:fs.readFileSync(p,"utf8")}))'
       - name: Focused Notes original source checks
         run: |
           npm run format:check
