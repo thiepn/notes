@@ -22,10 +22,6 @@ jobs:
           node-version-file: '.nvmrc'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: B15 temporary exact-source formatting capture
-        run: |
-          npx prettier --write e2e/b15-notes-recovery.spec.ts src/features/sync/recoveryPresentation.test.ts src/features/sync/recoveryPresentation.ts src/features/sync/SyncSettings.tsx docs/SYNC_B15_NOTES.md
-          node -e 'const fs=require("node:fs");for(const p of ["e2e/b15-notes-recovery.spec.ts","src/features/sync/recoveryPresentation.test.ts","src/features/sync/recoveryPresentation.ts","src/features/sync/SyncSettings.tsx","docs/SYNC_B15_NOTES.md"])console.log("B15_NOTES_FMT="+JSON.stringify({path:p,content:fs.readFileSync(p,"utf8")}))'
       - name: Focused Notes original source checks
         run: |
           npm run format:check

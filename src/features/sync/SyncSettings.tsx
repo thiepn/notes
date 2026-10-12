@@ -85,7 +85,8 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
     text: string;
   } | null>(null);
   const [recoveryInspection, setRecoveryInspection] = useState<{
-    ownerId: string | null; summary: string;
+    ownerId: string | null;
+    summary: string;
   } | null>(null);
   const [coreRequests, setCoreRequests] = useState<{
     ownerId: string | null;
@@ -404,10 +405,17 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
         </p>
       </section>
 
-      <section className="settings-group" aria-label="Native recovery center" data-testid="b15-notes-recovery-center">
+      <section
+        className="settings-group"
+        aria-label="Native recovery center"
+        data-testid="b15-notes-recovery-center"
+      >
         <div className="settings-group-copy">
           <strong>Recover this Notes workspace</strong>
-          <span>Inspect the current native Notes state before retrying or restoring. This does not contact Core or certify independent storage custody.</span>
+          <span>
+            Inspect the current native Notes state before retrying or restoring. This does not
+            contact Core or certify independent storage custody.
+          </span>
         </div>
         <div className="settings-choice-list">
           <button
@@ -416,12 +424,22 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
             data-testid="b15-notes-inspect-recovery"
             onClick={() => {
               const finding = inspectNotesNativeRecovery({
-                ownerId: accountId, accessGranted, recoveryMode, status,
-                lastSyncedAt, coreConsent,
+                ownerId: accountId,
+                accessGranted,
+                recoveryMode,
+                status,
+                lastSyncedAt,
+                coreConsent,
               });
-              setRecoveryInspection({ ownerId: accountId,
-                summary: 'Native Notes ' + finding.state + ': ' + finding.action +
-                  ' External offsite custody NOT TESTED.' });
+              setRecoveryInspection({
+                ownerId: accountId,
+                summary:
+                  'Native Notes ' +
+                  finding.state +
+                  ': ' +
+                  finding.action +
+                  ' External offsite custody NOT TESTED.',
+              });
             }}
           >
             Inspect recovery options
@@ -432,16 +450,23 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
               : 'No recovery inspection performed on this Account. Native Notes remain the only source of truth.'}
           </p>
           {signedIn && accessGranted && !recoveryMode ? (
-            <button type="button" className="settings-secondary-action"
+            <button
+              type="button"
+              className="settings-secondary-action"
               data-testid="b15-notes-retry-native"
               disabled={busy || status === 'syncing'}
-              onClick={() => void runBusy('sync', syncNow)}>
+              onClick={() => void runBusy('sync', syncNow)}
+            >
               <RefreshCw aria-hidden="true" /> Retry using native Notes sync
             </button>
           ) : null}
           {onOpenBackup ? (
-            <button type="button" className="settings-secondary-action"
-              data-testid="b15-notes-open-backup" onClick={onOpenBackup}>
+            <button
+              type="button"
+              className="settings-secondary-action"
+              data-testid="b15-notes-open-backup"
+              onClick={onOpenBackup}
+            >
               <DatabaseBackup aria-hidden="true" /> Open native Backup &amp; import
             </button>
           ) : null}

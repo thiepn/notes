@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
-test('B15 Notes guest native recovery inspector is actionable but never grants Core', async ({ page }) => {
+test('B15 Notes guest native recovery inspector is actionable but never grants Core', async ({
+  page,
+}) => {
   await page.goto('./');
   await page.getByRole('button', { name: 'More options' }).click();
   const menu = page.getByRole('menu');
