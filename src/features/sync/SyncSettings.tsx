@@ -23,6 +23,13 @@ import {
 } from './coreConsent';
 import { formatSyncActivity, syncAttentionCopy } from './syncPresentation';
 import { inspectNotesNativeRecovery } from './recoveryPresentation';
+import {
+  appendRecoveryEntry,
+  nativeRecoveryEvidence,
+  visibleRecoveryEntries,
+  type RecoveryAction,
+  type RecoveryHistory,
+} from './recoveryHistory';
 
 type AccountAction =
   | 'signin'
@@ -88,6 +95,20 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
     ownerId: string | null;
     summary: string;
   } | null>(null);
+  const [recoveryHistory, setRecoveryHistory] = useState<RecoveryHistory>({
+    ownerId: accountId,
+    entries: [],
+  });
+  const recoveryEntries = visibleRecoveryEntries(recoveryHistory, accountId);
+  const recoveryEvidence = nativeRecoveryEvidence(status, lastSyncedAt);
+  const recordRecovery = (action: RecoveryAction) => {
+    setRecoveryHistory((previous) => appendRecoveryEntry(previous, accountId, {
+      action,
+      nativeStatus: status,
+      grantRevision: getNotesCoreRevision(accountId),
+      lastConfirmedNativeSync: lastSyncedAt,
+    }, Date.now()));
+  };
   const [coreRequests, setCoreRequests] = useState<{
     ownerId: string | null;
     count: number;
@@ -248,6 +269,7 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
                   const enabled = event.target.checked;
                   const saved = changeNotesCoreConsent(accountId, enabled);
                   if (saved) {
+                    recordRecovery(enabled ? 'core-consent-enabled' : 'core-device-revoked');
                     setCorePreference({ ownerId: accountId, enabled });
                     setCoreMessage({
                       ownerId: accountId,
@@ -304,6 +326,7 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
               onClick={() => {
                 const changed = changeNotesCoreConsent(accountId, false);
                 if (changed) {
+                  recordRecovery('core-device-revoked');
                   setCorePreference({ ownerId: accountId, enabled: false });
                   setCoreMessage({
                     ownerId: accountId,
@@ -431,6 +454,7 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
                 lastSyncedAt,
                 coreConsent,
               });
+              recordRecovery('inspect');
               setRecoveryInspection({
                 ownerId: accountId,
                 summary:
@@ -455,7 +479,10 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
               className="settings-secondary-action"
               data-testid="b15-notes-retry-native"
               disabled={busy || status === 'syncing'}
-              onClick={() => void runBusy('sync', syncNow)}
+              onClick={() => {
+                recordRecovery('native-retry-requested');
+                void runBusy('sync', syncNow);
+              }}
             >
               <RefreshCw aria-hidden="true" /> Retry using native Notes sync
             </button>
@@ -465,11 +492,41 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
               type="button"
               className="settings-secondary-action"
               data-testid="b15-notes-open-backup"
-              onClick={onOpenBackup}
+              onClick={() => {
+                recordRecovery('native-backup-opened');
+                onOpenBackup?.();
+              }}
             >
               <DatabaseBackup aria-hidden="true" /> Open native Backup &amp; import
             </button>
           ) : null}
+          <div data-testid="b16-notes-evidence">
+            <p className="settings-note">
+              {recoveryEvidence.detail} External ciphertext custody NOT TESTED.
+            </p>
+            <strong>Recovery incident history on this device</strong>
+            <p className="settings-note">
+              Owner-scoped session observations only. A native backup was opened,
+              not necessarily exported; a native sync retry was requested, not confirmed.
+            </p>
+            {recoveryEntries.length ? (
+              <ol data-testid="b16-notes-incident-list">
+                {[...recoveryEntries].reverse().map((entry, index) => (
+                  <li key={entry.at + '-' + index}>
+                    {new Date(entry.at).toLocaleTimeString()} · {entry.action.replaceAll('-', ' ')}
+                    {' · '}Native {entry.nativeStatus}
+                    {' · '}Device revision {entry.grantRevision ?? 'none'}
+                    {' · '}Prior cloud confirmation {entry.lastConfirmedNativeSync
+                      ? new Date(entry.lastConfirmedNativeSync).toLocaleString() : 'none'}
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p data-testid="b16-notes-history-empty" className="settings-note">
+                No recovery actions in this session for this Account.
+              </p>
+            )}
+          </div>
         </div>
       </section>
 
