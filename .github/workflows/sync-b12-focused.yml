@@ -21,6 +21,10 @@ jobs:
           node-version-file: '.nvmrc'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: B14 temporary formatting capture
+        run: |
+          npx prettier --write docs/SYNC_B14_NOTES.md e2e/b14-notes-revoke.spec.ts src/features/sync/coreConsent.exit.test.ts src/features/sync/SyncSettings.tsx
+          node -e 'const fs=require("node:fs");for(const p of ["docs/SYNC_B14_NOTES.md","e2e/b14-notes-revoke.spec.ts","src/features/sync/coreConsent.exit.test.ts","src/features/sync/SyncSettings.tsx"])console.log("B14_FMT="+JSON.stringify({path:p,content:fs.readFileSync(p,"utf8")}))'
       - name: Focused Notes original source checks
         run: |
           npm run format:check
