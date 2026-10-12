@@ -34,7 +34,10 @@ export function useNotesCoreSyncAdapter() {
         const current = currentRef.current;
         return {
           ownerId: current.accountId,
-          authorized: current.accessGranted && !current.recoveryMode && hasNotesCoreConsent(current.accountId),
+          authorized:
+            current.accessGranted &&
+            !current.recoveryMode &&
+            hasNotesCoreConsent(current.accountId),
           state: current.status,
         };
       },
@@ -42,7 +45,8 @@ export function useNotesCoreSyncAdapter() {
         const latest = currentRef.current;
         const permission: NotesCorePermission = {
           ownerId: latest.accountId,
-          authorized: latest.accessGranted && !latest.recoveryMode && hasNotesCoreConsent(latest.accountId),
+          authorized:
+            latest.accessGranted && !latest.recoveryMode && hasNotesCoreConsent(latest.accountId),
           state: latest.status,
         };
         if (!canRequestNotesCoreSync(permission, expectedOwner)) return 'denied';
@@ -50,8 +54,12 @@ export function useNotesCoreSyncAdapter() {
         // A completed request is not a confirmed cloud write. The native
         // engine reports success separately. Account/device revocation wins.
         const after = currentRef.current;
-        if (after.accountId !== expectedOwner || !after.accessGranted ||
-          after.recoveryMode || !hasNotesCoreConsent(expectedOwner))
+        if (
+          after.accountId !== expectedOwner ||
+          !after.accessGranted ||
+          after.recoveryMode ||
+          !hasNotesCoreConsent(expectedOwner)
+        )
           return 'denied';
         return 'requested';
       },
