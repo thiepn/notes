@@ -247,7 +247,7 @@ export function SettingsDialog({
               </section>
             ) : null}
 
-            {section === 'sync' ? <SyncSettings /> : null}
+            {section === 'sync' ? <SyncSettings onOpenBackup={onOpenBackup} /> : null}
 
             {section === 'privacy' ? (
               <>

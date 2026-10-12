@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   Cloud,
   CloudOff,
+  DatabaseBackup,
   KeyRound,
   LogOut,
   Mail,
@@ -35,7 +36,7 @@ type AccountAction =
   | 'delete-cloud'
   | 'delete-account';
 
-export function SyncSettings() {
+export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
   const {
     status,
     email,
@@ -416,6 +417,16 @@ export function SyncSettings() {
               Open Hub
             </a>
           </div>
+          {onOpenBackup ? (
+            <button
+              className="settings-secondary-action"
+              type="button"
+              data-testid="b13-open-native-notes-backup"
+              onClick={onOpenBackup}
+            >
+              <DatabaseBackup aria-hidden="true" /> Open native backup &amp; restore
+            </button>
+          ) : null}
           <p className="settings-note">
             For actual Notes backup or restore, use Settings → Data &amp; advanced → Backup &amp;
             import. Core's experimental recovery lab is synthetic and is not a live backup

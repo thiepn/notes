@@ -1,15 +1,16 @@
-name: B12 Source and Browser
+name: B13 Native Source and Browser
 on:
   pull_request:
     paths:
       - 'src/features/sync/**'
       - 'e2e/b12-ecosystem-dashboard.spec.ts'
+      - 'e2e/b13-notes-native-handoff.spec.ts'
       - '.github/workflows/sync-b12-focused.yml'
 permissions:
   contents: read
 jobs:
   scoped:
-    if: github.head_ref == 'feat/sync-b12-notes-dashboard-handoff'
+    if: github.head_ref == 'feat/sync-b13-notes-native-recovery-consent'
     runs-on: ubuntu-latest
     timeout-minutes: 18
     steps:
@@ -27,4 +28,4 @@ jobs:
       - name: Actual isolated Chromium acceptance
         run: |
           npx playwright install --with-deps chromium
-          npx playwright test e2e/b12-ecosystem-dashboard.spec.ts --project=chromium
+          npx playwright test e2e/b12-ecosystem-dashboard.spec.ts e2e/b13-notes-native-handoff.spec.ts --project=chromium
