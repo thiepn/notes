@@ -1,0 +1,30 @@
+name: B12 Source and Browser
+on:
+  pull_request:
+    paths:
+      - 'src/features/sync/**'
+      - 'e2e/b12-ecosystem-dashboard.spec.ts'
+      - '.github/workflows/sync-b12-focused.yml'
+permissions:
+  contents: read
+jobs:
+  scoped:
+    if: github.head_ref == 'feat/sync-b12-notes-dashboard-handoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Focused Notes original source checks
+        run: |
+          npm run format:check
+          npm run lint
+          npm run typecheck
+      - name: Actual isolated Chromium acceptance
+        run: |
+          npx playwright install --with-deps chromium
+          npx playwright test e2e/b12-ecosystem-dashboard.spec.ts --project=chromium
