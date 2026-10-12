@@ -1,0 +1,1 @@
+B11: Source-owned Notes Core coordination request rechecks device consent immediately before invoking the existing native syncNow; user-visible per-session request count is explicitly not mastery, success, or cloud authority. Original 15s Notes engine, app permissions and rich records unchanged.
