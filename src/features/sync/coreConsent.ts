@@ -25,12 +25,20 @@ export function changeNotesCoreConsent(ownerId: string | null, enabled: boolean)
   if (!ownerId) return false;
   try {
     const current = (() => {
-      try { const raw = localStorage.getItem(ownerKey(ownerId));
-        const value = raw ? JSON.parse(raw) as Partial<Consent> : null;
-        return value?.schemaVersion === 1 && value.ownerId === ownerId &&
-          Number.isSafeInteger(value.revision) && (value.revision ?? 0) > 0
-          ? value.revision! : value?.schemaVersion === 1 && value.ownerId === ownerId ? 1 : 0;
-      } catch { return 0; }
+      try {
+        const raw = localStorage.getItem(ownerKey(ownerId));
+        const value = raw ? (JSON.parse(raw) as Partial<Consent>) : null;
+        return value?.schemaVersion === 1 &&
+          value.ownerId === ownerId &&
+          Number.isSafeInteger(value.revision) &&
+          (value.revision ?? 0) > 0
+          ? value.revision!
+          : value?.schemaVersion === 1 && value.ownerId === ownerId
+            ? 1
+            : 0;
+      } catch {
+        return 0;
+      }
     })();
     if (current === Number.MAX_SAFE_INTEGER) return false;
     localStorage.setItem(
@@ -57,7 +65,12 @@ export function getNotesCoreRevision(ownerId: string | null): number | null {
     const parsed = JSON.parse(raw) as Consent;
     // Older B12 consent records were unversioned. They remain authorized with
     // revision 1 until the owner rotates the device permission.
-    return parsed.revision === undefined ? 1
-      : Number.isSafeInteger(parsed.revision) && parsed.revision > 0 ? parsed.revision : null;
-  } catch { return null; }
+    return parsed.revision === undefined
+      ? 1
+      : Number.isSafeInteger(parsed.revision) && parsed.revision > 0
+        ? parsed.revision
+        : null;
+  } catch {
+    return null;
+  }
 }

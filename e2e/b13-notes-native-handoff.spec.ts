@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 
-test('B13 guest sees original Notes status, but cannot authorize Core or trigger native private restore', async ({ page }) => {
+test('B13 guest sees original Notes status, but cannot authorize Core or trigger native private restore', async ({
+  page,
+}) => {
   await page.goto('./');
   await page.getByRole('button', { name: 'More options' }).click();
   const menu = page.getByRole('menu');

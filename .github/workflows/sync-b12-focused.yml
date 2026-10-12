@@ -20,10 +20,6 @@ jobs:
           node-version-file: '.nvmrc'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: B13 temporary native Notes formatting capture
-        run: |
-          npx prettier --write e2e/b13-notes-native-handoff.spec.ts src/features/sync/coreConsent.revision.test.ts src/features/sync/coreConsent.ts
-          node -e 'const fs=require("node:fs");for(const p of ["e2e/b13-notes-native-handoff.spec.ts","src/features/sync/coreConsent.revision.test.ts","src/features/sync/coreConsent.ts"])console.log("B13_NOTES_FMT="+JSON.stringify({path:p,content:fs.readFileSync(p,"utf8")}))'
       - name: Focused Notes original source checks
         run: |
           npm run format:check
