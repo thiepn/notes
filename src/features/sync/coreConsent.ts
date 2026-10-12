@@ -10,14 +10,16 @@ export function readCoreConsentValue(raw: string | null, ownerId: string | null)
     return c.schemaVersion === 1 && c.ownerId === ownerId && c.enabled === true;
   } catch { return false; }
 }
+const ownerKey = (ownerId: string) => NOTES_CORE_COORDINATION_KEY + ':' + ownerId;
 export function hasNotesCoreConsent(ownerId: string | null): boolean {
-  try { return readCoreConsentValue(localStorage.getItem(NOTES_CORE_COORDINATION_KEY), ownerId); }
+  if (!ownerId) return false;
+  try { return readCoreConsentValue(localStorage.getItem(ownerKey(ownerId)), ownerId); }
   catch { return false; }
 }
 export function changeNotesCoreConsent(ownerId: string | null, enabled: boolean): boolean {
   if (!ownerId) return false;
   try {
-    localStorage.setItem(NOTES_CORE_COORDINATION_KEY, JSON.stringify({
+    localStorage.setItem(ownerKey(ownerId), JSON.stringify({
       schemaVersion: 1, ownerId, enabled,
     } satisfies Consent));
     return true;
