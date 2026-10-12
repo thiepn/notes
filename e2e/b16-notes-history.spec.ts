@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
-test('B16 guest recovery history inspection is transient and never grants Core', async ({ page }) => {
+test('B16 guest recovery history inspection is transient and never grants Core', async ({
+  page,
+}) => {
   await page.goto('./');
   await page.getByRole('button', { name: 'More options' }).click();
   const menu = page.getByRole('menu');
