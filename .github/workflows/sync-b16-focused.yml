@@ -25,6 +25,11 @@ jobs:
           npm run lint
           npm run typecheck
           npx vitest run src/features/sync/recoveryHistory.test.ts src/features/sync/recoveryPresentation.test.ts src/features/sync/coreConsent.exit.test.ts
+      - name: Capture B16 formatted source for correcting check failures
+        if: failure()
+        run: |
+          npx prettier --write src/features/sync/recoveryHistory.ts src/features/sync/recoveryHistory.test.ts src/features/sync/SyncSettings.tsx
+          node -e "const fs=require('fs');for(const path of ['src/features/sync/recoveryHistory.ts','src/features/sync/recoveryHistory.test.ts','src/features/sync/SyncSettings.tsx']){const s=fs.readFileSync(path,'utf8');for(let i=0;i<s.length;i+=700)console.log('B16_FORMATTED '+JSON.stringify({path,index:i,chunk:s.slice(i,i+700)}));}"
       - name: Actual disposable Chromium native recovery UI
         run: |
           npx playwright install --with-deps chromium
