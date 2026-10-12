@@ -65,14 +65,19 @@ export function SyncSettings() {
     syncNow,
   } = useSync();
   const corePort = useNotesCoreSyncAdapter();
-  const [coreConsent, setCoreConsent] = useState(() => hasNotesCoreConsent(accountId));
-  const [coreMessage, setCoreMessage] = useState<string | null>(null);
-  const [coreRequests, setCoreRequests] = useState(0);
-  useEffect(() => {
-    setCoreConsent(hasNotesCoreConsent(accountId));
-    setCoreMessage(null);
-    setCoreRequests(0);
-  }, [accountId]);
+  // Account-scoped state is derived during render; no synchronous effect
+  // reset is needed, and a previous owner's message never leaks to this one.
+  const [corePreference, setCorePreference] = useState(() => ({
+    ownerId: accountId, enabled: hasNotesCoreConsent(accountId),
+  }));
+  const coreConsent = corePreference.ownerId === accountId
+    ? corePreference.enabled : hasNotesCoreConsent(accountId);
+  const [coreMessage, setCoreMessage] = useState<{
+    ownerId: string | null; text: string;
+  } | null>(null);
+  const [coreRequests, setCoreRequests] = useState<{
+    ownerId: string | null; count: number;
+  }>({ ownerId: accountId, count: 0 });
   const [formEmail, setFormEmail] = useState('');
   const [password, setPassword] = useState('');
   const [setupCode, setSetupCode] = useState('');
@@ -221,16 +226,16 @@ export function SyncSettings() {
                   const enabled = event.target.checked;
                   const saved = changeNotesCoreConsent(accountId, enabled);
                   if (saved) {
-                    setCoreConsent(enabled);
-                    setCoreMessage(
-                      enabled
+                    setCorePreference({ ownerId: accountId, enabled });
+                    setCoreMessage({ ownerId: accountId,
+                      text: enabled
                         ? 'Core coordination allowed for this account on this device.'
                         : 'Core coordination revoked on this device. Native Notes sync continues.',
-                    );
+                    });
                   } else {
-                    setCoreMessage(
-                      'Could not save the permission. Core coordination remains blocked.',
-                    );
+                    setCoreMessage({ ownerId: accountId,
+                      text: 'Could not save the permission. Core coordination remains blocked.',
+                    });
                   }
                 }}
               />
@@ -244,27 +249,30 @@ export function SyncSettings() {
                 onClick={() =>
                   void runBusy('sync', async () => {
                     const outcome = await corePort.requestSync(accountId ?? '');
-                    if (outcome === 'requested') setCoreRequests((count) => count + 1);
-                    setCoreMessage(
-                      outcome === 'requested'
+                    if (outcome === 'requested') setCoreRequests((state) => ({
+                      ownerId: accountId,
+                      count: state.ownerId === accountId ? state.count + 1 : 1,
+                    }));
+                    setCoreMessage({ ownerId: accountId,
+                      text: outcome === 'requested'
                         ? 'Requested through the Notes sync engine. Check the Notes sync status above for confirmation.'
                         : 'Core request denied. Verify this device permission and Account access.',
-                    );
+                    });
                   })
                 }
               >
                 <RefreshCw aria-hidden="true" /> Request sync via Core
               </button>
             ) : null}
-            {coreRequests > 0 ? (
+            {coreRequests.ownerId === accountId && coreRequests.count > 0 ? (
               <p className="settings-note">
-                Core coordination requests this session: {coreRequests}. Native status remains
+                Core coordination requests this session: {coreRequests.count}. Native status remains
                 authoritative.
               </p>
             ) : null}
-            {coreMessage ? (
+            {coreMessage?.ownerId === accountId ? (
               <p role="status" className="settings-note">
-                {coreMessage}
+                {coreMessage.text}
               </p>
             ) : null}
           </div>

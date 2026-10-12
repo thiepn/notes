@@ -8,20 +8,32 @@ export function readCoreConsentValue(raw: string | null, ownerId: string | null)
     if (!value || typeof value !== 'object') return false;
     const c = value as Partial<Consent>;
     return c.schemaVersion === 1 && c.ownerId === ownerId && c.enabled === true;
-  } catch { return false; }
+  } catch {
+    return false;
+  }
 }
 const ownerKey = (ownerId: string) => NOTES_CORE_COORDINATION_KEY + ':' + ownerId;
 export function hasNotesCoreConsent(ownerId: string | null): boolean {
   if (!ownerId) return false;
-  try { return readCoreConsentValue(localStorage.getItem(ownerKey(ownerId)), ownerId); }
-  catch { return false; }
+  try {
+    return readCoreConsentValue(localStorage.getItem(ownerKey(ownerId)), ownerId);
+  } catch {
+    return false;
+  }
 }
 export function changeNotesCoreConsent(ownerId: string | null, enabled: boolean): boolean {
   if (!ownerId) return false;
   try {
-    localStorage.setItem(ownerKey(ownerId), JSON.stringify({
-      schemaVersion: 1, ownerId, enabled,
-    } satisfies Consent));
+    localStorage.setItem(
+      ownerKey(ownerId),
+      JSON.stringify({
+        schemaVersion: 1,
+        ownerId,
+        enabled,
+      } satisfies Consent),
+    );
     return true;
-  } catch { return false; }
+  } catch {
+    return false;
+  }
 }

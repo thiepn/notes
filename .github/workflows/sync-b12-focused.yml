@@ -19,10 +19,10 @@ jobs:
           node-version-file: '.nvmrc'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Format inherited B10-B11 drafts before focused verification
+      - name: Format Notes B12 owner-safe source for final patch
         run: |
-          npx prettier --write docs/SYNC_B10_NOTES_CONSENT.md docs/SYNC_B11_NOTES.md src/features/sync/coreAdapter.lifecycle.test.ts src/features/sync/coreConsent.test.ts src/features/sync/coreConsent.ts
-          node -e 'const fs=require("node:fs");for(const p of ["docs/SYNC_B10_NOTES_CONSENT.md","docs/SYNC_B11_NOTES.md","src/features/sync/coreAdapter.lifecycle.test.ts","src/features/sync/coreConsent.test.ts","src/features/sync/coreConsent.ts"])console.log("NOTES_B11_FMT="+JSON.stringify({path:p,content:fs.readFileSync(p,"utf8")}))'
+          npx prettier --write src/features/sync/coreAdapter.ts src/features/sync/SyncSettings.tsx
+          node -e 'const fs=require("node:fs");for(const p of ["src/features/sync/coreAdapter.ts","src/features/sync/SyncSettings.tsx"])console.log("NOTES_FINAL_FMT="+JSON.stringify({path:p,content:fs.readFileSync(p,"utf8")}))'
       - name: Focused Notes original source checks
         run: |
           npm run format:check

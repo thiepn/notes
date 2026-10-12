@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import { useSync, type SyncStatus } from './SyncContext';
 import { hasNotesCoreConsent } from './coreConsent';
@@ -27,7 +27,9 @@ export function canRequestNotesCoreSync(
 export function useNotesCoreSyncAdapter() {
   const { accountId, accessGranted, recoveryMode, status, syncNow } = useSync();
   const currentRef = useRef({ accountId, accessGranted, recoveryMode, status });
-  currentRef.current = { accountId, accessGranted, recoveryMode, status };
+  useEffect(() => {
+    currentRef.current = { accountId, accessGranted, recoveryMode, status };
+  }, [accountId, accessGranted, recoveryMode, status]);
   return useMemo(
     () => ({
       readStatus: (): NotesCorePermission => {
@@ -64,6 +66,6 @@ export function useNotesCoreSyncAdapter() {
         return 'requested';
       },
     }),
-    [accountId, accessGranted, recoveryMode, status, syncNow],
+    [syncNow],
   );
 }
