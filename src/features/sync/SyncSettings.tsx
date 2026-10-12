@@ -15,7 +15,12 @@ import {
 
 import { syncStatusLabel, useSync } from './SyncContext';
 import { useNotesCoreSyncAdapter } from './coreAdapter';
-import { hasNotesCoreConsent, changeNotesCoreConsent, getNotesCoreRevision, revokeNotesCoreOnAccountExit } from './coreConsent';
+import {
+  hasNotesCoreConsent,
+  changeNotesCoreConsent,
+  getNotesCoreRevision,
+  revokeNotesCoreOnAccountExit,
+} from './coreConsent';
 import { formatSyncActivity, syncAttentionCopy } from './syncPresentation';
 
 type AccountAction =
@@ -295,11 +300,15 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
                 const changed = changeNotesCoreConsent(accountId, false);
                 if (changed) {
                   setCorePreference({ ownerId: accountId, enabled: false });
-                  setCoreMessage({ ownerId: accountId,
-                    text: 'Core request grant revoked on this device. A running request cannot report success under its old revision.' });
+                  setCoreMessage({
+                    ownerId: accountId,
+                    text: 'Core request grant revoked on this device. A running request cannot report success under its old revision.',
+                  });
                 } else {
-                  setCoreMessage({ ownerId: accountId,
-                    text: 'Unable to store device revocation. Do not rely on Core coordination; review this device.' });
+                  setCoreMessage({
+                    ownerId: accountId,
+                    text: 'Unable to store device revocation. Do not rely on Core coordination; review this device.',
+                  });
                 }
               }}
             >
@@ -752,7 +761,12 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
                 className="settings-secondary-action"
                 type="button"
                 disabled={busy}
-                onClick={() => void runBusy('signout-all', async () => { revokeCoreBeforeIdentityExit(); await signOutAllDevices(); })}
+                onClick={() =>
+                  void runBusy('signout-all', async () => {
+                    revokeCoreBeforeIdentityExit();
+                    await signOutAllDevices();
+                  })
+                }
               >
                 Sign out everywhere
               </button>
@@ -761,7 +775,12 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
               className="settings-secondary-action"
               type="button"
               disabled={busy}
-              onClick={() => void runBusy('signout-local', async () => { revokeCoreBeforeIdentityExit(); await signOut(); })}
+              onClick={() =>
+                void runBusy('signout-local', async () => {
+                  revokeCoreBeforeIdentityExit();
+                  await signOut();
+                })
+              }
             >
               Sign out on this device
             </button>
