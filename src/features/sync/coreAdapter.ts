@@ -12,9 +12,11 @@ export function canRequestNotesCoreSync(
   permission: NotesCorePermission,
   expectedOwner: string,
 ): boolean {
-  return permission.ownerId === expectedOwner &&
+  return (
+    permission.ownerId === expectedOwner &&
     permission.authorized &&
-    !['local', 'setup', 'recovery', 'offline', 'connecting'].includes(permission.state);
+    !['local', 'setup', 'recovery', 'offline', 'connecting'].includes(permission.state)
+  );
 }
 /**
  * Use inside Notes only. External Core consumers must never receive a
@@ -23,18 +25,25 @@ export function canRequestNotesCoreSync(
  */
 export function useNotesCoreSyncAdapter() {
   const { accountId, accessGranted, recoveryMode, status, syncNow } = useSync();
-  return useMemo(() => ({
-    readStatus: (): NotesCorePermission => ({
-      ownerId: accountId,
-      authorized: accessGranted && !recoveryMode,
-      state: status,
+  return useMemo(
+    () => ({
+      readStatus: (): NotesCorePermission => ({
+        ownerId: accountId,
+        authorized: accessGranted && !recoveryMode,
+        state: status,
+      }),
+      requestSync: async (expectedOwner: string): Promise<'requested' | 'denied'> => {
+        const current = {
+          ownerId: accountId,
+          authorized: accessGranted && !recoveryMode,
+          state: status,
+        };
+        if (!canRequestNotesCoreSync(current, expectedOwner)) return 'denied';
+        await syncNow();
+        // Notes owns the eventual outcome; callers must separately re-read it.
+        return 'requested';
+      },
     }),
-    requestSync: async (expectedOwner: string): Promise<'requested' | 'denied'> => {
-      const current = { ownerId: accountId, authorized: accessGranted && !recoveryMode, state: status };
-      if (!canRequestNotesCoreSync(current, expectedOwner)) return 'denied';
-      await syncNow();
-      // Notes owns the eventual outcome; callers must separately re-read it.
-      return 'requested';
-    },
-  }), [accountId, accessGranted, recoveryMode, status, syncNow]);
+    [accountId, accessGranted, recoveryMode, status, syncNow],
+  );
 }
