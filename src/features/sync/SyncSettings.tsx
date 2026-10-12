@@ -68,15 +68,18 @@ export function SyncSettings() {
   // Account-scoped state is derived during render; no synchronous effect
   // reset is needed, and a previous owner's message never leaks to this one.
   const [corePreference, setCorePreference] = useState(() => ({
-    ownerId: accountId, enabled: hasNotesCoreConsent(accountId),
+    ownerId: accountId,
+    enabled: hasNotesCoreConsent(accountId),
   }));
-  const coreConsent = corePreference.ownerId === accountId
-    ? corePreference.enabled : hasNotesCoreConsent(accountId);
+  const coreConsent =
+    corePreference.ownerId === accountId ? corePreference.enabled : hasNotesCoreConsent(accountId);
   const [coreMessage, setCoreMessage] = useState<{
-    ownerId: string | null; text: string;
+    ownerId: string | null;
+    text: string;
   } | null>(null);
   const [coreRequests, setCoreRequests] = useState<{
-    ownerId: string | null; count: number;
+    ownerId: string | null;
+    count: number;
   }>({ ownerId: accountId, count: 0 });
   const [formEmail, setFormEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -227,13 +230,15 @@ export function SyncSettings() {
                   const saved = changeNotesCoreConsent(accountId, enabled);
                   if (saved) {
                     setCorePreference({ ownerId: accountId, enabled });
-                    setCoreMessage({ ownerId: accountId,
+                    setCoreMessage({
+                      ownerId: accountId,
                       text: enabled
                         ? 'Core coordination allowed for this account on this device.'
                         : 'Core coordination revoked on this device. Native Notes sync continues.',
                     });
                   } else {
-                    setCoreMessage({ ownerId: accountId,
+                    setCoreMessage({
+                      ownerId: accountId,
                       text: 'Could not save the permission. Core coordination remains blocked.',
                     });
                   }
@@ -249,14 +254,17 @@ export function SyncSettings() {
                 onClick={() =>
                   void runBusy('sync', async () => {
                     const outcome = await corePort.requestSync(accountId ?? '');
-                    if (outcome === 'requested') setCoreRequests((state) => ({
+                    if (outcome === 'requested')
+                      setCoreRequests((state) => ({
+                        ownerId: accountId,
+                        count: state.ownerId === accountId ? state.count + 1 : 1,
+                      }));
+                    setCoreMessage({
                       ownerId: accountId,
-                      count: state.ownerId === accountId ? state.count + 1 : 1,
-                    }));
-                    setCoreMessage({ ownerId: accountId,
-                      text: outcome === 'requested'
-                        ? 'Requested through the Notes sync engine. Check the Notes sync status above for confirmation.'
-                        : 'Core request denied. Verify this device permission and Account access.',
+                      text:
+                        outcome === 'requested'
+                          ? 'Requested through the Notes sync engine. Check the Notes sync status above for confirmation.'
+                          : 'Core request denied. Verify this device permission and Account access.',
                     });
                   })
                 }
