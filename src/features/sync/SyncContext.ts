@@ -17,6 +17,8 @@ export type SyncStatus =
 export interface SyncContextValue {
   status: SyncStatus;
   email: string | null;
+  /** Session identity only; never exposes a token or cloud record. */
+  accountId: string | null;
   pendingEmail: string | null;
   accessGranted: boolean;
   recoveryMode: boolean;
