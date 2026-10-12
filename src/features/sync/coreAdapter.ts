@@ -40,6 +40,8 @@ export function useNotesCoreSyncAdapter() {
           state: status,
         };
         if (!canRequestNotesCoreSync(current, expectedOwner)) return 'denied';
+        // Recheck before calling the native authority; device revocation wins.
+        if (!hasNotesCoreConsent(accountId)) return 'denied';
         await syncNow();
         // Notes owns the eventual outcome; callers must separately re-read it.
         return 'requested';

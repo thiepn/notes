@@ -67,6 +67,7 @@ export function SyncSettings() {
   const corePort = useNotesCoreSyncAdapter();
   const [coreConsent, setCoreConsent] = useState(() => hasNotesCoreConsent(accountId));
   const [coreMessage, setCoreMessage] = useState<string | null>(null);
+  const [coreRequests, setCoreRequests] = useState(0);
   useEffect(() => {
     setCoreConsent(hasNotesCoreConsent(accountId));
     setCoreMessage(null);
@@ -233,6 +234,7 @@ export function SyncSettings() {
                 disabled={busy || status === 'syncing'}
                 onClick={() => void runBusy('sync', async () => {
                   const outcome = await corePort.requestSync(accountId ?? '');
+                  if (outcome === 'requested') setCoreRequests((count) => count + 1);
                   setCoreMessage(outcome === 'requested'
                     ? 'Requested through the Notes sync engine. Check the Notes sync status above for confirmation.'
                     : 'Core request denied. Verify this device permission and Account access.');
@@ -241,6 +243,7 @@ export function SyncSettings() {
                 <RefreshCw aria-hidden="true" /> Request sync via Core
               </button>
             ) : null}
+            {coreRequests > 0 ? <p className="settings-note">Core coordination requests this session: {coreRequests}. Native status remains authoritative.</p> : null}
             {coreMessage ? <p role="status" className="settings-note">{coreMessage}</p> : null}
           </div>
         ) : null}
