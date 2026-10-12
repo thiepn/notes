@@ -23,6 +23,10 @@ jobs:
           node-version-file: '.nvmrc'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: B16 temporary exact-source formatter export
+        run: |
+          npx prettier --write docs/SYNC_B16_NOTES.md e2e/b16-notes-history.spec.ts src/features/sync/recoveryHistory.test.ts src/features/sync/recoveryHistory.ts src/features/sync/SyncSettings.tsx
+          node -e 'const fs=require("node:fs");for(const p of ["docs/SYNC_B16_NOTES.md","e2e/b16-notes-history.spec.ts","src/features/sync/recoveryHistory.test.ts","src/features/sync/recoveryHistory.ts","src/features/sync/SyncSettings.tsx"])console.log("B16_NOTES_FMT="+JSON.stringify({path:p,content:fs.readFileSync(p,"utf8")}))'
       - name: Focused Notes original source checks
         run: |
           npm run format:check
