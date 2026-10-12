@@ -23,6 +23,12 @@ import {
 } from './coreConsent';
 import { formatSyncActivity, syncAttentionCopy } from './syncPresentation';
 import { inspectNotesNativeRecovery } from './recoveryPresentation';
+import {
+  appendNotesRecoveryIncident,
+  visibleNotesRecoveryIncidents,
+  type NotesIncidentHistory,
+  type NotesIncidentKind,
+} from './recoveryHistory';
 
 type AccountAction =
   | 'signin'
@@ -84,6 +90,15 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
     ownerId: string | null;
     text: string;
   } | null>(null);
+  const [incidentHistory, setIncidentHistory] = useState<NotesIncidentHistory>({
+    ownerId: accountId,
+    entries: [],
+  });
+  const recordIncident = (kind: NotesIncidentKind) => {
+    setIncidentHistory((previous) =>
+      appendNotesRecoveryIncident(previous, accountId, kind, Date.now()),
+    );
+  };
   const [recoveryInspection, setRecoveryInspection] = useState<{
     ownerId: string | null;
     summary: string;
@@ -304,6 +319,7 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
               onClick={() => {
                 const changed = changeNotesCoreConsent(accountId, false);
                 if (changed) {
+                  recordIncident('core-grant-revoked');
                   setCorePreference({ ownerId: accountId, enabled: false });
                   setCoreMessage({
                     ownerId: accountId,
@@ -431,6 +447,7 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
                 lastSyncedAt,
                 coreConsent,
               });
+              recordIncident('inspected');
               setRecoveryInspection({
                 ownerId: accountId,
                 summary:
@@ -449,13 +466,34 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
               ? recoveryInspection.summary
               : 'No recovery inspection performed on this Account. Native Notes remain the only source of truth.'}
           </p>
+          <div
+            aria-label="This session's recovery history"
+            data-testid="b16-notes-recovery-history"
+          >
+            <strong>Recovery actions in this session</strong>
+            <p className="settings-note">
+              Last 12 native actions, in memory only. A requested sync is not proof that data
+              reached the cloud.
+            </p>
+            <ol>
+              {visibleNotesRecoveryIncidents(incidentHistory, accountId).map((entry) => (
+                <li key={entry.sequence}>
+                  {new Date(entry.observedAt).toLocaleTimeString()} ·{' '}
+                  {entry.kind.replaceAll('-', ' ')}
+                </li>
+              ))}
+            </ol>
+          </div>
           {signedIn && accessGranted && !recoveryMode ? (
             <button
               type="button"
               className="settings-secondary-action"
               data-testid="b15-notes-retry-native"
               disabled={busy || status === 'syncing'}
-              onClick={() => void runBusy('sync', syncNow)}
+              onClick={() => {
+                recordIncident('native-retry-requested');
+                void runBusy('sync', syncNow);
+              }}
             >
               <RefreshCw aria-hidden="true" /> Retry using native Notes sync
             </button>
@@ -465,7 +503,10 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
               type="button"
               className="settings-secondary-action"
               data-testid="b15-notes-open-backup"
-              onClick={onOpenBackup}
+              onClick={() => {
+                recordIncident('native-backup-opened');
+                onOpenBackup();
+              }}
             >
               <DatabaseBackup aria-hidden="true" /> Open native Backup &amp; import
             </button>

@@ -1,4 +1,4 @@
-name: B15 Native Owner Recovery
+name: B16 Native Recovery Evidence
 on:
   pull_request:
     paths:
@@ -7,12 +7,13 @@ on:
       - 'e2e/b13-notes-native-handoff.spec.ts'
       - 'e2e/b14-notes-revoke.spec.ts'
       - 'e2e/b15-notes-recovery.spec.ts'
+      - 'e2e/b16-notes-history.spec.ts'
       - '.github/workflows/sync-b12-focused.yml'
 permissions:
   contents: read
 jobs:
   scoped:
-    if: github.head_ref == 'feat/sync-b15-notes-recovery-center'
+    if: github.head_ref == 'feat/sync-b16-notes-incident-history'
     runs-on: ubuntu-latest
     timeout-minutes: 18
     steps:
@@ -27,8 +28,8 @@ jobs:
           npm run format:check
           npm run lint
           npm run typecheck
-          npx vitest run src/features/sync/coreConsent.exit.test.ts src/features/sync/recoveryPresentation.test.ts
+          npx vitest run src/features/sync/coreConsent.exit.test.ts src/features/sync/recoveryPresentation.test.ts src/features/sync/recoveryHistory.test.ts
       - name: Actual isolated Chromium acceptance
         run: |
           npx playwright install --with-deps chromium
-          npx playwright test e2e/b12-ecosystem-dashboard.spec.ts e2e/b13-notes-native-handoff.spec.ts e2e/b14-notes-revoke.spec.ts e2e/b15-notes-recovery.spec.ts --project=chromium
+          npx playwright test e2e/b12-ecosystem-dashboard.spec.ts e2e/b13-notes-native-handoff.spec.ts e2e/b14-notes-revoke.spec.ts e2e/b15-notes-recovery.spec.ts e2e/b16-notes-history.spec.ts --project=chromium
