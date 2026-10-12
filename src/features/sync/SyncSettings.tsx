@@ -15,7 +15,7 @@ import {
 
 import { syncStatusLabel, useSync } from './SyncContext';
 import { useNotesCoreSyncAdapter } from './coreAdapter';
-import { hasNotesCoreConsent, changeNotesCoreConsent } from './coreConsent';
+import { hasNotesCoreConsent, changeNotesCoreConsent, getNotesCoreRevision, revokeNotesCoreOnAccountExit } from './coreConsent';
 import { formatSyncActivity, syncAttentionCopy } from './syncPresentation';
 
 type AccountAction =
@@ -113,6 +113,14 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
     );
     return () => window.cancelAnimationFrame(frame);
   }, [actionError, busy]);
+
+  // Invalidate Core's separate local grant before the original Notes
+  // authentication service removes or changes the user session.
+  const revokeCoreBeforeIdentityExit = (): void => {
+    if (!accountId) return;
+    revokeNotesCoreOnAccountExit(accountId);
+    setCorePreference({ ownerId: accountId, enabled: false });
+  };
 
   const runBusy = async (action: AccountAction, operation: () => Promise<void>) => {
     if (busy) return;
@@ -273,6 +281,30 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
                 <RefreshCw aria-hidden="true" /> Request sync via Core
               </button>
             ) : null}
+            <p className="settings-note" data-testid="b14-notes-device-consent-status">
+              {coreConsent
+                ? `Core requests allowed on this device (revision ${getNotesCoreRevision(accountId) ?? 'unknown'}). Native Notes alone confirms synchronization.`
+                : 'Core requests denied on this device. Native Notes sync and backup remain available.'}
+            </p>
+            <button
+              type="button"
+              className="settings-secondary-action"
+              data-testid="b14-notes-revoke-core"
+              disabled={!coreConsent}
+              onClick={() => {
+                const changed = changeNotesCoreConsent(accountId, false);
+                if (changed) {
+                  setCorePreference({ ownerId: accountId, enabled: false });
+                  setCoreMessage({ ownerId: accountId,
+                    text: 'Core request grant revoked on this device. A running request cannot report success under its old revision.' });
+                } else {
+                  setCoreMessage({ ownerId: accountId,
+                    text: 'Unable to store device revocation. Do not rely on Core coordination; review this device.' });
+                }
+              }}
+            >
+              Revoke Core requests on this device
+            </button>
             {coreRequests.ownerId === accountId && coreRequests.count > 0 ? (
               <p className="settings-note">
                 Core coordination requests this session: {coreRequests.count}. Native status remains
@@ -720,7 +752,7 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
                 className="settings-secondary-action"
                 type="button"
                 disabled={busy}
-                onClick={() => void runBusy('signout-all', signOutAllDevices)}
+                onClick={() => void runBusy('signout-all', async () => { revokeCoreBeforeIdentityExit(); await signOutAllDevices(); })}
               >
                 Sign out everywhere
               </button>
@@ -729,7 +761,7 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
               className="settings-secondary-action"
               type="button"
               disabled={busy}
-              onClick={() => void runBusy('signout-local', signOut)}
+              onClick={() => void runBusy('signout-local', async () => { revokeCoreBeforeIdentityExit(); await signOut(); })}
             >
               Sign out on this device
             </button>
@@ -767,6 +799,7 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
                 disabled={busy || deleteCloudConfirm !== 'DELETE CLOUD'}
                 onClick={() =>
                   void runBusy('delete-cloud', async () => {
+                    revokeCoreBeforeIdentityExit();
                     await deleteCloudData();
                     setDeleteCloudConfirm('');
                   })
@@ -797,6 +830,7 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
                 disabled={busy || deleteAccountConfirm !== 'DELETE ACCOUNT'}
                 onClick={() =>
                   void runBusy('delete-account', async () => {
+                    revokeCoreBeforeIdentityExit();
                     const result = await deleteAccount();
                     if (result.deleted) setDeleteAccountConfirm('');
                   })
