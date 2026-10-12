@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 
 import { useSync, type SyncStatus } from './SyncContext';
 import { hasNotesCoreConsent } from './coreConsent';
@@ -26,24 +26,33 @@ export function canRequestNotesCoreSync(
  */
 export function useNotesCoreSyncAdapter() {
   const { accountId, accessGranted, recoveryMode, status, syncNow } = useSync();
+  const currentRef = useRef({ accountId, accessGranted, recoveryMode, status });
+  currentRef.current = { accountId, accessGranted, recoveryMode, status };
   return useMemo(
     () => ({
-      readStatus: (): NotesCorePermission => ({
-        ownerId: accountId,
-        authorized: accessGranted && !recoveryMode && hasNotesCoreConsent(accountId),
-        state: status,
-      }),
-      requestSync: async (expectedOwner: string): Promise<'requested' | 'denied'> => {
-        const current = {
-          ownerId: accountId,
-          authorized: accessGranted && !recoveryMode && hasNotesCoreConsent(accountId),
-          state: status,
+      readStatus: (): NotesCorePermission => {
+        const current = currentRef.current;
+        return {
+          ownerId: current.accountId,
+          authorized: current.accessGranted && !current.recoveryMode && hasNotesCoreConsent(current.accountId),
+          state: current.status,
         };
-        if (!canRequestNotesCoreSync(current, expectedOwner)) return 'denied';
-        // Recheck before calling the native authority; device revocation wins.
-        if (!hasNotesCoreConsent(accountId)) return 'denied';
+      },
+      requestSync: async (expectedOwner: string): Promise<'requested' | 'denied'> => {
+        const latest = currentRef.current;
+        const permission: NotesCorePermission = {
+          ownerId: latest.accountId,
+          authorized: latest.accessGranted && !latest.recoveryMode && hasNotesCoreConsent(latest.accountId),
+          state: latest.status,
+        };
+        if (!canRequestNotesCoreSync(permission, expectedOwner)) return 'denied';
         await syncNow();
-        // Notes owns the eventual outcome; callers must separately re-read it.
+        // A completed request is not a confirmed cloud write. The native
+        // engine reports success separately. Account/device revocation wins.
+        const after = currentRef.current;
+        if (after.accountId !== expectedOwner || !after.accessGranted ||
+          after.recoveryMode || !hasNotesCoreConsent(expectedOwner))
+          return 'denied';
         return 'requested';
       },
     }),

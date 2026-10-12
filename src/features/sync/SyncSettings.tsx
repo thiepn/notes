@@ -71,6 +71,7 @@ export function SyncSettings() {
   useEffect(() => {
     setCoreConsent(hasNotesCoreConsent(accountId));
     setCoreMessage(null);
+    setCoreRequests(0);
   }, [accountId]);
   const [formEmail, setFormEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -318,6 +319,47 @@ export function SyncSettings() {
           First sync merges this device’s existing library with the cloud library. Theme,
           privacy-lock passcode, and disposable search history remain device-local.
         </p>
+      </section>
+
+      <section className="settings-group" aria-label="Ecosystem sync dashboard" data-testid="b12-ecosystem-dashboard">
+        <div className="settings-group-copy">
+          <strong>Ecosystem sync</strong>
+          <span>Each THIEPN app controls its own records, Account permissions and sync status. No cross-app private records are loaded here.</span>
+        </div>
+        <div className="settings-choice-list">
+          <div className="settings-setting-row">
+            <span className="settings-row-icon" aria-hidden="true"><Cloud /></span>
+            <span>
+              <strong>Notes · {syncStatusLabel(status)}</strong>
+              <small data-testid="b12-notes-native-status">{signedIn && accessGranted
+                ? status === 'synced' && lastSyncedAt
+                  ? 'Confirmed by Notes at ' + new Date(lastSyncedAt).toLocaleString()
+                  : status === 'pending' ? 'Saved locally; Notes cloud confirmation is pending.'
+                  : status === 'offline' ? 'Offline. Your native Notes remain accessible; retry when online.'
+                  : status === 'error' ? 'Native Notes reported an error. Review the attention message above.'
+                  : 'Notes owns the result of any synchronization request.'
+                : 'Local-only or workspace permission not granted.'}</small>
+            </span>
+          </div>
+          <div className="settings-setting-row">
+            <span>
+              <strong>Library · separate app</strong>
+              <small>Review reading-state sync, conflict choices and device consent in Library's own dashboard.</small>
+            </span>
+            <a href="/library/account" rel="noopener">Open Library sync</a>
+          </div>
+          <div className="settings-setting-row">
+            <span>
+              <strong>Hub · read-only metadata</strong>
+              <small>Sharing is device-scoped and temporary. Hub does not synchronize Notes attachments or records.</small>
+            </span>
+            <a href="/" rel="noopener">Open Hub</a>
+          </div>
+          <p className="settings-note">
+            For actual Notes backup or restore, use Settings → Data &amp; advanced → Backup &amp; import.
+            Core's experimental recovery lab is synthetic and is not a live backup destination.
+          </p>
+        </div>
       </section>
 
       {!signedIn ? (
