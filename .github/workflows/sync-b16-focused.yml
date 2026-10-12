@@ -1,0 +1,31 @@
+name: B16 Native Notes Recovery
+on:
+  pull_request:
+    paths:
+      - 'src/features/sync/**'
+      - 'e2e/b15-notes-recovery.spec.ts'
+      - '.github/workflows/sync-b16-focused.yml'
+permissions:
+  contents: read
+jobs:
+  scoped:
+    if: github.head_ref == 'feat/sync-b16-notes-recovery-history'
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Native Notes source and bounded owner incident model
+        run: |
+          npm run format:check
+          npm run lint
+          npm run typecheck
+          npx vitest run src/features/sync/recoveryHistory.test.ts src/features/sync/recoveryPresentation.test.ts src/features/sync/coreConsent.exit.test.ts
+      - name: Actual disposable Chromium native recovery UI
+        run: |
+          npx playwright install --with-deps chromium
+          npx playwright test e2e/b15-notes-recovery.spec.ts e2e/b14-notes-revoke.spec.ts --project=chromium
