@@ -102,12 +102,19 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
   const recoveryEntries = visibleRecoveryEntries(recoveryHistory, accountId);
   const recoveryEvidence = nativeRecoveryEvidence(status, lastSyncedAt);
   const recordRecovery = (action: RecoveryAction) => {
-    setRecoveryHistory((previous) => appendRecoveryEntry(previous, accountId, {
-      action,
-      nativeStatus: status,
-      grantRevision: getNotesCoreRevision(accountId),
-      lastConfirmedNativeSync: lastSyncedAt,
-    }, Date.now()));
+    setRecoveryHistory((previous) =>
+      appendRecoveryEntry(
+        previous,
+        accountId,
+        {
+          action,
+          nativeStatus: status,
+          grantRevision: getNotesCoreRevision(accountId),
+          lastConfirmedNativeSync: lastSyncedAt,
+        },
+        Date.now(),
+      ),
+    );
   };
   const [coreRequests, setCoreRequests] = useState<{
     ownerId: string | null;
@@ -506,8 +513,8 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
             </p>
             <strong>Recovery incident history on this device</strong>
             <p className="settings-note">
-              Owner-scoped session observations only. A native backup was opened,
-              not necessarily exported; a native sync retry was requested, not confirmed.
+              Owner-scoped session observations only. A native backup was opened, not necessarily
+              exported; a native sync retry was requested, not confirmed.
             </p>
             {recoveryEntries.length ? (
               <ol data-testid="b16-notes-incident-list">
@@ -516,8 +523,10 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
                     {new Date(entry.at).toLocaleTimeString()} · {entry.action.replaceAll('-', ' ')}
                     {' · '}Native {entry.nativeStatus}
                     {' · '}Device revision {entry.grantRevision ?? 'none'}
-                    {' · '}Prior cloud confirmation {entry.lastConfirmedNativeSync
-                      ? new Date(entry.lastConfirmedNativeSync).toLocaleString() : 'none'}
+                    {' · '}Prior cloud confirmation{' '}
+                    {entry.lastConfirmedNativeSync
+                      ? new Date(entry.lastConfirmedNativeSync).toLocaleString()
+                      : 'none'}
                   </li>
                 ))}
               </ol>
