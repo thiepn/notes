@@ -10,13 +10,23 @@ function document(): BackupDocument {
     exportedAt: 5000,
     data: {
       notes: [{ id: 'one', text: 'alpha', updatedAt: 2 }],
-      checklistItems: [], labels: [], noteLabels: [],
-      attachments: [{
-        id: 'file1', noteId: 'one', name: 'book.pdf', size: 4,
-        mimeType: 'application/pdf', dataBase64: 'AAAAAA==',
-        dataSha256: 'a'.repeat(64), createdAt: 200,
-      }],
-      reminders: [], revisions: [{ id: 'rev-1', noteId: 'one', content: 'one' }],
+      checklistItems: [],
+      labels: [],
+      noteLabels: [],
+      attachments: [
+        {
+          id: 'file1',
+          noteId: 'one',
+          name: 'book.pdf',
+          size: 4,
+          mimeType: 'application/pdf',
+          dataBase64: 'AAAAAA==',
+          dataSha256: 'a'.repeat(64),
+          createdAt: 200,
+        },
+      ],
+      reminders: [],
+      revisions: [{ id: 'rev-1', noteId: 'one', content: 'one' }],
       settings: [],
     },
   } as unknown as BackupDocument;
