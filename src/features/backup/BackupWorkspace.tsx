@@ -240,13 +240,16 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
     setBusy('compare');
     setHandoffComparison(null);
     setErrorMessage(null);
-    setStatusMessage('Comparing the selected validated backup with this device using original Notes records…');
+    setStatusMessage(
+      'Comparing the selected validated backup with this device using original Notes records…',
+    );
     try {
       // The original repository validates attachments and takes a consistent
       // Dexie snapshot. Nothing is restored or uploaded by this comparison.
       const device = await backupRepository.exportBackup();
       const comparison = await compareOriginalNotesBackups(
-        selection.prepared.document, device.document,
+        selection.prepared.document,
+        device.document,
       );
       if (generation !== inspectGeneration.current || restoreInProgress.current) return;
       setHandoffComparison(comparison);
@@ -296,14 +299,18 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
       try {
         const actual = await backupRepository.exportBackup();
         const comparison = await compareOriginalNotesBackups(
-          chosen.prepared.document, actual.document,
+          chosen.prepared.document,
+          actual.document,
         );
-        readback = comparison.status === 'matched'
-          ? 'Post-restore readback MATCHED all eight original Notes categories, including attachment digests, saved versions and reminders.'
-          : 'Post-restore readback DIFFERED in ' + comparison.changedLabels.join(', ') +
-            '. Keep the safety copy and inspect these records before synchronizing another device.';
+        readback =
+          comparison.status === 'matched'
+            ? 'Post-restore readback MATCHED all eight original Notes categories, including attachment digests, saved versions and reminders.'
+            : 'Post-restore readback DIFFERED in ' +
+              comparison.changedLabels.join(', ') +
+              '. Keep the safety copy and inspect these records before synchronizing another device.';
       } catch {
-        readback = 'Post-restore readback could not complete. Restored data was written; keep the safety copy and inspect the original Notes library.';
+        readback =
+          'Post-restore readback could not complete. Restored data was written; keep the safety copy and inspect the original Notes library.';
       }
       setRestoreReadback(readback + ' External custody NOT TESTED.');
       inspectGeneration.current += 1;
@@ -316,18 +323,23 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
       try {
         await onRestored();
       } catch {
-        setErrorMessage('Original Notes records were restored, but refreshing the app view failed. Reopen Notes and check the restored records.');
+        setErrorMessage(
+          'Original Notes records were restored, but refreshing the app view failed. Reopen Notes and check the restored records.',
+        );
       }
       setStatusMessage(
         `Restore applied. ${stats.notes} notes, ${stats.attachments} attachments, ` +
           `${stats.revisions} saved versions, and ${stats.reminders} reminders were written. ` +
-          `Safety download requested: ${safetyFilename}. ` + readback,
+          `Safety download requested: ${safetyFilename}. ` +
+          readback,
       );
       setRestoreFocusVersion((version) => version + 1);
     } catch (error) {
-      setRestoreError(committed
-        ? 'Notes was already restored but final verification failed. Reopen the original Notes library; do not repeat the restore blindly.'
-        : `Restore could not be completed. ${toErrorMessage(error)} Try again.`);
+      setRestoreError(
+        committed
+          ? 'Notes was already restored but final verification failed. Reopen the original Notes library; do not repeat the restore blindly.'
+          : `Restore could not be completed. ${toErrorMessage(error)} Try again.`,
+      );
     } finally {
       restoreInProgress.current = false;
       setBusy(null);
@@ -468,25 +480,32 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
           onClick={() => void compareSelectedWithThisDevice()}
         >
           <Scale aria-hidden="true" />
-          {busy === 'compare' ? 'Comparing original records…' : 'Compare saved backup with this device'}
+          {busy === 'compare'
+            ? 'Comparing original records…'
+            : 'Compare saved backup with this device'}
         </button>
         <div role="status" data-testid="b25-notes-compare-result" aria-live="polite">
           {handoffComparison ? (
             <>
-              <p>{handoffComparison.status === 'matched'
-                ? 'Matched all original data categories at the time of comparison.'
-                : 'Differences found. No data was imported, merged or deleted.'}</p>
+              <p>
+                {handoffComparison.status === 'matched'
+                  ? 'Matched all original data categories at the time of comparison.'
+                  : 'Differences found. No data was imported, merged or deleted.'}
+              </p>
               <ul>
                 {handoffComparison.categories.map((category) => (
                   <li key={category.category}>
                     {category.label}: saved file {category.source}, this device {category.device}
-                    {' · '}{category.matched ? 'same records' : 'different records'}
+                    {' · '}
+                    {category.matched ? 'same records' : 'different records'}
                   </li>
                 ))}
               </ul>
               <p>{originalNotesHandoffAdvice(handoffComparison)} External custody NOT TESTED.</p>
             </>
-          ) : 'No comparison of the selected file with this device has run yet.'}
+          ) : (
+            'No comparison of the selected file with this device has run yet.'
+          )}
         </div>
       </section>
       <GoogleKeepImportPanel onImported={handleImported} />
