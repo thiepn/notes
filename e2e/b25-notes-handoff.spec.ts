@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('B25 guest validates an actual saved original Notes backup, compares it and verifies restore readback', async ({ page }) => {
+test('B25 saved-backup comparison and restore readback', async ({ page }) => {
   await page.goto('./');
   await page.getByRole('button', { name: 'More options' }).click();
   await page.getByRole('menu').getByRole('menuitem', { name: 'Settings' }).click();
@@ -14,7 +14,7 @@ test('B25 guest validates an actual saved original Notes backup, compares it and
   await page.getByRole('button', { name: 'Download full backup' }).click();
   const backup = await backupDownloaded;
   const localFile = await backup.path();
-  if (!localFile) throw new Error('The original Notes download was not available for local handoff verification.');
+  if (!localFile) throw new Error('Original Notes download unavailable.');
 
   await page.getByLabel('Choose backup file').setInputFiles(localFile);
   await expect(page.getByLabel('Validated backup preview')).toBeVisible();
@@ -23,11 +23,15 @@ test('B25 guest validates an actual saved original Notes backup, compares it and
     'Matched all original data categories',
   );
 
-  await page.getByLabel('I understand that this backup will replace the current local library.').check();
+  await page
+    .getByLabel('I understand that this backup will replace the current local library.')
+    .check();
   await page.getByRole('button', { name: 'Review restore' }).click();
   const safetyDownload = page.waitForEvent('download');
-  await page.getByRole('alertdialog', { name: 'Restore and replace local library?' })
-    .getByRole('button', { name: 'Restore library' }).click();
+  await page
+    .getByRole('alertdialog', { name: 'Restore and replace local library?' })
+    .getByRole('button', { name: 'Restore library' })
+    .click();
   await safetyDownload;
   await expect(page.getByTestId('b25-notes-restore-readback')).toContainText(
     'MATCHED all eight original Notes categories',
