@@ -1,0 +1,36 @@
+name: B17 Native Notes Device Continuity
+on:
+  pull_request:
+    paths:
+      - 'src/features/sync/**'
+      - 'e2e/b17-native-recovery.spec.ts'
+      - '.github/workflows/sync-b17-focused.yml'
+permissions:
+  contents: read
+jobs:
+  scoped:
+    if: github.head_ref == 'feat/sync-b17-notes-recovery-continuity'
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify Notes original native source contracts
+        run: |
+          npm run format:check
+          npm run lint
+          npm run typecheck
+          npx vitest run src/features/sync/nativeRecoveryHandoff.test.ts src/features/sync/recoveryHistory.test.ts src/features/sync/recoveryPresentation.test.ts
+      - name: Capture precise B17 formatter changes after source-check failure
+        if: failure()
+        run: |
+          npx prettier --write src/features/sync/nativeRecoveryHandoff.ts src/features/sync/nativeRecoveryHandoff.test.ts src/features/sync/SyncSettings.tsx e2e/b17-native-recovery.spec.ts
+          node -e "const fs=require('fs');for(const path of ['src/features/sync/nativeRecoveryHandoff.ts','src/features/sync/nativeRecoveryHandoff.test.ts','src/features/sync/SyncSettings.tsx','e2e/b17-native-recovery.spec.ts']){const s=fs.readFileSync(path,'utf8');for(let i=0;i<s.length;i+=700)console.log('B17_FORMATTED '+JSON.stringify({path,index:i,chunk:s.slice(i,i+700)}));}"
+      - name: Isolated guest Chromium recovery controls
+        run: |
+          npx playwright install --with-deps chromium
+          npx playwright test e2e/b17-native-recovery.spec.ts e2e/b15-notes-recovery.spec.ts --project=chromium
