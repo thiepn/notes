@@ -42,8 +42,7 @@ export function nativeDeviceRecoverySteps(input: {
   deviceBackupAt: number | null;
 }): string[] {
   const recentNative = input.status === 'synced' && input.lastSyncedAt !== null;
-  const backup = input.deviceBackupAt !== null &&
-    Number.isSafeInteger(input.deviceBackupAt);
+  const backup = input.deviceBackupAt !== null && Number.isSafeInteger(input.deviceBackupAt);
   return [
     recentNative
       ? 'Inspect the original Notes sync result and unresolved conflicts before changing devices.'
@@ -64,7 +63,9 @@ export function isCurrentNativeSessionResponse(input: {
   currentAccessToken: string | null;
   currentEpoch: number;
 }) {
-  return input.requestedOwner === input.currentOwner &&
+  return (
+    input.requestedOwner === input.currentOwner &&
     input.requestedAccessToken === input.currentAccessToken &&
-    input.requestedEpoch === input.currentEpoch;
+    input.requestedEpoch === input.currentEpoch
+  );
 }
