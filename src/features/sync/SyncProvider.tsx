@@ -25,7 +25,9 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<SupabaseSession | null>(() => readStoredSession());
   const [accessGranted, setAccessGranted] = useState(false);
   const [recoveryMode, setRecoveryMode] = useState(false);
-  const [nativePaused, setNativePaused] = useState(() => readNotesNativePause(session?.user.id ?? null));
+  const [nativePaused, setNativePaused] = useState(() =>
+    readNotesNativePause(session?.user.id ?? null),
+  );
   const nativePausedRef = useRef(nativePaused);
   const [pendingEmail, setPendingEmail] = useState<string | null>(
     () => session?.user.new_email ?? null,
@@ -136,7 +138,8 @@ export function SyncProvider({ children }: { children: ReactNode }) {
           return;
       }
       const isCurrent = () =>
-        !nativePausedRef.current && epoch === sessionEpochRef.current &&
+        !nativePausedRef.current &&
+        epoch === sessionEpochRef.current &&
         sessionRef.current?.user.id === targetSession.user.id;
       const operation = (async () => {
         setStatus('syncing');
@@ -370,27 +373,32 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     };
   }, [accessGranted, nativePaused, recoveryMode, session, syncNow]);
 
-  const setNativeSyncPaused = useCallback(async (paused: boolean) => {
-    const owner = sessionRef.current?.user.id;
-    if (!owner) throw new Error('Sign in before changing native Notes sync.');
-    if (!writeNotesNativePause(owner, paused))
-      throw new Error('Could not save the device sync preference; it was not changed.');
-    nativePausedRef.current = paused;
-    setNativePaused(paused);
-    sessionEpochRef.current += 1;
-    setLastResult(null);
-    setLastSyncedAt(null);
-    if (paused) {
-      setStatus('pending');
-      setMessage('Native Notes cloud sync paused on this device. Offline local drafts, attachments and saved versions are preserved. This does not revoke Account sessions.');
-      return;
-    }
-    setStatus('connecting');
-    setMessage('Reconnecting through original Notes Account authority.');
-    const current = sessionRef.current;
-    if (!current) return;
-    await activateSession(current);
-  }, [activateSession]);
+  const setNativeSyncPaused = useCallback(
+    async (paused: boolean) => {
+      const owner = sessionRef.current?.user.id;
+      if (!owner) throw new Error('Sign in before changing native Notes sync.');
+      if (!writeNotesNativePause(owner, paused))
+        throw new Error('Could not save the device sync preference; it was not changed.');
+      nativePausedRef.current = paused;
+      setNativePaused(paused);
+      sessionEpochRef.current += 1;
+      setLastResult(null);
+      setLastSyncedAt(null);
+      if (paused) {
+        setStatus('pending');
+        setMessage(
+          'Native Notes cloud sync paused on this device. Offline local drafts, attachments and saved versions are preserved. This does not revoke Account sessions.',
+        );
+        return;
+      }
+      setStatus('connecting');
+      setMessage('Reconnecting through original Notes Account authority.');
+      const current = sessionRef.current;
+      if (!current) return;
+      await activateSession(current);
+    },
+    [activateSession],
+  );
 
   const signIn = useCallback(
     async (email: string, password: string) => {
