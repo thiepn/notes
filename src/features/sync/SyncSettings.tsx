@@ -596,7 +596,8 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
                         message:
                           'Original SyncProvider retry and original Account session refresh were requested. ' +
                           'Reinspect current native Notes status before switching devices. ' +
-                          'Next guidance based on the previously observed state: ' + next +
+                          'Next guidance based on the previously observed state: ' +
+                          next +
                           '. Neither a completed cloud sync nor a saved backup is certified. External custody NOT TESTED.',
                       });
                     });
@@ -615,7 +616,8 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
                     onOpenBackup();
                   }}
                 >
-                  <DatabaseBackup aria-hidden="true" /> Open original Backup &amp; import for device switch
+                  <DatabaseBackup aria-hidden="true" /> Open original Backup &amp; import for device
+                  switch
                 </button>
               ) : null}
             </div>
