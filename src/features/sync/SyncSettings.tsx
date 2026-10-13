@@ -616,7 +616,8 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
                     onOpenBackup();
                   }}
                 >
-                  <DatabaseBackup aria-hidden="true" /> Validate saved file in original Backup &amp; import
+                  <DatabaseBackup aria-hidden="true" /> Validate saved file in original Backup &amp;
+                  import
                 </button>
               ) : null}
             </div>
