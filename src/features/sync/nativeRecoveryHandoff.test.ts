@@ -14,6 +14,7 @@ describe('B17 native Notes independent device summary boundaries', () => {
   it('keeps private Notes content and tokens out of owner-mediated summaries', () => {
     const packet = createNotesNativeHandoff(base, 2000);
     expect(packet.nativeImport).toBe('NOT_PERFORMED');
+    expect(packet.backupOwnership).toBe('device-local-unattributed');
     expect(packet.externalCustody).toBe('NOT_TESTED');
     expect(JSON.stringify(packet)).not.toContain('access_token');
     expect(inspectNotesNativeHandoff(JSON.stringify(packet), owner, 2500).status).toBe('candidate');
