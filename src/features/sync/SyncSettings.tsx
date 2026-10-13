@@ -534,7 +534,9 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
                 status,
                 lastSyncedAt,
                 deviceBackupAt: readLastManualBackup()?.exportedAt ?? null,
-              }).map((step) => <li key={step}>{step}</li>)}
+              }).map((step) => (
+                <li key={step}>{step}</li>
+              ))}
             </ol>
             {signedIn && accessGranted && !recoveryMode ? (
               <>
