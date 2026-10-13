@@ -8,6 +8,8 @@ export interface NotesNativeHandoff {
   nativeStatus: SyncStatus;
   lastConfirmedNativeSync: number | null;
   manualBackupRecordedAt: number | null;
+  /** Device-local BackupWorkspace marker may belong to a previous account. */
+  backupOwnership: 'device-local-unattributed';
   coreDeviceRevision: number | null;
   nativeImport: 'NOT_PERFORMED';
   externalCustody: 'NOT_TESTED';
@@ -63,6 +65,7 @@ export function createNotesNativeHandoff(
     nativeStatus: input.nativeStatus,
     lastConfirmedNativeSync: input.lastConfirmedNativeSync,
     manualBackupRecordedAt: input.manualBackupRecordedAt,
+    backupOwnership: 'device-local-unattributed',
     coreDeviceRevision: input.coreDeviceRevision,
     nativeImport: 'NOT_PERFORMED',
     externalCustody: 'NOT_TESTED',
@@ -88,6 +91,7 @@ export function inspectNotesNativeHandoff(raw: string, expectedOwner: string, no
     !statuses.includes(value.nativeStatus as SyncStatus) ||
     value.externalCustody !== 'NOT_TESTED' ||
     value.nativeImport !== 'NOT_PERFORMED' ||
+    value.backupOwnership !== 'device-local-unattributed' ||
     !Number.isSafeInteger(value.createdAt) ||
     value.createdAt! < 0 ||
     value.createdAt! > now + 300_000 ||
