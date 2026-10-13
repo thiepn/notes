@@ -1,8 +1,10 @@
 /** Device-local owner-scoped preference; not a remote Account session revoke. */
 export const NOTES_NATIVE_SYNC_PAUSE_KEY = 'thiepn.notes.native-pause.v1';
 export function isNotesNativePauseStorageEvent(key: string | null): boolean {
-  return key === NOTES_NATIVE_SYNC_PAUSE_KEY ||
-    (key !== null && key.startsWith(NOTES_NATIVE_SYNC_PAUSE_KEY + ':'));
+  return (
+    key === NOTES_NATIVE_SYNC_PAUSE_KEY ||
+    (key !== null && key.startsWith(NOTES_NATIVE_SYNC_PAUSE_KEY + ':'))
+  );
 }
 function ownerPauseKey(ownerId: string) {
   return NOTES_NATIVE_SYNC_PAUSE_KEY + ':' + ownerId;
@@ -12,7 +14,8 @@ export function readNotesNativePause(ownerId: string | null): boolean {
   try {
     const value = JSON.parse(
       (window.localStorage.getItem(ownerPauseKey(ownerId)) ??
-        window.localStorage.getItem(NOTES_NATIVE_SYNC_PAUSE_KEY)) || 'null',
+        window.localStorage.getItem(NOTES_NATIVE_SYNC_PAUSE_KEY)) ||
+        'null',
     ) as {
       ownerId?: string;
       paused?: boolean;

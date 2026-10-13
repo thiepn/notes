@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { isNotesNativePauseStorageEvent, originalNotesAuthorityCurrent, NOTES_NATIVE_SYNC_PAUSE_KEY } from './nativeSyncPause';
+import {
+  isNotesNativePauseStorageEvent,
+  originalNotesAuthorityCurrent,
+  NOTES_NATIVE_SYNC_PAUSE_KEY,
+} from './nativeSyncPause';
 describe('B26 Notes owner/device local pause and stale-result fencing', () => {
   it('recognizes owner-scoped changes from another same-origin tab', () => {
     expect(isNotesNativePauseStorageEvent(NOTES_NATIVE_SYNC_PAUSE_KEY + ':owner-a')).toBe(true);

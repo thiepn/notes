@@ -5,7 +5,11 @@ import { SyncContext, type SyncContextValue, type SyncStatus } from './SyncConte
 import type { AuthSessionInfo, DeleteAccountResult } from './accountApi';
 import type { SyncResult } from './syncEngine';
 import { nativeSessionTransition, isCurrentNativeSessionResponse } from './deviceContinuity';
-import { isNotesNativePauseStorageEvent, readNotesNativePause, writeNotesNativePause } from './nativeSyncPause';
+import {
+  isNotesNativePauseStorageEvent,
+  readNotesNativePause,
+  writeNotesNativePause,
+} from './nativeSyncPause';
 import {
   claimNotesSyncAccess,
   ensureFreshSession,
@@ -231,7 +235,9 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         setLastResult(null);
         if (paused) {
           setStatus('pending');
-          setMessage('Original Notes sync was paused in another tab. Local drafts remain available.');
+          setMessage(
+            'Original Notes sync was paused in another tab. Local drafts remain available.',
+          );
         } else {
           const current = sessionRef.current;
           if (!current || !navigator.onLine) {
@@ -239,7 +245,9 @@ export function SyncProvider({ children }: { children: ReactNode }) {
             setMessage('Notes can reconnect when its original Account and network are available.');
           } else {
             setStatus('connecting');
-            setMessage('Notes sync resumed in another tab. Rechecking original Account permission.');
+            setMessage(
+              'Notes sync resumed in another tab. Rechecking original Account permission.',
+            );
             void activateSession(current);
           }
         }
