@@ -26,6 +26,7 @@ import { inspectNotesNativeRecovery } from './recoveryPresentation';
 import { readLastManualBackup } from '../backup/backupPresentation';
 import { createNotesNativeHandoff } from './nativeRecoveryHandoff';
 import { compareNotesNativeDevices, nativeDeviceRecoverySteps } from './deviceContinuity';
+import { inspectNativeDeviceSwitch } from './nativeDeviceSwitch';
 import {
   appendRecoveryEntry,
   nativeRecoveryEvidence,
@@ -109,6 +110,10 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
     ownerId: string | null;
     message: string;
   } | null>(null);
+  const [deviceSwitchInspection, setDeviceSwitchInspection] = useState<{
+    ownerId: string | null;
+    message: string;
+  } | null>(null);
   useEffect(() => {
     currentOwnerRef.current = accountId;
     // The original app's sign-out action clears owner-scoped local evidence.
@@ -173,6 +178,7 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
     revokeNotesCoreOnAccountExit(accountId);
     setRecoveryHistory({ ownerId: null, entries: [] });
     setDeviceComparison(null);
+    setDeviceSwitchInspection(null);
     setCorePreference({ ownerId: accountId, enabled: false });
   };
 
@@ -528,6 +534,38 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
             <p className="settings-note">
               Share only a short original Notes metadata summary with another device you control.
               This is not a Notes backup, a cloud receipt or independent custody proof.
+            </p>
+            <button
+              type="button"
+              className="settings-secondary-action"
+              data-testid="b20-notes-check-switch"
+              onClick={() => {
+                const result = inspectNativeDeviceSwitch({
+                  ownerId: accountId,
+                  accessGranted,
+                  recoveryMode,
+                  status,
+                  lastSyncedAt,
+                  manualBackupAt: readLastManualBackup()?.exportedAt ?? null,
+                  now: Date.now(),
+                });
+                recordRecovery('inspect');
+                setDeviceSwitchInspection({
+                  ownerId: accountId,
+                  message:
+                    result.status.toUpperCase() +
+                    ': ' +
+                    result.next +
+                    ' External custody NOT TESTED.',
+                });
+              }}
+            >
+              Inspect native device-switch readiness
+            </button>
+            <p role="status" aria-live="polite" data-testid="b20-notes-switch-result">
+              {deviceSwitchInspection?.ownerId === accountId
+                ? deviceSwitchInspection.message
+                : 'No original Notes device-switch inspection yet.'}
             </p>
             <ol data-testid="b19-notes-recovery-steps">
               {nativeDeviceRecoverySteps({
