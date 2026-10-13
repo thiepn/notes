@@ -130,8 +130,15 @@ const SECTION_COPY: Record<
 };
 
 export function AppShell() {
-  const { recoveryMode } = useSync();
+  const { recoveryMode, accountId } = useSync();
   const [activeSection, setActiveSection] = useState<AppSection>(() => readActiveSection());
+  // Transient owner-scoped result from the ORIGINAL BackupWorkspace. A restore
+  // returns to Notes and unmounts BackupWorkspace, so its readback cannot be
+  // left only in that component. This is not a sync/custody/progress store.
+  const [lastRestoreResult, setLastRestoreResult] = useState<{
+    ownerId: string | null;
+    message: string;
+  } | null>(null);
   const [activeLabelId, setActiveLabelId] = useState<string | null>(() => readActiveLabelId());
   const [labels, setLabels] = useState<LabelRecord[]>([]);
   const [navigationStats, setNavigationStats] = useState<NavigationStats>(EMPTY_NAVIGATION_STATS);
@@ -229,14 +236,15 @@ export function AppShell() {
     setSearchFiltersOpen(false);
   }, []);
 
-  const handleLibraryRestored = useCallback(async () => {
+  const handleLibraryRestored = useCallback(async (readback?: string) => {
+    if (readback) setLastRestoreResult({ ownerId: accountId, message: readback });
     clearSearch();
     setActiveSection('notes');
     setActiveLabelId(null);
     persistActiveSection('notes');
     persistActiveLabelId(null);
     await Promise.all([refreshLabels(), refreshNavigationStats()]);
-  }, [clearSearch, refreshLabels, refreshNavigationStats]);
+  }, [accountId, clearSearch, refreshLabels, refreshNavigationStats]);
 
   useEffect(() => {
     const initialRefresh = window.setTimeout(() => {
@@ -774,6 +782,21 @@ export function AppShell() {
                 <SyncIndicator />
               </div>
             </header>
+
+            {activeSection !== 'backup' &&
+            lastRestoreResult &&
+            lastRestoreResult.ownerId === accountId ? (
+              <div className="backup-status" role="status" aria-live="polite">
+                <p data-testid="b25-notes-restore-readback">{lastRestoreResult.message}</p>
+                <button
+                  type="button"
+                  onClick={() => setLastRestoreResult(null)}
+                  aria-label="Dismiss restore verification"
+                >
+                  Dismiss
+                </button>
+              </div>
+            ) : null}
 
             {searchActive ? (
               <Suspense fallback={<DeferredWorkspaceFallback label="Loading search…" />}>

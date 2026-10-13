@@ -40,7 +40,7 @@ import {
 const backupRepository = new BackupRepository(notesDatabase);
 
 interface BackupWorkspaceProps {
-  onRestored(): Promise<void> | void;
+  onRestored(readback?: string): Promise<void> | void;
   onImported?(): Promise<void> | void;
 }
 
@@ -321,7 +321,7 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
       setConfirmed(false);
       setRestoreDialogOpen(false);
       try {
-        await onRestored();
+        await onRestored(readback + ' External custody NOT TESTED.');
       } catch {
         setErrorMessage(
           'Original Notes records were restored, but refreshing the app view failed. Reopen Notes and check the restored records.',
