@@ -30,6 +30,7 @@ import {
 import { BackupRepository, backupFilename } from './backupRepository';
 import { downloadPortableArchive } from './portableArchive';
 import { RestoreConfirmDialog } from './RestoreConfirmDialog';
+import { inspectSavedNotesHandoff } from './deviceHandoffInspection';
 
 const backupRepository = new BackupRepository(notesDatabase);
 
@@ -46,6 +47,10 @@ interface SelectedBackup {
 
 export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  // A later file selection must always supersede a slower previous inspection.
+  const inspectGeneration = useRef(0);
+  const handoffMode = useRef(false);
+  const [handoffResult, setHandoffResult] = useState<string | null>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const statusRef = useRef<HTMLParagraphElement>(null);
   const errorRef = useRef<HTMLParagraphElement>(null);
@@ -172,10 +177,14 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
     event.target.value = '';
     if (!file) return;
 
+    const inspection = ++inspectGeneration.current;
+    const asHandoff = handoffMode.current;
+    handoffMode.current = false;
     setSelected(null);
     setConfirmed(false);
     setRestoreDialogOpen(false);
     setRestoreError(null);
+    setHandoffResult(null);
     setBusy('inspect');
     setErrorMessage(null);
     setStatusMessage(null);
@@ -185,12 +194,30 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
         throw new Error('This backup is larger than the 512 MB restore safety limit.');
       }
       const prepared = await backupRepository.inspectBackup(await file.text());
+      if (inspection !== inspectGeneration.current) return;
       setSelected({ fileName: file.name, fileSize: file.size, prepared });
-      setStatusMessage('Backup validated. No local data has been changed.');
+      if (asHandoff) {
+        const finding = inspectSavedNotesHandoff({
+          validated: true,
+          size: file.size,
+          exportedAt: prepared.document.exportedAt,
+          now: Date.now(),
+        });
+        setHandoffResult(finding.status.toUpperCase() + ': ' + finding.text);
+      }
+      setStatusMessage(
+        'Original BackupRepository validated the chosen file. No local data has been changed.',
+      );
     } catch (error) {
-      setErrorMessage(toErrorMessage(error));
+      if (inspection === inspectGeneration.current) {
+        if (asHandoff)
+          setHandoffResult(
+            'NOT VALIDATED: The selected file could not pass original BackupRepository checks. No data was restored.',
+          );
+        setErrorMessage(toErrorMessage(error));
+      }
     } finally {
-      setBusy(null);
+      if (inspection === inspectGeneration.current) setBusy(null);
     }
   };
 
@@ -329,6 +356,38 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
         </button>
       </section>
 
+      <section
+        className="backup-card"
+        aria-labelledby="b22-device-handoff-title"
+        data-testid="b22-backup-device-handoff"
+      >
+        <div className="backup-card-copy">
+          <p className="backup-eyebrow">Move Notes to another device</p>
+          <h2 id="b22-device-handoff-title">Validate the backup you actually saved</h2>
+          <p>
+            Download your full local backup above. Then select that saved JSON file here: the
+            existing Notes BackupRepository verifies its format and data checks without importing
+            anything. This does not prove Account ownership, matching cloud data, or an
+            independently operated custodian.
+          </p>
+        </div>
+        <button
+          className="backup-button backup-button-secondary"
+          type="button"
+          disabled={busy !== null}
+          data-testid="b22-backup-verify-saved"
+          onClick={() => {
+            handoffMode.current = true;
+            inputRef.current?.click();
+          }}
+        >
+          <FileCheck2 aria-hidden="true" /> Inspect a saved Notes backup for device switch
+        </button>
+        <p role="status" data-testid="b22-backup-handoff-result">
+          {handoffResult ??
+            'No saved file verified for this device switch. External custody NOT TESTED.'}
+        </p>
+      </section>
       <GoogleKeepImportPanel onImported={handleImported} />
 
       <section className="backup-card" aria-labelledby="backup-restore-title">
