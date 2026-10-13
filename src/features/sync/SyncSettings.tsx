@@ -63,6 +63,8 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
     pendingEmail,
     accessGranted,
     recoveryMode,
+    nativePaused,
+    setNativeSyncPaused,
     lastSyncedAt,
     message,
     lastResult,
@@ -262,7 +264,7 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
             {signedIn && accessGranted ? <Cloud /> : <CloudOff />}
           </span>
           <span>
-            <strong>{syncStatusLabel(status)}</strong>
+            <strong>{nativePaused ? 'Paused on this device' : syncStatusLabel(status)}</strong>
             <small>
               {signedIn
                 ? `${email}${lastSyncedAt ? ` · Last synced ${new Date(lastSyncedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}`
@@ -272,7 +274,7 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
           {signedIn && accessGranted && !recoveryMode ? (
             <button
               type="button"
-              disabled={busy || status === 'syncing'}
+              disabled={busy || status === 'syncing' || nativePaused}
               onClick={() => void runBusy('sync', syncNow)}
             >
               <RefreshCw aria-hidden="true" /> Sync now
@@ -280,6 +282,23 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
           ) : null}
         </div>
 
+        {signedIn && accessGranted && !recoveryMode ? (
+          <div data-testid="b26-notes-local-sync-lifecycle">
+            <button type="button" className="settings-secondary-action"
+              data-testid="b26-notes-pause-native"
+              disabled={busy}
+              onClick={() => void runBusy('sync', async () => {
+                await setNativeSyncPaused(!nativePaused);
+              })}>
+              {nativePaused ? 'Resume original Notes cloud sync' : 'Pause Notes cloud sync on this device'}
+            </button>
+            <p role="status" aria-live="polite">
+              {nativePaused
+                ? 'Native Notes cloud sync is paused on this device. Offline notes, attachments and revisions remain local. Your Account session is not revoked.'
+                : 'Notes sync uses the original Account owner and SyncProvider. Pausing prevents new local synchronization attempts; sign out other devices through Account sessions.'}
+            </p>
+          </div>
+        ) : null}
         {signedIn && accessGranted && !recoveryMode ? (
           <div className="settings-choice-list" data-testid="core-coordination-controls">
             <label>
@@ -828,7 +847,8 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
               <strong>Notes · {syncStatusLabel(status)}</strong>
               <small data-testid="b12-notes-native-status">
                 {signedIn && accessGranted
-                  ? status === 'synced' && lastSyncedAt
+                  ? nativePaused ? 'Cloud sync paused on this device; local changes have not been sent.'
+                  : status === 'synced' && lastSyncedAt
                     ? 'Confirmed by Notes at ' + new Date(lastSyncedAt).toLocaleString()
                     : status === 'pending'
                       ? 'Saved locally; Notes cloud confirmation is pending.'
