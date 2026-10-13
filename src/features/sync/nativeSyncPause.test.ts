@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { originalNotesAuthorityCurrent } from './nativeSyncPause';
+import { isNotesNativePauseStorageEvent, originalNotesAuthorityCurrent, NOTES_NATIVE_SYNC_PAUSE_KEY } from './nativeSyncPause';
 describe('B26 Notes owner/device local pause and stale-result fencing', () => {
+  it('recognizes owner-scoped changes from another same-origin tab', () => {
+    expect(isNotesNativePauseStorageEvent(NOTES_NATIVE_SYNC_PAUSE_KEY + ':owner-a')).toBe(true);
+    expect(isNotesNativePauseStorageEvent(NOTES_NATIVE_SYNC_PAUSE_KEY)).toBe(true);
+    expect(isNotesNativePauseStorageEvent('other-key')).toBe(false);
+    expect(isNotesNativePauseStorageEvent(null)).toBe(false);
+  });
   const base = {
     epoch: 2,
     currentEpoch: 2,

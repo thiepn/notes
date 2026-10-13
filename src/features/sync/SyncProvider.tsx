@@ -5,7 +5,7 @@ import { SyncContext, type SyncContextValue, type SyncStatus } from './SyncConte
 import type { AuthSessionInfo, DeleteAccountResult } from './accountApi';
 import type { SyncResult } from './syncEngine';
 import { nativeSessionTransition, isCurrentNativeSessionResponse } from './deviceContinuity';
-import { readNotesNativePause, writeNotesNativePause } from './nativeSyncPause';
+import { isNotesNativePauseStorageEvent, readNotesNativePause, writeNotesNativePause } from './nativeSyncPause';
 import {
   claimNotesSyncAccess,
   ensureFreshSession,
@@ -217,8 +217,35 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const handleStorage = (event: StorageEvent) => {
-      if (event.key !== SESSION_STORAGE_KEY) return;
       if (event.storageArea && event.storageArea !== window.localStorage) return;
+      if (isNotesNativePauseStorageEvent(event.key)) {
+        // An owner paused or resumed sync from another browser tab.
+        // Revoke our in-flight sync generation before any old readback.
+        const owner = sessionRef.current?.user.id ?? null;
+        const paused = readNotesNativePause(owner);
+        if (nativePausedRef.current === paused) return;
+        nativePausedRef.current = paused;
+        setNativePaused(paused);
+        sessionEpochRef.current += 1;
+        setLastSyncedAt(null);
+        setLastResult(null);
+        if (paused) {
+          setStatus('pending');
+          setMessage('Original Notes sync was paused in another tab. Local drafts remain available.');
+        } else {
+          const current = sessionRef.current;
+          if (!current || !navigator.onLine) {
+            setStatus(current ? 'offline' : 'local');
+            setMessage('Notes can reconnect when its original Account and network are available.');
+          } else {
+            setStatus('connecting');
+            setMessage('Notes sync resumed in another tab. Rechecking original Account permission.');
+            void activateSession(current);
+          }
+        }
+        return;
+      }
+      if (event.key !== SESSION_STORAGE_KEY) return;
 
       const next = readStoredSession();
       const current = sessionRef.current;
