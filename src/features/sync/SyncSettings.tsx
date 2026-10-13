@@ -110,10 +110,8 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
   } | null>(null);
   useEffect(() => {
     currentOwnerRef.current = accountId;
-    // Every Account transition invalidates this device's previous observation
-    // and imported unsigned summary, including sign-out and switch-back.
-    setRecoveryHistory({ ownerId: accountId, entries: [] });
-    setDeviceComparison(null);
+    // The original app's sign-out action clears owner-scoped local evidence.
+    // Do not synchronously set React state during an identity effect.
   }, [accountId]);
   const recoveryEvidence = nativeRecoveryEvidence(status, lastSyncedAt);
   const recordRecovery = (action: RecoveryAction) => {
