@@ -25,10 +25,12 @@ export function compareNotesNativeDevices(input: {
   if (input.localStatus !== 'synced' || input.localLastConfirmedSync === null)
     return {
       status: 'local-unconfirmed' as const,
-      action: 'The other device reports an unsigned native sync checkpoint, but this device has no current confirmed sync. Check the original SyncProvider and export with BackupWorkspace before importing.',
+      action:
+        'The other device reports an unsigned native sync checkpoint, but this device has no current confirmed sync. Check the original SyncProvider and export with BackupWorkspace before importing.',
     };
   return {
     status: 'two-native-claims' as const,
-    action: 'Both devices report native sync activity. These are separate, unsigned observations, not evidence of matching Notes, a common revision, or durable custody. Use original Notes sync/conflict and BackupWorkspace to reconcile.',
+    action:
+      'Both devices report native sync activity. These are separate, unsigned observations, not evidence of matching Notes, a common revision, or durable custody. Use original Notes sync/conflict and BackupWorkspace to reconcile.',
   };
 }
