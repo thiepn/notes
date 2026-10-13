@@ -31,11 +31,16 @@ import { BackupRepository, backupFilename } from './backupRepository';
 import { downloadPortableArchive } from './portableArchive';
 import { RestoreConfirmDialog } from './RestoreConfirmDialog';
 import { inspectSavedNotesHandoff } from './deviceHandoffInspection';
+import {
+  compareOriginalNotesBackups,
+  originalNotesHandoffAdvice,
+  type HandoffComparison,
+} from './handoffReconciliation';
 
 const backupRepository = new BackupRepository(notesDatabase);
 
 interface BackupWorkspaceProps {
-  onRestored(): Promise<void> | void;
+  onRestored(readback?: string): Promise<void> | void;
   onImported?(): Promise<void> | void;
 }
 
@@ -51,6 +56,9 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
   const inspectGeneration = useRef(0);
   const handoffMode = useRef(false);
   const [handoffResult, setHandoffResult] = useState<string | null>(null);
+  const [handoffComparison, setHandoffComparison] = useState<HandoffComparison | null>(null);
+  const [restoreReadback, setRestoreReadback] = useState<string | null>(null);
+  const restoreInProgress = useRef(false);
   const previewRef = useRef<HTMLDivElement>(null);
   const statusRef = useRef<HTMLParagraphElement>(null);
   const errorRef = useRef<HTMLParagraphElement>(null);
@@ -59,7 +67,9 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
   const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const [restoreFocusVersion, setRestoreFocusVersion] = useState(0);
-  const [busy, setBusy] = useState<'export' | 'portable' | 'inspect' | 'restore' | null>(null);
+  const [busy, setBusy] = useState<
+    'export' | 'portable' | 'inspect' | 'compare' | 'restore' | null
+  >(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [currentStats, setCurrentStats] = useState<BackupStats | null>(null);
@@ -185,6 +195,8 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
     setRestoreDialogOpen(false);
     setRestoreError(null);
     setHandoffResult(null);
+    setHandoffComparison(null);
+    setRestoreReadback(null);
     setBusy('inspect');
     setErrorMessage(null);
     setStatusMessage(null);
@@ -221,6 +233,39 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
     }
   };
 
+  const compareSelectedWithThisDevice = async () => {
+    if (!selected || busy || restoreInProgress.current) return;
+    const selection = selected;
+    const generation = inspectGeneration.current;
+    setBusy('compare');
+    setHandoffComparison(null);
+    setErrorMessage(null);
+    setStatusMessage(
+      'Comparing the selected validated backup with this device using original Notes records…',
+    );
+    try {
+      // The original repository validates attachments and takes a consistent
+      // Dexie snapshot. Nothing is restored or uploaded by this comparison.
+      const device = await backupRepository.exportBackup();
+      const comparison = await compareOriginalNotesBackups(
+        selection.prepared.document,
+        device.document,
+      );
+      if (generation !== inspectGeneration.current || restoreInProgress.current) return;
+      setHandoffComparison(comparison);
+      setCurrentStats(device.stats);
+      setStatusMessage(originalNotesHandoffAdvice(comparison));
+    } catch (error) {
+      if (generation === inspectGeneration.current)
+        setErrorMessage(
+          'Could not complete the original Notes comparison. No data was changed. ' +
+            toErrorMessage(error),
+        );
+    } finally {
+      if (generation === inspectGeneration.current) setBusy(null);
+    }
+  };
+
   const openRestoreConfirmation = () => {
     if (!selected || !confirmed || busy) return;
     setRestoreError(null);
@@ -234,29 +279,69 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
   };
 
   const restore = async () => {
-    if (!selected || !confirmed || busy) return;
+    if (!selected || !confirmed || busy || restoreInProgress.current) return;
+    restoreInProgress.current = true;
+    const chosen = selected;
     setBusy('restore');
     setRestoreError(null);
     setErrorMessage(null);
     setStatusMessage(null);
-
+    setRestoreReadback(null);
+    let committed = false;
     try {
       const safety = await backupRepository.exportBackup();
       const safetyFilename = backupFilename(safety.document.exportedAt, 'notes-before-restore');
       triggerJsonDownload(safety.json, safetyFilename);
-      const stats = await backupRepository.restorePrepared(selected.prepared);
-      await onRestored();
+      // Original transactional replacement, with original attachment checks.
+      const stats = await backupRepository.restorePrepared(chosen.prepared);
+      committed = true;
+      let readback = 'Post-restore readback NOT VERIFIED. Keep the downloaded safety copy.';
+      try {
+        const actual = await backupRepository.exportBackup();
+        const comparison = await compareOriginalNotesBackups(
+          chosen.prepared.document,
+          actual.document,
+        );
+        readback =
+          comparison.status === 'matched'
+            ? 'Post-restore readback MATCHED all eight original Notes categories, including attachment digests, saved versions and reminders.'
+            : 'Post-restore readback DIFFERED in ' +
+              comparison.changedLabels.join(', ') +
+              '. Keep the safety copy and inspect these records before synchronizing another device.';
+      } catch {
+        readback =
+          'Post-restore readback could not complete. Restored data was written; keep the safety copy and inspect the original Notes library.';
+      }
+      setRestoreReadback(readback + ' External custody NOT TESTED.');
+      inspectGeneration.current += 1;
+      setHandoffComparison(null);
+      setHandoffResult(null);
       setCurrentStats(stats);
       setSelected(null);
       setConfirmed(false);
       setRestoreDialogOpen(false);
+      try {
+        await onRestored(readback + ' External custody NOT TESTED.');
+      } catch {
+        setErrorMessage(
+          'Original Notes records were restored, but refreshing the app view failed. Reopen Notes and check the restored records.',
+        );
+      }
       setStatusMessage(
-        `Restore complete. ${stats.notes} notes, ${stats.attachments} attachments, and ${stats.reminders} reminders recovered. Safety backup downloaded as ${safetyFilename}.`,
+        `Restore applied. ${stats.notes} notes, ${stats.attachments} attachments, ` +
+          `${stats.revisions} saved versions, and ${stats.reminders} reminders were written. ` +
+          `Safety download requested: ${safetyFilename}. ` +
+          readback,
       );
       setRestoreFocusVersion((version) => version + 1);
     } catch (error) {
-      setRestoreError(`Restore could not be completed. ${toErrorMessage(error)} Try again.`);
+      setRestoreError(
+        committed
+          ? 'Notes was already restored but final verification failed. Reopen the original Notes library; do not repeat the restore blindly.'
+          : `Restore could not be completed. ${toErrorMessage(error)} Try again.`,
+      );
     } finally {
+      restoreInProgress.current = false;
       setBusy(null);
     }
   };
@@ -387,6 +472,41 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
           {handoffResult ??
             'No saved file verified for this device switch. External custody NOT TESTED.'}
         </p>
+        <button
+          type="button"
+          className="backup-button backup-button-secondary"
+          data-testid="b25-notes-compare-backup"
+          disabled={!selected || busy !== null}
+          onClick={() => void compareSelectedWithThisDevice()}
+        >
+          <Scale aria-hidden="true" />
+          {busy === 'compare'
+            ? 'Comparing original records…'
+            : 'Compare saved backup with this device'}
+        </button>
+        <div role="status" data-testid="b25-notes-compare-result" aria-live="polite">
+          {handoffComparison ? (
+            <>
+              <p>
+                {handoffComparison.status === 'matched'
+                  ? 'Matched all original data categories at the time of comparison.'
+                  : 'Differences found. No data was imported, merged or deleted.'}
+              </p>
+              <ul>
+                {handoffComparison.categories.map((category) => (
+                  <li key={category.category}>
+                    {category.label}: saved file {category.source}, this device {category.device}
+                    {' · '}
+                    {category.matched ? 'same records' : 'different records'}
+                  </li>
+                ))}
+              </ul>
+              <p>{originalNotesHandoffAdvice(handoffComparison)} External custody NOT TESTED.</p>
+            </>
+          ) : (
+            'No comparison of the selected file with this device has run yet.'
+          )}
+        </div>
       </section>
       <GoogleKeepImportPanel onImported={handleImported} />
 
@@ -525,6 +645,11 @@ export function BackupWorkspace({ onRestored, onImported }: BackupWorkspaceProps
         ) : null}
       </section>
 
+      {restoreReadback ? (
+        <p role="status" aria-live="polite" data-testid="b25-notes-restore-readback">
+          {restoreReadback}
+        </p>
+      ) : null}
       {statusMessage ? (
         <p ref={statusRef} className="backup-status" role="status" tabIndex={-1}>
           {statusMessage}

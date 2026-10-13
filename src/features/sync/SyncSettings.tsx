@@ -3,6 +3,7 @@ import {
   Cloud,
   CloudOff,
   DatabaseBackup,
+  FileCheck2,
   KeyRound,
   LogOut,
   Mail,
@@ -27,6 +28,7 @@ import { readLastManualBackup } from '../backup/backupPresentation';
 import { createNotesNativeHandoff } from './nativeRecoveryHandoff';
 import { compareNotesNativeDevices, nativeDeviceRecoverySteps } from './deviceContinuity';
 import { inspectNativeDeviceSwitch, nextOriginalDeviceAction } from './nativeDeviceSwitch';
+import { inspectOriginalNotesTransfer } from './handoffReadiness';
 import {
   appendRecoveryEntry,
   nativeRecoveryEvidence,
@@ -567,6 +569,37 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
                 ? deviceSwitchInspection.message
                 : 'No original Notes device-switch inspection yet.'}
             </p>
+            <button
+              type="button"
+              className="settings-secondary-action"
+              data-testid="b25-notes-check-handoff"
+              disabled={busy || status === 'syncing'}
+              onClick={() => {
+                const finding = inspectOriginalNotesTransfer(
+                  {
+                    ownerId: accountId,
+                    accessGranted,
+                    recoveryMode,
+                    status,
+                    lastSyncedAt,
+                    manualBackupAt: readLastManualBackup()?.exportedAt ?? null,
+                    now: Date.now(),
+                  },
+                  lastResult,
+                );
+                recordRecovery('inspect');
+                setDeviceSwitchInspection({
+                  ownerId: accountId,
+                  message:
+                    finding.status.toUpperCase() +
+                    ': ' +
+                    finding.message +
+                    ' External custody NOT TESTED.',
+                });
+              }}
+            >
+              <FileCheck2 aria-hidden="true" /> Check original pending records and handoff readiness
+            </button>
             <div data-testid="b21-notes-original-device-actions">
               {signedIn && accessGranted && !recoveryMode ? (
                 <button

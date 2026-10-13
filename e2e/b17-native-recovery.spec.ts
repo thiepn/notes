@@ -16,6 +16,8 @@ test('B17 guest cannot export Account-bound device summary or claim external cus
   await expect(steps.locator('li')).toHaveCount(3);
   await expect(steps).toContainText('original Notes Account');
   await expect(steps).toContainText('Backup & import');
+  await recovery.getByTestId('b25-notes-check-handoff').click();
+  await expect(recovery.getByTestId('b20-notes-switch-result')).toContainText('ACCOUNT-REQUIRED');
   await recovery.getByTestId('b20-notes-check-switch').click();
   await expect(recovery.getByTestId('b20-notes-switch-result')).toContainText('LOCAL-ONLY');
   await expect(recovery.getByTestId('b20-notes-switch-result')).toContainText('NOT TESTED');
