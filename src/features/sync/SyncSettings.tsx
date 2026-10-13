@@ -284,13 +284,20 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
 
         {signedIn && accessGranted && !recoveryMode ? (
           <div data-testid="b26-notes-local-sync-lifecycle">
-            <button type="button" className="settings-secondary-action"
+            <button
+              type="button"
+              className="settings-secondary-action"
               data-testid="b26-notes-pause-native"
               disabled={busy}
-              onClick={() => void runBusy('sync', async () => {
-                await setNativeSyncPaused(!nativePaused);
-              })}>
-              {nativePaused ? 'Resume original Notes cloud sync' : 'Pause Notes cloud sync on this device'}
+              onClick={() =>
+                void runBusy('sync', async () => {
+                  await setNativeSyncPaused(!nativePaused);
+                })
+              }
+            >
+              {nativePaused
+                ? 'Resume original Notes cloud sync'
+                : 'Pause Notes cloud sync on this device'}
             </button>
             <p role="status" aria-live="polite">
               {nativePaused
@@ -847,16 +854,17 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
               <strong>Notes · {syncStatusLabel(status)}</strong>
               <small data-testid="b12-notes-native-status">
                 {signedIn && accessGranted
-                  ? nativePaused ? 'Cloud sync paused on this device; local changes have not been sent.'
-                  : status === 'synced' && lastSyncedAt
-                    ? 'Confirmed by Notes at ' + new Date(lastSyncedAt).toLocaleString()
-                    : status === 'pending'
-                      ? 'Saved locally; Notes cloud confirmation is pending.'
-                      : status === 'offline'
-                        ? 'Offline. Your native Notes remain accessible; retry when online.'
-                        : status === 'error'
-                          ? 'Native Notes reported an error. Review the attention message above.'
-                          : 'Notes owns the result of any synchronization request.'
+                  ? nativePaused
+                    ? 'Cloud sync paused on this device; local changes have not been sent.'
+                    : status === 'synced' && lastSyncedAt
+                      ? 'Confirmed by Notes at ' + new Date(lastSyncedAt).toLocaleString()
+                      : status === 'pending'
+                        ? 'Saved locally; Notes cloud confirmation is pending.'
+                        : status === 'offline'
+                          ? 'Offline. Your native Notes remain accessible; retry when online.'
+                          : status === 'error'
+                            ? 'Native Notes reported an error. Review the attention message above.'
+                            : 'Notes owns the result of any synchronization request.'
                   : 'Local-only or workspace permission not granted.'}
               </small>
             </span>
