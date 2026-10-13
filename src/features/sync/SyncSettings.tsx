@@ -575,16 +575,25 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
               data-testid="b25-notes-check-handoff"
               disabled={busy || status === 'syncing'}
               onClick={() => {
-                const finding = inspectOriginalNotesTransfer({
-                  ownerId: accountId, accessGranted, recoveryMode,
-                  status, lastSyncedAt,
-                  manualBackupAt: readLastManualBackup()?.exportedAt ?? null,
-                  now: Date.now(),
-                }, lastResult);
+                const finding = inspectOriginalNotesTransfer(
+                  {
+                    ownerId: accountId,
+                    accessGranted,
+                    recoveryMode,
+                    status,
+                    lastSyncedAt,
+                    manualBackupAt: readLastManualBackup()?.exportedAt ?? null,
+                    now: Date.now(),
+                  },
+                  lastResult,
+                );
                 recordRecovery('inspect');
                 setDeviceSwitchInspection({
                   ownerId: accountId,
-                  message: finding.status.toUpperCase() + ': ' + finding.message +
+                  message:
+                    finding.status.toUpperCase() +
+                    ': ' +
+                    finding.message +
                     ' External custody NOT TESTED.',
                 });
               }}
