@@ -26,7 +26,7 @@ import { inspectNotesNativeRecovery } from './recoveryPresentation';
 import { readLastManualBackup } from '../backup/backupPresentation';
 import { createNotesNativeHandoff } from './nativeRecoveryHandoff';
 import { compareNotesNativeDevices, nativeDeviceRecoverySteps } from './deviceContinuity';
-import { inspectNativeDeviceSwitch } from './nativeDeviceSwitch';
+import { inspectNativeDeviceSwitch, nextOriginalDeviceAction } from './nativeDeviceSwitch';
 import {
   appendRecoveryEntry,
   nativeRecoveryEvidence,
@@ -567,6 +567,60 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
                 ? deviceSwitchInspection.message
                 : 'No original Notes device-switch inspection yet.'}
             </p>
+            <div data-testid="b21-notes-original-device-actions">
+              {signedIn && accessGranted && !recoveryMode ? (
+                <button
+                  type="button"
+                  className="settings-secondary-action"
+                  data-testid="b21-notes-recheck-native"
+                  disabled={busy || status === 'syncing'}
+                  onClick={() => {
+                    const originalOwner = accountId;
+                    recordRecovery('native-retry-requested');
+                    void runBusy('sync', async () => {
+                      await syncNow();
+                      if (currentOwnerRef.current !== originalOwner) return;
+                      await refreshSessions();
+                      if (currentOwnerRef.current !== originalOwner) return;
+                      const next = nextOriginalDeviceAction({
+                        ownerId: originalOwner,
+                        accessGranted,
+                        recoveryMode,
+                        status,
+                        lastSyncedAt,
+                        manualBackupAt: readLastManualBackup()?.exportedAt ?? null,
+                        now: Date.now(),
+                      });
+                      setDeviceSwitchInspection({
+                        ownerId: originalOwner,
+                        message:
+                          'Original SyncProvider retry and original Account session refresh were requested. ' +
+                          'Reinspect current native Notes status before switching devices. ' +
+                          'Next guidance based on the previously observed state: ' +
+                          next +
+                          '. Neither a completed cloud sync nor a saved backup is certified. External custody NOT TESTED.',
+                      });
+                    });
+                  }}
+                >
+                  <RefreshCw aria-hidden="true" /> Retry native sync and refresh Account devices
+                </button>
+              ) : null}
+              {onOpenBackup ? (
+                <button
+                  type="button"
+                  className="settings-secondary-action"
+                  data-testid="b21-notes-open-original-backup"
+                  onClick={() => {
+                    recordRecovery('native-backup-opened');
+                    onOpenBackup();
+                  }}
+                >
+                  <DatabaseBackup aria-hidden="true" /> Open original Backup &amp; import for device
+                  switch
+                </button>
+              ) : null}
+            </div>
             <ol data-testid="b19-notes-recovery-steps">
               {nativeDeviceRecoverySteps({
                 status,

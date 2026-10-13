@@ -23,6 +23,7 @@ test('B17 guest cannot export Account-bound device summary or claim external cus
   await expect(recovery.getByTestId('b17-notes-export-summary')).toHaveCount(0);
   await expect(recovery.getByTestId('b17-notes-compare-summary')).toHaveCount(0);
   await expect(recovery.getByTestId('b17-notes-device-result')).toContainText('NOT TESTED');
-  await settings.getByTestId('b15-notes-open-backup').click();
+  await expect(recovery.getByTestId('b21-notes-recheck-native')).toHaveCount(0);
+  await recovery.getByTestId('b21-notes-open-original-backup').click();
   await expect(page.getByText(/Backup & import|Full backup|Manual backup/i).first()).toBeVisible();
 });
