@@ -24,7 +24,8 @@ import {
 import { formatSyncActivity, syncAttentionCopy } from './syncPresentation';
 import { inspectNotesNativeRecovery } from './recoveryPresentation';
 import { readLastManualBackup } from '../backup/backupPresentation';
-import { createNotesNativeHandoff, inspectNotesNativeHandoff } from './nativeRecoveryHandoff';
+import { createNotesNativeHandoff } from './nativeRecoveryHandoff';
+import { compareNotesNativeDevices } from './deviceContinuity';
 import {
   appendRecoveryEntry,
   nativeRecoveryEvidence,
@@ -598,11 +599,13 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
                       .text()
                       .then((raw) => {
                         if (currentOwnerRef.current !== startingOwner) return;
-                        const result = inspectNotesNativeHandoff(
-                          raw,
-                          startingOwner ?? '',
-                          Date.now(),
-                        );
+                        const result = compareNotesNativeDevices({
+                          remoteJson: raw,
+                          ownerId: startingOwner ?? '',
+                          localStatus: status,
+                          localLastConfirmedSync: lastSyncedAt,
+                          now: Date.now(),
+                        });
                         setDeviceComparison({
                           ownerId: startingOwner,
                           message: result.status.toUpperCase() + ': ' + result.action,
