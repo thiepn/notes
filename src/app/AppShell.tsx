@@ -236,15 +236,18 @@ export function AppShell() {
     setSearchFiltersOpen(false);
   }, []);
 
-  const handleLibraryRestored = useCallback(async (readback?: string) => {
-    if (readback) setLastRestoreResult({ ownerId: accountId, message: readback });
-    clearSearch();
-    setActiveSection('notes');
-    setActiveLabelId(null);
-    persistActiveSection('notes');
-    persistActiveLabelId(null);
-    await Promise.all([refreshLabels(), refreshNavigationStats()]);
-  }, [accountId, clearSearch, refreshLabels, refreshNavigationStats]);
+  const handleLibraryRestored = useCallback(
+    async (readback?: string) => {
+      if (readback) setLastRestoreResult({ ownerId: accountId, message: readback });
+      clearSearch();
+      setActiveSection('notes');
+      setActiveLabelId(null);
+      persistActiveSection('notes');
+      persistActiveLabelId(null);
+      await Promise.all([refreshLabels(), refreshNavigationStats()]);
+    },
+    [accountId, clearSearch, refreshLabels, refreshNavigationStats],
+  );
 
   useEffect(() => {
     const initialRefresh = window.setTimeout(() => {
