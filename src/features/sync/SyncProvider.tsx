@@ -45,8 +45,10 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   );
 
   const updateSession = useCallback((next: SupabaseSession | null) => {
-    if (nativeSessionTransition(sessionRef.current?.user.id ?? null,
-      next?.user.id ?? null, false) === 'owner-changed') {
+    if (
+      nativeSessionTransition(sessionRef.current?.user.id ?? null, next?.user.id ?? null, false) ===
+      'owner-changed'
+    ) {
       sessionEpochRef.current += 1;
       setLastSyncedAt(null);
       setLastResult(null);
@@ -103,8 +105,11 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         // Do not let its pending Promise suppress the replacement's sync.
         if (syncEpochInFlight.current === epoch) return syncPromiseRef.current;
         await syncPromiseRef.current;
-        if (sessionEpochRef.current !== epoch ||
-          sessionRef.current?.user.id !== targetSession.user.id) return;
+        if (
+          sessionEpochRef.current !== epoch ||
+          sessionRef.current?.user.id !== targetSession.user.id
+        )
+          return;
       }
       const isCurrent = () =>
         epoch === sessionEpochRef.current && sessionRef.current?.user.id === targetSession.user.id;
@@ -198,8 +203,9 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
       // A cross-tab token/refresh rotation is not the same as the in-flight
       // promise's original authority, even for the same Account owner.
-      if (nativeSessionTransition(current?.user.id ?? null,
-        next.user.id, true) !== 'same-session') {
+      if (
+        nativeSessionTransition(current?.user.id ?? null, next.user.id, true) !== 'same-session'
+      ) {
         sessionEpochRef.current += 1;
         setLastSyncedAt(null);
         setLastResult(null);
