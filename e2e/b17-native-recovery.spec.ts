@@ -11,6 +11,12 @@ test('B17 guest cannot export Account-bound device summary or claim external cus
   const recovery = settings.getByTestId('b17-notes-device-handoff');
   await expect(recovery).toBeVisible();
   await expect(recovery).toContainText('Claim and authorize');
+  const steps = recovery.getByTestId('b19-notes-recovery-steps');
+  await expect(steps).toBeVisible();
+  await expect(steps.locator('li')).toHaveCount(3);
+  await expect(steps).toContainText('original Notes Account');
+  await expect(steps).toContainText('Backup & import');
+
   await expect(recovery.getByTestId('b17-notes-export-summary')).toHaveCount(0);
   await expect(recovery.getByTestId('b17-notes-compare-summary')).toHaveCount(0);
   await expect(recovery.getByTestId('b17-notes-device-result')).toContainText('NOT TESTED');
