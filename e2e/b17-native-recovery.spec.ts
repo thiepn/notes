@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 
-test('B17 guest cannot export Account-bound device summary or claim external custody', async ({ page }) => {
+test('B17 guest cannot export Account-bound device summary or claim external custody', async ({
+  page,
+}) => {
   await page.goto('./');
   await page.getByRole('button', { name: 'More options' }).click();
   await page.getByRole('menu').getByRole('menuitem', { name: 'Settings' }).click();
