@@ -552,7 +552,10 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
                 recordRecovery('inspect');
                 setDeviceSwitchInspection({
                   ownerId: accountId,
-                  message: result.status.toUpperCase() + ': ' + result.next +
+                  message:
+                    result.status.toUpperCase() +
+                    ': ' +
+                    result.next +
                     ' External custody NOT TESTED.',
                 });
               }}
