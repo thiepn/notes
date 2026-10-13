@@ -55,7 +55,9 @@ describe('B25 original Notes handoff reconciliation', () => {
   it('detects changed attachment bytes via independently validated backup digest', async () => {
     const a = document();
     const b = structuredClone(a);
-    b.data.attachments[0].dataSha256 = 'b'.repeat(64);
+    const attachment = b.data.attachments[0];
+    if (!attachment) throw new Error('Expected the synthetic attachment.');
+    attachment.dataSha256 = 'b'.repeat(64);
     const finding = await compareOriginalNotesBackups(a, b);
     expect(finding.changedLabels).toContain('Attachments');
   });
