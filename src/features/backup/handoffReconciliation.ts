@@ -8,8 +8,14 @@ import { backupStats } from './backupFormat';
  * No secondary writer, progress store, or Account attribution is created.
  */
 export const HANDOFF_CATEGORIES = [
-  'notes', 'checklistItems', 'labels', 'noteLabels',
-  'attachments', 'reminders', 'revisions', 'settings',
+  'notes',
+  'checklistItems',
+  'labels',
+  'noteLabels',
+  'attachments',
+  'reminders',
+  'revisions',
+  'settings',
 ] as const;
 export type HandoffCategory = (typeof HANDOFF_CATEGORIES)[number];
 
@@ -28,9 +34,14 @@ function stableJson(value: unknown): string {
   if (Array.isArray(value)) return '[' + value.map(stableJson).join(',') + ']';
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
   const record = value as Record<string, unknown>;
-  return '{' + Object.keys(record).sort().map(
-    (key) => JSON.stringify(key) + ':' + stableJson(record[key]),
-  ).join(',') + '}';
+  return (
+    '{' +
+    Object.keys(record)
+      .sort()
+      .map((key) => JSON.stringify(key) + ':' + stableJson(record[key]))
+      .join(',') +
+    '}'
+  );
 }
 
 function canonicalRecord(category: HandoffCategory, item: unknown) {
@@ -52,7 +63,13 @@ async function categoryDigest(document: BackupDocument, category: HandoffCategor
 
 export interface HandoffComparison {
   status: 'matched' | 'different';
-  categories: { category: HandoffCategory; label: string; source: number; device: number; matched: boolean }[];
+  categories: {
+    category: HandoffCategory;
+    label: string;
+    source: number;
+    device: number;
+    matched: boolean;
+  }[];
   changedLabels: string[];
   sourceRecords: number;
   deviceRecords: number;
@@ -65,21 +82,29 @@ export async function compareOriginalNotesBackups(
   device: BackupDocument,
 ): Promise<HandoffComparison> {
   // Document export timestamps are intentionally excluded: they aren't notes.
-  const comparisons = await Promise.all(HANDOFF_CATEGORIES.map(async (category) => {
-    const [a, b] = await Promise.all([
-      categoryDigest(source, category), categoryDigest(device, category),
-    ]);
-    return { category, label: CATEGORY_LABELS[category],
-      source: source.data[category].length, device: device.data[category].length,
-      matched: a === b };
-  }));
+  const comparisons = await Promise.all(
+    HANDOFF_CATEGORIES.map(async (category) => {
+      const [a, b] = await Promise.all([
+        categoryDigest(source, category),
+        categoryDigest(device, category),
+      ]);
+      return {
+        category,
+        label: CATEGORY_LABELS[category],
+        source: source.data[category].length,
+        device: device.data[category].length,
+        matched: a === b,
+      };
+    }),
+  );
   const sourceStats: BackupStats = backupStats(source);
   const deviceStats: BackupStats = backupStats(device);
   const changedLabels = comparisons.filter((x) => !x.matched).map((x) => x.label);
   return {
     status: changedLabels.length ? 'different' : 'matched',
     categories: comparisons,
-    changedLabels, sourceRecords: sourceStats.totalRecords,
+    changedLabels,
+    sourceRecords: sourceStats.totalRecords,
     deviceRecords: deviceStats.totalRecords,
     externalCustody: 'NOT_TESTED',
   };
