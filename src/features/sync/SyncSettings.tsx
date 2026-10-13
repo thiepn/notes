@@ -600,7 +600,9 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
             </button>
             <p role="status" aria-live="polite" data-testid="b22-notes-handoff-result">
               {handoffObservation?.ownerId === accountId
-                ? observedHandoff.phase.toUpperCase() + ': ' + observedHandoff.action +
+                ? observedHandoff.phase.toUpperCase() +
+                  ': ' +
+                  observedHandoff.action +
                   ' Original records are never imported by this inspection. External custody NOT TESTED.'
                 : 'Inspect original Notes sync before moving or restoring records on another device.'}
             </p>
