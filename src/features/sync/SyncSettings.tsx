@@ -131,7 +131,9 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
     deferred: lastResult?.deferred ?? null,
     conflicts: lastResult?.conflicts ?? null,
     manualBackupAt: readLastManualBackup()?.exportedAt ?? null,
-    now: Date.now(),
+    // An observed snapshot is tied to an explicit owner action, not a clock
+    // read inside React render. Retry completion refreshes the observation.
+    now: handoffObservation?.requestedAt ?? 0,
   });
   useEffect(() => {
     currentOwnerRef.current = accountId;
@@ -629,6 +631,10 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
                         lastSyncedAt,
                         manualBackupAt: readLastManualBackup()?.exportedAt ?? null,
                         now: Date.now(),
+                      });
+                      setHandoffObservation({
+                        ownerId: originalOwner,
+                        requestedAt: Date.now(),
                       });
                       setDeviceSwitchInspection({
                         ownerId: originalOwner,
