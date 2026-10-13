@@ -27,6 +27,7 @@ import { readLastManualBackup } from '../backup/backupPresentation';
 import { createNotesNativeHandoff } from './nativeRecoveryHandoff';
 import { compareNotesNativeDevices, nativeDeviceRecoverySteps } from './deviceContinuity';
 import { inspectNativeDeviceSwitch, nextOriginalDeviceAction } from './nativeDeviceSwitch';
+import { assessOriginalNotesHandoff } from './originalHandoff';
 import {
   appendRecoveryEntry,
   nativeRecoveryEvidence,
@@ -114,6 +115,24 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
     ownerId: string | null;
     message: string;
   } | null>(null);
+  const [handoffObservation, setHandoffObservation] = useState<{
+    ownerId: string | null;
+    requestedAt: number;
+  } | null>(null);
+  // Recalculate from CURRENT native SyncProvider output on every rerender,
+  // including after the B21 retry; never use the old closure's status as proof.
+  const observedHandoff = assessOriginalNotesHandoff({
+    ownerId: accountId,
+    accessGranted,
+    recoveryMode,
+    status,
+    lastSyncedAt,
+    failed: lastResult?.failed ?? null,
+    deferred: lastResult?.deferred ?? null,
+    conflicts: lastResult?.conflicts ?? null,
+    manualBackupAt: readLastManualBackup()?.exportedAt ?? null,
+    now: Date.now(),
+  });
   useEffect(() => {
     currentOwnerRef.current = accountId;
     // The original app's sign-out action clears owner-scoped local evidence.
@@ -179,6 +198,7 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
     setRecoveryHistory({ ownerId: null, entries: [] });
     setDeviceComparison(null);
     setDeviceSwitchInspection(null);
+    setHandoffObservation(null);
     setCorePreference({ ownerId: accountId, enabled: false });
   };
 
@@ -566,6 +586,23 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
               {deviceSwitchInspection?.ownerId === accountId
                 ? deviceSwitchInspection.message
                 : 'No original Notes device-switch inspection yet.'}
+            </p>
+            <button
+              type="button"
+              className="settings-secondary-action"
+              data-testid="b22-notes-review-live-handoff"
+              onClick={() => {
+                setHandoffObservation({ ownerId: accountId, requestedAt: Date.now() });
+                recordRecovery('inspect');
+              }}
+            >
+              Inspect current native sync, conflicts &amp; backup handoff
+            </button>
+            <p role="status" aria-live="polite" data-testid="b22-notes-handoff-result">
+              {handoffObservation?.ownerId === accountId
+                ? observedHandoff.phase.toUpperCase() + ': ' + observedHandoff.action +
+                  ' Original records are never imported by this inspection. External custody NOT TESTED.'
+                : 'Inspect original Notes sync before moving or restoring records on another device.'}
             </p>
             <div data-testid="b21-notes-original-device-actions">
               {signedIn && accessGranted && !recoveryMode ? (
