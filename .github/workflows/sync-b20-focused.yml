@@ -1,0 +1,37 @@
+name: B20 Notes Original Device Recovery
+on:
+  pull_request:
+    paths:
+      - 'src/features/sync/**'
+      - 'e2e/b17-native-recovery.spec.ts'
+      - '.github/workflows/sync-b20-focused.yml'
+permissions:
+  contents: read
+jobs:
+  focused:
+    if: github.head_ref == 'feat/sync-b20-notes-device-switch-continuity'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Original Notes formatting lint and types
+        run: |
+          npm run format:check
+          npm run lint
+          npm run typecheck
+      - name: Original Notes device continuity and recovery tests
+        run: npx vitest run src/features/sync/nativeDeviceSwitch.test.ts src/features/sync/deviceContinuity.b19.test.ts src/features/sync/deviceContinuity.test.ts src/features/sync/nativeRecoveryHandoff.test.ts
+      - name: Capture exact formatter output on failure
+        if: failure()
+        run: |
+          npx prettier --write src/features/sync/nativeDeviceSwitch.ts src/features/sync/nativeDeviceSwitch.test.ts src/features/sync/SyncSettings.tsx e2e/b17-native-recovery.spec.ts
+          node -e "const fs=require('fs');for(const path of ['src/features/sync/nativeDeviceSwitch.ts','src/features/sync/nativeDeviceSwitch.test.ts','src/features/sync/SyncSettings.tsx','e2e/b17-native-recovery.spec.ts']){const s=fs.readFileSync(path,'utf8');for(let i=0;i<s.length;i+=700)console.log('B20_FORMATTED '+JSON.stringify({path,index:i,chunk:s.slice(i,i+700)}));}"
+      - name: Original guest recovery Chromium continuity
+        run: |
+          npx playwright install --with-deps chromium
+          npx playwright test e2e/b17-native-recovery.spec.ts e2e/b15-notes-recovery.spec.ts --project=chromium
