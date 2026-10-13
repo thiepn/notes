@@ -23,6 +23,8 @@ import {
 } from './coreConsent';
 import { formatSyncActivity, syncAttentionCopy } from './syncPresentation';
 import { inspectNotesNativeRecovery } from './recoveryPresentation';
+import { readLastManualBackup } from '../backup/backupPresentation';
+import { createNotesNativeHandoff, inspectNotesNativeHandoff } from './nativeRecoveryHandoff';
 import {
   appendRecoveryEntry,
   nativeRecoveryEvidence,
@@ -100,6 +102,19 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
     entries: [],
   });
   const recoveryEntries = visibleRecoveryEntries(recoveryHistory, accountId);
+  const deviceSummaryInputRef = useRef<HTMLInputElement>(null);
+  const currentOwnerRef = useRef(accountId);
+  const [deviceComparison, setDeviceComparison] = useState<{
+    ownerId: string | null;
+    message: string;
+  } | null>(null);
+  useEffect(() => {
+    currentOwnerRef.current = accountId;
+    // Every Account transition invalidates this device's previous observation
+    // and imported unsigned summary, including sign-out and switch-back.
+    setRecoveryHistory({ ownerId: accountId, entries: [] });
+    setDeviceComparison(null);
+  }, [accountId]);
   const recoveryEvidence = nativeRecoveryEvidence(status, lastSyncedAt);
   const recordRecovery = (action: RecoveryAction) => {
     setRecoveryHistory((previous) =>
@@ -157,6 +172,8 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
   const revokeCoreBeforeIdentityExit = (): void => {
     if (!accountId) return;
     revokeNotesCoreOnAccountExit(accountId);
+    setRecoveryHistory({ ownerId: null, entries: [] });
+    setDeviceComparison(null);
     setCorePreference({ ownerId: accountId, enabled: false });
   };
 
@@ -507,6 +524,99 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
               <DatabaseBackup aria-hidden="true" /> Open native Backup &amp; import
             </button>
           ) : null}
+          <div className="settings-choice-list" data-testid="b17-notes-device-handoff">
+            <strong>Compare recovery readiness between devices</strong>
+            <p className="settings-note">
+              Share only a short original Notes metadata summary with another
+              device you control. This is not a Notes backup, a cloud receipt or
+              independent custody proof.
+            </p>
+            {signedIn && accessGranted && !recoveryMode ? (
+              <>
+                <button
+                  type="button"
+                  className="settings-secondary-action"
+                  data-testid="b17-notes-export-summary"
+                  onClick={() => {
+                    try {
+                      const now = Date.now();
+                      const nativeSummary = createNotesNativeHandoff({
+                        ownerId: accountId ?? '',
+                        nativeStatus: status,
+                        lastConfirmedNativeSync: lastSyncedAt,
+                        manualBackupRecordedAt: readLastManualBackup()?.exportedAt ?? null,
+                        coreDeviceRevision: getNotesCoreRevision(accountId),
+                      }, now);
+                      const url = URL.createObjectURL(new Blob(
+                        [JSON.stringify(nativeSummary, null, 2)],
+                        { type: 'application/json' },
+                      ));
+                      const link = document.createElement('a');
+                      link.href = url;
+                      link.download = 'thiepn-notes-device-recovery-summary.json';
+                      document.body.append(link);
+                      link.click();
+                      link.remove();
+                      window.setTimeout(() => URL.revokeObjectURL(url), 0);
+                      setDeviceComparison({
+                        ownerId: accountId,
+                        message: 'Unsigned native device summary download requested. Verify the file was saved. No note contents were exported.',
+                      });
+                    } catch {
+                      setDeviceComparison({
+                        ownerId: accountId,
+                        message: 'Unable to prepare a valid native summary. Check this device clock and Account session.',
+                      });
+                    }
+                  }}
+                >Export this device recovery summary</button>
+                <input
+                  ref={deviceSummaryInputRef}
+                  type="file"
+                  accept=".json,application/json"
+                  data-testid="b17-notes-compare-input"
+                  aria-label="Choose a Notes device recovery summary"
+                  hidden
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = '';
+                    if (!file) return;
+                    const startingOwner = accountId;
+                    if (file.size > 4096) {
+                      setDeviceComparison({ ownerId: startingOwner, message: 'Device summary exceeds the 4 KB limit.' });
+                      return;
+                    }
+                    void file.text().then((raw) => {
+                      if (currentOwnerRef.current !== startingOwner) return;
+                      const result = inspectNotesNativeHandoff(raw, startingOwner ?? '', Date.now());
+                      setDeviceComparison({
+                        ownerId: startingOwner,
+                        message: result.status.toUpperCase() + ': ' + result.action,
+                      });
+                    }).catch(() => {
+                      if (currentOwnerRef.current === startingOwner)
+                        setDeviceComparison({ ownerId: startingOwner, message: 'Unable to read this device summary.' });
+                    });
+                  }}
+                />
+                <button
+                  type="button"
+                  className="settings-secondary-action"
+                  data-testid="b17-notes-compare-summary"
+                  onClick={() => deviceSummaryInputRef.current?.click()}
+                >Compare another device summary</button>
+              </>
+            ) : (
+              <p className="settings-note">
+                Claim and authorize the original Notes workspace before using private device summaries.
+              </p>
+            )}
+            <p role="status" data-testid="b17-notes-device-result" aria-live="polite">
+              {deviceComparison?.ownerId === accountId
+                ? deviceComparison.message
+                : 'No device summary compared. External custody NOT TESTED.'}
+            </p>
+          </div>
           <div data-testid="b16-notes-evidence">
             <p className="settings-note">
               {recoveryEvidence.detail} External ciphertext custody NOT TESTED.
