@@ -80,14 +80,15 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const refreshSessionListFor = useCallback(
     async (targetSession: SupabaseSession): Promise<boolean> => {
       const epoch = sessionEpochRef.current;
-      const authorized = () => isCurrentNativeSessionResponse({
-        requestedOwner: targetSession.user.id,
-        requestedAccessToken: targetSession.access_token,
-        requestedEpoch: epoch,
-        currentOwner: sessionRef.current?.user.id ?? null,
-        currentAccessToken: sessionRef.current?.access_token ?? null,
-        currentEpoch: sessionEpochRef.current,
-      });
+      const authorized = () =>
+        isCurrentNativeSessionResponse({
+          requestedOwner: targetSession.user.id,
+          requestedAccessToken: targetSession.access_token,
+          requestedEpoch: epoch,
+          currentOwner: sessionRef.current?.user.id ?? null,
+          currentAccessToken: sessionRef.current?.access_token ?? null,
+          currentEpoch: sessionEpochRef.current,
+        });
       try {
         const { listAuthSessions } = await import('./accountApi');
         if (!authorized()) return false;
@@ -188,8 +189,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       // Do not use the old incoming token or publish a stale session list after
       // a cross-tab owner/credential switch during native synchronization.
       const current = sessionRef.current;
-      if (epoch !== sessionEpochRef.current || current?.user.id !== targetSession.user.id)
-        return;
+      if (epoch !== sessionEpochRef.current || current?.user.id !== targetSession.user.id) return;
       await refreshSessionListFor(current);
     },
     [refreshSessionListFor, runSync],
