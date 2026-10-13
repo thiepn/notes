@@ -22,6 +22,8 @@ const INITIAL_SYNC_VALUE: SyncContextValue = {
   pendingEmail: null,
   accessGranted: false,
   recoveryMode: false,
+  nativePaused: false,
+  setNativeSyncPaused: syncUnavailable,
   lastSyncedAt: null,
   message: null,
   lastResult: null,
