@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { SyncContext, type SyncContextValue, type SyncStatus } from './SyncContext';
 import type { AuthSessionInfo, DeleteAccountResult } from './accountApi';
 import type { SyncResult } from './syncEngine';
-import { nativeSessionTransition } from './deviceContinuity';
+import { nativeSessionTransition, isCurrentNativeSessionResponse } from './deviceContinuity';
 import {
   claimNotesSyncAccess,
   ensureFreshSession,
@@ -79,13 +79,24 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
   const refreshSessionListFor = useCallback(
     async (targetSession: SupabaseSession): Promise<boolean> => {
+      const epoch = sessionEpochRef.current;
+      const authorized = () => isCurrentNativeSessionResponse({
+        requestedOwner: targetSession.user.id,
+        requestedAccessToken: targetSession.access_token,
+        requestedEpoch: epoch,
+        currentOwner: sessionRef.current?.user.id ?? null,
+        currentAccessToken: sessionRef.current?.access_token ?? null,
+        currentEpoch: sessionEpochRef.current,
+      });
       try {
         const { listAuthSessions } = await import('./accountApi');
+        if (!authorized()) return false;
         const list = await listAuthSessions(targetSession);
-        if (sessionRef.current?.user.id === targetSession.user.id) setSessions(list);
+        if (!authorized()) return false;
+        setSessions(list);
         return true;
       } catch {
-        if (sessionRef.current?.user.id === targetSession.user.id) setSessions([]);
+        if (authorized()) setSessions([]);
         return false;
       }
     },
@@ -174,7 +185,12 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         return;
       }
       await runSync(targetSession);
-      await refreshSessionListFor(targetSession);
+      // Do not use the old incoming token or publish a stale session list after
+      // a cross-tab owner/credential switch during native synchronization.
+      const current = sessionRef.current;
+      if (epoch !== sessionEpochRef.current || current?.user.id !== targetSession.user.id)
+        return;
+      await refreshSessionListFor(current);
     },
     [refreshSessionListFor, runSync],
   );

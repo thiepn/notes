@@ -25,7 +25,7 @@ import { formatSyncActivity, syncAttentionCopy } from './syncPresentation';
 import { inspectNotesNativeRecovery } from './recoveryPresentation';
 import { readLastManualBackup } from '../backup/backupPresentation';
 import { createNotesNativeHandoff } from './nativeRecoveryHandoff';
-import { compareNotesNativeDevices } from './deviceContinuity';
+import { compareNotesNativeDevices, nativeDeviceRecoverySteps } from './deviceContinuity';
 import {
   appendRecoveryEntry,
   nativeRecoveryEvidence,
@@ -529,6 +529,13 @@ export function SyncSettings({ onOpenBackup }: { onOpenBackup?: () => void }) {
               Share only a short original Notes metadata summary with another device you control.
               This is not a Notes backup, a cloud receipt or independent custody proof.
             </p>
+            <ol data-testid="b19-notes-recovery-steps">
+              {nativeDeviceRecoverySteps({
+                status,
+                lastSyncedAt,
+                deviceBackupAt: readLastManualBackup()?.exportedAt ?? null,
+              }).map((step) => <li key={step}>{step}</li>)}
+            </ol>
             {signedIn && accessGranted && !recoveryMode ? (
               <>
                 <button
