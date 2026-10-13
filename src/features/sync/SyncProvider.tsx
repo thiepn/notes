@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { SyncContext, type SyncContextValue, type SyncStatus } from './SyncContext';
 import type { AuthSessionInfo, DeleteAccountResult } from './accountApi';
 import type { SyncResult } from './syncEngine';
+import { nativeSessionTransition } from './deviceContinuity';
 import {
   claimNotesSyncAccess,
   ensureFreshSession,
@@ -32,6 +33,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const [message, setMessage] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<SyncResult | null>(null);
   const syncPromiseRef = useRef<Promise<void> | null>(null);
+  const syncEpochInFlight = useRef<number | null>(null);
   const initialSessionRef = useRef(session);
   const sessionRef = useRef(session);
   const sessionEpochRef = useRef(0);
@@ -43,7 +45,15 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   );
 
   const updateSession = useCallback((next: SupabaseSession | null) => {
-    if (sessionRef.current?.user.id !== next?.user.id) sessionEpochRef.current += 1;
+    if (nativeSessionTransition(sessionRef.current?.user.id ?? null,
+      next?.user.id ?? null, false) === 'owner-changed') {
+      sessionEpochRef.current += 1;
+      setLastSyncedAt(null);
+      setLastResult(null);
+      setAccessGranted(false);
+      setSessions([]);
+      setStatus(next ? 'connecting' : 'local');
+    }
     sessionRef.current = next;
     setSession(next);
     setPendingEmail(next?.user.new_email ?? null);
@@ -87,9 +97,15 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         setMessage('Offline. Changes are saved locally and will sync when you reconnect.');
         return;
       }
-      if (syncPromiseRef.current) return syncPromiseRef.current;
-
       const epoch = sessionEpochRef.current;
+      if (syncPromiseRef.current) {
+        // A different owner/session may have superseded the active request.
+        // Do not let its pending Promise suppress the replacement's sync.
+        if (syncEpochInFlight.current === epoch) return syncPromiseRef.current;
+        await syncPromiseRef.current;
+        if (sessionEpochRef.current !== epoch ||
+          sessionRef.current?.user.id !== targetSession.user.id) return;
+      }
       const isCurrent = () =>
         epoch === sessionEpochRef.current && sessionRef.current?.user.id === targetSession.user.id;
       const operation = (async () => {
@@ -122,11 +138,15 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         }
       })();
 
+      syncEpochInFlight.current = epoch;
       syncPromiseRef.current = operation;
       try {
         await operation;
       } finally {
-        syncPromiseRef.current = null;
+        if (syncPromiseRef.current === operation) {
+          syncPromiseRef.current = null;
+          syncEpochInFlight.current = null;
+        }
       }
     },
     [updateSession],
@@ -176,6 +196,14 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       )
         return;
 
+      // A cross-tab token/refresh rotation is not the same as the in-flight
+      // promise's original authority, even for the same Account owner.
+      if (nativeSessionTransition(current?.user.id ?? null,
+        next.user.id, true) !== 'same-session') {
+        sessionEpochRef.current += 1;
+        setLastSyncedAt(null);
+        setLastResult(null);
+      }
       updateSession(next);
       setRecoveryMode(false);
       setAccessGranted(false);
