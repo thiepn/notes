@@ -53,8 +53,9 @@ export function inspectNativeDeviceSwitch(state: NativeDeviceSwitchState) {
 }
 
 /** Next safe native action, not an automatic cloud or backup operation. */
-export function nextOriginalDeviceAction(input: NativeDeviceSwitchState):
-  'finish-account' | 'retry-native' | 'open-backup' | 'verify-export' {
+export function nextOriginalDeviceAction(
+  input: NativeDeviceSwitchState,
+): 'finish-account' | 'retry-native' | 'open-backup' | 'verify-export' {
   const current = inspectNativeDeviceSwitch(input).status;
   if (current === 'account-action-required') return 'finish-account';
   if (current === 'native-not-confirmed') return 'retry-native';
