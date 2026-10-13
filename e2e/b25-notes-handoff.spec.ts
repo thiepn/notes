@@ -5,7 +5,8 @@ test('B25 saved-backup comparison and restore readback', async ({ page }) => {
   await page.getByRole('button', { name: 'More options' }).click();
   await page.getByRole('menu').getByRole('menuitem', { name: 'Settings' }).click();
   const settings = page.getByRole('dialog', { name: 'Settings' });
-  await settings.getByRole('button', { name: 'Backup & import' }).click();
+  await settings.getByRole('button', { name: 'Account & sync' }).click();
+  await settings.getByTestId('b21-notes-open-original-backup').click();
   const handoff = page.getByTestId('b22-backup-device-handoff');
   await expect(handoff).toBeVisible();
   await expect(page.getByTestId('b25-notes-compare-backup')).toBeDisabled();
