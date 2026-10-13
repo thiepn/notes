@@ -26,4 +26,6 @@ test('B17 guest cannot export Account-bound device summary or claim external cus
   await expect(recovery.getByTestId('b21-notes-recheck-native')).toHaveCount(0);
   await recovery.getByTestId('b21-notes-open-original-backup').click();
   await expect(page.getByText(/Backup & import|Full backup|Manual backup/i).first()).toBeVisible();
+  await expect(page.getByTestId('b22-backup-device-handoff')).toBeVisible();
+  await expect(page.getByTestId('b22-backup-handoff-result')).toContainText('NOT TESTED');
 });
