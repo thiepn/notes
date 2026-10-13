@@ -6,6 +6,11 @@ import type { AuthSessionInfo, DeleteAccountResult } from './accountApi';
 import type { SyncResult } from './syncEngine';
 import { nativeSessionTransition, isCurrentNativeSessionResponse } from './deviceContinuity';
 import {
+  isNotesNativePauseStorageEvent,
+  readNotesNativePause,
+  writeNotesNativePause,
+} from './nativeSyncPause';
+import {
   claimNotesSyncAccess,
   ensureFreshSession,
   hasNotesSyncAccess,
@@ -24,6 +29,10 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<SupabaseSession | null>(() => readStoredSession());
   const [accessGranted, setAccessGranted] = useState(false);
   const [recoveryMode, setRecoveryMode] = useState(false);
+  const [nativePaused, setNativePaused] = useState(() =>
+    readNotesNativePause(session?.user.id ?? null),
+  );
+  const nativePausedRef = useRef(nativePaused);
   const [pendingEmail, setPendingEmail] = useState<string | null>(
     () => session?.user.new_email ?? null,
   );
@@ -45,6 +54,11 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   );
 
   const updateSession = useCallback((next: SupabaseSession | null) => {
+    if (sessionRef.current?.user.id !== next?.user.id) {
+      const paused = readNotesNativePause(next?.user.id ?? null);
+      nativePausedRef.current = paused;
+      setNativePaused(paused);
+    }
     if (
       nativeSessionTransition(sessionRef.current?.user.id ?? null, next?.user.id ?? null, false) ===
       'owner-changed'
@@ -106,6 +120,10 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
   const runSync = useCallback(
     async (targetSession: SupabaseSession) => {
+      if (nativePausedRef.current) {
+        setMessage('Native Notes cloud sync is paused on this device. Local drafts are preserved.');
+        return;
+      }
       if (!navigator.onLine) {
         setStatus('offline');
         setMessage('Offline. Changes are saved locally and will sync when you reconnect.');
@@ -124,7 +142,9 @@ export function SyncProvider({ children }: { children: ReactNode }) {
           return;
       }
       const isCurrent = () =>
-        epoch === sessionEpochRef.current && sessionRef.current?.user.id === targetSession.user.id;
+        !nativePausedRef.current &&
+        epoch === sessionEpochRef.current &&
+        sessionRef.current?.user.id === targetSession.user.id;
       const operation = (async () => {
         setStatus('syncing');
         setMessage(null);
@@ -185,7 +205,11 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         setMessage('This account has not claimed the private Notes workspace yet.');
         return;
       }
-      await runSync(targetSession);
+      if (!nativePausedRef.current) await runSync(targetSession);
+      else {
+        setStatus('pending');
+        setMessage('Notes cloud sync is paused locally. Existing Notes remain editable offline.');
+      }
       // Do not use the old incoming token or publish a stale session list after
       // a cross-tab owner/credential switch during native synchronization.
       const current = sessionRef.current;
@@ -197,8 +221,39 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const handleStorage = (event: StorageEvent) => {
-      if (event.key !== SESSION_STORAGE_KEY) return;
       if (event.storageArea && event.storageArea !== window.localStorage) return;
+      if (isNotesNativePauseStorageEvent(event.key)) {
+        // An owner paused or resumed sync from another browser tab.
+        // Revoke our in-flight sync generation before any old readback.
+        const owner = sessionRef.current?.user.id ?? null;
+        const paused = readNotesNativePause(owner);
+        if (nativePausedRef.current === paused) return;
+        nativePausedRef.current = paused;
+        setNativePaused(paused);
+        sessionEpochRef.current += 1;
+        setLastSyncedAt(null);
+        setLastResult(null);
+        if (paused) {
+          setStatus('pending');
+          setMessage(
+            'Original Notes sync was paused in another tab. Local drafts remain available.',
+          );
+        } else {
+          const current = sessionRef.current;
+          if (!current || !navigator.onLine) {
+            setStatus(current ? 'offline' : 'local');
+            setMessage('Notes can reconnect when its original Account and network are available.');
+          } else {
+            setStatus('connecting');
+            setMessage(
+              'Notes sync resumed in another tab. Rechecking original Account permission.',
+            );
+            void activateSession(current);
+          }
+        }
+        return;
+      }
+      if (event.key !== SESSION_STORAGE_KEY) return;
 
       const next = readStoredSession();
       const current = sessionRef.current;
@@ -244,7 +299,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   }, [activateSession, clearSessionState, updateSession]);
 
   const syncNow = useCallback(async () => {
-    if (!session || recoveryMode) return;
+    if (!session || recoveryMode || nativePausedRef.current) return;
     if (!navigator.onLine) {
       setStatus('offline');
       setMessage('Offline. Changes are saved locally and will sync when you reconnect.');
@@ -338,7 +393,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   }, [activateSession, clearSessionState, updateSession]);
 
   useEffect(() => {
-    if (!session || recoveryMode) return;
+    if (!session || recoveryMode || nativePaused) return;
     const interval = window.setInterval(() => {
       if (document.visibilityState === 'visible') void syncNow();
     }, AUTO_SYNC_MS);
@@ -351,7 +406,34 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [accessGranted, recoveryMode, session, syncNow]);
+  }, [accessGranted, nativePaused, recoveryMode, session, syncNow]);
+
+  const setNativeSyncPaused = useCallback(
+    async (paused: boolean) => {
+      const owner = sessionRef.current?.user.id;
+      if (!owner) throw new Error('Sign in before changing native Notes sync.');
+      if (!writeNotesNativePause(owner, paused))
+        throw new Error('Could not save the device sync preference; it was not changed.');
+      nativePausedRef.current = paused;
+      setNativePaused(paused);
+      sessionEpochRef.current += 1;
+      setLastResult(null);
+      setLastSyncedAt(null);
+      if (paused) {
+        setStatus('pending');
+        setMessage(
+          'Native Notes cloud sync paused on this device. Offline local drafts, attachments and saved versions are preserved. This does not revoke Account sessions.',
+        );
+        return;
+      }
+      setStatus('connecting');
+      setMessage('Reconnecting through original Notes Account authority.');
+      const current = sessionRef.current;
+      if (!current) return;
+      await activateSession(current);
+    },
+    [activateSession],
+  );
 
   const signIn = useCallback(
     async (email: string, password: string) => {
@@ -572,6 +654,8 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       pendingEmail,
       accessGranted,
       recoveryMode,
+      nativePaused,
+      setNativeSyncPaused,
       lastSyncedAt,
       message,
       lastResult,
@@ -605,6 +689,8 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       message,
       pendingEmail,
       recoveryMode,
+      nativePaused,
+      setNativeSyncPaused,
       refreshSessions,
       requestPasswordReset,
       requestReauthentication,

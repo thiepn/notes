@@ -22,6 +22,8 @@ export interface SyncContextValue {
   pendingEmail: string | null;
   accessGranted: boolean;
   recoveryMode: boolean;
+  nativePaused: boolean;
+  setNativeSyncPaused(paused: boolean): Promise<void>;
   lastSyncedAt: number | null;
   message: string | null;
   lastResult: SyncResult | null;
