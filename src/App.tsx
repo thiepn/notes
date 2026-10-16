@@ -1,6 +1,7 @@
 import { Suspense, lazy, useCallback, useEffect, useState } from 'react';
 
 import { AppShell } from './app/AppShell';
+import { NotesHubBridge } from './hub/NotesHubBridge';
 import { LaunchIntentCoordinator } from './app/LaunchIntentCoordinator';
 import { PwaStatus } from './app/PwaStatus';
 import { FirstRunCoach } from './features/onboarding/FirstRunCoach';
@@ -55,6 +56,7 @@ function SyncedWorkspace() {
   return (
     <PrivacyGate>
       <AppShell />
+      <NotesHubBridge />
       <LaunchIntentCoordinator />
       <FirstRunCoach />
       <PwaStatus />
