@@ -4,11 +4,7 @@ import type { NoteRecord, ReminderRecord } from '../db';
 import { projectNotesHubSummary } from './notesHubSummary';
 
 const now = new Date('2026-10-16T08:00:00Z');
-function note(
-  id: string,
-  title: string,
-  patch: Partial<NoteRecord> = {},
-): NoteRecord {
+function note(id: string, title: string, patch: Partial<NoteRecord> = {}): NoteRecord {
   return {
     id,
     title,
@@ -25,11 +21,7 @@ function note(
     ...patch,
   };
 }
-function reminder(
-  id: string,
-  noteId: string,
-  patch: Partial<ReminderRecord> = {},
-): ReminderRecord {
+function reminder(id: string, noteId: string, patch: Partial<ReminderRecord> = {}): ReminderRecord {
   return {
     id,
     noteId,

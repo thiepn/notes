@@ -11,9 +11,7 @@ export interface NotesHubSummary {
 }
 
 function safeTitle(value: string): string {
-  return (value.trim() || 'Untitled note')
-    .replace(/[\u0000-\u001f\u007f]/g, ' ')
-    .slice(0, 160);
+  return (value.trim() || 'Untitled note').replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, 160);
 }
 
 export function projectNotesHubSummary(
