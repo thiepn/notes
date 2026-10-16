@@ -32,10 +32,15 @@ function readHubRequest(): string | null {
   }
 }
 
+// Resolve the one-shot URL request exactly once on module initialization. React StrictMode
+// invokes state initializers twice in development; a destructive initializer would erase
+// the nonce before the second pass and silently suppress the consent dialog.
+const initialHubRequest = readHubRequest();
+
 /** This component MUST be mounted inside PrivacyGate. The lock unmounts it. */
 export function NotesHubBridge() {
   const { locked } = usePrivacy();
-  const [request] = useState(readHubRequest);
+  const [request] = useState(() => initialHubRequest);
   const alive = useRef(true);
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
