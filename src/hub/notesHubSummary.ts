@@ -11,7 +11,14 @@ export interface NotesHubSummary {
 }
 
 function safeTitle(value: string): string {
-  return (value.trim() || 'Untitled note').replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, 160);
+  const normalized = [...value]
+    .map((char) => {
+      const code = char.codePointAt(0);
+      return code !== undefined && (code < 32 || code === 127) ? ' ' : char;
+    })
+    .join('')
+    .trim();
+  return (normalized || 'Untitled note').slice(0, 160);
 }
 
 export function projectNotesHubSummary(
