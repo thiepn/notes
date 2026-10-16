@@ -19,13 +19,17 @@ test('Notes owner requires explicit approval before handing any local summary to
   await expect(popup.getByRole('dialog', { name: 'Share your Notes overview?' })).toBeVisible();
 
   expect(
-    await page.evaluate(() => (window as unknown as { __notesHubMessage: unknown }).__notesHubMessage),
+    await page.evaluate(
+      () => (window as unknown as { __notesHubMessage: unknown }).__notesHubMessage,
+    ),
   ).toBeNull();
   await popup.getByRole('button', { name: 'Share once' }).click();
   await expect
-    .poll(() => page.evaluate(() => Boolean(
-      (window as unknown as { __notesHubMessage: unknown }).__notesHubMessage,
-    )))
+    .poll(() =>
+      page.evaluate(() =>
+        Boolean((window as unknown as { __notesHubMessage: unknown }).__notesHubMessage),
+      ),
+    )
     .toBe(true);
   const message = await page.evaluate(
     () => (window as unknown as { __notesHubMessage: Record<string, unknown> }).__notesHubMessage,
