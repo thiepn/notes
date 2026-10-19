@@ -19,6 +19,7 @@ const syncUnavailable = () => Promise.reject(new Error('Cloud sync is still load
 const INITIAL_SYNC_VALUE: SyncContextValue = {
   status: 'connecting',
   email: null,
+  accountId: null,
   pendingEmail: null,
   accessGranted: false,
   recoveryMode: false,

@@ -518,6 +518,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     () => ({
       status,
       email: session?.user.email ?? null,
+      accountId: session?.user.id ?? null,
       pendingEmail,
       accessGranted,
       recoveryMode,
@@ -560,6 +561,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       resendEmailChange,
       resendVerification,
       session?.user.email,
+      session?.user.id,
       sessions,
       signIn,
       signOut,
